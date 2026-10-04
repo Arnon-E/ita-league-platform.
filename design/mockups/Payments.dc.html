@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>תשלומים</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700;800&display=swap">
+<style>
+body{margin:0}
+a{color:inherit;text-decoration:none}
+.ic{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.nv{display:flex;align-items:center;gap:12px;padding:12px;min-height:44px;box-sizing:border-box;border-radius:10px;color:#C9D6E8;font-size:15px;font-weight:500}
+.nv.on{background:#14427A;color:#ffffff;font-weight:700}
+.card{background:#ffffff;border:1px solid #DDE3EA;border-radius:16px;padding:24px}
+.btn{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 20px;border-radius:10px;border:1px solid #BCC8D6;background:#ffffff;color:#0B2545;font:inherit;font-weight:700;font-size:15px;cursor:pointer}
+.btn.p{background:#14427A;border-color:#14427A;color:#ffffff}
+.fld{display:flex;flex-direction:column;gap:6px;font-size:14px;font-weight:700}
+.fld select,.fld input{height:46px;border:1px solid #BCC8D6;border-radius:10px;padding:0 12px;font:inherit;font-weight:400;font-size:15px;color:#0B2545;background:#ffffff;width:100%;box-sizing:border-box}
+</style>
+</helmet>
+<div dir="rtl" style="min-height:960px;display:flex;flex-wrap:wrap;font-family:'Heebo',system-ui,sans-serif;background:#F3F5F7;color:#0B2545">
+
+<aside style="flex:1 1 220px;max-width:260px;min-width:200px;background:#0B2545;color:#ffffff;padding:28px 16px;box-sizing:border-box;display:flex;flex-direction:column;gap:28px">
+<div style="display:flex;align-items:center;gap:12px;padding:0 8px">
+<div style="width:40px;height:40px;border-radius:50%;background:#D4F23C;display:flex;align-items:center;justify-content:center">
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0B2545" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M5 5.5c4 3 4 10 0 13M19 5.5c-4 3-4 10 0 13"></path></svg>
+</div>
+<div><div style="font-weight:800;font-size:18px">איגוד הטניס</div><div style="font-size:13px;color:#A9BAD1">מערכת ניהול</div></div>
+</div>
+<nav style="display:flex;flex-direction:column;gap:4px">
+<a class="nv" href="Dashboard.dc.html"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3h8v8H3zM13 3h8v5h-8zM13 10h8v11h-8zM3 13h8v8H3z"></path></svg>דשבורד</a>
+<a class="nv" href="Register.dc.html"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6v3H9zM6 5H5v16h14V5h-1M9 12h6M9 16h6"></path></svg>רישום שחקנים</a>
+<a class="nv" href="Tournament.dc.html"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0zM7 6H4v2a3 3 0 0 0 3 3M17 6h3v2a3 3 0 0 1-3 3"></path></svg>תחרויות</a>
+<a class="nv" href="Rankings.dc.html"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 21V11M12 21V4M19 21v-7"></path></svg>דירוגים</a>
+<a class="nv" href="Notifications.dc.html"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 8 3 8H3s3-1 3-8M10 21a2 2 0 0 0 4 0"></path></svg>התראות</a>
+<a class="nv" href="Documents.dc.html"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h7l5 5v13H7zM14 3v5h5"></path></svg>מסמכים ואישורים</a>
+<a class="nv on" href="Payments.dc.html"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18v12H3zM3 10h18M7 15h3"></path></svg>תשלומים</a>
+<a class="nv" href="Admin.dc.html"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"></path></svg>ניהול מערכת</a>
+<a class="nv" href="Import.dc.html"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M4 20h16"></path></svg>ייבוא מלוגליג</a>
+</nav>
+<div style="margin-top:auto;display:flex;align-items:center;gap:12px;padding:12px 8px;border-top:1px solid #1F3A5F">
+<div style="width:40px;height:40px;border-radius:50%;background:#14427A;display:flex;align-items:center;justify-content:center;font-weight:700">דל</div>
+<div><div style="font-weight:700;font-size:14px">דנה לוי</div><div style="font-size:12px;color:#A9BAD1">מנהלת תחרויות</div></div>
+</div>
+</aside>
+
+<main style="flex:999 1 560px;min-width:0;padding:32px;box-sizing:border-box;display:flex;flex-direction:column;gap:24px">
+
+<header style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:16px">
+<div>
+<h1 style="margin:0;font-size:28px;font-weight:800">תשלומים וזיכויים</h1>
+<p style="margin:4px 0 0;color:#55657A;font-size:15px">דמי השתתפות בתחרויות, חיובים וזיכויים מלאים או חלקיים</p>
+</div>
+<button type="button" class="btn">ייצוא דוח לחשבונאות</button>
+</header>
+
+<section style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px">
+<sc-for list="{{stats}}" as="s" hint-placeholder-count="3">
+<div class="card" style="padding:20px;display:flex;flex-direction:column;gap:6px">
+<div style="font-size:14px;color:#55657A;font-weight:500">{{s.label}}</div>
+<div style="font-size:32px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums">{{s.value}}</div>
+</div>
+</sc-for>
+</section>
+
+<section style="display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start">
+
+<div style="flex:3 1 480px;min-width:0;display:flex;flex-direction:column;gap:16px">
+<div style="display:flex;flex-wrap:wrap;gap:8px">
+<sc-for list="{{filters}}" as="f" hint-placeholder-count="4">
+<button type="button" aria-pressed="{{f.pressed}}" onClick="{{f.pick}}" style="{{f.style}}">{{f.label}}</button>
+</sc-for>
+</div>
+<div class="card" style="padding:8px 24px 16px;overflow-x:auto">
+<table style="width:100%;min-width:520px;border-collapse:collapse;font-size:15px">
+<thead><tr style="color:#55657A;font-size:13px">
+<th style="padding:16px 8px;text-align:right;font-weight:700">שחקן/ית</th>
+<th style="padding:16px 8px;text-align:right;font-weight:700">תחרות</th>
+<th style="padding:16px 8px;text-align:right;font-weight:700">סכום</th>
+<th style="padding:16px 8px;text-align:right;font-weight:700">סטטוס</th>
+<th style="padding:16px 8px;text-align:right;font-weight:700"></th>
+</tr></thead>
+<tbody>
+<sc-for list="{{rows}}" as="r" hint-placeholder-count="8">
+<tr style="{{r.rowStyle}}">
+<td style="padding:12px 8px;font-weight:700">{{r.player}}</td>
+<td style="padding:12px 8px;color:#55657A">{{r.event}}</td>
+<td style="padding:12px 8px;font-weight:700;font-variant-numeric:tabular-nums">{{r.amount}}</td>
+<td style="padding:12px 8px"><span style="{{r.chipStyle}}">{{r.status}}</span></td>
+<td style="padding:12px 8px"><button type="button" class="btn" style="{{r.btnStyle}}" onClick="{{r.pick}}">זיכוי</button></td>
+</tr>
+</sc-for>
+</tbody>
+</table>
+</div>
+</div>
+
+<aside class="card" style="flex:1 1 300px;min-width:0;display:flex;flex-direction:column;gap:16px">
+<h2 style="margin:0;font-size:20px;font-weight:800">זיכוי תשלום</h2>
+<sc-if value="{{noSel}}" hint-placeholder-val="{{ true }}">
+<p style="margin:0;font-size:14px;color:#55657A;line-height:1.6">בחר תשלום מהטבלה כדי לבצע זיכוי. כל זיכוי נרשם ביומן הפעולות עם שם המבצע והסיבה.</p>
+</sc-if>
+<sc-if value="{{hasSel}}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;flex-direction:column;gap:6px;padding:14px;border-radius:12px;background:#F3F5F7">
+<div style="font-weight:800;font-size:16px">{{sel.player}}</div>
+<div style="font-size:14px;color:#55657A">{{sel.event}} · שולם {{sel.amount}}</div>
+</div>
+<div style="display:flex;gap:8px">
+<button type="button" aria-pressed="{{fullOn}}" onClick="{{setFull}}" style="{{fullStyle}}">זיכוי מלא</button>
+<button type="button" aria-pressed="{{partOn}}" onClick="{{setPart}}" style="{{partStyle}}">זיכוי חלקי</button>
+</div>
+<label class="fld"><span>סכום לזיכוי (₪)</span><input type="text" value="{{sel.refundValue}}"></label>
+<label class="fld"><span>סיבה</span><select><option>ביטול השתתפות לפני המועד האחרון</option><option>תחרות בוטלה</option><option>חיוב כפול</option><option>אחר</option></select></label>
+<p style="margin:0;font-size:13px;color:#55657A;line-height:1.5">מדיניות הביטול (אחוזי זיכוי לפי מועד) מוגדרת לכל תחרות בנפרד ע"י מנהל התחרות.</p>
+<button type="button" class="btn p" onClick="{{confirm}}">אישור זיכוי</button>
+</sc-if>
+</aside>
+
+</section>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1360,"height":960}}'>
+class Component extends DCLogic {
+constructor(props) {
+super(props);
+this.state = { f: "all", sel: -1, mode: "full", refunded: {} };
+}
+renderVals() {
+const { f, sel, mode, refunded } = this.state;
+const chip = (bg, c) => `display:inline-flex;align-items:center;padding:4px 10px;border-radius:999px;font-size:13px;font-weight:700;background:${bg};color:${c}`;
+const pill = (on) => on
+? "min-height:44px;padding:0 20px;border-radius:999px;border:2px solid #14427A;background:#14427A;color:#ffffff;font:inherit;font-weight:700;font-size:15px;cursor:pointer"
+: "min-height:44px;padding:0 20px;border-radius:999px;border:2px solid #BCC8D6;background:#ffffff;color:#0B2545;font:inherit;font-weight:500;font-size:15px;cursor:pointer";
+const D = [
+["נועה אברהם", "גביע הנוער עד 16", 120, "paid"],
+["דניאל כהן", "אליפות ישראל הפתוחה", 150, "paid"],
+["מאיה חדד", "גביע הנוער עד 16", 120, "pending"],
+["גיא מזרחי", "אליפות ישראל הפתוחה", 150, "paid"],
+["רועי בן דוד", "טורניר דאבל", 90, "paid"],
+["ענבר לוי", "גביע הנוער עד 16", 120, "pending"],
+["יונתן ברק", "אליפות ישראל הפתוחה", 150, "paid"],
+["אלון שני", "טורניר דאבל", 90, "paid"]
+].map((x, i) => ({ i, player: x[0], event: x[1], amt: x[2], status: refunded[i] ? "refunded" : x[3] }));
+const label = { paid: "שולם", pending: "ממתין", refunded: "זוכה" };
+const tone = { paid: chip("#E3F4EA", "#14663C"), pending: chip("#FDF0DC", "#8A4B08"), refunded: chip("#E4EDF8", "#14427A") };
+const sum = (st) => D.filter((d) => d.status === st).reduce((a, d) => a + d.amt, 0);
+const filt = D.filter((d) => f === "all" || d.status === f);
+const fl = [["all", "הכל"], ["paid", "שולם"], ["pending", "ממתין"], ["refunded", "זוכה"]];
+const cur = sel >= 0 ? D[sel] : null;
+const modeBtn = (on) => on
+? "flex:1;min-height:44px;border-radius:10px;border:2px solid #14427A;background:#E4EDF8;color:#0B2545;font:inherit;font-weight:800;font-size:14px;cursor:pointer"
+: "flex:1;min-height:44px;border-radius:10px;border:2px solid #BCC8D6;background:#ffffff;color:#0B2545;font:inherit;font-weight:500;font-size:14px;cursor:pointer";
+return {
+stats: [
+{ label: "נגבה", value: "₪" + sum("paid") },
+{ label: "ממתין לתשלום", value: "₪" + sum("pending") },
+{ label: "זוכה", value: "₪" + sum("refunded") }
+],
+filters: fl.map(([k, l]) => ({ label: l, pressed: f === k ? "true" : "false", style: pill(f === k), pick: () => this.setState({ f: k }) })),
+rows: filt.map((d) => ({
+player: d.player, event: d.event, amount: "₪" + d.amt, status: label[d.status], chipStyle: tone[d.status],
+rowStyle: "border-top:1px solid #E8ECF1;" + (d.i === sel ? "background:#F1F8D6" : ""),
+btnStyle: d.status === "paid" ? "min-height:40px;padding:0 14px;font-size:14px" : "min-height:40px;padding:0 14px;font-size:14px;visibility:hidden",
+pick: () => this.setState({ sel: d.i, mode: "full" })
+})),
+hasSel: !!cur,
+noSel: !cur,
+sel: cur ? { player: cur.player, event: cur.event, amount: "₪" + cur.amt, refundValue: mode === "full" ? String(cur.amt) : "" } : { player: "", event: "", amount: "", refundValue: "" },
+fullOn: mode === "full" ? "true" : "false",
+partOn: mode === "part" ? "true" : "false",
+fullStyle: modeBtn(mode === "full"),
+partStyle: modeBtn(mode === "part"),
+setFull: () => this.setState({ mode: "full" }),
+setPart: () => this.setState({ mode: "part" }),
+confirm: () => { const r = Object.assign({}, refunded); r[sel] = true; this.setState({ refunded: r, sel: -1 }); }
+};
+}
+}
+</script>
+</body>
+</html>

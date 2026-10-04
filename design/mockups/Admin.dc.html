@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>ניהול מערכת</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700;800&display=swap">
+<style>
+body{margin:0}
+a{color:inherit;text-decoration:none}
+.ic{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.nv{display:flex;align-items:center;gap:12px;padding:12px;min-height:44px;box-sizing:border-box;border-radius:10px;color:#C9D6E8;font-size:15px;font-weight:500}
+.nv.on{background:#14427A;color:#ffffff;font-weight:700}
+.card{background:#ffffff;border:1px solid #DDE3EA;border-radius:16px;padding:24px}
+.btn{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 20px;border-radius:10px;border:1px solid #BCC8D6;background:#ffffff;color:#0B2545;font:inherit;font-weight:700;font-size:15px;cursor:pointer}
+.btn.p{background:#14427A;border-color:#14427A;color:#ffffff}
+</style>
+</helmet>
+<div dir="rtl" style="min-height:1000px;display:flex;flex-wrap:wrap;font-family:'Heebo',system-ui,sans-serif;background:#F3F5F7;color:#0B2545">
+
+<aside style="flex:1 1 220px;max-width:260px;min-width:200px;background:#0B2545;color:#ffffff;padding:28px 16px;box-sizing:border-box;display:flex;flex-direction:column;gap:28px">
+<div style="display:flex;align-items:center;gap:12px;padding:0 8px">
+<div style="width:40px;height:40px;border-radius:50%;background:#D4F23C;display:flex;align-items:center;justify-content:center">
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0B2545" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M5 5.5c4 3 4 10 0 13M19 5.5c-4 3-4 10 0 13"></path></svg>
+</div>
+<div><div style="font-weight:800;font-size:18px">איגוד הטניס</div><div style="font-size:13px;color:#A9BAD1">מערכת ניהול</div></div>
+</div>
+<nav style="display:flex;flex-direction:column;gap:4px">
+<a class="nv" href="Dashboard.dc.html"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3h8v8H3zM13 3h8v5h-8zM13 10h8v11h-8zM3 13h8v8H3z"></path></svg>דשבורד</a>
+<a class="nv" href="Register.dc.html"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6v3H9zM6 5H5v16h14V5h-1M9 12h6M9 16h6"></path></svg>רישום שחקנים</a>
+<a class="nv" href="Tournament.dc.html"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0zM7 6H4v2a3 3 0 0 0 3 3M17 6h3v2a3 3 0 0 1-3 3"></path></svg>תחרויות</a>
+<a class="nv" href="Rankings.dc.html"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 21V11M12 21V4M19 21v-7"></path></svg>דירוגים</a>
+<a class="nv" href="Notifications.dc.html"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 8 3 8H3s3-1 3-8M10 21a2 2 0 0 0 4 0"></path></svg>התראות</a>
+<a class="nv" href="Documents.dc.html"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h7l5 5v13H7zM14 3v5h5"></path></svg>מסמכים ואישורים</a>
+<a class="nv" href="Payments.dc.html"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18v12H3zM3 10h18M7 15h3"></path></svg>תשלומים</a>
+<a class="nv on" href="Admin.dc.html"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"></path></svg>ניהול מערכת</a>
+<a class="nv" href="Import.dc.html"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M4 20h16"></path></svg>ייבוא מלוגליג</a>
+</nav>
+<div style="margin-top:auto;display:flex;align-items:center;gap:12px;padding:12px 8px;border-top:1px solid #1F3A5F">
+<div style="width:40px;height:40px;border-radius:50%;background:#14427A;display:flex;align-items:center;justify-content:center;font-weight:700">דל</div>
+<div><div style="font-weight:700;font-size:14px">דנה לוי</div><div style="font-size:12px;color:#A9BAD1">מנהלת תחרויות</div></div>
+</div>
+</aside>
+
+<main style="flex:999 1 560px;min-width:0;padding:32px;box-sizing:border-box;display:flex;flex-direction:column;gap:24px">
+
+<header style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:16px">
+<div>
+<div style="display:flex;flex-wrap:wrap;align-items:center;gap:12px">
+<h1 style="margin:0;font-size:28px;font-weight:800">ניהול מערכת</h1>
+<span style="display:inline-flex;align-items:center;padding:4px 10px;border-radius:999px;font-size:13px;font-weight:700;background:#0B2545;color:#D4F23C">Super Admin</span>
+</div>
+<p style="margin:4px 0 0;color:#55657A;font-size:15px">משתמשים, תפקידים והרשאות. ל-Super Admin יש גישה מלאה לכל המערכת, וכל פעולה נרשמת.</p>
+</div>
+<button type="button" class="btn p">הוספת משתמש</button>
+</header>
+
+<section class="card" style="display:flex;flex-direction:column;gap:16px">
+<h2 style="margin:0;font-size:20px;font-weight:800">משתמשים</h2>
+<div style="display:flex;flex-wrap:wrap;gap:8px">
+<sc-for list="{{filters}}" as="f" hint-placeholder-count="5">
+<button type="button" aria-pressed="{{f.pressed}}" onClick="{{f.pick}}" style="{{f.style}}">{{f.label}}</button>
+</sc-for>
+</div>
+<div style="overflow-x:auto">
+<table style="width:100%;min-width:520px;border-collapse:collapse;font-size:15px">
+<thead><tr style="color:#55657A;font-size:13px">
+<th style="padding:12px 8px;text-align:right;font-weight:700">שם</th>
+<th style="padding:12px 8px;text-align:right;font-weight:700">תפקיד</th>
+<th style="padding:12px 8px;text-align:right;font-weight:700">היקף</th>
+<th style="padding:12px 8px;text-align:right;font-weight:700">כניסה אחרונה</th>
+</tr></thead>
+<tbody>
+<sc-for list="{{users}}" as="u" hint-placeholder-count="7">
+<tr style="border-top:1px solid #E8ECF1">
+<td style="padding:12px 8px;font-weight:700">{{u.name}}</td>
+<td style="padding:12px 8px"><span style="display:inline-flex;align-items:center;padding:4px 10px;border-radius:999px;font-size:13px;font-weight:700;background:#E4EDF8;color:#14427A">{{u.role}}</span></td>
+<td style="padding:12px 8px;color:#55657A">{{u.scope}}</td>
+<td style="padding:12px 8px;color:#55657A">{{u.last}}</td>
+</tr>
+</sc-for>
+</tbody>
+</table>
+</div>
+</section>
+
+<section style="display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start">
+
+<div class="card" style="flex:3 1 480px;min-width:0;display:flex;flex-direction:column;gap:12px">
+<h2 style="margin:0;font-size:20px;font-weight:800">מטריצת הרשאות</h2>
+<div style="overflow-x:auto">
+<table style="width:100%;min-width:560px;border-collapse:collapse;font-size:14px">
+<thead><tr style="color:#55657A;font-size:12px">
+<th style="padding:10px 6px;text-align:right;font-weight:700">יכולת</th>
+<sc-for list="{{roles}}" as="r" hint-placeholder-count="6">
+<th style="padding:10px 6px;text-align:center;font-weight:700">{{r.label}}</th>
+</sc-for>
+</tr></thead>
+<tbody>
+<sc-for list="{{matrix}}" as="m" hint-placeholder-count="8">
+<tr style="border-top:1px solid #E8ECF1">
+<td style="padding:12px 6px;font-weight:700">{{m.label}}</td>
+<sc-for list="{{m.cells}}" as="c" hint-placeholder-count="6">
+<td style="{{c.style}}">{{c.text}}</td>
+</sc-for>
+</tr>
+</sc-for>
+</tbody>
+</table>
+</div>
+<p style="margin:0;font-size:13px;color:#55657A;line-height:1.5">מנהל תחרות מקבל הרשאות רק לתחרויות ששויך אליהן. מנהל מועדון רואה רק את שחקני המועדון שלו.</p>
+</div>
+
+<div class="card" style="flex:2 1 320px;min-width:0;display:flex;flex-direction:column;gap:4px">
+<h2 style="margin:0 0 8px;font-size:20px;font-weight:800">יומן פעולות</h2>
+<sc-for list="{{audit}}" as="a" hint-placeholder-count="6">
+<div style="padding:12px 0;border-top:1px solid #E8ECF1;font-size:14px;line-height:1.5">
+<div style="font-weight:700">{{a.text}}</div>
+<div style="font-size:12px;color:#55657A">{{a.who}} · {{a.time}}</div>
+</div>
+</sc-for>
+</div>
+
+</section>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1360,"height":1000}}'>
+class Component extends DCLogic {
+constructor(props) {
+super(props);
+this.state = { f: "all" };
+}
+renderVals() {
+const f = this.state.f;
+const pill = (on) => on
+? "min-height:44px;padding:0 20px;border-radius:999px;border:2px solid #14427A;background:#14427A;color:#ffffff;font:inherit;font-weight:700;font-size:15px;cursor:pointer"
+: "min-height:44px;padding:0 20px;border-radius:999px;border:2px solid #BCC8D6;background:#ffffff;color:#0B2545;font:inherit;font-weight:500;font-size:15px;cursor:pointer";
+const U = [
+["רונית אלון", "Super Admin", "כל המערכת", "היום, 09:02"],
+["דנה לוי", "מנהלת תחרות", "אליפות ישראל הפתוחה", "היום, 08:30"],
+["אסף גולן", "מנהל תחרות", "גביע הנוער עד 16", "אתמול"],
+["מיכל שרון", "שופט/מזכירות", "אליפות ישראל הפתוחה", "אתמול"],
+["אורי נחמני", "מנהל מועדון", "מועדון הדרום", "לפני 3 ימים"],
+["שלומית בר", "מנהל איגוד", "כל המערכת (ללא הגדרות)", "לפני 4 ימים"],
+["נועה אברהם", "שחקן", "פרופיל אישי", "היום, 07:45"]
+];
+const fl = ["all", "Super Admin", "מנהל איגוד", "מנהלת תחרות", "מנהל תחרות", "שחקן"];
+const flLabel = (k) => k === "all" ? "הכל" : k;
+const match = (r, k) => k === "all" || r === k || (k === "מנהל תחרות" && r === "מנהלת תחרות");
+const fl2 = ["all", "Super Admin", "מנהל איגוד", "מנהל תחרות", "מנהל מועדון", "שחקן"];
+const rolesRaw = ["Super Admin", "מנהל איגוד", "מנהל תחרות", "שופט", "מנהל מועדון", "שחקן / הורה"];
+const M = [
+["ניהול משתמשים והרשאות", [1, 0, 0, 0, 0, 0]],
+["הגדרות מערכת ודירוג", [1, 1, 0, 0, 0, 0]],
+["יצירת תחרות", [1, 1, 1, 0, 0, 0]],
+["הגרלה ושינוי לוח", [1, 1, 1, 0, 0, 0]],
+["עדכון תוצאות", [1, 1, 1, 1, 0, 0]],
+["תשלומים וזיכויים", [1, 1, 0, 0, 0, 0]],
+["צפייה במסמכי זהות", [1, 1, 0, 0, 0, 0]],
+["שליחת התראות", [1, 1, 1, 0, 1, 0]]
+];
+return {
+filters: fl2.map((k) => ({ label: flLabel(k), pressed: f === k ? "true" : "false", style: pill(f === k), pick: () => this.setState({ f: k }) })),
+users: U.filter((u) => match(u[1], f)).map((u) => ({ name: u[0], role: u[1], scope: u[2], last: u[3] })),
+roles: rolesRaw.map((r) => ({ label: r })),
+matrix: M.map((m) => ({
+label: m[0],
+cells: m[1].map((v) => ({
+text: v ? "✓" : "–",
+style: "padding:12px 6px;text-align:center;font-weight:800;color:" + (v ? "#14663C" : "#8B97A8")
+}))
+})),
+audit: [
+{ text: "בוצעה הגרלה – אליפות ישראל הפתוחה (#1842)", who: "דנה לוי", time: "היום, 08:30" },
+{ text: "זיכוי מלא לשחקן – גביע הנוער עד 16", who: "רונית אלון", time: "אתמול, 17:10" },
+{ text: "נצפה מסמך זהות – נועה אברהם", who: "אסף גולן", time: "אתמול, 11:42" },
+{ text: "שונה תפקיד משתמש: שופט ← מנהל תחרות", who: "רונית אלון", time: "לפני 3 ימים" },
+{ text: "עודכנה תוצאה: רבע גמר 3 (עריכה לאחר פרסום)", who: "מיכל שרון", time: "לפני 3 ימים" },
+{ text: "הוסרו 2 מגרשים מתחרות טורניר דאבל", who: "דנה לוי", time: "לפני 4 ימים" }
+]
+};
+}
+}
+</script>
+</body>
+</html>

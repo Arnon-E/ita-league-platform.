@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>שלב הבתים</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700;800&display=swap">
+<style>
+body{margin:0}
+a{color:inherit;text-decoration:none}
+.ic{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.nv{display:flex;align-items:center;gap:12px;padding:12px;min-height:44px;box-sizing:border-box;border-radius:10px;color:#C9D6E8;font-size:15px;font-weight:500}
+.nv.on{background:#14427A;color:#ffffff;font-weight:700}
+.tb{padding:12px 16px;font-size:15px;color:#55657A}
+.tb.on{font-weight:800;color:#14427A;border-bottom:3px solid #14427A;margin-bottom:-1px}
+.card{background:#ffffff;border:1px solid #DDE3EA;border-radius:16px;padding:24px}
+.btn{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 20px;border-radius:10px;border:1px solid #BCC8D6;background:#ffffff;color:#0B2545;font:inherit;font-weight:700;font-size:15px;cursor:pointer}
+.btn.p{background:#14427A;border-color:#14427A;color:#ffffff}
+.fld{display:flex;flex-direction:column;gap:6px;font-size:14px;font-weight:700}
+.fld select{height:46px;border:1px solid #BCC8D6;border-radius:10px;padding:0 12px;font:inherit;font-weight:400;font-size:15px;color:#0B2545;background:#ffffff;width:100%;box-sizing:border-box}
+</style>
+</helmet>
+<div dir="rtl" style="min-height:1100px;display:flex;flex-wrap:wrap;font-family:'Heebo',system-ui,sans-serif;background:#F3F5F7;color:#0B2545">
+
+<aside style="flex:1 1 220px;max-width:260px;min-width:200px;background:#0B2545;color:#ffffff;padding:28px 16px;box-sizing:border-box;display:flex;flex-direction:column;gap:28px">
+<div style="display:flex;align-items:center;gap:12px;padding:0 8px">
+<div style="width:40px;height:40px;border-radius:50%;background:#D4F23C;display:flex;align-items:center;justify-content:center">
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0B2545" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M5 5.5c4 3 4 10 0 13M19 5.5c-4 3-4 10 0 13"></path></svg>
+</div>
+<div><div style="font-weight:800;font-size:18px">איגוד הטניס</div><div style="font-size:13px;color:#A9BAD1">מערכת ניהול</div></div>
+</div>
+<nav style="display:flex;flex-direction:column;gap:4px">
+<a class="nv" href="Dashboard.dc.html"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3h8v8H3zM13 3h8v5h-8zM13 10h8v11h-8zM3 13h8v8H3z"></path></svg>דשבורד</a>
+<a class="nv" href="Register.dc.html"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6v3H9zM6 5H5v16h14V5h-1M9 12h6M9 16h6"></path></svg>רישום שחקנים</a>
+<a class="nv on" href="Tournament.dc.html"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0zM7 6H4v2a3 3 0 0 0 3 3M17 6h3v2a3 3 0 0 1-3 3"></path></svg>תחרויות</a>
+<a class="nv" href="Rankings.dc.html"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 21V11M12 21V4M19 21v-7"></path></svg>דירוגים</a>
+<a class="nv" href="Notifications.dc.html"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 8 3 8H3s3-1 3-8M10 21a2 2 0 0 0 4 0"></path></svg>התראות</a>
+<a class="nv" href="Documents.dc.html"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h7l5 5v13H7zM14 3v5h5"></path></svg>מסמכים ואישורים</a>
+<a class="nv" href="Payments.dc.html"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18v12H3zM3 10h18M7 15h3"></path></svg>תשלומים</a>
+<a class="nv" href="Admin.dc.html"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"></path></svg>ניהול מערכת</a>
+<a class="nv" href="Import.dc.html"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M4 20h16"></path></svg>ייבוא מלוגליג</a>
+</nav>
+<div style="margin-top:auto;display:flex;align-items:center;gap:12px;padding:12px 8px;border-top:1px solid #1F3A5F">
+<div style="width:40px;height:40px;border-radius:50%;background:#14427A;display:flex;align-items:center;justify-content:center;font-weight:700">דל</div>
+<div><div style="font-weight:700;font-size:14px">דנה לוי</div><div style="font-size:12px;color:#A9BAD1">מנהלת תחרויות</div></div>
+</div>
+</aside>
+
+<main style="flex:999 1 560px;min-width:0;padding:32px;box-sizing:border-box;display:flex;flex-direction:column;gap:24px">
+
+<header style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:16px">
+<div>
+<div style="font-size:14px;color:#55657A;margin-bottom:4px">תחרויות / גביע הנוער עד 16</div>
+<div style="display:flex;flex-wrap:wrap;align-items:center;gap:12px">
+<h1 style="margin:0;font-size:28px;font-weight:800">גביע הנוער עד 16 – שלב הבתים</h1>
+<span style="display:inline-flex;align-items:center;padding:4px 10px;border-radius:999px;font-size:13px;font-weight:700;background:#E3F4EA;color:#14663C">מחזור 3 מתוך 3</span>
+</div>
+</div>
+<div style="display:flex;gap:12px;flex-wrap:wrap">
+<a class="btn" href="Courts.dc.html">שיבוץ מגרשים</a>
+<a class="btn p" href="Score.dc.html">עדכון תוצאה</a>
+</div>
+</header>
+
+<nav aria-label="לשוניות תחרות" style="display:flex;flex-wrap:wrap;gap:8px;border-bottom:1px solid #DDE3EA">
+<a class="tb" href="Draw.dc.html">הגרלה</a>
+<a class="tb on" href="Groups.dc.html">בתים</a>
+<a class="tb" href="Tournament.dc.html">לוח משחקים</a>
+<a class="tb" href="Courts.dc.html">מגרשים ושעות</a>
+<a class="tb" href="Score.dc.html">עדכון תוצאות</a>
+</nav>
+
+<section class="card" style="display:flex;flex-direction:column;gap:20px">
+<div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px">
+<h2 style="margin:0;font-size:20px;font-weight:800">הגדרות שלב הבתים</h2>
+<span style="font-size:13px;color:#55657A">המנהל שולט בכל הפרמטרים. שינוי אחרי הגרלה מחייב אישור ונרשם ביומן.</span>
+</div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px">
+<label class="fld"><span>מספר בתים</span><select><option>4</option><option>2</option><option>3</option><option>6</option><option>8</option></select></label>
+<label class="fld"><span>שחקנים בבית</span><select><option>4</option><option>3</option><option>5</option><option>6</option></select></label>
+<label class="fld"><span>בית חלקי</span><select><option>מותר, 3 שחקנים לפחות</option><option>לא מותר</option></select></label>
+<label class="fld"><span>עולים מכל בית</span><select><option>2</option><option>1</option><option>3</option></select></label>
+<label class="fld"><span>פורמט משחק</span><select><option>שני סטים + סופר טייברייק עד 10</option><option>הטוב מ-3 סטים</option><option>סט אחד עד 9</option></select></label>
+</div>
+<div style="display:flex;flex-direction:column;gap:8px">
+<div style="font-size:14px;font-weight:700">סדר שוברי שוויון (ברירת מחדל לפי תקנון הליגה, ניתן לשינוי; סופר טייברייק נחשב סט)</div>
+<div style="display:flex;flex-wrap:wrap;gap:8px">
+<sc-for list="{{ties}}" as="t" hint-placeholder-count="5">
+<span style="display:inline-flex;align-items:center;gap:8px;padding:8px 14px;border-radius:999px;background:#F3F5F7;border:1px solid #DDE3EA;font-size:14px"><b style="color:#14427A">{{t.n}}</b>{{t.label}}</span>
+</sc-for>
+</div>
+</div>
+</section>
+
+<section style="display:grid;grid-template-columns:repeat(auto-fit,minmax(400px,1fr));gap:24px;align-items:start">
+<sc-for list="{{groups}}" as="g" hint-placeholder-count="4">
+<div class="card" style="display:flex;flex-direction:column;gap:12px;min-width:0">
+<div style="display:flex;align-items:center;justify-content:space-between;gap:8px"><h2 style="margin:0;font-size:20px;font-weight:800">{{g.title}}</h2><span style="{{g.noteStyle}}">{{g.note}}</span></div>
+<div style="overflow-x:auto">
+<table style="width:100%;min-width:340px;border-collapse:collapse;font-size:14px">
+<thead><tr style="color:#55657A;font-size:12px">
+<th style="padding:8px 6px;text-align:right;width:28px">#</th>
+<th style="padding:8px 6px;text-align:right">שחקן/ית</th>
+<th style="padding:8px 6px;text-align:right">מש׳</th>
+<th style="padding:8px 6px;text-align:right">נצ׳</th>
+<th style="padding:8px 6px;text-align:right">הפ׳</th>
+<th style="padding:8px 6px;text-align:right">סטים</th>
+</tr></thead>
+<tbody>
+<sc-for list="{{g.rows}}" as="r" hint-placeholder-count="4">
+<tr style="{{r.rowStyle}}">
+<td style="padding:10px 6px;font-weight:800">{{r.rank}}</td>
+<td style="padding:10px 6px;font-weight:700">{{r.name}}</td>
+<td style="padding:10px 6px;font-variant-numeric:tabular-nums">{{r.pl}}</td>
+<td style="padding:10px 6px;font-variant-numeric:tabular-nums">{{r.w}}</td>
+<td style="padding:10px 6px;font-variant-numeric:tabular-nums">{{r.l}}</td>
+<td style="padding:10px 6px;font-variant-numeric:tabular-nums">{{r.sets}}</td>
+</tr>
+</sc-for>
+</tbody>
+</table>
+</div>
+<div style="font-size:12px;color:#55657A">הרקע הבהיר מסמן שחקנים במסלול לעלות לשלב הנוק-אאוט</div>
+<div style="display:flex;flex-direction:column">
+<sc-for list="{{g.fixtures}}" as="f" hint-placeholder-count="6">
+<div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px;padding:10px 0;border-top:1px solid #E8ECF1;font-size:14px">
+<span><span style="color:#55657A;font-size:12px">{{f.tag}} · </span>{{f.a}} – {{f.b}}</span>
+<span style="{{f.chipStyle}}">{{f.res}}</span>
+</div>
+</sc-for>
+</div>
+</div>
+</sc-for>
+</section>
+
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1360,"height":1100}}'>
+class Component extends DCLogic {
+renderVals() {
+const chip = (bg, c) => `display:inline-flex;align-items:center;padding:4px 10px;border-radius:999px;font-size:13px;font-weight:700;background:${bg};color:${c}`;
+const done = chip("#E3F4EA", "#14663C");
+const next = chip("#E4EDF8", "#14427A");
+const up = "border-top:1px solid #E8ECF1;background:#F1F8D6";
+const norm = "border-top:1px solid #E8ECF1";
+const hide = "display:none";
+const pill = "display:inline-flex;align-items:center;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:700;background:#FDF0DC;color:#8A4B08";
+const partial = (n, p) => ({
+title: "בית " + n, note: "בית חלקי · 3 שחקנים", noteStyle: pill,
+rows: [
+{ rank: "1", name: p[0], pl: "1", w: "1", l: "0", sets: "2–0", rowStyle: up },
+{ rank: "2", name: p[1], pl: "2", w: "1", l: "1", sets: "2–2", rowStyle: up },
+{ rank: "3", name: p[2], pl: "1", w: "0", l: "1", sets: "0–2", rowStyle: norm }
+],
+fixtures: [
+{ tag: "מחזור 1", a: p[0], b: p[2], res: "6–2 6–3", chipStyle: done },
+{ tag: "מחזור 2", a: p[1], b: p[2], res: "ווק-אובר", chipStyle: chip("#FDF0DC", "#8A4B08") },
+{ tag: "מחזור 3", a: p[0], b: p[1], res: "מחר 12:00 · מגרש 3", chipStyle: next }
+]
+});
+const mk = (n, p, r3) => ({
+title: "בית " + n, note: "", noteStyle: hide,
+rows: [
+{ rank: "1", name: p[0], pl: "2", w: "2", l: "0", sets: "4–0", rowStyle: up },
+{ rank: "2", name: p[1], pl: "2", w: "1", l: "1", sets: "2–2", rowStyle: up },
+{ rank: "3", name: p[2], pl: "2", w: "1", l: "1", sets: "2–3", rowStyle: norm },
+{ rank: "4", name: p[3], pl: "2", w: "0", l: "2", sets: "1–4", rowStyle: norm }
+],
+fixtures: [
+{ tag: "מחזור 1", a: p[0], b: p[1], res: "6–3 6–4", chipStyle: done },
+{ tag: "מחזור 1", a: p[2], b: p[3], res: "6–2 3–6 [10–7]", chipStyle: done },
+{ tag: "מחזור 2", a: p[0], b: p[2], res: "6–2 6–1", chipStyle: done },
+{ tag: "מחזור 2", a: p[1], b: p[3], res: "6–4 6–2", chipStyle: done },
+{ tag: "מחזור 3", a: p[0], b: p[3], res: r3[0], chipStyle: next },
+{ tag: "מחזור 3", a: p[1], b: p[2], res: r3[1], chipStyle: next }
+]
+});
+return {
+ties: [
+{ n: "1", label: "מספר ניצחונות" },
+{ n: "2", label: "ראש בראש" },
+{ n: "3", label: "הפרש סטים" },
+{ n: "4", label: "הפרש משחקונים" },
+{ n: "5", label: "הגרלה" }
+],
+groups: [
+mk("A", ["נועה אברהם", "אלון שני", "ליה פרץ", "נדב אילן"], ["מחר 09:00 · מגרש 1", "מחר 09:00 · מגרש 2"]),
+mk("B", ["איתי רוזן", "ענבר לוי", "אדם כהן", "יהלי גל"], ["מחר 10:30 · מגרש 1", "מחר 10:30 · מגרש 2"]),
+mk("C", ["מאיה חדד", "רועי בן דוד", "יעל סגל", "רוני בר"], ["מחר 12:00 · מגרש 1", "לא לפני 12:00"]),
+partial("D", ["שקד טל", "עידו מימון", "דור אביב"])
+]
+};
+}
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,167 @@
+{
+  "v": 3,
+  "attachments": {},
+  "boards": {
+    "Dashboard.dc.html": {
+      "expand": "fill",
+      "h": 980,
+      "is_interactive": true,
+      "title": "דשבורד",
+      "w": 1360,
+      "x": 1440,
+      "y": 0
+    },
+    "Main.dc.html": {
+      "expand": "fill",
+      "h": 800,
+      "is_interactive": true,
+      "title": "התחברות",
+      "w": 1360,
+      "x": 0,
+      "y": 0
+    },
+    "Notifications.dc.html": {
+      "expand": "fill",
+      "h": 877,
+      "is_interactive": true,
+      "title": "התראות",
+      "w": 1322,
+      "x": 1478,
+      "y": 2403
+    },
+    "Rankings.dc.html": {
+      "expand": "fill",
+      "h": 1020,
+      "is_interactive": true,
+      "title": "דירוגים",
+      "w": 1360,
+      "x": 0,
+      "y": 2300
+    },
+    "Register.dc.html": {
+      "expand": "fill",
+      "h": 960,
+      "is_interactive": true,
+      "title": "רישום שחקן",
+      "w": 1360,
+      "x": 0,
+      "y": 1100
+    },
+    "Tournament.dc.html": {
+      "expand": "fill",
+      "h": 1080,
+      "is_interactive": true,
+      "title": "לוח תחרות",
+      "w": 1360,
+      "x": 1460,
+      "y": 1076
+    },
+    "Draw.dc.html": {
+      "expand": "fill",
+      "h": 1100,
+      "is_interactive": true,
+      "title": "הגרלת תחרות",
+      "w": 1360,
+      "x": 0,
+      "y": 3440
+    },
+    "Groups.dc.html": {
+      "expand": "fill",
+      "h": 1100,
+      "is_interactive": true,
+      "title": "שלב הבתים",
+      "w": 1360,
+      "x": 1440,
+      "y": 3440
+    },
+    "Courts.dc.html": {
+      "expand": "fill",
+      "h": 1100,
+      "is_interactive": true,
+      "title": "מגרשים ושעות",
+      "w": 1360,
+      "x": 0,
+      "y": 4660
+    },
+    "Score.dc.html": {
+      "h": 860,
+      "is_interactive": true,
+      "title": "עדכון תוצאה (מובייל)",
+      "w": 390,
+      "x": 1440,
+      "y": 4660
+    },
+    "Payments.dc.html": {
+      "expand": "fill",
+      "h": 960,
+      "is_interactive": true,
+      "title": "תשלומים וזיכויים",
+      "w": 1360,
+      "x": 0,
+      "y": 5880
+    },
+    "Documents.dc.html": {
+      "expand": "fill",
+      "h": 1000,
+      "is_interactive": true,
+      "title": "מסמכים ואישורים",
+      "w": 1360,
+      "x": 1440,
+      "y": 5880
+    },
+    "Admin.dc.html": {
+      "expand": "fill",
+      "h": 1000,
+      "is_interactive": true,
+      "title": "ניהול מערכת",
+      "w": 1360,
+      "x": 0,
+      "y": 7000
+    },
+    "Import.dc.html": {
+      "expand": "fill",
+      "h": 1000,
+      "is_interactive": true,
+      "title": "ייבוא מלוגליג",
+      "w": 1360,
+      "x": 1440,
+      "y": 7000
+    }
+  },
+  "createdOnFiles": {
+    "at": "2026-10-04T18:45:00Z",
+    "v": 1
+  },
+  "designSystems": [],
+  "launch": {
+    "view": "canvas"
+  },
+  "notes": {
+    "t1": {
+      "kind": "title1",
+      "maxW": 2800,
+      "text": "מערכת איגוד הטניס — מסכים מרכזיים",
+      "w": 240,
+      "x": 0,
+      "y": -260
+    }
+  },
+  "order": [
+    "Main.dc.html",
+    "Dashboard.dc.html",
+    "Register.dc.html",
+    "Tournament.dc.html",
+    "Rankings.dc.html",
+    "Notifications.dc.html",
+    "Draw.dc.html",
+    "Groups.dc.html",
+    "Courts.dc.html",
+    "Score.dc.html",
+    "Payments.dc.html",
+    "Documents.dc.html",
+    "Admin.dc.html",
+    "Import.dc.html"
+  ],
+  "pages": [],
+  "title": "מערכת איגוד הטניס"
+}
