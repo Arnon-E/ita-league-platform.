@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import { db } from '@/db';
 import { Flash, Shell } from '@/components/Shell';
 import { matchDetail } from '@/services/queries';
-import { fmtTime, MSTATUS } from '@/components/labels';
+import { fmtTime, MSTATUS, fmtScore } from '@/components/labels';
 import { ScoreForm } from './ScoreForm';
 import { getActor } from '@/lib/session';
 
@@ -25,7 +25,7 @@ export default async function MatchPage({ params, searchParams }: { params: Prom
       {m.live && m.status === 'SCHEDULED' && !scorer && <meta httpEquiv="refresh" content="15" />}
       <Flash err={err} ok={ok} />
       {A && B && m.aEntryId && m.bEntryId && !scorer ? (
-        <div className="card grid"><h2 style={{ margin: 0 }}>{A} – {B}</h2><strong style={{ fontSize: 22 }}>{(m.sets as { a: number; b: number }[]).map((x) => `${x.a}-${x.b}`).join('  ') || 'טרם התחיל'}</strong>{m.live && m.status === 'SCHEDULED' && <span className="pill lime">משחק חי · הדף מתרענן אוטומטית</span>}{m.winnerEntryId && <span className="pill ok">מנצח/ת: {names.get(m.winnerEntryId)}</span>}</div>
+        <div className="card grid"><h2 style={{ margin: 0 }}>{A} – {B}</h2><strong style={{ fontSize: 22 }}>{fmtScore(m.sets as { a: number; b: number }[]) || 'טרם התחיל'}</strong>{m.live && m.status === 'SCHEDULED' && <span className="pill lime">משחק חי · הדף מתרענן אוטומטית</span>}{m.winnerEntryId && <span className="pill ok">מנצח/ת: {names.get(m.winnerEntryId)}</span>}</div>
       ) : A && B && m.aEntryId && m.bEntryId ? (
         <ScoreForm
           matchId={m.id} tournamentId={t.id} a={{ id: m.aEntryId, name: A }} b={{ id: m.bEntryId, name: B }}

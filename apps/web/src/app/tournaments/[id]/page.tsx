@@ -8,7 +8,7 @@ import { groupStandings } from '@/services/results';
 import { listCourtLabels } from '@/services/tournaments';
 import { formatOf } from '@/services/draws';
 import { loadRuleSet } from '@/services/rules';
-import { FORMAT, fmtTime, GENDER, MSTATUS, NEXT, STATUS } from '@/components/labels';
+import { FORMAT, fmtTime, GENDER, MSTATUS, NEXT, STATUS, fmtScore } from '@/components/labels';
 import { refundAction } from '@/app/actions3';
 import { suggestedRefund } from '@/services/payments';
 import {
@@ -298,7 +298,7 @@ function Results({ d, scorer }: { d: Detail; scorer: boolean }) {
                 <tr key={m.id}>
                   <td>{m.stage === 'GROUP' ? `בית · מחזור ${m.round}` : `הדחה · סיבוב ${m.round}`}</td>
                   <td>{nm(m.aEntryId)} – {nm(m.bEntryId)}</td>
-                  <td>{m.status === 'SCHEDULED' ? <span className="pill warn">{MSTATUS[m.status]}</span> : <span className="pill ok">{MSTATUS[m.status]}{m.status === 'COMPLETED' ? ` ${(m.sets as { a: number; b: number }[]).map((s) => `${s.a}-${s.b}`).join(' ')}` : ''}</span>}</td>
+                  <td>{m.status === 'SCHEDULED' ? <span className="pill warn">{MSTATUS[m.status]}</span> : <span className="pill ok">{MSTATUS[m.status]}{m.status === 'COMPLETED' ? ` ${fmtScore(m.sets as { a: number; b: number }[])}` : ''}</span>}</td>
                   <td>{m.courtLabel ? `מגרש ${m.courtLabel} · ${fmtTime(m.scheduledStart)}` : '—'}</td>
                   <td>{m.aEntryId && m.bEntryId && <Link className="btn small ghost" href={`/matches/${m.id}`}>{scorer ? (m.status === 'SCHEDULED' ? 'הזנת תוצאה' : 'עריכה') : 'פרטים'}</Link>}</td>
                 </tr>

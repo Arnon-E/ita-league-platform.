@@ -97,7 +97,7 @@ function TournamentList({ onOpen }: { onOpen: (id: string) => void }) {
   );
 }
 
-const fmtSets = (sets: { a: number; b: number }[]) => (sets ?? []).map((x) => `${x.a}-${x.b}`).join('  ');
+const fmtSets = (sets: { a: number; b: number }[]) => `\u2066${(sets ?? []).map((x) => `${x.a}-${x.b}`).join('  ')}\u2069`;
 
 function FeedCard({ r }: { r: api.FeedRow }) {
   return (
@@ -188,9 +188,10 @@ function MyArea({ onLogout }: { onLogout: () => void }) {
   const register = (cat: string, pid: string) => api.enter(cat, pid).then(() => { setMsg('נרשמתם לקטגוריה'); load(); }).catch((e) => setErr(e.message));
   const pay = (entryId: string) => api.checkout(entryId).then((r) => Linking.openURL(r.url)).catch((e) => setErr(e.message));
   return (
-    <ScrollView contentContainerStyle={s.pad}>
+    <ScrollView contentContainerStyle={s.scroll}>
       <View style={s.row}><Text style={s.h1}>האזור שלי</Text><Pressable onPress={onLogout}><Text style={s.b}>יציאה</Text></Pressable></View>
       {!!err && <Text style={s.err}>{err}</Text>}{!!msg && <Text style={s.ok}>{msg}</Text>}
+      {api.canScore() && <View style={s.card}><Text style={s.cardT}>הזנת תוצאות</Text><Text style={s.muted}>היכנסו ללשונית תחרויות, בחרו תחרות ולחצו על משחק כדי להזין תוצאה או לעדכן תוצאה חיה.</Text></View>}
       {d?.players.map((p) => (
         <View key={p.id} style={s.card}>
           <Text style={s.b}>{p.name}</Text>
@@ -199,12 +200,14 @@ function MyArea({ onLogout }: { onLogout: () => void }) {
           {open.map((o) => <Pressable key={o.categoryId} style={s.link} onPress={() => register(o.categoryId, p.id)}><Text style={s.linkT}>הרשמה: {o.tournament} · {o.category}</Text></Pressable>)}
         </View>
       ))}
-      <Text style={s.h1}>ההרשמות שלי</Text>
+      <Text style={s.h2}>ההרשמות שלי</Text>
+      {!!d && !d.entries.length && <Text style={s.muted}>אין עדיין הרשמות לתחרויות.</Text>}
       {d?.entries.map((e) => (
         <View key={e.id} style={s.card}><Text style={s.b}>{e.tournament} · {e.category}</Text><Text>{e.status} · {e.payment}</Text>
           {e.payment === 'UNPAID' && <Pressable style={s.link} onPress={() => pay(e.id)}><Text style={s.linkT}>לתשלום</Text></Pressable>}</View>
       ))}
-      <Text style={s.h1}>התראות</Text>
+      <Text style={s.h2}>התראות</Text>
+      {!!d && !d.notifications.length && <Text style={s.muted}>אין התראות חדשות.</Text>}
       {d?.notifications.map((n) => <View key={n.id} style={s.card}><Text style={s.b}>{n.title}</Text><Text>{n.body}</Text></View>)}
     </ScrollView>
   );
@@ -212,11 +215,12 @@ function MyArea({ onLogout }: { onLogout: () => void }) {
 
 /** Quick result entry: tap +/- per set; server validates the score and propagates the winner. */
 function Score({ m, onDone }: { m: api.Match; onDone: () => void }) {
-  const [g, setG] = useState([[0, 0], [0, 0], [0, 0]]); const [err, setErr] = useState('');
+  const [g, setG] = useState<number[][]>(() => [0, 1, 2].map((i) => { const x = (m.sets ?? [])[i]; return x ? [x.a, x.b] : [0, 0]; })); const [err, setErr] = useState('');
   const bump = (i: number, k: 0 | 1, d: number) => setG((x) => x.map((r, j) => (j === i ? r.map((v, q) => (q === k ? Math.max(0, Math.min(i === 2 ? 30 : 7, v + d)) : v)) : r)));
   const save = () => api.sendResult(m.id, { status: 'COMPLETED', sets: g.map(([a, b], i) => ({ a: a as number, b: b as number, ...(i === 2 ? { superTb: true } : {}) })).filter((x) => x.a || x.b) }).then(onDone).catch((e) => setErr(e.message));
   return (
-    <View style={s.pad}>
+    <ScrollView contentContainerStyle={s.scroll}>
+      <Pressable onPress={onDone}><Text>ביטול ←</Text></Pressable>
       <Text style={s.h1}>הזנת תוצאה</Text>
       {!!err && <Text style={s.err}>{err}</Text>}
       {g.map((set, i) => (
@@ -231,9 +235,10 @@ function Score({ m, onDone }: { m: api.Match; onDone: () => void }) {
           ))}
         </View>
       ))}
+      {!!err && <Text style={s.err}>{err}</Text>}
       <Pressable style={s.btn} onPress={save}><Text style={s.btnT}>שמירה</Text></Pressable>
-      <Pressable style={[s.btn, { backgroundColor: '#fff', borderWidth: 1, borderColor: C.blue }]} onPress={() => api.sendLive(m.id, g.map(([a, b], i) => ({ a: a as number, b: b as number, ...(i === 2 ? { superTb: true } : {}) })).filter((x) => x.a || x.b)).then(onDone).catch((e) => setErr(e.message))}><Text style={[s.btnT, { color: C.blue }]}>עדכון תוצאה חיה (המשחק נמשך)</Text></Pressable>
-      <Text style={s.b}>ללא משחק (וואלה) — מי לא הגיע?</Text>
+      <Pressable style={[s.btn, { backgroundColor: '#fff', borderWidth: 1, borderColor: C.blue }]} onPress={() => api.sendLive(m.id, g.map(([a, b], i) => ({ a: a as number, b: b as number, ...(i === 2 ? { superTb: true } : {}) })).filter((x) => x.a || x.b)).then(onDone).catch((e) => setErr(e.message))}><Text style={[s.btnT, { color: C.blue }]}>עדכון תוצאה חיה · המשחק נמשך</Text></Pressable>
+      <Text style={s.b}>ווק-אובר: מי לא הגיע</Text>
       {([m.a, m.b] as const).map((p, k) => p.id && (
         <View key={k} style={s.card}>
           <Text style={s.b}>{p.name}</Text>
@@ -242,11 +247,12 @@ function Score({ m, onDone }: { m: api.Match; onDone: () => void }) {
           ))}
         </View>
       ))}
-    </View>
+    </ScrollView>
   );
 }
 
 const s = StyleSheet.create({
+  scroll: { padding: 16, gap: 10, paddingBottom: 48 },
   screen: { flex: 1, backgroundColor: C.bg, paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight ?? 24 : 0 }, pad: { padding: 16, gap: 10, flex: 1 },
   h1: { fontSize: 28, fontWeight: '800', color: C.navy, letterSpacing: -0.3 }, h2: { fontSize: 19, fontWeight: '700', color: C.navy, marginTop: 4 },
   hero: { backgroundColor: C.blue, borderRadius: 22, padding: 22, gap: 4, shadowColor: '#0B2545', shadowOpacity: 0.25, shadowRadius: 14, shadowOffset: { width: 0, height: 6 }, elevation: 6 },

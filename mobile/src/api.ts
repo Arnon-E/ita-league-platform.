@@ -11,10 +11,17 @@ export const isAuthed = () => !!token;
 /** Roles allowed to enter results (the server enforces this too). */
 export const canScore = () => ['SUPER_ADMIN', 'FEDERATION_ADMIN', 'TOURNAMENT_MANAGER', 'REFEREE'].includes(role ?? '');
 
+/** Server errors are mostly Hebrew already; map the few machine codes to something a person can read. */
+function heMessage(err: string | undefined, status: number): string {
+  if (err === 'forbidden') return 'אין לך הרשאה לפעולה הזו. שופט יכול לעדכן רק משחקים בתחרות שאליה שובץ.';
+  if (err === 'unauthorized') return 'יש להתחבר מחדש.';
+  return err ?? `שגיאה (${status})`;
+}
+
 async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
   const res = await fetch(`${BASE}/api/v1${path}`, { ...init, headers: { 'content-type': 'application/json', ...(token ? { authorization: `Bearer ${token}` } : {}), ...(init.headers ?? {}) } });
   const body = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(body.error ?? `HTTP ${res.status}`);
+  if (!res.ok) throw new Error(heMessage(body.error, res.status));
   return body as T;
 }
 

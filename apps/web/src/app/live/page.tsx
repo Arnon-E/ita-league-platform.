@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { db } from '@/db';
 import { Shell } from '@/components/Shell';
 import { liveFeed } from '@/services/public';
-import { fmtTime, MSTATUS } from '@/components/labels';
+import { fmtTime, MSTATUS, fmtScore } from '@/components/labels';
 
 export default async function Live() {
   const { live, upcoming, results, names } = await liveFeed(db);
@@ -14,7 +14,7 @@ export default async function Live() {
       {live.length > 0 && <>
         <h2>משחקים חיים</h2>
         <div className="grid cols">
-          {live.map(({ m, c, t }) => <Link key={m.id} href={`/matches/${m.id}`} className="card grid" style={{ gap: 4 }}><span className="pill lime" style={{ width: 'fit-content' }}>חי{m.courtLabel ? ` · מגרש ${m.courtLabel}` : ''}</span><strong>{nm(m.aEntryId)} – {nm(m.bEntryId)}</strong><strong style={{ fontSize: 22 }}>{(m.sets as { a: number; b: number }[]).map((x) => `${x.a}-${x.b}`).join('  ')}</strong><span className="muted">{t.name} · {c.name}</span></Link>)}
+          {live.map(({ m, c, t }) => <Link key={m.id} href={`/matches/${m.id}`} className="card grid" style={{ gap: 4 }}><span className="pill lime" style={{ width: 'fit-content' }}>חי{m.courtLabel ? ` · מגרש ${m.courtLabel}` : ''}</span><strong>{nm(m.aEntryId)} – {nm(m.bEntryId)}</strong><strong style={{ fontSize: 22 }}>{fmtScore(m.sets as { a: number; b: number }[])}</strong><span className="muted">{t.name} · {c.name}</span></Link>)}
         </div>
       </>}
       <h2>משחקים קרובים</h2>
@@ -29,7 +29,7 @@ export default async function Live() {
         <table><thead><tr><th>משחק</th><th>תוצאה</th><th>תחרות</th></tr></thead><tbody>
           {results.map(({ m, c, t }) => <tr key={m.id}>
             <td><Link href={`/matches/${m.id}`}>{nm(m.aEntryId)} – {nm(m.bEntryId)}</Link></td>
-            <td><span className="pill ok">{MSTATUS[m.status]} {(m.sets as { a: number; b: number }[]).map((s) => `${s.a}-${s.b}`).join(' ')}</span></td>
+            <td><span className="pill ok">{MSTATUS[m.status]} {fmtScore(m.sets as { a: number; b: number }[])}</span></td>
             <td><Link href={`/tournaments/${t.id}`}>{t.name} · {c.name}</Link></td>
           </tr>)}
         </tbody></table>

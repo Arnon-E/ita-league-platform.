@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import { db } from '@/db';
 import { Shell } from '@/components/Shell';
 import { tournamentDetail } from '@/services/queries';
-import { fmtTime, MSTATUS } from '@/components/labels';
+import { fmtTime, MSTATUS, fmtScore } from '@/components/labels';
 import { PrintButton } from './PrintButton';
 
 /** Day-by-day schedule laid out for printing (header and buttons are hidden by the print stylesheet). */
@@ -34,7 +34,7 @@ export default async function PrintSchedule({ params }: { params: Promise<{ id: 
               <tr key={m.id}>
                 <td>{fmtTime(m.scheduledStart).split(',').pop()}</td><td>{m.courtLabel ?? '—'}</td><td>{cat.get(m.categoryId)}</td>
                 <td>{nm(m.aEntryId)} – {nm(m.bEntryId)}</td>
-                <td>{m.status === 'SCHEDULED' ? '' : `${MSTATUS[m.status]} ${(m.sets as { a: number; b: number }[]).map((s) => `${s.a}-${s.b}`).join(' ')}`}</td>
+                <td>{m.status === 'SCHEDULED' ? '' : `${MSTATUS[m.status]} ${fmtScore(m.sets as { a: number; b: number }[])}`}</td>
               </tr>
             ))}
           </tbody></table>

@@ -5,7 +5,7 @@ import { Shell } from '@/components/Shell';
 import { playerProfile } from '@/services/public';
 import { ensureDefaultRuleSet, loadRuleSet } from '@/services/rules';
 import { rankingFor } from '@/services/rankings';
-import { fmtTime, GENDER, MSTATUS } from '@/components/labels';
+import { fmtTime, GENDER, MSTATUS, fmtScore } from '@/components/labels';
 
 export default async function PlayerPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -24,7 +24,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
       <div className="grid cols" style={{ marginTop: 12 }}>
         <div className="card"><div className="muted">דירוג</div><strong style={{ fontSize: 28 }}>{mine ? `#${mine.rank}` : '—'}</strong></div>
         <div className="card"><div className="muted">נקודות דירוג</div><strong style={{ fontSize: 28 }}>{mine?.points ?? 0}</strong></div>
-        <div className="card"><div className="muted">ניצחונות / הפסדים</div><strong style={{ fontSize: 28 }}>{wins} / {losses}</strong></div>
+        <div className="card"><div className="muted">ניצחונות / הפסדים</div><strong dir="ltr" style={{ fontSize: 28 }}>{wins} / {losses}</strong></div>
         <div className="card"><div className="muted">תחרויות</div><strong style={{ fontSize: 28 }}>{new Set(ents.map((x) => x.t.id)).size}</strong></div>
       </div>
       <h2>תחרויות</h2>
@@ -43,7 +43,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
               <tr key={m.id}>
                 <td>{catOf.get(m.categoryId)?.t.name}</td>
                 <td><Link href={`/matches/${m.id}`}>{names.get(m.aEntryId!)} – {names.get(m.bEntryId!)}</Link>{m.scheduledStart && m.status === 'SCHEDULED' ? <span className="muted"> · {fmtTime(m.scheduledStart)}</span> : null}</td>
-                <td>{m.status === 'SCHEDULED' ? <span className="pill warn">{MSTATUS[m.status]}</span> : <span className={`pill ${won ? 'ok' : 'bad'}`}>{won ? 'ניצחון' : 'הפסד'} {(m.sets as { a: number; b: number }[]).map((s) => `${s.a}-${s.b}`).join(' ')}</span>}</td>
+                <td>{m.status === 'SCHEDULED' ? <span className="pill warn">{MSTATUS[m.status]}</span> : <span className={`pill ${won ? 'ok' : 'bad'}`}>{won ? 'ניצחון' : 'הפסד'} {fmtScore(m.sets as { a: number; b: number }[])}</span>}</td>
               </tr>
             );
           })}
