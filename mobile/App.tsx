@@ -100,14 +100,14 @@ function FeedCard({ r }: { r: api.FeedRow }) {
     <View style={s.card}>
       <Text style={s.b}>{r.a} – {r.b}</Text>
       <Text style={s.muted}>{r.tournament} · {r.category}</Text>
-      <Text>{r.status === 'SCHEDULED' ? `${r.court ? `מגרש ${r.court} · ` : ''}${r.start ? new Date(r.start).toLocaleString('he-IL', { weekday: 'short', hour: '2-digit', minute: '2-digit' }) : ''}` : fmtSets(r.sets)}</Text>
+      <Text>{r.status === 'SCHEDULED' && (r.sets ?? []).length ? `חי · ${fmtSets(r.sets)}` : r.status === 'SCHEDULED' ? `${r.court ? `מגרש ${r.court} · ` : ''}${r.start ? new Date(r.start).toLocaleString('he-IL', { weekday: 'short', hour: '2-digit', minute: '2-digit' }) : ''}` : fmtSets(r.sets)}</Text>
     </View>
   );
 }
 
 function Live() {
   const { data, err, busy, reload } = useLoad(api.live);
-  const rows = [...(data?.upcoming ?? []).map((r) => ['u' + r.id, r] as const), ...(data?.results ?? []).map((r) => ['r' + r.id, r] as const)];
+  const rows = [...(data?.live ?? []).map((r) => ['l' + r.id, r] as const), ...(data?.upcoming ?? []).map((r) => ['u' + r.id, r] as const), ...(data?.results ?? []).map((r) => ['r' + r.id, r] as const)];
   return (
     <View style={s.pad}>
       <Text style={s.h1}>משחקים</Text>
@@ -227,6 +227,7 @@ function Score({ m, onDone }: { m: api.Match; onDone: () => void }) {
         </View>
       ))}
       <Pressable style={s.btn} onPress={save}><Text style={s.btnT}>שמירה</Text></Pressable>
+      <Pressable style={[s.btn, { backgroundColor: '#fff', borderWidth: 1, borderColor: C.blue }]} onPress={() => api.sendLive(m.id, g.map(([a, b], i) => ({ a: a as number, b: b as number, ...(i === 2 ? { superTb: true } : {}) })).filter((x) => x.a || x.b)).then(onDone).catch((e) => setErr(e.message))}><Text style={[s.btnT, { color: C.blue }]}>עדכון תוצאה חיה (המשחק נמשך)</Text></Pressable>
       <Text style={s.b}>ללא משחק (וואלה) — מי לא הגיע?</Text>
       {([m.a, m.b] as const).map((p, k) => p.id && (
         <View key={k} style={s.card}>

@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-import { resultAction } from '@/app/actions';
+import { liveAction, resultAction } from '@/app/actions';
 
 type S = { a: number; b: number; superTb?: boolean };
 const won = (a: number, b: number) => a > b && a >= 6 && (a - b >= 2 || a === 7);
@@ -71,6 +71,7 @@ export function ScoreForm({ matchId, tournamentId, a, b, decider, setsToWin, ini
         <div className="muted">{ready ? 'המנצח יעלה אוטומטית לשלב הבא.' : 'הזינו תוצאה שמכריעה את המשחק.'}</div>
       </div>
       <button className="btn" disabled={!ready} style={{ minHeight: 54, fontSize: 17 }}>שמירה ועדכון הלוח</button>
+      {mode === 'COMPLETED' && status === 'SCHEDULED' && <button type="submit" formAction={liveAction} className="btn ghost" style={{ minHeight: 54 }}>עדכון תוצאה חיה (המשחק נמשך)</button>}
     </form>
   );
 }

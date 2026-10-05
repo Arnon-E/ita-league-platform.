@@ -51,12 +51,13 @@ export async function liveFeed(db: Db) {
   const dayStart = new Date(); dayStart.setHours(0, 0, 0, 0);
   const rows = await db.select({ m: matches, c: categories, t: tournaments }).from(matches)
     .innerJoin(categories, eq(categories.id, matches.categoryId)).innerJoin(tournaments, eq(tournaments.id, categories.tournamentId))
-    .where(or(gte(matches.scheduledStart, dayStart), and(sql`${matches.status} <> 'SCHEDULED'`, gte(matches.updatedAt, new Date(Date.now() - 30 * 864e5)))))
+    .where(or(eq(matches.live, true), gte(matches.scheduledStart, dayStart), and(sql`${matches.status} <> 'SCHEDULED'`, gte(matches.updatedAt, new Date(Date.now() - 30 * 864e5)))))
     .orderBy(asc(matches.scheduledStart)).limit(300);
   const names = await entryNames(db, [...new Set(rows.map((r) => r.c.id))]);
   const ready = rows.filter((r) => r.m.aEntryId && r.m.bEntryId);
   return {
-    upcoming: ready.filter((r) => r.m.status === 'SCHEDULED' && r.m.scheduledStart),
+    live: ready.filter((r) => r.m.status === 'SCHEDULED' && r.m.live),
+    upcoming: ready.filter((r) => r.m.status === 'SCHEDULED' && !r.m.live && r.m.scheduledStart),
     results: ready.filter((r) => r.m.status !== 'SCHEDULED').sort((a, b) => +b.m.updatedAt - +a.m.updatedAt),
     names,
   };

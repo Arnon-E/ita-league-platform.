@@ -193,6 +193,8 @@ export const matches = pgTable('matches', {
   aEntryId: text('a_entry_id'),
   bEntryId: text('b_entry_id'),
   status: matchStatusEnum('status').notNull().default('SCHEDULED'),
+  /** True while the referee is pushing partial set scores; the match is still SCHEDULED until a result is recorded. */
+  live: boolean('live').notNull().default(false),
   sets: jsonb('sets').notNull().default([]),
   absentEntryId: text('absent_entry_id'),
   /** NO_NOTICE | NOTICE | NOTICE_MEDICAL | INJURY | NON_INJURY (decides points and discipline). */

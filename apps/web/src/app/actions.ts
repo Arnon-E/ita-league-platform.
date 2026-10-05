@@ -8,7 +8,7 @@ import { addCategory, createTournament, setStatus, setTournamentCourts } from '@
 import { confirmEntry, registerEntry, withdrawEntry } from '@/services/entries';
 import { recordPayment } from '@/services/payments';
 import { publishDraw, runDraw, swapDrawSlots } from '@/services/draws';
-import { advanceToKnockout, awardPoints, recordResult } from '@/services/results';
+import { advanceToKnockout, awardPoints, recordLive, recordResult } from '@/services/results';
 import { autoSchedule, setMatchSlot } from '@/services/schedule';
 import type { SetScore } from '@ita/rules-engine';
 
@@ -115,6 +115,21 @@ export async function slotAction(fd: FormData) {
     else if (kind === 'NOT_BEFORE') await setMatchSlot(db, a, m, { kind: 'NOT_BEFORE', notBefore: d(fd, 'when') });
     else await setMatchSlot(db, a, m, { kind: 'EXACT', courtLabel: s(fd, 'court'), start: d(fd, 'when') });
     return 'המשחק עודכן';
+  });
+}
+
+export async function liveAction(fd: FormData) {
+  const a = await requireActor();
+  const match = s(fd, 'match');
+  await guarded(`/matches/${match}`, async () => {
+    const sets: SetScore[] = [];
+    for (let i = 0; i < 3; i++) {
+      const x = fd.get(`a${i}`); const y = fd.get(`b${i}`);
+      if (x === null || y === null || (Number(x) === 0 && Number(y) === 0)) continue;
+      sets.push({ a: Number(x), b: Number(y), ...(fd.get(`tb${i}`) === '1' ? { superTb: true } : {}) });
+    }
+    await recordLive(db, a, match, sets);
+    return 'התוצאה החיה עודכנה';
   });
 }
 

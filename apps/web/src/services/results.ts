@@ -87,13 +87,25 @@ export async function recordResult(db: Db, actor: Actor, matchId: string, input:
     await tx.update(matches).set({
       status: input.status, sets: sets as never, winnerEntryId: winner, absentEntryId: input.absentEntryId ?? null,
       absentReason: input.status === 'COMPLETED' ? null : (input.reason ?? (input.status === 'WALKOVER' ? 'NOTICE' : 'NON_INJURY')),
-      updatedAt: new Date(), updatedById: actor.id,
+      live: false, updatedAt: new Date(), updatedById: actor.id,
     }).where(eq(matches.id, matchId));
     if (m.stage === 'KO') await propagate(tx, m.categoryId, m.round, m.index, winner);
     if (t.status === 'DRAWN') await tx.update(tournaments).set({ status: 'IN_PROGRESS' }).where(eq(tournaments.id, t.id));
   });
   await audit(db, actor, correcting ? 'result.correct' : 'result.enter', 'match', matchId, { status: input.status, sets, winner, category: c.name });
   return { winnerEntryId: winner };
+}
+
+/** Live score push: stores the sets so far without deciding a winner. Cleared when the final result is recorded. */
+export async function recordLive(db: Db, actor: Actor, matchId: string, sets: { a: number; b: number; superTb?: boolean }[]) {
+  const { m, t } = await loadMatch(db, matchId);
+  assertCan(actor, 'result.enter', await scopeFor(db, actor, t.id));
+  if (!['DRAWN', 'IN_PROGRESS'].includes(t.status)) throw new Error('אי אפשר לעדכן תוצאה במצב התחרות הנוכחי');
+  if (!m.aEntryId || !m.bEntryId) throw new Error('המשחק עדיין לא מוכן: חסר שחקן');
+  if (m.status !== 'SCHEDULED') throw new Error('למשחק כבר יש תוצאה סופית');
+  if (sets.length > 5 || sets.some((x) => !Number.isInteger(x.a) || !Number.isInteger(x.b) || x.a < 0 || x.b < 0 || x.a > 30 || x.b > 30)) throw new Error('תוצאה לא חוקית');
+  await db.update(matches).set({ live: true, sets: sets as never, updatedAt: new Date(), updatedById: actor.id }).where(eq(matches.id, matchId));
+  return { live: true };
 }
 
 export interface GroupTable { groupId: string; name: string; standings: Standing[] }

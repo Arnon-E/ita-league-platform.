@@ -9,5 +9,5 @@ export const GET = () => handlePublic(async () => {
     id: m.id, tournament: t.name, category: c.name, status: m.status, a: nm(m.aEntryId), b: nm(m.bEntryId),
     sets: m.sets, court: m.courtLabel, start: m.scheduledStart,
   });
-  return { upcoming: f.upcoming.map(row), results: f.results.slice(0, 50).map(row) };
+  return { live: f.live.map(row), upcoming: f.upcoming.map(row), results: f.results.slice(0, 50).map(row) };
 });

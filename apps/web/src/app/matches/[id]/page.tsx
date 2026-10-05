@@ -21,10 +21,11 @@ export default async function MatchPage({ params, searchParams }: { params: Prom
     <Shell nav="home">
       <Link href={`/tournaments/${t.id}?tab=results`} className="muted">← חזרה לתחרות</Link>
       <h1>{c.name} · {m.stage === 'GROUP' ? `בית, מחזור ${m.round}` : `הדחה, סיבוב ${m.round}`}</h1>
-      <p className="muted">{m.courtLabel ? `מגרש ${m.courtLabel} · ${fmtTime(m.scheduledStart)} · ` : ''}{t.setsToWin === 2 ? 'הטוב מ-3 סטים' : `${t.setsToWin} סטים`}{t.decider === 'superTb' ? ', הכרעה בסופר-טייברייק' : ''} · <span className="pill">{MSTATUS[m.status]}</span></p>
+      <p className="muted">{m.courtLabel ? `מגרש ${m.courtLabel} · ${fmtTime(m.scheduledStart)} · ` : ''}{t.setsToWin === 2 ? 'הטוב מ-3 סטים' : `${t.setsToWin} סטים`}{t.decider === 'superTb' ? ', הכרעה בסופר-טייברייק' : ''} · {m.live && m.status === 'SCHEDULED' ? <span className="pill lime">משחק חי</span> : <span className="pill">{MSTATUS[m.status]}</span>}</p>
+      {m.live && m.status === 'SCHEDULED' && !scorer && <meta httpEquiv="refresh" content="15" />}
       <Flash err={err} ok={ok} />
       {A && B && m.aEntryId && m.bEntryId && !scorer ? (
-        <div className="card grid"><h2 style={{ margin: 0 }}>{A} – {B}</h2><strong style={{ fontSize: 22 }}>{(m.sets as { a: number; b: number }[]).map((x) => `${x.a}-${x.b}`).join('  ') || 'טרם התחיל'}</strong>{m.winnerEntryId && <span className="pill ok">מנצח/ת: {names.get(m.winnerEntryId)}</span>}</div>
+        <div className="card grid"><h2 style={{ margin: 0 }}>{A} – {B}</h2><strong style={{ fontSize: 22 }}>{(m.sets as { a: number; b: number }[]).map((x) => `${x.a}-${x.b}`).join('  ') || 'טרם התחיל'}</strong>{m.live && m.status === 'SCHEDULED' && <span className="pill lime">משחק חי · הדף מתרענן אוטומטית</span>}{m.winnerEntryId && <span className="pill ok">מנצח/ת: {names.get(m.winnerEntryId)}</span>}</div>
       ) : A && B && m.aEntryId && m.bEntryId ? (
         <ScoreForm
           matchId={m.id} tournamentId={t.id} a={{ id: m.aEntryId, name: A }} b={{ id: m.bEntryId, name: B }}

@@ -47,6 +47,7 @@ export async function uploadDocument(playerId: string, type: string, file: { uri
 }
 
 export type FeedRow = { id: string; tournament: string; category: string; status: string; a: string | null; b: string | null; sets: { a: number; b: number }[]; court: string | null; start: string | null };
-export const live = () => call<{ upcoming: FeedRow[]; results: FeedRow[] }>('/public/live');
+export const live = () => call<{ live: FeedRow[]; upcoming: FeedRow[]; results: FeedRow[] }>('/public/live');
+export const sendLive = (matchId: string, sets: { a: number; b: number; superTb?: boolean }[]) => call(`/matches/${matchId}/live`, { method: 'POST', body: JSON.stringify({ sets }) });
 export const rankings = (g: 'MALE' | 'FEMALE') => call<{ playerId: string; rank: number; points: number; name: string }[]>(`/public/rankings?g=${g}`);
 export const players = (q: string) => call<{ id: string; name: string; club: string | null }[]>(`/public/players?q=${encodeURIComponent(q)}`);
