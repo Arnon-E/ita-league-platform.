@@ -18,10 +18,10 @@ async function registerPush() {
 I18nManager.allowRTL(true);
 I18nManager.forceRTL(true);
 
-const C = { navy: '#0B2545', blue: '#14427A', bg: '#F3F5F7', line: '#DDE3EA' };
+const C = { navy: '#0B2545', blue: '#1659B5', blue2: '#2F7CF6', lime: '#D4F23C', bg: '#F4F6FA', line: '#E3E8F0', muted: '#5B6B80' };
 
 type Tab = 't' | 'live' | 'rank' | 'players' | 'me';
-const TABS: [Tab, string][] = [['t', 'תחרויות'], ['live', 'משחקים'], ['rank', 'דירוג'], ['players', 'שחקנים'], ['me', 'חשבון']];
+const TABS: [Tab, string, string][] = [['t', 'תחרויות', '🏆'], ['live', 'משחקים', '🎾'], ['rank', 'דירוג', '📊'], ['players', 'שחקנים', '👥'], ['me', 'חשבון', '👤']];
 
 export default function App() {
   const [ready, setReady] = useState(false);
@@ -37,8 +37,8 @@ function Login({ onDone }: { onDone: () => void }) {
     <View style={s.pad}>
       <Text style={s.h1}>כניסה</Text>
       {!!err && <Text style={s.err}>{err}</Text>}
-      <TextInput style={s.input} placeholder="אימייל" autoCapitalize="none" keyboardType="email-address" value={email} onChangeText={setEmail} />
-      <TextInput style={s.input} placeholder="סיסמה" secureTextEntry value={pw} onChangeText={setPw} />
+      <TextInput style={s.input} placeholder="אימייל" placeholderTextColor="#8FA1BA" autoCapitalize="none" keyboardType="email-address" value={email} onChangeText={setEmail} />
+      <TextInput style={s.input} placeholder="סיסמה" placeholderTextColor="#8FA1BA" secureTextEntry value={pw} onChangeText={setPw} />
       <Pressable style={s.btn} onPress={() => api.login(email, pw).then(onDone).catch((e) => setErr(e.message === 'invalid' ? 'אימייל או סיסמה שגויים' : e.message === 'locked' ? 'החשבון ננעל זמנית' : e.message))}><Text style={s.btnT}>כניסה</Text></Pressable>
     </View>
   );
@@ -59,7 +59,7 @@ function Home({ authed, setAuthed }: { authed: boolean; setAuthed: (v: boolean) 
           : authed ? <MyArea onLogout={() => api.logout().then(() => setAuthed(false))} /> : <Login onDone={() => setAuthed(true)} />}
       </View>
       <View style={s.tabbar}>
-        {TABS.map(([k, l]) => <Pressable key={k} style={s.tab} onPress={() => { setOpen(null); setTab(k); }}><Text style={[s.tabT, tab === k && !open && s.tabOn]}>{l}</Text></Pressable>)}
+        {TABS.map(([k, l, ic]) => { const on = tab === k && !open; return <Pressable key={k} style={s.tab} onPress={() => { setOpen(null); setTab(k); }}><Text style={[s.tabIc, !on && { opacity: 0.45 }]}>{ic}</Text><Text style={[s.tabT, on && s.tabOn]}>{l}</Text>{on && <View style={s.tabDot} />}</Pressable>; })}
       </View>
     </View>
   );
@@ -84,10 +84,14 @@ function TournamentList({ onOpen }: { onOpen: (id: string) => void }) {
   const { data, err, busy, reload } = useLoad(api.tournaments);
   return (
     <View style={s.pad}>
-      <Text style={s.h1}>תחרויות</Text>
+      <View style={s.hero}><Text style={s.heroT}>איגוד הטניס בישראל</Text><Text style={s.heroS}>תחרויות, לוחות משחקים ותוצאות חיות</Text></View>
+      <Text style={s.h2}>תחרויות</Text>
       <Status err={err} busy={busy} empty={!!data && !data.length && 'אין עדיין תחרויות'} />
       <FlatList data={data ?? []} keyExtractor={(t) => t.id} onRefresh={reload} refreshing={false} renderItem={({ item }) => (
-        <Pressable style={s.card} onPress={() => onOpen(item.id)}><Text style={s.b}>{item.name}</Text><Text style={s.muted}>{STATUS_HE[item.status] ?? item.status}</Text></Pressable>
+        <Pressable style={({ pressed }) => [s.card, pressed && s.pressed]} onPress={() => onOpen(item.id)}>
+          <View style={[s.chip2, item.status === 'REGISTRATION_OPEN' ? s.chipOk : item.status === 'IN_PROGRESS' ? s.chipLive : null]}><Text style={s.chip2T}>{STATUS_HE[item.status] ?? item.status}</Text></View>
+          <Text style={s.cardT}>{item.name}</Text>
+        </Pressable>
       )} />
     </View>
   );
@@ -98,7 +102,8 @@ const fmtSets = (sets: { a: number; b: number }[]) => (sets ?? []).map((x) => `$
 function FeedCard({ r }: { r: api.FeedRow }) {
   return (
     <View style={s.card}>
-      <Text style={s.b}>{r.a} – {r.b}</Text>
+      {r.status === 'SCHEDULED' && (r.sets ?? []).length > 0 && <View style={[s.chip2, s.chipLive]}><Text style={s.chip2T}>● חי</Text></View>}
+      <Text style={s.cardT}>{r.a} – {r.b}</Text>
       <Text style={s.muted}>{r.tournament} · {r.category}</Text>
       <Text>{r.status === 'SCHEDULED' && (r.sets ?? []).length ? `חי · ${fmtSets(r.sets)}` : r.status === 'SCHEDULED' ? `${r.court ? `מגרש ${r.court} · ` : ''}${r.start ? new Date(r.start).toLocaleString('he-IL', { weekday: 'short', hour: '2-digit', minute: '2-digit' }) : ''}` : fmtSets(r.sets)}</Text>
     </View>
@@ -138,7 +143,7 @@ function Players() {
   return (
     <View style={s.pad}>
       <Text style={s.h1}>שחקנים</Text>
-      <TextInput style={s.input} placeholder="חיפוש לפי שם" value={q} onChangeText={setQ} />
+      <TextInput style={s.input} placeholder="🔍  חיפוש שחקן לפי שם" placeholderTextColor="#8FA1BA" value={q} onChangeText={setQ} />
       <Status err={err} busy={busy} empty={!!data && !data.length && 'לא נמצאו שחקנים'} />
       <FlatList data={data ?? []} keyExtractor={(p) => p.id} renderItem={({ item }) => <View style={s.card}><Text style={s.b}>{item.name}</Text><Text style={s.muted}>{item.club ?? ''}</Text></View>} />
     </View>
@@ -243,17 +248,23 @@ function Score({ m, onDone }: { m: api.Match; onDone: () => void }) {
 
 const s = StyleSheet.create({
   screen: { flex: 1, backgroundColor: C.bg, paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight ?? 24 : 0 }, pad: { padding: 16, gap: 10, flex: 1 },
-  h1: { fontSize: 24, fontWeight: '800', color: C.navy }, b: { fontWeight: '700', color: C.navy },
+  h1: { fontSize: 28, fontWeight: '800', color: C.navy, letterSpacing: -0.3 }, h2: { fontSize: 19, fontWeight: '700', color: C.navy, marginTop: 4 },
+  hero: { backgroundColor: C.blue, borderRadius: 22, padding: 22, gap: 4, shadowColor: '#0B2545', shadowOpacity: 0.25, shadowRadius: 14, shadowOffset: { width: 0, height: 6 }, elevation: 6 },
+  heroT: { color: '#fff', fontSize: 26, fontWeight: '800' }, heroS: { color: '#CFE0F7', fontSize: 15 },
+  cardT: { fontSize: 17, fontWeight: '700', color: C.navy }, pressed: { opacity: 0.7, transform: [{ scale: 0.985 }] },
+  chip2: { alignSelf: 'flex-start', paddingHorizontal: 11, paddingVertical: 4, borderRadius: 999, backgroundColor: '#EEF2F8' }, chip2T: { fontSize: 12, fontWeight: '800', color: C.blue },
+  chipOk: { backgroundColor: '#E2F6EA' }, chipLive: { backgroundColor: C.lime },
+  tabIc: { fontSize: 20 }, tabDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: C.blue, marginTop: 1 }, b: { fontWeight: '700', color: C.navy },
   row: { flexDirection: 'row', alignItems: 'center', gap: 8, justifyContent: 'space-between' },
-  card: { backgroundColor: '#fff', borderWidth: 1, borderColor: C.line, borderRadius: 14, padding: 14, marginBottom: 8, gap: 6 },
+  card: { backgroundColor: '#fff', borderWidth: 1, borderColor: C.line, borderRadius: 18, padding: 16, marginBottom: 10, gap: 8, shadowColor: '#0B2545', shadowOpacity: 0.07, shadowRadius: 10, shadowOffset: { width: 0, height: 3 }, elevation: 2 },
   input: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#BCC8D6', borderRadius: 10, padding: 12, minHeight: 48, textAlign: 'right' },
-  btn: { backgroundColor: C.blue, borderRadius: 12, minHeight: 52, alignItems: 'center', justifyContent: 'center' }, btnT: { color: '#fff', fontWeight: '800', fontSize: 16 },
+  btn: { backgroundColor: C.blue, borderRadius: 14, minHeight: 54, alignItems: 'center', justifyContent: 'center' }, btnT: { color: '#fff', fontWeight: '800', fontSize: 16 },
   ok: { backgroundColor: '#E3F4EA', color: '#14663C', padding: 10, borderRadius: 10 },
   link: { minHeight: 44, justifyContent: 'center' }, linkT: { color: C.blue, fontWeight: '700' },
   err: { backgroundColor: '#FBE4E4', color: '#9B1C1C', padding: 10, borderRadius: 10 },
   stp: { width: 48, height: 48, borderRadius: 12, borderWidth: 1, borderColor: '#BCC8D6', alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff' }, stpT: { fontSize: 24, fontWeight: '700' },
   muted: { color: '#55657A' },
-  tabbar: { flexDirection: 'row', borderTopWidth: 1, borderColor: C.line, backgroundColor: '#fff' }, tab: { flex: 1, minHeight: 52, alignItems: 'center', justifyContent: 'center' },
+  tabbar: { flexDirection: 'row', borderTopWidth: 1, borderColor: C.line, backgroundColor: '#fff' }, tab: { flex: 1, minHeight: 60, alignItems: 'center', justifyContent: 'center', gap: 1 },
   tabT: { color: '#55657A', fontWeight: '600', fontSize: 13 }, tabOn: { color: C.blue, fontWeight: '800' },
   chip: { paddingHorizontal: 14, minHeight: 40, borderRadius: 20, borderWidth: 1, borderColor: '#BCC8D6', alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff' }, chipOn: { backgroundColor: C.blue, borderColor: C.blue }, chipOnT: { color: '#fff', fontWeight: '700' },
   num: { width: 32, textAlign: 'center', fontSize: 28, fontWeight: '800' },

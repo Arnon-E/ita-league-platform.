@@ -14,9 +14,9 @@ export async function Shell({ children, nav }: { children: ReactNode; nav?: stri
       {actor?.impersonatedBy && <form action={stopImpersonationAction} style={{ background: 'var(--lime)', padding: '8px 24px', display: 'flex', gap: 12, alignItems: 'center' }}><strong>מצב התחזות: {u?.name}</strong><button className="btn small">חזרה לחשבון שלי</button></form>}
       <header className="top">
         <span className="brand">ITA</span>
-        <nav>{l('/', 'תחרויות', 'home')}{l('/live', 'משחקים', 'live')}{l('/rankings', 'דירוג', 'rank')}{l('/players', 'שחקנים', 'players')}{l('/clubs', 'מועדונים', 'clubs')}{l('/stats', 'סטטיסטיקות', 'stats')}{actor && l('/me', 'האזור שלי', 'me')}{actor && ['SUPER_ADMIN', 'FEDERATION_ADMIN'].includes(actor.role) && <>{l('/admin/documents', 'מסמכים', 'docs')}{l('/admin/import', 'ייבוא', 'import')}{l('/admin/venues', 'מתקנים', 'venues')}{l('/admin/users', 'משתמשים', 'users')}{l('/admin/rules', 'חוקים', 'rules')}{l('/admin/audit', 'ביקורת', 'audit')}</>}</nav>
+        <nav>{l('/', 'תחרויות', 'home')}{l('/live', 'משחקים', 'live')}{l('/rankings', 'דירוג', 'rank')}{l('/players', 'שחקנים', 'players')}{l('/clubs', 'מועדונים', 'clubs')}{l('/stats', 'סטטיסטיקות', 'stats')}{actor && l('/me', 'האזור שלי', 'me')}{actor && ['SUPER_ADMIN', 'FEDERATION_ADMIN'].includes(actor.role) && <details className="adm"><summary>ניהול</summary><div>{l('/admin/documents', 'מסמכים', 'docs')}{l('/admin/import', 'ייבוא', 'import')}{l('/admin/venues', 'מתקנים', 'venues')}{l('/admin/users', 'משתמשים', 'users')}{l('/admin/rules', 'חוקים', 'rules')}{l('/admin/audit', 'ביקורת', 'audit')}</div></details>}</nav>
         {actor ? <>
-          <span className="muted" style={{ color: '#C9D6E8' }}>{u?.name}</span>
+          <span className="uname">{u?.name}</span>
           <form action="/logout" method="post"><button className="btn small ghost">יציאה</button></form>
         </> : <span className="row"><Link className="btn small ghost" href="/login">כניסה</Link><Link className="btn small" href="/register">הרשמה</Link></span>}
       </header>
