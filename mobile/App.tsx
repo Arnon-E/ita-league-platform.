@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, ScrollView, I18nManager, Pressable, SafeAreaView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, FlatList, ScrollView, I18nManager, Pressable, SafeAreaView, StatusBar, StyleSheet, Text, TextInput, View } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import * as ImagePicker from 'expo-image-picker';
 import { Linking } from 'react-native';
@@ -242,7 +242,7 @@ function Score({ m, onDone }: { m: api.Match; onDone: () => void }) {
 }
 
 const s = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: C.bg }, pad: { padding: 16, gap: 10, flex: 1 },
+  screen: { flex: 1, backgroundColor: C.bg, paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight ?? 24 : 0 }, pad: { padding: 16, gap: 10, flex: 1 },
   h1: { fontSize: 24, fontWeight: '800', color: C.navy }, b: { fontWeight: '700', color: C.navy },
   row: { flexDirection: 'row', alignItems: 'center', gap: 8, justifyContent: 'space-between' },
   card: { backgroundColor: '#fff', borderWidth: 1, borderColor: C.line, borderRadius: 14, padding: 14, marginBottom: 8, gap: 6 },
