@@ -102,6 +102,8 @@ export const tournaments = pgTable('tournaments', {
   refundPolicy: jsonb('refund_policy'),
   /** Key into the rule set's pointsTables; 'DEFAULT' uses rules.points. */
   pointsTableKey: text('points_table_key').notNull().default('DEFAULT'),
+  /** Calendar level: NATIONAL | REGIONAL | INTERNATIONAL | CIRCUIT. */
+  level: text('level').notNull().default('NATIONAL'),
   createdAt: createdAt(),
 });
 

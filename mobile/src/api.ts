@@ -32,7 +32,7 @@ export async function login(email: string, password: string) {
 }
 
 export type Match = { id: string; categoryId: string; stage: string; round: number; status: string; a: { id: string | null; name: string | null }; b: { id: string | null; name: string | null }; court: string | null; start: string | null; sets: { a: number; b: number }[] };
-export const tournaments = () => call<{ id: string; name: string; status: string }[]>('/tournaments');
+export const tournaments = () => call<{ id: string; name: string; status: string; level: string; startDate: string }[]>('/tournaments');
 export const tournament = (id: string) => call<{ tournament: { name: string }; matches: Match[] }>(`/tournaments/${id}`);
 export const me = () => call<{ players: { id: string; name: string; documents: { ok: boolean; missing: string[] } }[]; entries: { id: string; tournament: string; category: string; status: string; payment: string }[]; notifications: { id: string; title: string; body: string }[] }>('/me');
 export const sendResult = (matchId: string, body: unknown) => call(`/matches/${matchId}/result`, { method: 'POST', body: JSON.stringify(body) });

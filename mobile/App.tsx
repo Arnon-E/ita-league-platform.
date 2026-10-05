@@ -82,12 +82,17 @@ const STATUS_HE: Record<string, string> = { DRAFT: 'טיוטה', REGISTRATION_OP
 
 function TournamentList({ onOpen }: { onOpen: (id: string) => void }) {
   const { data, err, busy, reload } = useLoad(api.tournaments);
+  const [level, setLevel] = useState('');
+  const shown = (data ?? []).filter((x) => !level || x.level === level);
   return (
     <View style={s.pad}>
       <View style={s.hero}><Text style={s.heroT}>איגוד הטניס בישראל</Text><Text style={s.heroS}>תחרויות, לוחות משחקים ותוצאות חיות</Text></View>
       <Text style={s.h2}>תחרויות</Text>
-      <Status err={err} busy={busy} empty={!!data && !data.length && 'אין עדיין תחרויות'} />
-      <FlatList data={data ?? []} keyExtractor={(t) => t.id} onRefresh={reload} refreshing={false} renderItem={({ item }) => (
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }} contentContainerStyle={{ gap: 8 }}>
+        {([['', 'הכול'], ['NATIONAL', 'ארצית'], ['REGIONAL', 'אזורית'], ['INTERNATIONAL', 'בינלאומית'], ['CIRCUIT', 'סבב']] as const).map(([k, l]) => <Pressable key={k} style={[s.chip, level === k && s.chipOn]} onPress={() => setLevel(k)}><Text style={level === k ? s.chipOnT : s.b}>{l}</Text></Pressable>)}
+      </ScrollView>
+      <Status err={err} busy={busy} empty={!!data && !shown.length && 'אין תחרויות ברמה זו'} />
+      <FlatList data={shown} keyExtractor={(t) => t.id} onRefresh={reload} refreshing={false} renderItem={({ item }) => (
         <Pressable style={({ pressed }) => [s.card, pressed && s.pressed]} onPress={() => onOpen(item.id)}>
           <View style={[s.chip2, item.status === 'REGISTRATION_OPEN' ? s.chipOk : item.status === 'IN_PROGRESS' ? s.chipLive : null]}><Text style={s.chip2T}>{STATUS_HE[item.status] ?? item.status}</Text></View>
           <Text style={s.cardT}>{item.name}</Text>

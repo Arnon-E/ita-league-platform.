@@ -31,6 +31,7 @@ const EN: Record<string, string> = {
   'משחקים חיים עכשיו': 'live matches now', 'טיוטה': 'Draft', 'הרשמה פתוחה': 'Registration open', 'הרשמה סגורה': 'Registration closed', 'הוגרל': 'Drawn',
   'מתנהלת': 'In progress', 'הסתיימה': 'Finished', 'בוטלה': 'Cancelled', 'שחקנים · ': 'Players · ', 'תחרויות · ': 'Tournaments · ',
   'מוצגים 100 הראשונים. צמצמו את החיפוש.': 'Showing the first 100. Narrow your search.', 'לא נמצאו תוצאות עבור': 'No results for',
+  'ארצית': 'National', 'אזורית': 'Regional', 'בינלאומית': 'International', 'סבב': 'Circuit', 'עונה': 'Season', 'הכול': 'All',
   'כללי': 'Overall', 'עד גיל': 'Under', 'סינון': 'Filter',
   'תוצאות': 'Results', 'מועדון: ': 'Club: ', 'ניצחון': 'Win', 'הפסד': 'Loss', 'טרם שוחק': 'Not played', 'הסתיים': 'Completed',
 };
