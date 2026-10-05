@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, ScrollView, I18nManager, Pressable, SafeAreaView, StatusBar, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, FlatList, Image, ScrollView, I18nManager, Pressable, SafeAreaView, StatusBar, StyleSheet, Text, TextInput, View } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import * as ImagePicker from 'expo-image-picker';
 import { Linking } from 'react-native';
@@ -154,12 +154,28 @@ function Tournament({ id, onBack }: { id: string; onBack: () => void }) {
   const [d, setD] = useState<Awaited<ReturnType<typeof api.tournament>> | null>(null);
   const [score, setScore] = useState<api.Match | null>(null);
   const load = () => api.tournament(id).then(setD);
+  const [photos, setPhotos] = useState<{ id: string; caption: string | null }[]>([]);
+  const [following, setFollowing] = useState(false); const [fErr, setFErr] = useState('');
   useEffect(() => { load(); }, [id]);
+  useEffect(() => {
+    api.gallery(id).then(setPhotos).catch(() => {});
+    if (api.isAuthed()) api.follows().then((f) => setFollowing(f.some((x) => x.kind === 'TOURNAMENT' && x.target === id))).catch(() => {});
+  }, [id]);
+  const toggle = () => {
+    if (!api.isAuthed()) { setFErr('כדי לעקוב אחרי תחרות יש להתחבר בלשונית חשבון.'); return; }
+    setFErr(''); api.toggleFollow('TOURNAMENT', id).then((r) => setFollowing(r.following)).catch((e) => setFErr(e.message));
+  };
   if (score) return <Score m={score} onDone={() => { setScore(null); load(); }} />;
   return (
     <View style={s.pad}>
       <Pressable onPress={onBack}><Text>← חזרה</Text></Pressable>
       <Text style={s.h1}>{d?.tournament.name}</Text>
+      <Pressable style={[s.chip, following && s.chipOn, { alignSelf: 'flex-start' }]} onPress={toggle}><Text style={following ? s.chipOnT : s.b}>{following ? '★ במעקב' : '☆ מעקב'}</Text></Pressable>
+      {!!fErr && <Text style={s.err}>{fErr}</Text>}
+      {photos.length > 0 && (
+        <FlatList horizontal data={photos} keyExtractor={(p) => p.id} style={{ flexGrow: 0 }} showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}
+          renderItem={({ item }) => <View><Image source={{ uri: api.photoUrl(item.id) }} style={s.photo} />{!!item.caption && <Text style={s.muted}>{item.caption}</Text>}</View>} />
+      )}
       <FlatList data={d?.matches ?? []} keyExtractor={(m) => m.id} renderItem={({ item: m }) => (
         <Pressable style={s.card} disabled={!m.a.id || !m.b.id || !api.canScore()} onPress={() => setScore(m)}>
           <Text style={s.b}>{m.a.name ?? 'טרם נקבע'} – {m.b.name ?? 'טרם נקבע'}</Text>
@@ -260,6 +276,7 @@ const s = StyleSheet.create({
   cardT: { fontSize: 17, fontWeight: '700', color: C.navy }, pressed: { opacity: 0.7, transform: [{ scale: 0.985 }] },
   chip2: { alignSelf: 'flex-start', paddingHorizontal: 11, paddingVertical: 4, borderRadius: 999, backgroundColor: '#EEF2F8' }, chip2T: { fontSize: 12, fontWeight: '800', color: C.blue },
   chipOk: { backgroundColor: '#E2F6EA' }, chipLive: { backgroundColor: C.lime },
+  photo: { width: 220, height: 150, borderRadius: 16, backgroundColor: '#E3E8F0' },
   tabIc: { fontSize: 20 }, tabDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: C.blue, marginTop: 1 }, b: { fontWeight: '700', color: C.navy },
   row: { flexDirection: 'row', alignItems: 'center', gap: 8, justifyContent: 'space-between' },
   card: { backgroundColor: '#fff', borderWidth: 1, borderColor: C.line, borderRadius: 18, padding: 16, marginBottom: 10, gap: 8, shadowColor: '#0B2545', shadowOpacity: 0.07, shadowRadius: 10, shadowOffset: { width: 0, height: 3 }, elevation: 2 },
