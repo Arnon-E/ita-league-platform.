@@ -101,8 +101,10 @@ tbody tr{transition:background .12s}tbody tr:hover{background:var(--surface2)}tb
 @media(max-width:720px){
   header.top{padding:8px 12px}
   main{padding:18px 14px 96px}h1{font-size:25px}.hero{padding:22px 18px}.hero h1{font-size:26px}
-  header.top nav{overflow:visible;position:fixed;inset:auto 0 0 0;z-index:30;background:rgba(11,37,69,.96);backdrop-filter:blur(14px);padding:6px 6px calc(6px + env(safe-area-inset-bottom));justify-content:space-around;gap:0;border-top:1px solid rgba(255,255,255,.1)}
-  header.top nav a{flex:1;text-align:center;padding:8px 2px;font-size:12px;border-radius:12px}
+  header.top{backdrop-filter:none;-webkit-backdrop-filter:none;background:#0B2545;justify-content:space-between}
+  header.top nav{position:fixed;inset:auto 0 0 0;z-index:30;background:#0B2545;padding:6px 6px calc(6px + env(safe-area-inset-bottom));flex-wrap:nowrap;overflow-x:auto;overflow-y:visible;justify-content:flex-start;gap:0;border-top:1px solid rgba(255,255,255,.12);flex:none}
+  header.top nav a,details.adm summary{flex:0 0 auto;min-width:72px;text-align:center;padding:10px 8px;font-size:12px;border-radius:12px}
+  details.adm>div{top:auto;bottom:calc(100% + 10px);position:fixed;inset-inline:12px;min-width:0}
   .tabs{width:100%}
 }
 @media print{header.top,.noprint,.tabs{display:none!important}body{background:#fff;color:#000}main{max-width:none;padding:0;animation:none}.card{border:0;padding:0;box-shadow:none}th{position:static}}
