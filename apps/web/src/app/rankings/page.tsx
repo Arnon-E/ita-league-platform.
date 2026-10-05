@@ -3,6 +3,7 @@ import { Shell } from '@/components/Shell';
 import { ensureDefaultRuleSet, loadRuleSet } from '@/services/rules';
 import { rankingFor } from '@/services/rankings';
 import { inArray } from 'drizzle-orm';
+import Link from 'next/link';
 
 export default async function Rankings({ searchParams }: { searchParams: Promise<{ g?: string }> }) {
   const { g = 'MALE' } = await searchParams;
@@ -18,7 +19,7 @@ export default async function Rankings({ searchParams }: { searchParams: Promise
       <nav className="tabs">{[['MALE', 'בנים/גברים'], ['FEMALE', 'בנות/נשים']].map(([k, l]) => <a key={k} href={`/rankings?g=${k}`} className={gender === k ? 'on' : ''}>{l}</a>)}</nav>
       <div className="card" style={{ overflow: 'auto' }}>
         <table><thead><tr><th>#</th><th>שחקן</th><th>נקודות</th><th>תוצאות נספרות</th></tr></thead><tbody>
-          {rows.map((r) => <tr key={r.playerId}><td>{r.rank}</td><td>{nm.get(r.playerId)}</td><td><strong>{r.points}</strong></td><td>{r.counted.length}</td></tr>)}
+          {rows.map((r) => <tr key={r.playerId}><td>{r.rank}</td><td><Link href={`/players/${r.playerId}`}>{nm.get(r.playerId)}</Link></td><td><strong>{r.points}</strong></td><td>{r.counted.length}</td></tr>)}
         </tbody></table>
         {!rows.length && <p className="muted">אין עדיין נתוני דירוג.</p>}
       </div>

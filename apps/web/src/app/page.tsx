@@ -2,15 +2,18 @@ import Link from 'next/link';
 import { db } from '@/db';
 import { Shell } from '@/components/Shell';
 import { listTournaments } from '@/services/queries';
+import { getActor } from '@/lib/session';
+import { can } from '@/lib/permissions';
 import { STATUS } from '@/components/labels';
 
 export default async function Home() {
   const ts = await listTournaments(db);
+  const actor = await getActor();
   return (
     <Shell nav="home">
       <div className="row" style={{ justifyContent: 'space-between' }}>
         <div><h1>תחרויות</h1><p className="muted">{ts.length} תחרויות</p></div>
-        <Link className="btn" href="/tournaments/new">תחרות חדשה</Link>
+        {actor && can(actor, 'tournament.create') && <Link className="btn" href="/tournaments/new">תחרות חדשה</Link>}
       </div>
       <div className="grid cols" style={{ marginTop: 16 }}>
         {ts.map((t) => (

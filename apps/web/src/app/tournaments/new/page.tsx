@@ -2,10 +2,15 @@ import { Shell, Flash } from '@/components/Shell';
 import { createTournamentAction } from '@/app/actions';
 import { FORMAT } from '@/components/labels';
 import { db } from '@/db';
+import { requireActor } from '@/lib/session';
+import { can } from '@/lib/permissions';
+import { redirect } from 'next/navigation';
 import { latestRuleSet, hydrate, serialize } from '@/services/rules';
 
 export default async function NewTournament({ searchParams }: { searchParams: Promise<{ err?: string }> }) {
   const { err } = await searchParams;
+  const actor = await requireActor();
+  if (!can(actor, 'tournament.create')) redirect('/');
   const cur = await latestRuleSet(db);
   const tables = Object.keys(hydrate(cur.key, cur.version, cur.data as ReturnType<typeof serialize>).pointsTables ?? {});
   return (

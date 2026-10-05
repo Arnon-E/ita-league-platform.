@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { db, schema } from '@/db';
+import { getActor } from '@/lib/session';
 import { Flash, Shell } from '@/components/Shell';
 import { tournamentDetail, playersNotIn } from '@/services/queries';
 import { groupStandings } from '@/services/results';
@@ -15,7 +16,7 @@ import {
 } from '@/app/actions';
 
 type Detail = NonNullable<Awaited<ReturnType<typeof tournamentDetail>>>;
-const TABS: [string, string][] = [['overview', 'סקירה'], ['entries', 'משתתפים'], ['draw', 'הגרלה'], ['results', 'משחקים ותוצאות'], ['schedule', 'לוח ומגרשים']];
+const TABS: [string, string][] = [['overview', 'סקירה'], ['entries', 'משתתפים'], ['draw', 'הגרלה וטבלאות'], ['results', 'משחקים ותוצאות'], ['schedule', 'לוח משחקים']];
 
 export default async function TournamentPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ tab?: string; err?: string; ok?: string }> }) {
   const { id } = await params;
@@ -23,6 +24,9 @@ export default async function TournamentPage({ params, searchParams }: { params:
   const d = await tournamentDetail(db, id);
   if (!d) notFound();
   const { t } = d;
+  const actor = await getActor();
+  const manage = !!actor && ['SUPER_ADMIN', 'FEDERATION_ADMIN', 'TOURNAMENT_MANAGER'].includes(actor.role);
+  const scorer = manage || actor?.role === 'REFEREE';
   const rulesVerified = (await loadRuleSet(db, t.ruleSetId)).verified;
   const [st, cls] = STATUS[t.status] ?? [t.status, ''];
   return (
@@ -33,21 +37,21 @@ export default async function TournamentPage({ params, searchParams }: { params:
       </div>
       <nav className="tabs">{TABS.map(([k, l]) => <Link key={k} href={`/tournaments/${id}?tab=${k}`} className={tab === k ? 'on' : ''}>{l}</Link>)}</nav>
       <Flash err={err} ok={ok} />
-      {!rulesVerified && <div className="err" style={{ background: 'var(--warnbg)', color: 'var(--warn)' }}>ערכת החוקים של התחרות טרם אומתה מול תקנוני האיגוד. ההגרלה והנקודות עשויות לא להתאים לתקנון.</div>}
-      {tab === 'overview' && <Overview d={d} />}
-      {tab === 'entries' && <Entries d={d} />}
-      {tab === 'draw' && <DrawTab d={d} />}
-      {tab === 'results' && <Results d={d} />}
-      {tab === 'schedule' && <Schedule d={d} />}
+      {manage && !rulesVerified && <div className="err" style={{ background: 'var(--warnbg)', color: 'var(--warn)' }}>ערכת החוקים של התחרות טרם אומתה מול תקנוני האיגוד. ההגרלה והנקודות עשויות לא להתאים לתקנון.</div>}
+      {tab === 'overview' && <Overview d={d} manage={manage} />}
+      {tab === 'entries' && <Entries d={d} manage={manage} />}
+      {tab === 'draw' && <DrawTab d={d} manage={manage} />}
+      {tab === 'results' && <Results d={d} scorer={scorer} />}
+      {tab === 'schedule' && <Schedule d={d} manage={manage} />}
     </Shell>
   );
 }
 
-function Overview({ d }: { d: Detail }) {
+function Overview({ d, manage }: { d: Detail; manage: boolean }) {
   const { t, cats, ents } = d;
   return (
     <>
-      <div className="card row">
+      {manage ? <div className="card row">
         {(NEXT[t.status] ?? []).map(([to, label]) => (
           <form key={to} action={statusAction}><input type="hidden" name="id" value={t.id} /><input type="hidden" name="to" value={to} /><button className="btn">{label}</button></form>
         ))}
@@ -55,7 +59,7 @@ function Overview({ d }: { d: Detail }) {
           <form action={statusAction}><input type="hidden" name="id" value={t.id} /><input type="hidden" name="to" value="CANCELLED" /><button className="btn ghost">ביטול תחרות</button></form>
         )}
         <span className="muted">דמי השתתפות: ₪{(t.feeAgorot / 100).toFixed(0)}</span>
-      </div>
+      </div> : <div className="card row"><span className="muted">דמי השתתפות: ₪{(t.feeAgorot / 100).toFixed(0)}</span>{t.status === 'REGISTRATION_OPEN' && <Link className="btn" href="/me">להרשמה לתחרות</Link>}</div>}
       <h2>קטגוריות</h2>
       <div className="grid cols">
         {cats.map((c) => (
@@ -66,7 +70,7 @@ function Overview({ d }: { d: Detail }) {
           </div>
         ))}
       </div>
-      <h2>הוספת קטגוריה</h2>
+      {manage && <><h2>הוספת קטגוריה</h2>
       <form action={categoryAction} className="card row">
         <input type="hidden" name="id" value={t.id} />
         <label>שם<input name="name" required /></label>
@@ -76,13 +80,34 @@ function Overview({ d }: { d: Detail }) {
         <label>גודל בית<input name="groupSize" type="number" min="3" defaultValue="4" style={{ width: 90 }} /></label>
         <label>עולים מכל בית<input name="advancers" type="number" min="1" defaultValue="2" style={{ width: 90 }} /></label>
         <button className="btn">הוספה</button>
-      </form>
+      </form></>}
     </>
   );
 }
 
-async function Entries({ d }: { d: Detail }) {
+async function Entries({ d, manage }: { d: Detail; manage: boolean }) {
   const { t, cats, ents } = d;
+  if (!manage) {
+    return (
+      <>
+        {cats.map((c) => {
+          const list = ents.filter((x) => x.e.categoryId === c.id && x.e.status === 'CONFIRMED');
+          return (
+            <section key={c.id}>
+              <h2>{c.name} <span className="muted" style={{ fontWeight: 400 }}>· {list.length} משתתפים</span></h2>
+              <div className="card" style={{ overflow: 'auto' }}>
+                <table><thead><tr><th>#</th><th>שחקן</th><th>מועדון</th></tr></thead><tbody>
+                  {list.map(({ p, club }, i) => <tr key={p.id}><td>{i + 1}</td><td><Link href={`/players/${p.id}`}>{p.firstName} {p.lastName}</Link></td><td>{club ?? '—'}</td></tr>)}
+                </tbody></table>
+                {!list.length && <p className="muted">אין עדיין משתתפים מאושרים.</p>}
+              </div>
+            </section>
+          );
+        })}
+        {!cats.length && <div className="card muted">אין קטגוריות.</div>}
+      </>
+    );
+  }
   const open = ['DRAFT', 'REGISTRATION_OPEN', 'REGISTRATION_CLOSED'].includes(t.status);
   const addable = await Promise.all(cats.map(async (c) => [c.id, await playersNotIn(db, c.id, c.gender)] as const));
   const docs = await db.select().from(schema.documents);
@@ -166,22 +191,23 @@ function Bracket({ d, categoryId, slotsKey }: { d: Detail; categoryId: string; s
   );
 }
 
-async function DrawTab({ d }: { d: Detail }) {
+async function DrawTab({ d, manage }: { d: Detail; manage: boolean }) {
   const { t, cats } = d;
   const canDraw = ['REGISTRATION_CLOSED', 'DRAWN'].includes(t.status);
   return (
     <>
-      {!canDraw && t.status !== 'IN_PROGRESS' && t.status !== 'FINISHED' && <div className="card muted">ההגרלה אפשרית אחרי סגירת ההרשמה.</div>}
+      {manage && !canDraw && t.status !== 'IN_PROGRESS' && t.status !== 'FINISHED' && <div className="card muted">ההגרלה אפשרית אחרי סגירת ההרשמה.</div>}
       {cats.map(async (c) => {
         const dr = d.draws.find((x) => x.categoryId === c.id);
         const fmt = formatOf(c, t);
         const tables = fmt !== 'KNOCKOUT' && dr ? await groupStandings(db, c.id) : [];
         const anyResult = d.ms.some((m) => m.categoryId === c.id && m.status !== 'SCHEDULED');
+        if (!manage && !dr?.publishedAt) return <section key={c.id}><h2>{c.name}</h2><div className="card muted">ההגרלה טרם פורסמה.</div></section>;
         const slots = (dr?.slots ?? []) as { entryId: string | null; seed?: number }[];
         return (
           <section key={c.id} className="grid">
             <h2>{c.name} <span className="muted" style={{ fontWeight: 400 }}>· {FORMAT[fmt]}</span></h2>
-            {canDraw && !anyResult && (
+            {manage && canDraw && !anyResult && (
               <form action={drawAction} className="card row">
                 <input type="hidden" name="id" value={t.id} /><input type="hidden" name="category" value={c.id} /><input type="hidden" name="op" value="run" />
                 <label>קוד הגרלה (אופציונלי, לשחזור)<input name="code" type="number" style={{ width: 180 }} /></label>
@@ -189,7 +215,7 @@ async function DrawTab({ d }: { d: Detail }) {
                 <button className="btn">{dr ? 'הגרלה מחדש' : 'הגרלה'}</button>
               </form>
             )}
-            {dr && <div className="muted">קוד הגרלה {dr.code} · חוקים {dr.ruleSetKey} v{dr.ruleSetVersion} · {dr.publishedAt ? 'פורסמה' : 'טרם פורסמה'}</div>}
+            {manage && dr && <div className="muted">קוד הגרלה {dr.code} · חוקים {dr.ruleSetKey} v{dr.ruleSetVersion} · {dr.publishedAt ? 'פורסמה' : 'טרם פורסמה'}</div>}
             {dr && fmt === 'KNOCKOUT' && (
               <div className="card" style={{ overflow: 'auto' }}>
                 <table><thead><tr><th>#</th><th>שחקן</th><th>זריעה</th></tr></thead><tbody>
@@ -197,7 +223,7 @@ async function DrawTab({ d }: { d: Detail }) {
                 </tbody></table>
               </div>
             )}
-            {dr && fmt === 'KNOCKOUT' && !anyResult && (
+            {manage && dr && fmt === 'KNOCKOUT' && !anyResult && (
               <form action={drawAction} className="card row">
                 <input type="hidden" name="id" value={t.id} /><input type="hidden" name="category" value={c.id} /><input type="hidden" name="op" value="swap" />
                 <label>החלפת משבצת<input name="i" type="number" min="1" required style={{ width: 90 }} /></label>
@@ -214,14 +240,14 @@ async function DrawTab({ d }: { d: Detail }) {
                 </tbody></table>
               </div>
             ))}
-            {dr && fmt === 'GROUPS_KNOCKOUT' && !dr.koSlots && (
+            {manage && dr && fmt === 'GROUPS_KNOCKOUT' && !dr.koSlots && (
               <form action={drawAction} className="row">
                 <input type="hidden" name="id" value={t.id} /><input type="hidden" name="category" value={c.id} /><input type="hidden" name="op" value="advance" />
                 <button className="btn">העלאה לשלב ההדחה</button>
               </form>
             )}
             <Bracket d={d} categoryId={c.id} />
-            {dr && (
+            {manage && dr && (
               <div className="row">
                 {!dr.publishedAt && <form action={drawAction}><input type="hidden" name="id" value={t.id} /><input type="hidden" name="category" value={c.id} /><input type="hidden" name="op" value="publish" /><button className="btn ghost">פרסום ההגרלה</button></form>}
                 {anyResult && <form action={drawAction}><input type="hidden" name="id" value={t.id} /><input type="hidden" name="category" value={c.id} /><input type="hidden" name="op" value="points" /><button className="btn ghost">חלוקת נקודות דירוג</button></form>}
@@ -234,7 +260,7 @@ async function DrawTab({ d }: { d: Detail }) {
   );
 }
 
-function Results({ d }: { d: Detail }) {
+function Results({ d, scorer }: { d: Detail; scorer: boolean }) {
   const nm = (id: string | null) => (id ? d.names.get(id) ?? '?' : 'טרם נקבע');
   return (
     <>
@@ -249,7 +275,7 @@ function Results({ d }: { d: Detail }) {
                   <td>{nm(m.aEntryId)} – {nm(m.bEntryId)}</td>
                   <td>{m.status === 'SCHEDULED' ? <span className="pill warn">{MSTATUS[m.status]}</span> : <span className="pill ok">{MSTATUS[m.status]}{m.status === 'COMPLETED' ? ` ${(m.sets as { a: number; b: number }[]).map((s) => `${s.a}-${s.b}`).join(' ')}` : ''}</span>}</td>
                   <td>{m.courtLabel ? `מגרש ${m.courtLabel} · ${fmtTime(m.scheduledStart)}` : '—'}</td>
-                  <td>{m.aEntryId && m.bEntryId && <Link className="btn small ghost" href={`/matches/${m.id}`}>{m.status === 'SCHEDULED' ? 'הזנת תוצאה' : 'עריכה'}</Link>}</td>
+                  <td>{m.aEntryId && m.bEntryId && <Link className="btn small ghost" href={`/matches/${m.id}`}>{scorer ? (m.status === 'SCHEDULED' ? 'הזנת תוצאה' : 'עריכה') : 'פרטים'}</Link>}</td>
                 </tr>
               ))}
             </tbody></table>
@@ -260,12 +286,23 @@ function Results({ d }: { d: Detail }) {
   );
 }
 
-async function Schedule({ d }: { d: Detail }) {
+async function Schedule({ d, manage }: { d: Detail; manage: boolean }) {
   const { t } = d;
   const labels = await listCourtLabels(db, t.id);
   const nm = (id: string | null) => (id ? d.names.get(id) ?? '?' : 'טרם נקבע');
   const open = d.ms.filter((m) => m.status === 'SCHEDULED');
   const day = t.startDate.toISOString().slice(0, 10);
+  if (!manage) {
+    const dated = d.ms.filter((m) => m.scheduledStart && m.aEntryId && m.bEntryId).sort((a, b) => +a.scheduledStart! - +b.scheduledStart!);
+    return (
+      <div className="card" style={{ overflow: 'auto' }}>
+        <table><thead><tr><th>שעה</th><th>מגרש</th><th>משחק</th><th>סטטוס</th></tr></thead><tbody>
+          {dated.map((m) => <tr key={m.id}><td>{fmtTime(m.scheduledStart)}</td><td>{m.courtLabel ?? '—'}</td><td><Link href={`/matches/${m.id}`}>{nm(m.aEntryId)} – {nm(m.bEntryId)}</Link></td><td>{MSTATUS[m.status]}</td></tr>)}
+        </tbody></table>
+        {!dated.length && <p className="muted">הלוח טרם פורסם.</p>}
+      </div>
+    );
+  }
   return (
     <>
       <h2>מגרשי התחרות</h2>

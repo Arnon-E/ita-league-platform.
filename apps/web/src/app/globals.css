@@ -2,8 +2,10 @@
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--bg);color:var(--navy);font-family:'Heebo',system-ui,sans-serif}
 a{color:inherit;text-decoration:none}
-header.top{background:var(--navy);color:#fff;display:flex;align-items:center;gap:20px;padding:0 24px;min-height:56px}
-header.top nav{display:flex;gap:6px;flex:1}
+header.top{background:var(--navy);color:#fff;display:flex;align-items:center;gap:12px 20px;padding:6px 24px;min-height:56px;flex-wrap:wrap}
+html,body{overflow-x:hidden}
+@media(max-width:700px){header.top{padding:6px 12px}header.top a{padding:6px 8px;font-size:14px}}
+header.top nav{display:flex;gap:4px;flex:1;flex-wrap:wrap;min-width:0}
 header.top a{padding:8px 12px;border-radius:8px;color:#C9D6E8;font-weight:500}
 header.top a:hover,header.top a.on{background:#14427A;color:#fff}
 header.top .brand{font-weight:800;color:var(--lime);font-size:18px}

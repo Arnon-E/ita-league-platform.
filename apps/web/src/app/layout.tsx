@@ -9,6 +9,8 @@ export default function Root({ children }: { children: ReactNode }) {
   return (
     <html lang="he" dir="rtl">
       <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
         <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700;800&display=swap" />
         <link rel="manifest" href="/manifest.webmanifest" />
         <meta name="theme-color" content="#0B2545" />
