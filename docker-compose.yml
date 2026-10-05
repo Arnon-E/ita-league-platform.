@@ -1,0 +1,14 @@
+services:
+  db:
+    image: postgres:16
+    environment: { POSTGRES_PASSWORD: postgres, POSTGRES_DB: ita }
+    volumes: [pgdata:/var/lib/postgresql/data]
+  web:
+    build: .
+    depends_on: [db]
+    ports: ["3000:3000"]
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@db:5432/ita
+      AUTH_SECRET: change-me-to-a-long-random-string
+      CRON_SECRET: change-me-too
+volumes: { pgdata: {} }

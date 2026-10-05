@@ -11,3 +11,6 @@
 | 5 | Expo על מכשיר | `cd mobile`, עדכון `extra.apiUrl` ב-`app.json`, `npx expo start`, פתיחה ב-Expo Go / TestFlight | כניסה, הזנת תוצאה, העלאת מסמך והרשמה עובדים בטלפון |
 
 משתני חובה לכל סביבה: `DATABASE_URL`, `SESSION_SECRET` (32+ בתים אקראיים), `ID_HASH_SALT`, `STORAGE_DIR` (או מתאם S3 בייצור).
+
+## Run everything with Docker
+`docker compose up --build`, then push the schema once: `docker compose exec web npx drizzle-kit push --force` (set real secrets in `docker-compose.yml` first).
