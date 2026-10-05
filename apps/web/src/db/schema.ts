@@ -250,6 +250,17 @@ export const ledger = pgTable('ledger', {
   createdAt: createdAt(),
 });
 
+/** Tournament photo gallery. Uploaded by staff only; shown publicly. */
+export const galleryItems = pgTable('gallery_items', {
+  id: id(),
+  tournamentId: text('tournament_id').notNull().references(() => tournaments.id, { onDelete: 'cascade' }),
+  storageKey: text('storage_key').notNull(),
+  mime: text('mime').notNull(),
+  caption: text('caption'),
+  uploadedById: text('uploaded_by_id').references(() => users.id),
+  createdAt: createdAt(),
+}, (t) => [index('gallery_tournament_idx').on(t.tournamentId, t.createdAt)]);
+
 /** Fans: a user follows a player, a club or a tournament and gets notified about schedule changes and results. */
 export const follows = pgTable('follows', {
   id: id(),

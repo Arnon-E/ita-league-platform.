@@ -4,6 +4,7 @@ import { db, schema } from '@/db';
 import { getActor } from '@/lib/session';
 import { Flash, Shell } from '@/components/Shell';
 import { FollowButton } from '@/components/FollowButton';
+import { Gallery } from './Gallery';
 import { tournamentDetail, playersNotIn } from '@/services/queries';
 import { groupStandings } from '@/services/results';
 import { listCourtLabels } from '@/services/tournaments';
@@ -17,7 +18,7 @@ import {
 } from '@/app/actions';
 
 type Detail = NonNullable<Awaited<ReturnType<typeof tournamentDetail>>>;
-const TABS: [string, string][] = [['overview', 'סקירה'], ['entries', 'משתתפים'], ['draw', 'הגרלה וטבלאות'], ['results', 'משחקים ותוצאות'], ['schedule', 'לוח משחקים']];
+const TABS: [string, string][] = [['overview', 'סקירה'], ['entries', 'משתתפים'], ['draw', 'הגרלה וטבלאות'], ['results', 'משחקים ותוצאות'], ['schedule', 'לוח משחקים'], ['gallery', 'גלריה']];
 
 export default async function TournamentPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ tab?: string; err?: string; ok?: string }> }) {
   const { id } = await params;
@@ -44,6 +45,7 @@ export default async function TournamentPage({ params, searchParams }: { params:
       {tab === 'draw' && <DrawTab d={d} manage={manage} />}
       {tab === 'results' && <Results d={d} scorer={scorer} />}
       {tab === 'schedule' && <Schedule d={d} manage={manage} />}
+      {tab === 'gallery' && <Gallery tournamentId={t.id} manage={scorer} />}
     </Shell>
   );
 }
