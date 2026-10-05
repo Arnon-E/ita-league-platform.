@@ -36,3 +36,5 @@ table{border-collapse:collapse;width:100%}th,td{padding:10px 12px;text-align:sta
 .bracket .m .w{font-weight:800;background:var(--okbg)}
 .stp{width:48px;height:48px;border-radius:12px;border:1px solid #BCC8D6;background:#fff;color:var(--navy);font:inherit;font-size:24px;font-weight:700;cursor:pointer}
 @media(max-width:640px){header.top{padding:0 12px;gap:8px}main{padding:16px 12px 64px}}
+
+@media print{header.top,.noprint,.tabs{display:none!important}body{background:#fff}main{max-width:none;padding:0}.card{border:0;padding:0}}

@@ -70,6 +70,7 @@ function Overview({ d, manage }: { d: Detail; manage: boolean }) {
           </div>
         ))}
       </div>
+      <ClubTable d={d} />
       {manage && <><h2>הוספת קטגוריה</h2>
       <form action={categoryAction} className="card row">
         <input type="hidden" name="id" value={t.id} />
@@ -81,6 +82,30 @@ function Overview({ d, manage }: { d: Detail; manage: boolean }) {
         <label>עולים מכל בית<input name="advancers" type="number" min="1" defaultValue="2" style={{ width: 90 }} /></label>
         <button className="btn">הוספה</button>
       </form></>}
+    </>
+  );
+}
+
+function ClubTable({ d }: { d: Detail }) {
+  const clubOf = new Map(d.ents.filter((x) => x.e.status === 'CONFIRMED').map((x) => [x.e.id, x.club ?? 'ללא מועדון']));
+  const rows = new Map<string, { players: number; played: number; wins: number }>();
+  const row = (c: string) => rows.get(c) ?? rows.set(c, { players: 0, played: 0, wins: 0 }).get(c)!;
+  for (const c of clubOf.values()) row(c).players++;
+  for (const m of d.ms) {
+    if (!m.winnerEntryId) continue;
+    for (const e of [m.aEntryId, m.bEntryId]) { const c = e && clubOf.get(e); if (c) row(c).played++; }
+    const w = clubOf.get(m.winnerEntryId); if (w) row(w).wins++;
+  }
+  const list = [...rows].sort((a, b) => b[1].wins - a[1].wins || b[1].players - a[1].players);
+  if (!list.length) return null;
+  return (
+    <>
+      <h2>טבלת מועדונים</h2>
+      <div className="card" style={{ overflow: 'auto' }}>
+        <table><thead><tr><th>#</th><th>מועדון</th><th>שחקנים</th><th>משחקים</th><th>ניצחונות</th></tr></thead><tbody>
+          {list.map(([c, r], i) => <tr key={c}><td>{i + 1}</td><td>{c}</td><td>{r.players}</td><td>{r.played}</td><td><strong>{r.wins}</strong></td></tr>)}
+        </tbody></table>
+      </div>
     </>
   );
 }
@@ -296,6 +321,7 @@ async function Schedule({ d, manage }: { d: Detail; manage: boolean }) {
     const dated = d.ms.filter((m) => m.scheduledStart && m.aEntryId && m.bEntryId).sort((a, b) => +a.scheduledStart! - +b.scheduledStart!);
     return (
       <div className="card" style={{ overflow: 'auto' }}>
+        <Link className="btn small ghost" href={`/tournaments/${t.id}/print`}>גרסה להדפסה</Link>
         <table><thead><tr><th>שעה</th><th>מגרש</th><th>משחק</th><th>סטטוס</th></tr></thead><tbody>
           {dated.map((m) => <tr key={m.id}><td>{fmtTime(m.scheduledStart)}</td><td>{m.courtLabel ?? '—'}</td><td><Link href={`/matches/${m.id}`}>{nm(m.aEntryId)} – {nm(m.bEntryId)}</Link></td><td>{MSTATUS[m.status]}</td></tr>)}
         </tbody></table>
@@ -305,6 +331,7 @@ async function Schedule({ d, manage }: { d: Detail; manage: boolean }) {
   }
   return (
     <>
+      <Link className="btn small ghost" href={`/tournaments/${t.id}/print`}>גרסה להדפסה של הלוח</Link>
       <h2>מגרשי התחרות</h2>
       <form action={courtsAction} className="card row">
         <input type="hidden" name="id" value={t.id} />
