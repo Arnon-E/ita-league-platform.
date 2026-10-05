@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, I18nManager, Pressable, SafeAreaView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, FlatList, ScrollView, I18nManager, Pressable, SafeAreaView, StyleSheet, Text, TextInput, View } from 'react-native';
 import * as Notifications from 'expo-notifications';
+import * as ImagePicker from 'expo-image-picker';
+import { Linking } from 'react-native';
 import { Platform } from 'react-native';
 import * as api from './src/api';
 
@@ -45,10 +47,12 @@ function Home({ onLogout }: { onLogout: () => void }) {
   useEffect(() => { registerPush(); api.me().then((m) => setInbox(m.notifications.slice(0, 3))).catch(() => {}); }, []);
   const [open, setOpen] = useState<string | null>(null);
   useEffect(() => { api.tournaments().then(setList).catch(() => {}); }, []);
+  const [tab, setTab] = useState<'t' | 'me'>('t');
   if (open) return <Tournament id={open} onBack={() => setOpen(null)} />;
+  if (tab === 'me') return <MyArea onBack={() => setTab('t')} />;
   return (
     <View style={s.pad}>
-      <View style={s.row}><Text style={s.h1}>תחרויות</Text><Pressable onPress={onLogout}><Text>יציאה</Text></Pressable></View>
+      <View style={s.row}><Text style={s.h1}>תחרויות</Text><Pressable onPress={() => setTab('me')}><Text style={s.b}>האזור שלי</Text></Pressable><Pressable onPress={onLogout}><Text>יציאה</Text></Pressable></View>
       {inbox.map((n) => <View key={n.id} style={s.card}><Text style={s.b}>{n.title}</Text><Text>{n.body}</Text></View>)}
       <FlatList data={list} keyExtractor={(t) => t.id} renderItem={({ item }) => (
         <Pressable style={s.card} onPress={() => setOpen(item.id)}><Text style={s.b}>{item.name}</Text><Text>{item.status}</Text></Pressable>
@@ -74,6 +78,47 @@ function Tournament({ id, onBack }: { id: string; onBack: () => void }) {
         </Pressable>
       )} />
     </View>
+  );
+}
+
+const DOCS: [string, string][] = [['ID_PHOTO', 'תמונת ת״ז'], ['MEDICAL_CERTIFICATE', 'אישור רפואי'], ['PARENT_CONSENT', 'אישור הורים']];
+
+function MyArea({ onBack }: { onBack: () => void }) {
+  const [d, setD] = useState<Awaited<ReturnType<typeof api.me>> | null>(null);
+  const [open, setOpen] = useState<Awaited<ReturnType<typeof api.openCategories>>>([]);
+  const [msg, setMsg] = useState(''); const [err, setErr] = useState('');
+  const load = () => { api.me().then(setD).catch((e) => setErr(e.message)); api.openCategories().then(setOpen).catch(() => {}); };
+  useEffect(load, []);
+  const upload = async (playerId: string, type: string) => {
+    setErr(''); setMsg('');
+    const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.8 });
+    if (r.canceled || !r.assets[0]) return;
+    const a = r.assets[0];
+    try { await api.uploadDocument(playerId, type, { uri: a.uri, name: a.fileName ?? 'doc.jpg', mime: a.mimeType ?? 'image/jpeg' }); setMsg('המסמך הועלה וממתין לאישור'); load(); } catch (e) { setErr((e as Error).message); }
+  };
+  const register = (cat: string, pid: string) => api.enter(cat, pid).then(() => { setMsg('נרשמתם לקטגוריה'); load(); }).catch((e) => setErr(e.message));
+  const pay = (entryId: string) => api.checkout(entryId).then((r) => Linking.openURL(r.url)).catch((e) => setErr(e.message));
+  return (
+    <ScrollView contentContainerStyle={s.pad}>
+      <Pressable onPress={onBack}><Text>← חזרה</Text></Pressable>
+      <Text style={s.h1}>האזור שלי</Text>
+      {!!err && <Text style={s.err}>{err}</Text>}{!!msg && <Text style={s.ok}>{msg}</Text>}
+      {d?.players.map((p) => (
+        <View key={p.id} style={s.card}>
+          <Text style={s.b}>{p.name}</Text>
+          <Text>{p.documents.ok ? 'כל המסמכים תקינים' : `חסר: ${p.documents.missing.map((m) => DOCS.find((x) => x[0] === m)?.[1] ?? m).join(', ')}`}</Text>
+          {DOCS.map(([k, l]) => <Pressable key={k} style={s.link} onPress={() => upload(p.id, k)}><Text style={s.linkT}>העלאת {l}</Text></Pressable>)}
+          {open.map((o) => <Pressable key={o.categoryId} style={s.link} onPress={() => register(o.categoryId, p.id)}><Text style={s.linkT}>הרשמה: {o.tournament} · {o.category}</Text></Pressable>)}
+        </View>
+      ))}
+      <Text style={s.h1}>ההרשמות שלי</Text>
+      {d?.entries.map((e) => (
+        <View key={e.id} style={s.card}><Text style={s.b}>{e.tournament} · {e.category}</Text><Text>{e.status} · {e.payment}</Text>
+          {e.payment === 'UNPAID' && <Pressable style={s.link} onPress={() => pay(e.id)}><Text style={s.linkT}>לתשלום</Text></Pressable>}</View>
+      ))}
+      <Text style={s.h1}>התראות</Text>
+      {d?.notifications.map((n) => <View key={n.id} style={s.card}><Text style={s.b}>{n.title}</Text><Text>{n.body}</Text></View>)}
+    </ScrollView>
   );
 }
 
@@ -110,6 +155,8 @@ const s = StyleSheet.create({
   card: { backgroundColor: '#fff', borderWidth: 1, borderColor: C.line, borderRadius: 14, padding: 14, marginBottom: 8, gap: 6 },
   input: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#BCC8D6', borderRadius: 10, padding: 12, minHeight: 48, textAlign: 'right' },
   btn: { backgroundColor: C.blue, borderRadius: 12, minHeight: 52, alignItems: 'center', justifyContent: 'center' }, btnT: { color: '#fff', fontWeight: '800', fontSize: 16 },
+  ok: { backgroundColor: '#E3F4EA', color: '#14663C', padding: 10, borderRadius: 10 },
+  link: { minHeight: 44, justifyContent: 'center' }, linkT: { color: C.blue, fontWeight: '700' },
   err: { backgroundColor: '#FBE4E4', color: '#9B1C1C', padding: 10, borderRadius: 10 },
   stp: { width: 48, height: 48, borderRadius: 12, borderWidth: 1, borderColor: '#BCC8D6', alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff' }, stpT: { fontSize: 24, fontWeight: '700' },
   num: { width: 32, textAlign: 'center', fontSize: 28, fontWeight: '800' },

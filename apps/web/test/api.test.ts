@@ -58,3 +58,34 @@ describe('super admin', () => {
     expect(created).toBeTruthy();
   });
 });
+
+import { POST as docRoute } from '@/app/api/v1/documents/route';
+import { GET as openRoute, POST as enterRoute } from '@/app/api/v1/entries/route';
+import { signUp, addPlayerProfile } from '@/services/accounts';
+import { signSession } from '@/lib/auth';
+import { addCategory, setStatus } from '@/services/tournaments';
+
+describe('mobile self-service', () => {
+  it('a parent uploads a document and registers a child via the API', async () => {
+    process.env.STORAGE_DIR = '/tmp/ita-test-storage';
+    const fed = await mkUser('FEDERATION_ADMIN', 'ms@x.il');
+    const t = await mkT(db, fed.actor, { name: 'Open', startDate: new Date(), endDate: new Date(), feeAgorot: 0 });
+    const cat = await addCategory(db, fed.actor, t.id, { name: 'U12', gender: 'MALE' });
+    await setStatus(db, fed.actor, t.id, 'REGISTRATION_OPEN');
+    const u = await signUp(db, { email: 'mom@x.il', password: 'Passw0rd!!', name: 'אמא' });
+    const kid = await addPlayerProfile(db, { id: u.id, role: u.role }, { firstName: 'ק', lastName: 'ט', birthDate: new Date('2014-01-01'), gender: 'MALE', forChild: true });
+    const token = await signSession({ id: u.id, role: u.role });
+    const auth = { authorization: `Bearer ${token}` };
+    const open = await (await openRoute(new Request('http://x', { headers: auth }))).json() as { categoryId: string }[];
+    expect(open.map((o) => o.categoryId)).toContain(cat.id);
+    const reg = await enterRoute(new Request('http://x', { method: 'POST', headers: auth, body: JSON.stringify({ categoryId: cat.id, playerId: kid.id }) }));
+    expect(reg.status).toBe(200);
+    const fd = new FormData();
+    fd.set('player', kid.id); fd.set('type', 'ID_PHOTO');
+    fd.set('file', new File([new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0, 0x10])], 'id.jpg', { type: 'image/jpeg' }));
+    const up = await docRoute(new Request('http://x', { method: 'POST', headers: auth, body: fd }));
+    expect(up.status).toBe(200);
+    const bad = new FormData(); bad.set('player', kid.id); bad.set('type', 'ID_PHOTO'); bad.set('file', new File(['hello'], 'x.jpg', { type: 'image/jpeg' }));
+    expect((await docRoute(new Request('http://x', { method: 'POST', headers: auth, body: bad }))).status).toBe(400);
+  });
+});
