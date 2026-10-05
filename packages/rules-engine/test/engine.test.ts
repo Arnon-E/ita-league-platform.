@@ -246,3 +246,13 @@ describe('refunds', () => {
     expect(() => manualRefund(180, 0, 50, ' ')).toThrow();
   });
 });
+
+describe('draw without any ranking', () => {
+  it('still places byes correctly (6 unranked -> 2 byes, no bye vs bye)', () => {
+    const es = Array.from({ length: 6 }, (_, i) => ({ id: `p${i}`, name: `p${i}` }));
+    const d = makeDraw(es, { code: 1, ruleSet: R });
+    expect(d.slots.filter((s) => s.kind === 'bye').length).toBe(2);
+    expect(d.slots.filter((s) => s.kind === 'player').length).toBe(6);
+    for (let i = 0; i < 8; i += 2) expect(d.slots[i]!.kind === 'bye' && d.slots[i + 1]!.kind === 'bye').toBe(false);
+  });
+});

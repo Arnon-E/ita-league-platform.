@@ -78,9 +78,14 @@ export function makeDraw(entrants: readonly Entrant[], opts: DrawOptions): DrawR
     }
   }
   // Remaining byes (more byes than seeds): put them in free slots whose partner is a player.
-  for (let i = 0; given < byes && i < size; i++) {
-    if (slots[i] === undefined && slots[partnerIndex(i)]?.kind === 'player') {
-      slots[i] = { kind: 'bye' };
+  // remaining byes go to untouched pairs, spread over the bracket (bit-reversed pair order), never two byes in one pair
+  const pairs = size / 2;
+  const bits = Math.log2(pairs);
+  const rev = (x: number) => { let r = 0; for (let b = 0; b < bits; b++) if (x & (1 << b)) r |= 1 << (bits - 1 - b); return r; };
+  for (let k = 0; given < byes && k < pairs; k++) {
+    const pi = rev(k);
+    if (slots[2 * pi] === undefined && slots[2 * pi + 1] === undefined) {
+      slots[2 * pi + (rng() < 0.5 ? 0 : 1)] = { kind: 'bye' };
       given++;
     }
   }
