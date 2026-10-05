@@ -20,3 +20,18 @@ Web, iPhone, iPad ו-Android.
 
 ## צעד הבא
 מנוע הגרלה כספרייה נפרדת עם בדיקות, מודל נתונים והרשאות, ואחר כך מסכי Web. הכללים (ערכת חוקים) נשמרים כהגדרה ולא בקוד.
+
+## הרצה מקומית (Web)
+
+```bash
+pnpm install
+createdb ita && createdb ita_test
+cd apps/web
+cp .env.example .env
+DATABASE_URL=postgresql://postgres@localhost:5432/ita npx drizzle-kit push --force
+DATABASE_URL=postgresql://postgres@localhost:5432/ita pnpm db:seed   # משתמשי דמו, סיסמה Passw0rd!!
+DATABASE_URL=postgresql://postgres@localhost:5432/ita pnpm dev
+pnpm test        # בדיקות אינטגרציה מול ita_test
+```
+
+משתמשי דמו: `super@ita.test`, `fed@ita.test`, `manager@ita.test`, `ref@ita.test`.
