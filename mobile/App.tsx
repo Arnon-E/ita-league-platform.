@@ -144,6 +144,15 @@ function Score({ m, onDone }: { m: api.Match; onDone: () => void }) {
         </View>
       ))}
       <Pressable style={s.btn} onPress={save}><Text style={s.btnT}>שמירה</Text></Pressable>
+      <Text style={s.b}>ללא משחק (וואלה) — מי לא הגיע?</Text>
+      {([m.a, m.b] as const).map((p, k) => p.id && (
+        <View key={k} style={s.card}>
+          <Text style={s.b}>{p.name}</Text>
+          {([['NO_NOTICE', 'לא הגיע, ללא הודעה'], ['NOTICE', 'הודיע מראש'], ['NOTICE_MEDICAL', 'הודיע + אישור רפואי']] as const).map(([reason, label]) => (
+            <Pressable key={reason} style={s.link} onPress={() => api.sendResult(m.id, { status: 'WALKOVER', absentEntryId: p.id, reason }).then(onDone).catch((e) => setErr(e.message))}><Text style={s.linkT}>{label}</Text></Pressable>
+          ))}
+        </View>
+      ))}
     </View>
   );
 }
