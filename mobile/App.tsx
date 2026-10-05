@@ -124,11 +124,15 @@ function Live() {
 
 function Rankings() {
   const [g, setG] = useState<'MALE' | 'FEMALE'>('MALE');
-  const { data, err, busy } = useLoad(() => api.rankings(g), [g]);
+  const [age, setAge] = useState<number | undefined>(undefined);
+  const { data, err, busy } = useLoad(() => api.rankings(g, age), [g, age]);
   return (
     <View style={s.pad}>
       <Text style={s.h1}>דירוג</Text>
       <View style={s.row}>{([['MALE', 'בנים/גברים'], ['FEMALE', 'בנות/נשים']] as const).map(([k, l]) => <Pressable key={k} style={[s.chip, g === k && s.chipOn]} onPress={() => setG(k)}><Text style={g === k ? s.chipOnT : s.b}>{l}</Text></Pressable>)}</View>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }} contentContainerStyle={{ gap: 8 }}>
+        {([[undefined, 'כללי'], [12, 'עד 12'], [14, 'עד 14'], [16, 'עד 16'], [18, 'עד 18']] as const).map(([a, l]) => <Pressable key={l} style={[s.chip, age === a && s.chipOn]} onPress={() => setAge(a)}><Text style={age === a ? s.chipOnT : s.b}>{l}</Text></Pressable>)}
+      </ScrollView>
       <Status err={err} busy={busy} empty={!!data && !data.length && 'אין עדיין נתוני דירוג'} />
       <FlatList data={data ?? []} keyExtractor={(r) => r.playerId} renderItem={({ item }) => (
         <View style={[s.card, s.row]}><Text style={s.num}>{item.rank}</Text><Text style={[s.b, { flex: 1 }]}>{item.name}</Text><Text style={s.b}>{item.points}</Text></View>

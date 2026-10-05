@@ -60,5 +60,5 @@ export const gallery = (tournamentId: string) => call<{ id: string; caption: str
 export const photoUrl = (photoId: string) => `${BASE}/api/gallery/${photoId}`;
 export const live = () => call<{ live: FeedRow[]; upcoming: FeedRow[]; results: FeedRow[] }>('/public/live');
 export const sendLive = (matchId: string, sets: { a: number; b: number; superTb?: boolean }[]) => call(`/matches/${matchId}/live`, { method: 'POST', body: JSON.stringify({ sets }) });
-export const rankings = (g: 'MALE' | 'FEMALE') => call<{ playerId: string; rank: number; points: number; name: string }[]>(`/public/rankings?g=${g}`);
+export const rankings = (g: 'MALE' | 'FEMALE', age?: number) => call<{ playerId: string; rank: number; points: number; name: string; club: string | null }[]>(`/public/rankings?g=${g}${age ? `&age=${age}` : ''}`);
 export const players = (q: string) => call<{ id: string; name: string; club: string | null }[]>(`/public/players?q=${encodeURIComponent(q)}`);
