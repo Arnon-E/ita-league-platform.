@@ -5,6 +5,7 @@ import { getActor } from '@/lib/session';
 import { Flash, Shell } from '@/components/Shell';
 import { FollowButton } from '@/components/FollowButton';
 import { Gallery } from './Gallery';
+import { tr } from '@/lib/i18n';
 import { tournamentDetail, playersNotIn } from '@/services/queries';
 import { groupStandings } from '@/services/results';
 import { listCourtLabels } from '@/services/tournaments';
@@ -21,6 +22,7 @@ type Detail = NonNullable<Awaited<ReturnType<typeof tournamentDetail>>>;
 const TABS: [string, string][] = [['overview', 'סקירה'], ['entries', 'משתתפים'], ['draw', 'הגרלה וטבלאות'], ['results', 'משחקים ותוצאות'], ['schedule', 'לוח משחקים'], ['gallery', 'גלריה']];
 
 export default async function TournamentPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ tab?: string; err?: string; ok?: string }> }) {
+  const tt = await tr();
   const { id } = await params;
   const { tab = 'overview', err, ok } = await searchParams;
   const d = await tournamentDetail(db, id);
@@ -34,10 +36,10 @@ export default async function TournamentPage({ params, searchParams }: { params:
   return (
     <Shell nav="home">
       <div className="row" style={{ justifyContent: 'space-between' }}>
-        <div><h1>{t.name}</h1><span className="muted">{t.startDate.toLocaleDateString('he-IL')} – {t.endDate.toLocaleDateString('he-IL')} · {FORMAT[t.format]}</span></div>
-        <div className="row"><FollowButton kind="TOURNAMENT" target={t.id} back={`/tournaments/${t.id}`} /><span className={`pill ${cls}`}>{st}</span></div>
+        <div><h1>{t.name}</h1><span className="muted">{t.startDate.toLocaleDateString('he-IL')} – {t.endDate.toLocaleDateString('he-IL')} · {tt(FORMAT[t.format] ?? '')}</span></div>
+        <div className="row"><FollowButton kind="TOURNAMENT" target={t.id} back={`/tournaments/${t.id}`} /><span className={`pill ${cls}`}>{tt(st)}</span></div>
       </div>
-      <nav className="tabs">{TABS.map(([k, l]) => <Link key={k} href={`/tournaments/${id}?tab=${k}`} className={tab === k ? 'on' : ''}>{l}</Link>)}</nav>
+      <nav className="tabs">{TABS.map(([k, l]) => <Link key={k} href={`/tournaments/${id}?tab=${k}`} className={tab === k ? 'on' : ''}>{tt(l)}</Link>)}</nav>
       <Flash err={err} ok={ok} />
       {manage && !rulesVerified && <div className="err" style={{ background: 'var(--warnbg)', color: 'var(--warn)' }}>ערכת החוקים של התחרות טרם אומתה מול תקנוני האיגוד. ההגרלה והנקודות עשויות לא להתאים לתקנון.</div>}
       {tab === 'overview' && <Overview d={d} manage={manage} />}
@@ -50,7 +52,8 @@ export default async function TournamentPage({ params, searchParams }: { params:
   );
 }
 
-function Overview({ d, manage }: { d: Detail; manage: boolean }) {
+async function Overview({ d, manage }: { d: Detail; manage: boolean }) {
+  const tt = await tr();
   const { t, cats, ents } = d;
   return (
     <>
@@ -62,13 +65,13 @@ function Overview({ d, manage }: { d: Detail; manage: boolean }) {
           <form action={statusAction}><input type="hidden" name="id" value={t.id} /><input type="hidden" name="to" value="CANCELLED" /><button className="btn ghost">ביטול תחרות</button></form>
         )}
         <span className="muted">דמי השתתפות: ₪{(t.feeAgorot / 100).toFixed(0)}</span>
-      </div> : <div className="card row"><span className="muted">דמי השתתפות: ₪{(t.feeAgorot / 100).toFixed(0)}</span>{t.status === 'REGISTRATION_OPEN' && <Link className="btn" href="/me">להרשמה לתחרות</Link>}</div>}
-      <h2>קטגוריות</h2>
+      </div> : <div className="card row"><span className="muted">{tt('דמי השתתפות')}: ₪{(t.feeAgorot / 100).toFixed(0)}</span>{t.status === 'REGISTRATION_OPEN' && <Link className="btn" href="/me">{tt('להרשמה לתחרות')}</Link>}</div>}
+      <h2>{tt('קטגוריות')}</h2>
       <div className="grid cols">
         {cats.map((c) => (
           <div key={c.id} className="card grid" style={{ gap: 4 }}>
             <strong>{c.name}</strong>
-            <span className="muted">{GENDER[c.gender]} · {FORMAT[formatOf(c, t)]}{c.capacity ? ` · עד ${c.capacity}` : ''}</span>
+            <span className="muted">{tt(GENDER[c.gender] ?? '')} · {tt(FORMAT[formatOf(c, t)] ?? '')}{c.capacity ? ` · ${tt('עד')} ${c.capacity}` : ''}</span>
             <span className="muted">{ents.filter((x) => x.e.categoryId === c.id && x.e.status === 'CONFIRMED').length} מאושרים · {ents.filter((x) => x.e.categoryId === c.id && x.e.status === 'PENDING').length} ממתינים</span>
           </div>
         ))}
@@ -89,7 +92,8 @@ function Overview({ d, manage }: { d: Detail; manage: boolean }) {
   );
 }
 
-function ClubTable({ d }: { d: Detail }) {
+async function ClubTable({ d }: { d: Detail }) {
+  const tt = await tr();
   const clubOf = new Map(d.ents.filter((x) => x.e.status === 'CONFIRMED').map((x) => [x.e.id, x.club ?? 'ללא מועדון']));
   const rows = new Map<string, { players: number; played: number; wins: number }>();
   const row = (c: string) => rows.get(c) ?? rows.set(c, { players: 0, played: 0, wins: 0 }).get(c)!;
@@ -103,9 +107,9 @@ function ClubTable({ d }: { d: Detail }) {
   if (!list.length) return null;
   return (
     <>
-      <h2>טבלת מועדונים</h2>
+      <h2>{tt('טבלת מועדונים')}</h2>
       <div className="card" style={{ overflow: 'auto' }}>
-        <table><thead><tr><th>#</th><th>מועדון</th><th>שחקנים</th><th>משחקים</th><th>ניצחונות</th></tr></thead><tbody>
+        <table><thead><tr><th>#</th><th>{tt('מועדון')}</th><th>{tt('שחקנים')}</th><th>{tt('משחקים')}</th><th>{tt('ניצחונות')}</th></tr></thead><tbody>
           {list.map(([c, r], i) => <tr key={c}><td>{i + 1}</td><td>{c}</td><td>{r.players}</td><td>{r.played}</td><td><strong>{r.wins}</strong></td></tr>)}
         </tbody></table>
       </div>
@@ -114,6 +118,7 @@ function ClubTable({ d }: { d: Detail }) {
 }
 
 async function Entries({ d, manage }: { d: Detail; manage: boolean }) {
+  const tt = await tr();
   const { t, cats, ents } = d;
   if (!manage) {
     return (
@@ -122,17 +127,17 @@ async function Entries({ d, manage }: { d: Detail; manage: boolean }) {
           const list = ents.filter((x) => x.e.categoryId === c.id && x.e.status === 'CONFIRMED');
           return (
             <section key={c.id}>
-              <h2>{c.name} <span className="muted" style={{ fontWeight: 400 }}>· {list.length} משתתפים</span></h2>
+              <h2>{c.name} <span className="muted" style={{ fontWeight: 400 }}>· {list.length} {tt('משתתפים')}</span></h2>
               <div className="card" style={{ overflow: 'auto' }}>
-                <table><thead><tr><th>#</th><th>שחקן</th><th>מועדון</th></tr></thead><tbody>
+                <table><thead><tr><th>#</th><th>{tt('שחקן')}</th><th>{tt('מועדון')}</th></tr></thead><tbody>
                   {list.map(({ p, club }, i) => <tr key={p.id}><td>{i + 1}</td><td><Link href={`/players/${p.id}`}>{p.firstName} {p.lastName}</Link></td><td>{club ?? '—'}</td></tr>)}
                 </tbody></table>
-                {!list.length && <p className="muted">אין עדיין משתתפים מאושרים.</p>}
+                {!list.length && <p className="muted">{tt('אין עדיין משתתפים מאושרים.')}</p>}
               </div>
             </section>
           );
         })}
-        {!cats.length && <div className="card muted">אין קטגוריות.</div>}
+        {!cats.length && <div className="card muted">{tt('אין קטגוריות.')}</div>}
       </>
     );
   }
@@ -220,6 +225,7 @@ function Bracket({ d, categoryId, slotsKey }: { d: Detail; categoryId: string; s
 }
 
 async function DrawTab({ d, manage }: { d: Detail; manage: boolean }) {
+  const tt = await tr();
   const { t, cats } = d;
   const canDraw = ['REGISTRATION_CLOSED', 'DRAWN'].includes(t.status);
   return (
@@ -230,11 +236,11 @@ async function DrawTab({ d, manage }: { d: Detail; manage: boolean }) {
         const fmt = formatOf(c, t);
         const tables = fmt !== 'KNOCKOUT' && dr ? await groupStandings(db, c.id) : [];
         const anyResult = d.ms.some((m) => m.categoryId === c.id && m.status !== 'SCHEDULED');
-        if (!manage && !dr?.publishedAt) return <section key={c.id}><h2>{c.name}</h2><div className="card muted">ההגרלה טרם פורסמה.</div></section>;
+        if (!manage && !dr?.publishedAt) return <section key={c.id}><h2>{c.name}</h2><div className="card muted">{tt('ההגרלה טרם פורסמה.')}</div></section>;
         const slots = (dr?.slots ?? []) as { entryId: string | null; seed?: number }[];
         return (
           <section key={c.id} className="grid">
-            <h2>{c.name} <span className="muted" style={{ fontWeight: 400 }}>· {FORMAT[fmt]}</span></h2>
+            <h2>{c.name} <span className="muted" style={{ fontWeight: 400 }}>· {tt(FORMAT[fmt] ?? '')}</span></h2>
             {manage && canDraw && !anyResult && (
               <form action={drawAction} className="card row">
                 <input type="hidden" name="id" value={t.id} /><input type="hidden" name="category" value={c.id} /><input type="hidden" name="op" value="run" />
@@ -246,7 +252,7 @@ async function DrawTab({ d, manage }: { d: Detail; manage: boolean }) {
             {manage && dr && <div className="muted">קוד הגרלה {dr.code} · חוקים {dr.ruleSetKey} v{dr.ruleSetVersion} · {dr.publishedAt ? 'פורסמה' : 'טרם פורסמה'}</div>}
             {dr && fmt === 'KNOCKOUT' && (
               <div className="card" style={{ overflow: 'auto' }}>
-                <table><thead><tr><th>#</th><th>שחקן</th><th>זריעה</th></tr></thead><tbody>
+                <table><thead><tr><th>#</th><th>{tt('שחקן')}</th><th>{tt('זריעה')}</th></tr></thead><tbody>
                   {slots.map((s, i) => <tr key={i}><td>{i + 1}</td><td>{s.entryId ? d.names.get(s.entryId) : <span className="muted">BYE</span>}</td><td>{s.seed ?? ''}</td></tr>)}
                 </tbody></table>
               </div>
@@ -263,7 +269,7 @@ async function DrawTab({ d, manage }: { d: Detail; manage: boolean }) {
             {tables.map((g) => (
               <div key={g.groupId} className="card" style={{ overflow: 'auto' }}>
                 <strong>{g.name}</strong>
-                <table><thead><tr><th>#</th><th>שחקן</th><th>מש׳</th><th>נצ׳</th><th>הפ׳</th><th>סטים</th><th>גיימים</th></tr></thead><tbody>
+                <table><thead><tr><th>#</th><th>{tt('שחקן')}</th><th>{tt('מש׳')}</th><th>{tt('נצ׳')}</th><th>{tt('הפ׳')}</th><th>{tt('סטים')}</th><th>{tt('גיימים')}</th></tr></thead><tbody>
                   {g.standings.map((s) => <tr key={s.id}><td>{s.rank}</td><td>{d.names.get(s.id)}</td><td>{s.played}</td><td>{s.wins}</td><td>{s.losses}</td><td>{s.setsFor}–{s.setsAgainst}</td><td>{s.gamesFor}–{s.gamesAgainst}</td></tr>)}
                 </tbody></table>
               </div>
@@ -288,20 +294,21 @@ async function DrawTab({ d, manage }: { d: Detail; manage: boolean }) {
   );
 }
 
-function Results({ d, scorer }: { d: Detail; scorer: boolean }) {
-  const nm = (id: string | null) => (id ? d.names.get(id) ?? '?' : 'טרם נקבע');
+async function Results({ d, scorer }: { d: Detail; scorer: boolean }) {
+  const tt = await tr();
+  const nm = (id: string | null) => (id ? d.names.get(id) ?? '?' : tt('טרם נקבע'));
   return (
     <>
       {d.cats.map((c) => (
         <section key={c.id}>
           <h2>{c.name}</h2>
           <div className="card" style={{ overflow: 'auto' }}>
-            <table><thead><tr><th>שלב</th><th>משחק</th><th>תוצאה</th><th>מגרש / שעה</th><th /></tr></thead><tbody>
+            <table><thead><tr><th>{tt('שלב')}</th><th>{tt('משחק')}</th><th>{tt('תוצאה')}</th><th>{tt('מגרש / שעה')}</th><th /></tr></thead><tbody>
               {d.ms.filter((m) => m.categoryId === c.id).map((m) => (
                 <tr key={m.id}>
-                  <td>{m.stage === 'GROUP' ? `בית · מחזור ${m.round}` : `הדחה · סיבוב ${m.round}`}</td>
+                  <td>{m.stage === 'GROUP' ? `${tt('בית')} · ${tt('מחזור')} ${m.round}` : `${tt('הדחה')} · ${tt('סיבוב')} ${m.round}`}</td>
                   <td>{nm(m.aEntryId)} – {nm(m.bEntryId)}</td>
-                  <td>{m.status === 'SCHEDULED' ? <span className="pill warn">{MSTATUS[m.status]}</span> : <span className="pill ok">{MSTATUS[m.status]}{m.status === 'COMPLETED' ? ` ${fmtScore(m.sets as { a: number; b: number }[])}` : ''}</span>}</td>
+                  <td>{m.status === 'SCHEDULED' ? <span className="pill warn">{tt(MSTATUS[m.status] ?? '')}</span> : <span className="pill ok">{tt(MSTATUS[m.status] ?? '')}{m.status === 'COMPLETED' ? ` ${fmtScore(m.sets as { a: number; b: number }[])}` : ''}</span>}</td>
                   <td>{m.courtLabel ? `מגרש ${m.courtLabel} · ${fmtTime(m.scheduledStart)}` : '—'}</td>
                   <td>{m.aEntryId && m.bEntryId && <Link className="btn small ghost" href={`/matches/${m.id}`}>{scorer ? (m.status === 'SCHEDULED' ? 'הזנת תוצאה' : 'עריכה') : 'פרטים'}</Link>}</td>
                 </tr>
@@ -315,6 +322,7 @@ function Results({ d, scorer }: { d: Detail; scorer: boolean }) {
 }
 
 async function Schedule({ d, manage }: { d: Detail; manage: boolean }) {
+  const tt = await tr();
   const { t } = d;
   const labels = await listCourtLabels(db, t.id);
   const nm = (id: string | null) => (id ? d.names.get(id) ?? '?' : 'טרם נקבע');
@@ -324,11 +332,11 @@ async function Schedule({ d, manage }: { d: Detail; manage: boolean }) {
     const dated = d.ms.filter((m) => m.scheduledStart && m.aEntryId && m.bEntryId).sort((a, b) => +a.scheduledStart! - +b.scheduledStart!);
     return (
       <div className="card" style={{ overflow: 'auto' }}>
-        <Link className="btn small ghost" href={`/tournaments/${t.id}/print`}>גרסה להדפסה</Link>
-        <table><thead><tr><th>שעה</th><th>מגרש</th><th>משחק</th><th>סטטוס</th></tr></thead><tbody>
-          {dated.map((m) => <tr key={m.id}><td>{fmtTime(m.scheduledStart)}</td><td>{m.courtLabel ?? '—'}</td><td><Link href={`/matches/${m.id}`}>{nm(m.aEntryId)} – {nm(m.bEntryId)}</Link></td><td>{MSTATUS[m.status]}</td></tr>)}
+        <Link className="btn small ghost" href={`/tournaments/${t.id}/print`}>{tt('גרסה להדפסה')}</Link>
+        <table><thead><tr><th>{tt('שעה')}</th><th>{tt('מגרש')}</th><th>{tt('משחק')}</th><th>{tt('סטטוס')}</th></tr></thead><tbody>
+          {dated.map((m) => <tr key={m.id}><td>{fmtTime(m.scheduledStart)}</td><td>{m.courtLabel ?? '—'}</td><td><Link href={`/matches/${m.id}`}>{nm(m.aEntryId)} – {nm(m.bEntryId)}</Link></td><td>{tt(MSTATUS[m.status] ?? '')}</td></tr>)}
         </tbody></table>
-        {!dated.length && <p className="muted">הלוח טרם פורסם.</p>}
+        {!dated.length && <p className="muted">{tt('הלוח טרם פורסם.')}</p>}
       </div>
     );
   }
