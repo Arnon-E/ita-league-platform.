@@ -265,6 +265,14 @@ export const notificationPrefs = pgTable('notification_prefs', {
   enabled: boolean('enabled').notNull().default(true),
 }, (t) => [uniqueIndex('pref_uq').on(t.userId, t.channel, t.kind)]);
 
+export const deviceTokens = pgTable('device_tokens', {
+  id: id(),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  token: text('token').notNull().unique(),
+  platform: text('platform').notNull(), // ios | android | web
+  createdAt: createdAt(),
+});
+
 export const auditLog = pgTable('audit_log', {
   id: id(),
   userId: text('user_id'),
