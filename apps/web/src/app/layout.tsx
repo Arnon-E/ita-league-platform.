@@ -2,6 +2,7 @@ import './globals.css';
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 
+export const dynamic = 'force-dynamic';
 export const metadata: Metadata = { title: 'איגוד הטניס — ניהול ליגות', description: 'רישום, הגרלות, תוצאות ודירוג' };
 
 export default function Root({ children }: { children: ReactNode }) {

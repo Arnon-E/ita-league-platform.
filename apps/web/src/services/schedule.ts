@@ -6,6 +6,7 @@ import { assertCan } from '@/lib/permissions';
 import type { Actor } from '@/lib/auth';
 import { audit } from './audit';
 import { listCourtLabels, scopeFor } from './tournaments';
+import { notifyPlayer } from './notifications';
 
 const { matches, categories, entries, tournaments } = schema;
 const MIN = 60000;
@@ -78,6 +79,16 @@ export async function autoSchedule(db: Db, actor: Actor, tournamentId: string, o
       await tx.update(matches).set({ courtLabel: a.courtId.split('\u0000')[0] as string, scheduledStart: toDate(a.start) }).where(eq(matches.id, a.matchId));
     }
   });
+  for (const a of res.assignments) {
+    const m = open.find((x) => x.id === a.matchId);
+    if (!m) continue;
+    const changed = !m.scheduledStart || m.scheduledStart.getTime() !== toDate(a.start).getTime() || m.courtLabel !== (a.courtId.split('\u0000')[0] as string);
+    if (!changed) continue;
+    for (const e of [m.aEntryId, m.bEntryId]) {
+      const pid = e ? pmap.get(e) : undefined;
+      if (pid) await notifyPlayer(db, pid, 'match.scheduled', 'שובץ משחק', `מגרש ${a.courtId.split('\u0000')[0]} · ${toDate(a.start).toLocaleString('he-IL', { weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}`);
+    }
+  }
   await audit(db, actor, 'schedule.auto', 'tournament', tournamentId, { assigned: res.assignments.length, unassigned: res.unassigned.length, conflicts: res.conflicts.length });
   return {
     assigned: res.assignments.length,

@@ -5,6 +5,7 @@ import { assertCan } from '@/lib/permissions';
 import type { Actor } from '@/lib/auth';
 import { audit } from './audit';
 import { scopeFor } from './tournaments';
+import { notifyPlayer } from './notifications';
 
 const { entries, categories, tournaments, players, documents, groupMembers, guardians } = schema;
 
@@ -73,6 +74,7 @@ export async function confirmEntry(db: Db, actor: Actor | null, entryId: string,
   const status = c.capacity && confirmed.length >= c.capacity ? 'WAITLIST' : 'CONFIRMED';
   await db.update(entries).set({ status }).where(eq(entries.id, entryId));
   await audit(db, actor, 'entry.confirm', 'entry', entryId, { status, override: !!opts.override });
+  await notifyPlayer(db, e.playerId, 'entry.confirm', status === 'CONFIRMED' ? 'ההרשמה אושרה' : 'נוספת לרשימת המתנה', `${t.name} · ${c.name}`);
   return status;
 }
 

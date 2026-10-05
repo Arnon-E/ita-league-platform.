@@ -11,6 +11,7 @@ import { audit } from './audit';
 import { loadRuleSet } from './rules';
 import { rankMap } from './rankings';
 import { scopeFor } from './tournaments';
+import { notifyPlayer } from './notifications';
 
 const { categories, tournaments, entries, players, clubs, draws, drawLogs, groups, groupMembers, matches } = schema;
 
@@ -168,6 +169,8 @@ export async function publishDraw(db: Db, actor: Actor, categoryId: string) {
   if (!d) throw new Error('לא בוצעה הגרלה');
   await db.update(draws).set({ publishedAt: new Date() }).where(eq(draws.id, d.id));
   await db.insert(drawLogs).values({ drawId: d.id, userId: actor.id, action: 'PUBLISH' });
+  const ents = await db.select().from(entries).where(and(eq(entries.categoryId, categoryId), eq(entries.status, 'CONFIRMED')));
+  for (const e of ents) await notifyPlayer(db, e.playerId, 'draw.published', 'ההגרלה פורסמה', `${t.name} — ניתן לראות את הטבלה באתר`);
   await audit(db, actor, 'draw.publish', 'category', categoryId);
 }
 

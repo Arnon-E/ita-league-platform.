@@ -24,6 +24,7 @@ export default async function Login({ searchParams }: { searchParams: Promise<{ 
         <label>אימייל<input name="email" type="email" required autoComplete="username" /></label>
         <label>סיסמה<input name="password" type="password" required autoComplete="current-password" /></label>
         <button className="btn">כניסה</button>
+        <a className="muted" href="/register">אין חשבון? הרשמה</a>
       </form>
     </main>
   );
