@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { db } from '@/db';
 import { Shell } from '@/components/Shell';
+import { FollowButton } from '@/components/FollowButton';
 import { playerProfile } from '@/services/public';
 import { ensureDefaultRuleSet, loadRuleSet } from '@/services/rules';
 import { rankingFor } from '@/services/rankings';
@@ -19,7 +20,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
   const catOf = new Map(ents.map((x) => [x.c.id, x]));
   return (
     <Shell nav="players">
-      <h1>{p.firstName} {p.lastName}</h1>
+      <div className="row" style={{ justifyContent: 'space-between' }}><h1>{p.firstName} {p.lastName}</h1><FollowButton kind="PLAYER" target={p.id} back={`/players/${p.id}`} /></div>
       <p className="muted">{club ? <>מועדון: {p.clubId ? <Link href={`/clubs/${p.clubId}`}><u>{club}</u></Link> : club} · </> : ''}{GENDER[p.gender]} · גיל {age}</p>
       <div className="grid cols" style={{ marginTop: 12 }}>
         <div className="card"><div className="muted">דירוג</div><strong style={{ fontSize: 28 }}>{mine ? `#${mine.rank}` : '—'}</strong></div>

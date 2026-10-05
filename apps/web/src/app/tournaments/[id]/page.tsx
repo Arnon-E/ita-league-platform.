@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { db, schema } from '@/db';
 import { getActor } from '@/lib/session';
 import { Flash, Shell } from '@/components/Shell';
+import { FollowButton } from '@/components/FollowButton';
 import { tournamentDetail, playersNotIn } from '@/services/queries';
 import { groupStandings } from '@/services/results';
 import { listCourtLabels } from '@/services/tournaments';
@@ -33,7 +34,7 @@ export default async function TournamentPage({ params, searchParams }: { params:
     <Shell nav="home">
       <div className="row" style={{ justifyContent: 'space-between' }}>
         <div><h1>{t.name}</h1><span className="muted">{t.startDate.toLocaleDateString('he-IL')} – {t.endDate.toLocaleDateString('he-IL')} · {FORMAT[t.format]}</span></div>
-        <span className={`pill ${cls}`}>{st}</span>
+        <div className="row"><FollowButton kind="TOURNAMENT" target={t.id} back={`/tournaments/${t.id}`} /><span className={`pill ${cls}`}>{st}</span></div>
       </div>
       <nav className="tabs">{TABS.map(([k, l]) => <Link key={k} href={`/tournaments/${id}?tab=${k}`} className={tab === k ? 'on' : ''}>{l}</Link>)}</nav>
       <Flash err={err} ok={ok} />

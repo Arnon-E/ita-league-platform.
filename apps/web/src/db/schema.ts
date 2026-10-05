@@ -250,6 +250,15 @@ export const ledger = pgTable('ledger', {
   createdAt: createdAt(),
 });
 
+/** Fans: a user follows a player, a club or a tournament and gets notified about schedule changes and results. */
+export const follows = pgTable('follows', {
+  id: id(),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  kind: text('kind').notNull(), // PLAYER | CLUB | TOURNAMENT
+  targetId: text('target_id').notNull(),
+  createdAt: createdAt(),
+}, (t) => [uniqueIndex('follow_uq').on(t.userId, t.kind, t.targetId), index('follow_target_idx').on(t.kind, t.targetId)]);
+
 export const notifications = pgTable('notifications', {
   id: id(),
   userId: text('user_id').notNull().references(() => users.id),

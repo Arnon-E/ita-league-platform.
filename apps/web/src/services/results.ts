@@ -8,6 +8,7 @@ import { schema } from '@/db';
 import { assertCan } from '@/lib/permissions';
 import type { Actor } from '@/lib/auth';
 import { audit } from './audit';
+import { notifyFollowers } from './follows';
 import { loadRuleSet } from './rules';
 import { roundKey, type PointsTable } from './rankings';
 import { scopeFor } from './tournaments';
@@ -93,6 +94,14 @@ export async function recordResult(db: Db, actor: Actor, matchId: string, input:
     if (t.status === 'DRAWN') await tx.update(tournaments).set({ status: 'IN_PROGRESS' }).where(eq(tournaments.id, t.id));
   });
   await audit(db, actor, correcting ? 'result.correct' : 'result.enter', 'match', matchId, { status: input.status, sets, winner, category: c.name });
+  {
+    const pe = await db.select({ id: schema.entries.id, p: schema.entries.playerId }).from(schema.entries).where(inArray(schema.entries.id, [m.aEntryId, m.bEntryId]));
+    const pids = pe.map((x) => x.p);
+    const names = await db.select({ id: schema.players.id, n: schema.players.firstName, l: schema.players.lastName }).from(schema.players).where(inArray(schema.players.id, pids));
+    const nm = new Map(pe.map((x) => { const p = names.find((y) => y.id === x.p); return [x.id, p ? `${p.n} ${p.l}` : '?'] as const; }));
+    const line = `${nm.get(m.aEntryId)} – ${nm.get(m.bEntryId)}${input.status === 'COMPLETED' ? ` · ${sets.map((x) => `${x.a}-${x.b}`).join(' ')}` : ''}`;
+    await notifyFollowers(db, { players: pids, tournamentId: t.id }, 'match.result', `תוצאה: ${c.name}`, line);
+  }
   return { winnerEntryId: winner };
 }
 

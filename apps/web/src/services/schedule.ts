@@ -7,6 +7,7 @@ import type { Actor } from '@/lib/auth';
 import { audit } from './audit';
 import { listCourtLabels, scopeFor } from './tournaments';
 import { notifyPlayer } from './notifications';
+import { notifyFollowers } from './follows';
 
 const { matches, categories, entries, tournaments } = schema;
 const MIN = 60000;
@@ -137,6 +138,16 @@ export async function setMatchSlot(db: Db, actor: Actor, matchId: string, input:
       if (fs.some((f) => f.scheduledStart && f.scheduledStart.getTime() + f.durationMin * MIN > s)) throw new Error('המשחק מתחיל לפני שהמשחק הקודם בעץ מסתיים');
     }
     await db.update(matches).set({ scheduleKind: 'EXACT', courtLabel: input.courtLabel, scheduledStart: input.start }).where(eq(matches.id, matchId));
+    const moved = !!m.scheduledStart && (m.scheduledStart.getTime() !== input.start.getTime() || m.courtLabel !== input.courtLabel);
+    const when = input.start.toLocaleString('he-IL', { weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+    const title = moved ? 'שינוי במועד המשחק' : 'שובץ משחק';
+    const body = `מגרש ${input.courtLabel} · ${when}`;
+    if (moved || !m.scheduledStart) {
+      const pm2 = await playersOf(db, mine);
+      const pids = [...new Set(mine.map((x) => pm2.get(x)).filter((x): x is string => !!x))];
+      for (const pid of pids) await notifyPlayer(db, pid, moved ? 'match.rescheduled' : 'match.scheduled', title, body);
+      await notifyFollowers(db, { players: pids, tournamentId: t.id, exclude: pids }, 'match.rescheduled', title, body);
+    }
   }
   await audit(db, actor, 'schedule.set', 'match', matchId, input);
 }

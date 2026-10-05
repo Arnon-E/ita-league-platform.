@@ -2,10 +2,12 @@ import Link from 'next/link';
 import { db } from '@/db';
 import { Shell } from '@/components/Shell';
 import { sql } from 'drizzle-orm';
+import { tr } from '@/lib/i18n';
 
 type Row = { id: string; name: string; club: string | null; played: number; wins: number };
 
 export default async function Stats() {
+  const tt = await tr();
   // Per player: matches with a winner, and how many they won. A player's entries are per category.
   const players = (await db.execute(sql`
     select p.id, p.first_name || ' ' || p.last_name as name, c.name as club,
@@ -26,22 +28,22 @@ export default async function Stats() {
   const t = totals[0]!;
   return (
     <Shell nav="stats">
-      <h1>סטטיסטיקות</h1>
+      <h1>{tt('סטטיסטיקות')}</h1>
       <div className="grid cols" style={{ marginTop: 12 }}>
-        <div className="card"><div className="muted">תחרויות</div><strong style={{ fontSize: 28 }}>{t.tournaments}</strong></div>
-        <div className="card"><div className="muted">שחקנים</div><strong style={{ fontSize: 28 }}>{t.players}</strong></div>
-        <div className="card"><div className="muted">משחקים שהסתיימו</div><strong style={{ fontSize: 28 }}>{t.matches}</strong></div>
+        <div className="card"><div className="muted">{tt('תחרויות')}</div><strong style={{ fontSize: 28 }}>{t.tournaments}</strong></div>
+        <div className="card"><div className="muted">{tt('שחקנים')}</div><strong style={{ fontSize: 28 }}>{t.players}</strong></div>
+        <div className="card"><div className="muted">{tt('משחקים שהסתיימו')}</div><strong style={{ fontSize: 28 }}>{t.matches}</strong></div>
       </div>
-      <h2>מובילים בניצחונות</h2>
+      <h2>{tt('מובילים בניצחונות')}</h2>
       <div className="card" style={{ overflow: 'auto' }}>
-        <table><thead><tr><th>#</th><th>שחקן</th><th>מועדון</th><th>משחקים</th><th>ניצחונות</th><th>אחוז</th></tr></thead><tbody>
+        <table><thead><tr><th>#</th><th>{tt('שחקן')}</th><th>{tt('מועדון')}</th><th>{tt('משחקים')}</th><th>{tt('ניצחונות')}</th><th>{tt('אחוז')}</th></tr></thead><tbody>
           {players.map((p, i) => <tr key={p.id}><td>{i + 1}</td><td><Link href={`/players/${p.id}`}>{p.name}</Link></td><td>{p.club ?? '—'}</td><td>{p.played}</td><td><strong>{p.wins}</strong></td><td>{Math.round((100 * p.wins) / p.played)}%</td></tr>)}
         </tbody></table>
-        {!players.length && <p className="muted">אין עדיין משחקים שהסתיימו.</p>}
+        {!players.length && <p className="muted">{tt('אין עדיין משחקים שהסתיימו.')}</p>}
       </div>
-      <h2>מועדונים גדולים</h2>
+      <h2>{tt('מועדונים גדולים')}</h2>
       <div className="card" style={{ overflow: 'auto' }}>
-        <table><thead><tr><th>מועדון</th><th>שחקנים</th></tr></thead><tbody>
+        <table><thead><tr><th>{tt('מועדון')}</th><th>{tt('שחקנים')}</th></tr></thead><tbody>
           {clubs.map((c) => <tr key={c.id}><td><Link href={`/clubs/${c.id}`}>{c.name}</Link></td><td>{c.players}</td></tr>)}
         </tbody></table>
       </div>
