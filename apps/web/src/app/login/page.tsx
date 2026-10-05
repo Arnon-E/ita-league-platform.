@@ -2,6 +2,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { db } from '@/db';
 import { login, SESSION_COOKIE } from '@/lib/auth';
+import { getLang, tr } from '@/lib/i18n';
 
 async function doLogin(fd: FormData) {
   'use server';
@@ -15,16 +16,18 @@ const MSG: Record<string, string> = { invalid: 'אימייל או סיסמה ש�
 
 export default async function Login({ searchParams }: { searchParams: Promise<{ err?: string }> }) {
   const { err } = await searchParams;
+  const t = await tr();
+  const en = (await getLang()) === 'en';
   return (
-    <main style={{ maxWidth: 380, paddingTop: 80 }}>
-      <h1>כניסה</h1>
-      <p className="muted">איגוד הטניס בישראל</p>
-      {err && <div className="err" role="alert">{MSG[err] ?? 'שגיאה'}</div>}
+    <main dir={en ? 'ltr' : 'rtl'} style={{ maxWidth: 380, paddingTop: 80 }}>
+      <h1>{t('כניסה')}</h1>
+      <p className="muted">{t('איגוד הטניס בישראל')}</p>
+      {err && <div className="err" role="alert">{t(MSG[err] ?? 'שגיאה')}</div>}
       <form action={doLogin} className="card grid">
-        <label>אימייל<input name="email" type="email" required autoComplete="username" /></label>
-        <label>סיסמה<input name="password" type="password" required autoComplete="current-password" /></label>
-        <button className="btn">כניסה</button>
-        <a className="muted" href="/register">אין חשבון? הרשמה</a>
+        <label>{t('אימייל')}<input name="email" type="email" required autoComplete="username" /></label>
+        <label>{t('סיסמה')}<input name="password" type="password" required autoComplete="current-password" /></label>
+        <button className="btn">{t('כניסה')}</button>
+        <a className="muted" href="/register">{t('אין חשבון? הרשמה')}</a>
       </form>
     </main>
   );
