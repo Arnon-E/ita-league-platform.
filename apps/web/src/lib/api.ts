@@ -18,3 +18,12 @@ export async function handle(req: Request, fn: (actor: Actor) => Promise<unknown
     return Response.json({ error: e instanceof Error ? e.message : 'error' }, { status: 400 });
   }
 }
+
+/** Read-only endpoints open to everyone (the public site shows the same data). */
+export async function handlePublic(fn: () => Promise<unknown>): Promise<Response> {
+  try {
+    return Response.json(await fn());
+  } catch (e) {
+    return Response.json({ error: e instanceof Error ? e.message : 'error' }, { status: 400 });
+  }
+}

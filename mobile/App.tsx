@@ -20,12 +20,15 @@ I18nManager.forceRTL(true);
 
 const C = { navy: '#0B2545', blue: '#14427A', bg: '#F3F5F7', line: '#DDE3EA' };
 
+type Tab = 't' | 'live' | 'rank' | 'players' | 'me';
+const TABS: [Tab, string][] = [['t', 'תחרויות'], ['live', 'משחקים'], ['rank', 'דירוג'], ['players', 'שחקנים'], ['me', 'חשבון']];
+
 export default function App() {
   const [ready, setReady] = useState(false);
   const [authed, setAuthed] = useState(false);
   useEffect(() => { api.loadToken().then((t) => { setAuthed(!!t); setReady(true); }); }, []);
   if (!ready) return <ActivityIndicator style={{ flex: 1 }} />;
-  return <SafeAreaView style={s.screen}>{authed ? <Home onLogout={() => api.logout().then(() => setAuthed(false))} /> : <Login onDone={() => setAuthed(true)} />}</SafeAreaView>;
+  return <SafeAreaView style={s.screen}><Home authed={authed} setAuthed={setAuthed} /></SafeAreaView>;
 }
 
 function Login({ onDone }: { onDone: () => void }) {
@@ -41,22 +44,103 @@ function Login({ onDone }: { onDone: () => void }) {
   );
 }
 
-function Home({ onLogout }: { onLogout: () => void }) {
-  const [list, setList] = useState<{ id: string; name: string; status: string }[]>([]);
-  const [inbox, setInbox] = useState<{ id: string; title: string; body: string }[]>([]);
-  useEffect(() => { registerPush(); api.me().then((m) => setInbox(m.notifications.slice(0, 3))).catch(() => {}); }, []);
+function Home({ authed, setAuthed }: { authed: boolean; setAuthed: (v: boolean) => void }) {
+  const [tab, setTab] = useState<Tab>('t');
   const [open, setOpen] = useState<string | null>(null);
-  useEffect(() => { api.tournaments().then(setList).catch(() => {}); }, []);
-  const [tab, setTab] = useState<'t' | 'me'>('t');
-  if (open) return <Tournament id={open} onBack={() => setOpen(null)} />;
-  if (tab === 'me') return <MyArea onBack={() => setTab('t')} />;
+  useEffect(() => { if (authed) registerPush(); }, [authed]);
+  return (
+    <View style={{ flex: 1 }}>
+      <View style={{ flex: 1 }}>
+        {open ? <Tournament id={open} onBack={() => setOpen(null)} />
+          : tab === 't' ? <TournamentList onOpen={setOpen} />
+          : tab === 'live' ? <Live />
+          : tab === 'rank' ? <Rankings />
+          : tab === 'players' ? <Players />
+          : authed ? <MyArea onLogout={() => api.logout().then(() => setAuthed(false))} /> : <Login onDone={() => setAuthed(true)} />}
+      </View>
+      <View style={s.tabbar}>
+        {TABS.map(([k, l]) => <Pressable key={k} style={s.tab} onPress={() => { setOpen(null); setTab(k); }}><Text style={[s.tabT, tab === k && !open && s.tabOn]}>{l}</Text></Pressable>)}
+      </View>
+    </View>
+  );
+}
+
+function useLoad<T>(fn: () => Promise<T>, deps: unknown[] = []) {
+  const [data, setData] = useState<T | null>(null); const [err, setErr] = useState(''); const [busy, setBusy] = useState(true);
+  const load = () => { setBusy(true); setErr(''); fn().then(setData).catch((e) => setErr(e.message)).finally(() => setBusy(false)); };
+  useEffect(load, deps);
+  return { data, err, busy, reload: load };
+}
+
+function Status({ err, busy, empty }: { err: string; busy: boolean; empty?: string | false }) {
+  if (busy) return <ActivityIndicator style={{ margin: 16 }} />;
+  if (err) return <Text style={s.err}>{err}</Text>;
+  return empty ? <Text style={s.muted}>{empty}</Text> : null;
+}
+
+const STATUS_HE: Record<string, string> = { DRAFT: 'טיוטה', REGISTRATION_OPEN: 'הרשמה פתוחה', REGISTRATION_CLOSED: 'הרשמה סגורה', DRAWN: 'הוגרלה', IN_PROGRESS: 'מתקיימת', FINISHED: 'הסתיימה', CANCELLED: 'בוטלה' };
+
+function TournamentList({ onOpen }: { onOpen: (id: string) => void }) {
+  const { data, err, busy, reload } = useLoad(api.tournaments);
   return (
     <View style={s.pad}>
-      <View style={s.row}><Text style={s.h1}>תחרויות</Text><Pressable onPress={() => setTab('me')}><Text style={s.b}>האזור שלי</Text></Pressable><Pressable onPress={onLogout}><Text>יציאה</Text></Pressable></View>
-      {inbox.map((n) => <View key={n.id} style={s.card}><Text style={s.b}>{n.title}</Text><Text>{n.body}</Text></View>)}
-      <FlatList data={list} keyExtractor={(t) => t.id} renderItem={({ item }) => (
-        <Pressable style={s.card} onPress={() => setOpen(item.id)}><Text style={s.b}>{item.name}</Text><Text>{item.status}</Text></Pressable>
+      <Text style={s.h1}>תחרויות</Text>
+      <Status err={err} busy={busy} empty={!!data && !data.length && 'אין עדיין תחרויות'} />
+      <FlatList data={data ?? []} keyExtractor={(t) => t.id} onRefresh={reload} refreshing={false} renderItem={({ item }) => (
+        <Pressable style={s.card} onPress={() => onOpen(item.id)}><Text style={s.b}>{item.name}</Text><Text style={s.muted}>{STATUS_HE[item.status] ?? item.status}</Text></Pressable>
       )} />
+    </View>
+  );
+}
+
+const fmtSets = (sets: { a: number; b: number }[]) => (sets ?? []).map((x) => `${x.a}-${x.b}`).join('  ');
+
+function FeedCard({ r }: { r: api.FeedRow }) {
+  return (
+    <View style={s.card}>
+      <Text style={s.b}>{r.a} – {r.b}</Text>
+      <Text style={s.muted}>{r.tournament} · {r.category}</Text>
+      <Text>{r.status === 'SCHEDULED' ? `${r.court ? `מגרש ${r.court} · ` : ''}${r.start ? new Date(r.start).toLocaleString('he-IL', { weekday: 'short', hour: '2-digit', minute: '2-digit' }) : ''}` : fmtSets(r.sets)}</Text>
+    </View>
+  );
+}
+
+function Live() {
+  const { data, err, busy, reload } = useLoad(api.live);
+  const rows = [...(data?.upcoming ?? []).map((r) => ['u' + r.id, r] as const), ...(data?.results ?? []).map((r) => ['r' + r.id, r] as const)];
+  return (
+    <View style={s.pad}>
+      <Text style={s.h1}>משחקים</Text>
+      <Status err={err} busy={busy} empty={!!data && !rows.length && 'אין משחקים להצגה'} />
+      <FlatList data={rows} keyExtractor={(x) => x[0]} onRefresh={reload} refreshing={false} renderItem={({ item }) => <FeedCard r={item[1]} />} />
+    </View>
+  );
+}
+
+function Rankings() {
+  const [g, setG] = useState<'MALE' | 'FEMALE'>('MALE');
+  const { data, err, busy } = useLoad(() => api.rankings(g), [g]);
+  return (
+    <View style={s.pad}>
+      <Text style={s.h1}>דירוג</Text>
+      <View style={s.row}>{([['MALE', 'בנים/גברים'], ['FEMALE', 'בנות/נשים']] as const).map(([k, l]) => <Pressable key={k} style={[s.chip, g === k && s.chipOn]} onPress={() => setG(k)}><Text style={g === k ? s.chipOnT : s.b}>{l}</Text></Pressable>)}</View>
+      <Status err={err} busy={busy} empty={!!data && !data.length && 'אין עדיין נתוני דירוג'} />
+      <FlatList data={data ?? []} keyExtractor={(r) => r.playerId} renderItem={({ item }) => (
+        <View style={[s.card, s.row]}><Text style={s.num}>{item.rank}</Text><Text style={[s.b, { flex: 1 }]}>{item.name}</Text><Text style={s.b}>{item.points}</Text></View>
+      )} />
+    </View>
+  );
+}
+
+function Players() {
+  const [q, setQ] = useState('');
+  const { data, err, busy } = useLoad(() => api.players(q), [q]);
+  return (
+    <View style={s.pad}>
+      <Text style={s.h1}>שחקנים</Text>
+      <TextInput style={s.input} placeholder="חיפוש לפי שם" value={q} onChangeText={setQ} />
+      <Status err={err} busy={busy} empty={!!data && !data.length && 'לא נמצאו שחקנים'} />
+      <FlatList data={data ?? []} keyExtractor={(p) => p.id} renderItem={({ item }) => <View style={s.card}><Text style={s.b}>{item.name}</Text><Text style={s.muted}>{item.club ?? ''}</Text></View>} />
     </View>
   );
 }
@@ -72,9 +156,9 @@ function Tournament({ id, onBack }: { id: string; onBack: () => void }) {
       <Pressable onPress={onBack}><Text>← חזרה</Text></Pressable>
       <Text style={s.h1}>{d?.tournament.name}</Text>
       <FlatList data={d?.matches ?? []} keyExtractor={(m) => m.id} renderItem={({ item: m }) => (
-        <Pressable style={s.card} disabled={!m.a.id || !m.b.id} onPress={() => setScore(m)}>
+        <Pressable style={s.card} disabled={!m.a.id || !m.b.id || !api.canScore()} onPress={() => setScore(m)}>
           <Text style={s.b}>{m.a.name ?? 'טרם נקבע'} – {m.b.name ?? 'טרם נקבע'}</Text>
-          <Text>{m.status === 'SCHEDULED' ? (m.court ? `מגרש ${m.court}` : 'טרם שובץ') : 'הסתיים'}</Text>
+          <Text>{m.status === 'SCHEDULED' ? (m.court ? `מגרש ${m.court}` : 'טרם שובץ') : `הסתיים ${fmtSets(m.sets)}`}</Text>
         </Pressable>
       )} />
     </View>
@@ -83,7 +167,7 @@ function Tournament({ id, onBack }: { id: string; onBack: () => void }) {
 
 const DOCS: [string, string][] = [['ID_PHOTO', 'תמונת ת״ז'], ['MEDICAL_CERTIFICATE', 'אישור רפואי'], ['PARENT_CONSENT', 'אישור הורים']];
 
-function MyArea({ onBack }: { onBack: () => void }) {
+function MyArea({ onLogout }: { onLogout: () => void }) {
   const [d, setD] = useState<Awaited<ReturnType<typeof api.me>> | null>(null);
   const [open, setOpen] = useState<Awaited<ReturnType<typeof api.openCategories>>>([]);
   const [msg, setMsg] = useState(''); const [err, setErr] = useState('');
@@ -100,8 +184,7 @@ function MyArea({ onBack }: { onBack: () => void }) {
   const pay = (entryId: string) => api.checkout(entryId).then((r) => Linking.openURL(r.url)).catch((e) => setErr(e.message));
   return (
     <ScrollView contentContainerStyle={s.pad}>
-      <Pressable onPress={onBack}><Text>← חזרה</Text></Pressable>
-      <Text style={s.h1}>האזור שלי</Text>
+      <View style={s.row}><Text style={s.h1}>האזור שלי</Text><Pressable onPress={onLogout}><Text style={s.b}>יציאה</Text></Pressable></View>
       {!!err && <Text style={s.err}>{err}</Text>}{!!msg && <Text style={s.ok}>{msg}</Text>}
       {d?.players.map((p) => (
         <View key={p.id} style={s.card}>
@@ -168,5 +251,9 @@ const s = StyleSheet.create({
   link: { minHeight: 44, justifyContent: 'center' }, linkT: { color: C.blue, fontWeight: '700' },
   err: { backgroundColor: '#FBE4E4', color: '#9B1C1C', padding: 10, borderRadius: 10 },
   stp: { width: 48, height: 48, borderRadius: 12, borderWidth: 1, borderColor: '#BCC8D6', alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff' }, stpT: { fontSize: 24, fontWeight: '700' },
+  muted: { color: '#55657A' },
+  tabbar: { flexDirection: 'row', borderTopWidth: 1, borderColor: C.line, backgroundColor: '#fff' }, tab: { flex: 1, minHeight: 52, alignItems: 'center', justifyContent: 'center' },
+  tabT: { color: '#55657A', fontWeight: '600', fontSize: 13 }, tabOn: { color: C.blue, fontWeight: '800' },
+  chip: { paddingHorizontal: 14, minHeight: 40, borderRadius: 20, borderWidth: 1, borderColor: '#BCC8D6', alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff' }, chipOn: { backgroundColor: C.blue, borderColor: C.blue }, chipOnT: { color: '#fff', fontWeight: '700' },
   num: { width: 32, textAlign: 'center', fontSize: 28, fontWeight: '800' },
 });

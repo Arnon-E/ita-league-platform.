@@ -4,8 +4,12 @@ import * as SecureStore from 'expo-secure-store';
 const BASE = (Constants.expoConfig?.extra as { apiUrl: string }).apiUrl;
 let token: string | null = null;
 
-export async function loadToken() { token = await SecureStore.getItemAsync('ita_token'); return token; }
-export async function logout() { token = null; await SecureStore.deleteItemAsync('ita_token'); }
+let role: string | null = null;
+export async function loadToken() { token = await SecureStore.getItemAsync('ita_token'); role = await SecureStore.getItemAsync('ita_role'); return token; }
+export async function logout() { token = null; role = null; await SecureStore.deleteItemAsync('ita_token'); await SecureStore.deleteItemAsync('ita_role'); }
+export const isAuthed = () => !!token;
+/** Roles allowed to enter results (the server enforces this too). */
+export const canScore = () => ['SUPER_ADMIN', 'FEDERATION_ADMIN', 'TOURNAMENT_MANAGER', 'REFEREE'].includes(role ?? '');
 
 async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
   const res = await fetch(`${BASE}/api/v1${path}`, { ...init, headers: { 'content-type': 'application/json', ...(token ? { authorization: `Bearer ${token}` } : {}), ...(init.headers ?? {}) } });
@@ -16,11 +20,11 @@ async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
 
 export async function login(email: string, password: string) {
   const r = await call<{ token: string; user: { name: string; role: string } }>('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) });
-  token = r.token; await SecureStore.setItemAsync('ita_token', r.token);
+  token = r.token; role = r.user.role; await SecureStore.setItemAsync('ita_token', r.token); await SecureStore.setItemAsync('ita_role', r.user.role);
   return r.user;
 }
 
-export type Match = { id: string; categoryId: string; stage: string; round: number; status: string; a: { id: string | null; name: string | null }; b: { id: string | null; name: string | null }; court: string | null; start: string | null };
+export type Match = { id: string; categoryId: string; stage: string; round: number; status: string; a: { id: string | null; name: string | null }; b: { id: string | null; name: string | null }; court: string | null; start: string | null; sets: { a: number; b: number }[] };
 export const tournaments = () => call<{ id: string; name: string; status: string }[]>('/tournaments');
 export const tournament = (id: string) => call<{ tournament: { name: string }; matches: Match[] }>(`/tournaments/${id}`);
 export const me = () => call<{ players: { id: string; name: string; documents: { ok: boolean; missing: string[] } }[]; entries: { id: string; tournament: string; category: string; status: string; payment: string }[]; notifications: { id: string; title: string; body: string }[] }>('/me');
@@ -41,3 +45,8 @@ export async function uploadDocument(playerId: string, type: string, file: { uri
   if (!res.ok) throw new Error(body.error ?? `HTTP ${res.status}`);
   return body;
 }
+
+export type FeedRow = { id: string; tournament: string; category: string; status: string; a: string | null; b: string | null; sets: { a: number; b: number }[]; court: string | null; start: string | null };
+export const live = () => call<{ upcoming: FeedRow[]; results: FeedRow[] }>('/public/live');
+export const rankings = (g: 'MALE' | 'FEMALE') => call<{ playerId: string; rank: number; points: number; name: string }[]>(`/public/rankings?g=${g}`);
+export const players = (q: string) => call<{ id: string; name: string; club: string | null }[]>(`/public/players?q=${encodeURIComponent(q)}`);

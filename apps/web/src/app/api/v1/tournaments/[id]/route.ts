@@ -1,8 +1,8 @@
 import { db } from '@/db';
-import { handle } from '@/lib/api';
+import { handlePublic } from '@/lib/api';
 import { tournamentDetail } from '@/services/queries';
 
-export const GET = (req: Request, ctx: { params: Promise<{ id: string }> }) => handle(req, async () => {
+export const GET = (_req: Request, ctx: { params: Promise<{ id: string }> }) => handlePublic(async () => {
   const d = await tournamentDetail(db, (await ctx.params).id);
   if (!d) throw new Error('not found');
   const nm = (id: string | null) => (id ? d.names.get(id) ?? null : null);

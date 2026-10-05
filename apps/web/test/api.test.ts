@@ -14,7 +14,8 @@ describe('mobile API v1', () => {
   it('rejects anonymous, logs in, serves data with the bearer token, locks after 5 failures', async () => {
     const fed = await mkUser('FEDERATION_ADMIN', 'api@x.il');
     await createTournament(db, fed.actor, { name: 'T', startDate: new Date(), endDate: new Date() });
-    expect((await listRoute(new Request('http://x/api/v1/tournaments'))).status).toBe(401);
+    expect((await listRoute(new Request('http://x/api/v1/tournaments'))).status).toBe(200); // public read
+    expect((await meRoute(new Request('http://x/api/v1/me'))).status).toBe(401);
     const res = await loginRoute(json('http://x/api/v1/auth/login', { email: 'api@x.il', password: 'Passw0rd!!' }));
     expect(res.status).toBe(200);
     const { token } = await res.json() as { token: string };
@@ -24,7 +25,7 @@ describe('mobile API v1', () => {
     expect((await meRoute(new Request('http://x', h))).status).toBe(200);
     expect((await deviceRoute(json('http://x', { token: 'abc', platform: 'ios' }, token))).status).toBe(200);
     expect((await deviceRoute(json('http://x', { token: 'abc', platform: 'plan9' }, token))).status).toBe(400);
-    expect((await listRoute(new Request('http://x', { headers: { authorization: 'Bearer garbage' } }))).status).toBe(401);
+    expect((await meRoute(new Request('http://x', { headers: { authorization: 'Bearer garbage' } }))).status).toBe(401);
     let last = 0;
     for (let i = 0; i < 5; i++) last = (await loginRoute(json('http://x', { email: 'api@x.il', password: 'wrong-pass-1' }))).status;
     expect(last).toBe(423);
