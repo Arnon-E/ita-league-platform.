@@ -21,6 +21,8 @@ export interface RuleSet {
   ranking: { windowWeeks: number; bestSingles: number; bestDoubles: number };
   /** Base ranking points by round reached (W, F, SF, QF, R16..., G = group exit). */
   points: Record<string, number>;
+  /** Named points tables per tournament level (e.g. national grade 1 / 2), selectable per tournament. */
+  pointsTables: Record<string, Record<string, number>>;
   /** True only after the federation checked every number against its official documents. */
   verified: boolean;
 }
@@ -63,6 +65,11 @@ export const ITA_DEFAULT_RULESET: RuleSet = {
   },
   ranking: { windowWeeks: 52, bestSingles: 6, bestDoubles: 4 },
   points: { W: 100, F: 70, SF: 50, QF: 35, R16: 20, R32: 12, R64: 6, R128: 3, G: 5 },
+  // National youth tournaments, ITA youth procedures (Sep 2026, pp. 23-24, from an automatic summary: VERIFY).
+  pointsTables: {
+    NATIONAL_GRADE1: { W: 1000, F: 750, SF: 625, QF: 550, R16: 500, R32: 330, R64: 200 },
+    NATIONAL_GRADE2: { W: 750, F: 565, SF: 470, QF: 415, R16: 375, R32: 270, R64: 150 },
+  },
   verified: false,
 };
 

@@ -17,7 +17,7 @@ export interface CreateTournamentInput {
   name: string; startDate: Date; endDate: Date; venueId?: string;
   format?: 'KNOCKOUT' | 'GROUPS_KNOCKOUT' | 'ROUND_ROBIN';
   feeAgorot?: number; registrationOpens?: Date; registrationCloses?: Date;
-  setsToWin?: number; decider?: 'set' | 'superTb'; ruleSetId?: string;
+  setsToWin?: number; decider?: 'set' | 'superTb'; ruleSetId?: string; pointsTableKey?: string;
 }
 
 export async function createTournament(db: Db, actor: Actor, input: CreateTournamentInput) {

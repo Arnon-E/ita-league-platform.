@@ -23,3 +23,8 @@
 | 15 | מכפילי גיל | אין | לא צוטט | להחליט |
 
 מסמכים שטרם נקראו כלל: נהלי נוער ספטמבר 2026, נהלי ליגות בוגרים 2026, תקנון ליגה וגביע, תקנון סניורים, חוקי הטניס.
+
+## Added: walkover reasons and national-grade points (unverified until checked against the PDF)
+- Walkover/retirement reasons: NO_NOTICE (0 points, listed as no-show), NOTICE, NOTICE_MEDICAL and INJURY (points for the stage reached; medical-notice capped at 2 per year).
+- `pointsTables`: NATIONAL_GRADE1 / NATIONAL_GRADE2 selected per tournament (`pointsTableKey`).
+- Confirmed from summaries: seed tables for 16/32, group of 4, third-set tie-break to 10, no refund after the draw.

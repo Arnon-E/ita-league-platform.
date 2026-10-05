@@ -197,3 +197,35 @@ describe('permissions & registration', () => {
     expect(await confirmEntry(db, fed, e2.id)).toBe('WAITLIST');
   });
 });
+
+describe('ranking points by absence reason and national grade table', () => {
+  it('applies ITA walkover/retirement points rules and the selected points table', async () => {
+    const { actor: fed } = await mkUser('FEDERATION_ADMIN', `pt${Math.random()}@x.il`);
+    const t = await createTournament(db, fed, { name: 'ארצית', startDate: new Date('2026-11-01'), endDate: new Date('2026-11-03'), feeAgorot: 0, pointsTableKey: 'NATIONAL_GRADE2' });
+    await setTournamentCourts(db, fed, t.id, [{ label: '1' }]);
+    const cat = await addCategory(db, fed, t.id, { name: 'U16', gender: 'MALE' });
+    await setStatus(db, fed, t.id, 'REGISTRATION_OPEN');
+    const es: string[] = [];
+    for (let i = 0; i < 4; i++) { const p = await mkPlayer(`Q${i}`); es.push((await registerEntry(db, fed, cat.id, p.id)).id); }
+    for (const e of es) await confirmEntry(db, fed, e, { override: true });
+    await setStatus(db, fed, t.id, 'REGISTRATION_CLOSED');
+    await runDraw(db, fed, cat.id, { code: 5 });
+    const r1 = (await db.select().from(schema.matches).where(eq(schema.matches.categoryId, cat.id))).filter((m) => m.round === 1);
+    // match 1: no notice walkover (0 for absentee); match 2: medical-certified walkover (points for the round reached)
+    await recordResult(db, fed, r1[0]!.id, { status: 'WALKOVER', absentEntryId: r1[0]!.aEntryId!, reason: 'NO_NOTICE' });
+    await recordResult(db, fed, r1[1]!.id, { status: 'WALKOVER', absentEntryId: r1[1]!.aEntryId!, reason: 'NOTICE_MEDICAL' });
+    const final = (await db.select().from(schema.matches).where(eq(schema.matches.categoryId, cat.id))).find((m) => m.round === 2)!;
+    await recordResult(db, fed, final.id, { status: 'COMPLETED', sets: [{ a: 6, b: 1 }, { a: 6, b: 1 }] });
+    await awardPoints(db, fed, cat.id);
+    const pts = async (entry: string) => {
+      const pid = (await db.select().from(schema.entries).where(eq(schema.entries.id, entry)))[0]!.playerId;
+      return (await db.select().from(schema.pointsAwards).where(eq(schema.pointsAwards.playerId, pid)))[0]!.points;
+    };
+    const fin = (await db.select().from(schema.matches).where(eq(schema.matches.id, final.id)))[0]!;
+    expect(await pts(fin.winnerEntryId!)).toBe(750); // grade 2 winner
+    expect(await pts(r1[0]!.aEntryId!)).toBe(0); // no-show without notice
+    expect(await pts(r1[1]!.aEntryId!)).toBe(470); // notice + medical certificate: points for the semifinal round reached
+    const log = (await db.select().from(schema.auditLog).where(eq(schema.auditLog.action, 'points.award')))[0]!;
+    expect(JSON.stringify(log.detail)).toContain('noShowPlayers');
+  });
+});

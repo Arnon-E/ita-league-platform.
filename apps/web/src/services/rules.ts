@@ -7,7 +7,7 @@ const { ruleSets } = schema;
 
 /** The serialisable part of a rule set. Functions (seedCount) come from the default. */
 export function serialize(r: RuleSet) {
-  return { seedTiers: r.seedTiers, tieBreakOrder: r.tieBreakOrder, group: r.group, refund: r.refund, ranking: r.ranking, points: r.points, verified: r.verified };
+  return { seedTiers: r.seedTiers, tieBreakOrder: r.tieBreakOrder, group: r.group, refund: r.refund, ranking: r.ranking, points: r.points, pointsTables: r.pointsTables, verified: r.verified };
 }
 
 export function hydrate(key: string, version: number, data: ReturnType<typeof serialize>): RuleSet {
@@ -25,6 +25,7 @@ const RuleDataSchema = z.object({
   refund: z.object({ beforeRegistrationClose: z.number().min(0).max(1), afterCloseBeforeDraw: z.number().min(0).max(1), afterDraw: z.number().min(0).max(1), medicalCertificateOverride: z.boolean() }),
   ranking: z.object({ windowWeeks: z.number().int().positive(), bestSingles: z.number().int().min(0), bestDoubles: z.number().int().min(0) }),
   points: z.record(z.string(), z.number().min(0)),
+  pointsTables: z.record(z.string(), z.record(z.string(), z.number().min(0))).default({}),
   verified: z.boolean(),
 });
 

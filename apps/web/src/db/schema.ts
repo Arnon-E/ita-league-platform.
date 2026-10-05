@@ -100,6 +100,8 @@ export const tournaments = pgTable('tournaments', {
   registrationCloses: timestamp('registration_closes', { withTimezone: true }),
   feeAgorot: integer('fee_agorot').notNull().default(0),
   refundPolicy: jsonb('refund_policy'),
+  /** Key into the rule set's pointsTables; 'DEFAULT' uses rules.points. */
+  pointsTableKey: text('points_table_key').notNull().default('DEFAULT'),
   createdAt: createdAt(),
 });
 
@@ -193,6 +195,8 @@ export const matches = pgTable('matches', {
   status: matchStatusEnum('status').notNull().default('SCHEDULED'),
   sets: jsonb('sets').notNull().default([]),
   absentEntryId: text('absent_entry_id'),
+  /** NO_NOTICE | NOTICE | NOTICE_MEDICAL | INJURY | NON_INJURY (decides points and discipline). */
+  absentReason: text('absent_reason'),
   winnerEntryId: text('winner_entry_id'),
   durationMin: integer('duration_min').notNull().default(90),
   /** Previous matches (KO feeders) that must finish first. */

@@ -11,6 +11,7 @@ export function ScoreForm({ matchId, tournamentId, a, b, decider, setsToWin, ini
 }) {
   const max = setsToWin * 2 - 1;
   const [mode, setMode] = useState<'COMPLETED' | 'RETIRED' | 'WALKOVER'>(status === 'WALKOVER' || status === 'RETIRED' ? status : 'COMPLETED');
+  const [reason, setReason] = useState(status === 'RETIRED' ? 'INJURY' : 'NOTICE');
   const [absentId, setAbsentId] = useState(absent ?? b.id);
   const [g, setG] = useState<S[]>(() => Array.from({ length: max }, (_, i) => initial[i] ?? { a: 0, b: 0 }));
   const bump = (i: number, side: 'a' | 'b', d: number) =>
@@ -50,6 +51,16 @@ export function ScoreForm({ matchId, tournamentId, a, b, decider, setsToWin, ini
           <button key={k} type="button" className={`btn ${mode === k ? '' : 'ghost'}`} style={{ flex: 1 }} onClick={() => setMode(k)}>{l}</button>
         ))}
       </div>
+      {mode !== 'COMPLETED' && <input type="hidden" name="reason" value={reason} />}
+      {mode !== 'COMPLETED' && (
+        <label>{mode === 'WALKOVER' ? 'נסיבות ההיעדרות (משפיע על ניקוד)' : 'סיבת הפרישה (משפיעה על ניקוד)'}
+          <select value={reason} onChange={(e) => setReason(e.target.value)}>
+            {mode === 'WALKOVER'
+              ? [['NO_NOTICE', 'לא הגיע ללא הודעה (ללא ניקוד)'], ['NOTICE', 'הודיע מראש ללא אישור רפואי (ללא ניקוד)'], ['NOTICE_MEDICAL', 'הודיע מראש + אישור רפואי (ניקוד לשלב, עד פעמיים בשנה)']].map(([k, l]) => <option key={k} value={k}>{l}</option>)
+              : [['INJURY', 'פציעה במהלך המשחק (ניקוד לשלב)'], ['NON_INJURY', 'ללא פציעה (ללא ניקוד)']].map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+          </select>
+        </label>
+      )}
       {mode !== 'COMPLETED' && (
         <label>{mode === 'WALKOVER' ? 'מי לא הגיע?' : 'מי פרש?'}
           <select value={absentId} onChange={(e) => setAbsentId(e.target.value)}><option value={a.id}>{a.name}</option><option value={b.id}>{b.name}</option></select>

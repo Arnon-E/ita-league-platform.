@@ -1,4 +1,4 @@
-import { and, eq, inArray, sql } from 'drizzle-orm';
+import { and, eq, gte, inArray, sql } from 'drizzle-orm';
 import {
   advancers, computeStandings, resolveCompleted, roundName,
   type MatchFormat, type MatchResult, type SetScore, type Standing, type GroupConfig,
@@ -25,6 +25,8 @@ export interface ResultInput {
   sets?: SetScore[];
   /** The player who did not show up (walkover) or retired. */
   absentEntryId?: string;
+  /** Why the player was absent / retired. Decides ranking points and discipline (ITA youth procedures 6.4-6.6). */
+  reason?: 'NO_NOTICE' | 'NOTICE' | 'NOTICE_MEDICAL' | 'INJURY' | 'NON_INJURY';
 }
 
 const fmtOf = (t: { setsToWin: number; decider: string }): MatchFormat => ({ setsToWin: t.setsToWin, decider: t.decider === 'set' ? 'set' : 'superTb' });
@@ -84,6 +86,7 @@ export async function recordResult(db: Db, actor: Actor, matchId: string, input:
     if (m.stage === 'KO' && m.winnerEntryId && m.winnerEntryId !== winner) await clearFrom(tx, m.categoryId, m.round, m.index);
     await tx.update(matches).set({
       status: input.status, sets: sets as never, winnerEntryId: winner, absentEntryId: input.absentEntryId ?? null,
+      absentReason: input.status === 'COMPLETED' ? null : (input.reason ?? (input.status === 'WALKOVER' ? 'NOTICE' : 'NON_INJURY')),
       updatedAt: new Date(), updatedById: actor.id,
     }).where(eq(matches.id, matchId));
     if (m.stage === 'KO') await propagate(tx, m.categoryId, m.round, m.index, winner);
@@ -178,19 +181,22 @@ export async function awardPoints(db: Db, actor: Actor, categoryId: string, tabl
   if (!row) throw new Error('Category not found');
   const { c, t } = row;
   assertCan(actor, 'ranking.recalculate', await scopeFor(db, actor, t.id));
-  const table = tableOverride ?? (await loadRuleSet(db, t.ruleSetId)).points;
+  const rs = await loadRuleSet(db, t.ruleSetId);
+  const table = tableOverride ?? (t.pointsTableKey !== 'DEFAULT' ? rs.pointsTables?.[t.pointsTableKey] : undefined) ?? rs.points;
   const ms = await db.select().from(matches).where(eq(matches.categoryId, categoryId));
   const ko = ms.filter((m) => m.stage === 'KO');
   const maxRound = ko.reduce((x, m) => Math.max(x, m.round), 0);
   const reached = new Map<string, string>(); // entryId -> key
   const zero = new Set<string>();
+  const flagged: string[] = [];
+  const absences: { entry: string; reason: string; round: number }[] = [];
 
   for (const m of ms.filter((x) => x.stage === 'GROUP')) {
     for (const e of [m.aEntryId, m.bEntryId]) if (e && !reached.has(e)) reached.set(e, 'G');
   }
   for (const m of ko.sort((a, b) => a.round - b.round)) {
     for (const e of [m.aEntryId, m.bEntryId]) if (e) reached.set(e, roundKey(maxRound - m.round));
-    if (m.status === 'WALKOVER' && m.absentEntryId) zero.add(m.absentEntryId);
+    if (m.absentEntryId) absences.push({ entry: m.absentEntryId, reason: m.absentReason ?? 'NOTICE', round: m.round });
   }
   const final = ko.find((m) => m.round === maxRound);
   if (final?.winnerEntryId) reached.set(final.winnerEntryId, 'W');
@@ -201,6 +207,22 @@ export async function awardPoints(db: Db, actor: Actor, categoryId: string, tabl
 
   const ids = [...reached.keys()];
   if (!ids.length) return { awarded: 0 };
+  const entryPlayer = new Map((await db.select({ e: entries.id, p: entries.playerId }).from(entries).where(inArray(entries.id, ids))).map((r) => [r.e, r.p]));
+  const yearAgo = new Date(t.endDate.getTime() - 365 * 86400000);
+  for (const ab of absences) {
+    // ITA youth procedures: no-show without notice, or notice without a medical certificate -> no points;
+    // notice + medical certificate (max twice a year) or injury during play -> points for the stage reached;
+    // leaving mid-tournament without injury -> no points.
+    let pays = ab.reason === 'NOTICE_MEDICAL' || ab.reason === 'INJURY';
+    if (ab.reason === 'NOTICE_MEDICAL') {
+      const pid = entryPlayer.get(ab.entry);
+      const prior = pid ? await db.select({ id: matches.id }).from(matches).innerJoin(entries, eq(entries.id, matches.absentEntryId))
+        .where(and(eq(entries.playerId, pid), eq(matches.absentReason, 'NOTICE_MEDICAL'), gte(matches.updatedAt, yearAgo))) : [];
+      if (prior.length > 2) pays = false;
+    }
+    if (!pays) zero.add(ab.entry);
+    if (ab.reason === 'NO_NOTICE') flagged.push(ab.entry);
+  }
   const rows = await db.select({ e: entries.id, p: players.id }).from(entries).innerJoin(players, eq(players.id, entries.playerId)).where(inArray(entries.id, ids));
   const date = t.endDate;
   let awarded = 0;
@@ -212,7 +234,7 @@ export async function awardPoints(db: Db, actor: Actor, categoryId: string, tabl
     }).onConflictDoUpdate({ target: pointsAwards.logligKey, set: { points: pts, multiplier, date } });
     awarded++;
   }
-  await audit(db, actor, 'points.award', 'category', categoryId, { awarded });
+  await audit(db, actor, 'points.award', 'category', categoryId, { awarded, noShowPlayers: flagged.map((e) => entryPlayer.get(e)) });
   return { awarded };
 }
 

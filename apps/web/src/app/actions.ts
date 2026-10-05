@@ -24,7 +24,7 @@ export async function createTournamentAction(fd: FormData) {
   try {
     const t = await createTournament(db, a, {
       name: s(fd, 'name'), startDate: d(fd, 'start'), endDate: d(fd, 'end'), feeAgorot: Math.round(n(fd, 'fee') * 100),
-      format: s(fd, 'format') as 'KNOCKOUT', setsToWin: 2, decider: 'superTb',
+      format: s(fd, 'format') as 'KNOCKOUT', setsToWin: 2, decider: 'superTb', pointsTableKey: s(fd, 'points') || 'DEFAULT',
     });
     id = t.id;
   } catch (e) {
@@ -132,7 +132,7 @@ export async function resultAction(fd: FormData) {
     }
     await recordResult(db, a, match, mode === 'COMPLETED'
       ? { status: 'COMPLETED', sets }
-      : { status: mode as 'WALKOVER', ...(mode === 'RETIRED' ? { sets } : {}), absentEntryId: s(fd, 'absent') });
+      : { status: mode as 'WALKOVER', ...(mode === 'RETIRED' ? { sets } : {}), absentEntryId: s(fd, 'absent'), reason: s(fd, 'reason') as 'NOTICE' });
     revalidatePath(`/tournaments/${tid}`);
     return 'התוצאה נשמרה';
   });
