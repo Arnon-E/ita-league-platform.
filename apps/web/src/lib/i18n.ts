@@ -77,6 +77,9 @@ const EN: Record<string, string> = {
   'פתוח': 'Open',
   'ליגה (כולם נגד כולם)': 'Round robin',
   'בתים + הדחה': 'Groups + knockout',
+  '← חזרה לתחרות': '← Back to tournament', 'בית, מחזור': 'Group, round', 'הדחה, סיבוב': 'Knockout, round', 'הטוב מ-3 סטים': 'Best of 3 sets',
+  ', הכרעה בסופר-טייברייק': ', deciding set is a super tiebreak', 'טרם התחיל': 'Not started', 'משחק חי · הדף מתרענן אוטומטית': 'Live match · this page refreshes automatically',
+  'מנצח/ת:': 'Winner:', 'המשחק עדיין לא מוכן: ממתין לסיום משחקים קודמים.': 'Match not ready yet: waiting for earlier matches to finish.', 'משחק חי': 'Live match',
   'כללי': 'Overall', 'עד גיל': 'Under', 'סינון': 'Filter',
   'תוצאות': 'Results', 'מועדון: ': 'Club: ', 'ניצחון': 'Win', 'הפסד': 'Loss', 'טרם שוחק': 'Not played', 'הסתיים': 'Completed',
 };
