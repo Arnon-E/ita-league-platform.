@@ -173,11 +173,12 @@ export async function advanceToKnockout(db: Db, actor: Actor, categoryId: string
  * Awards ranking points for a category from the round each player reached.
  * Idempotent (keyed by tournament/category/player). A player who loses by walkover gets 0.
  */
-export async function awardPoints(db: Db, actor: Actor, categoryId: string, table: PointsTable = DEFAULT_POINTS, multiplier = 1) {
+export async function awardPoints(db: Db, actor: Actor, categoryId: string, tableOverride?: PointsTable, multiplier = 1) {
   const [row] = await db.select({ c: categories, t: tournaments }).from(categories).innerJoin(tournaments, eq(tournaments.id, categories.tournamentId)).where(eq(categories.id, categoryId));
   if (!row) throw new Error('Category not found');
   const { c, t } = row;
   assertCan(actor, 'ranking.recalculate', await scopeFor(db, actor, t.id));
+  const table = tableOverride ?? (await loadRuleSet(db, t.ruleSetId)).points;
   const ms = await db.select().from(matches).where(eq(matches.categoryId, categoryId));
   const ko = ms.filter((m) => m.stage === 'KO');
   const maxRound = ko.reduce((x, m) => Math.max(x, m.round), 0);

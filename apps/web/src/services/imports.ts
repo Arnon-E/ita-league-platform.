@@ -47,9 +47,12 @@ export interface ImportReport { created: number; updated: number; skipped: numbe
  * `dryRun` validates and reports without writing.
  */
 export async function importPlayersCsv(db: Db, actor: Actor, csv: string, opts: { dryRun?: boolean } = {}): Promise<ImportReport> {
+  return importPlayerRows(db, actor, parseCsv(csv), opts);
+}
+
+export async function importPlayerRows(db: Db, actor: Actor, rows: Record<string, string>[], opts: { dryRun?: boolean } = {}): Promise<ImportReport> {
   assertCan(actor, 'import.run');
   const rep: ImportReport = { created: 0, updated: 0, skipped: 0, errors: [] };
-  const rows = parseCsv(csv);
   for (const [i, r] of rows.entries()) {
     const n = i + 2;
     const first = pick(r, 'first_name', 'שם פרטי'); const last = pick(r, 'last_name', 'שם משפחה');
@@ -86,9 +89,13 @@ export async function importPlayersCsv(db: Db, actor: Actor, csv: string, opts: 
 
 /** Imports historical ranking points. Idempotent per (loglig_player_id, tournament, date). Columns: loglig_id, tournament, date, points, multiplier, kind. */
 export async function importPointsCsv(db: Db, actor: Actor, csv: string, opts: { dryRun?: boolean } = {}): Promise<ImportReport> {
+  return importPointRows(db, actor, parseCsv(csv), opts);
+}
+
+export async function importPointRows(db: Db, actor: Actor, rows: Record<string, string>[], opts: { dryRun?: boolean } = {}): Promise<ImportReport> {
   assertCan(actor, 'import.run');
   const rep: ImportReport = { created: 0, updated: 0, skipped: 0, errors: [] };
-  for (const [i, r] of parseCsv(csv).entries()) {
+  for (const [i, r] of rows.entries()) {
     const n = i + 2;
     const lid = pick(r, 'loglig_id', 'מזהה לוגליג');
     const date = parseDate(pick(r, 'date', 'תאריך'));

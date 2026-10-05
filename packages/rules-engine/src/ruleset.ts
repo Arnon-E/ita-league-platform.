@@ -19,6 +19,10 @@ export interface RuleSet {
   };
   refund: RefundPolicy;
   ranking: { windowWeeks: number; bestSingles: number; bestDoubles: number };
+  /** Base ranking points by round reached (W, F, SF, QF, R16..., G = group exit). */
+  points: Record<string, number>;
+  /** True only after the federation checked every number against its official documents. */
+  verified: boolean;
 }
 
 export type TieBreakKey = 'wins' | 'headToHead' | 'setDiff' | 'gameDiff' | 'draw';
@@ -58,6 +62,8 @@ export const ITA_DEFAULT_RULESET: RuleSet = {
     medicalCertificateOverride: false,
   },
   ranking: { windowWeeks: 52, bestSingles: 6, bestDoubles: 4 },
+  points: { W: 100, F: 70, SF: 50, QF: 35, R16: 20, R32: 12, R64: 6, R128: 3, G: 5 },
+  verified: false,
 };
 
 export function sortBySeedOrder(entrants: readonly Entrant[]): Entrant[] {

@@ -1,6 +1,17 @@
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, I18nManager, Pressable, SafeAreaView, StyleSheet, Text, TextInput, View } from 'react-native';
+import * as Notifications from 'expo-notifications';
+import { Platform } from 'react-native';
 import * as api from './src/api';
+
+async function registerPush() {
+  try {
+    const perm = await Notifications.requestPermissionsAsync();
+    if (!perm.granted) return;
+    const t = await Notifications.getExpoPushTokenAsync();
+    await api.registerDevice(t.data, Platform.OS === 'ios' ? 'ios' : 'android');
+  } catch { /* push is optional: the in-app inbox still works */ }
+}
 
 I18nManager.allowRTL(true);
 I18nManager.forceRTL(true);
@@ -30,12 +41,15 @@ function Login({ onDone }: { onDone: () => void }) {
 
 function Home({ onLogout }: { onLogout: () => void }) {
   const [list, setList] = useState<{ id: string; name: string; status: string }[]>([]);
+  const [inbox, setInbox] = useState<{ id: string; title: string; body: string }[]>([]);
+  useEffect(() => { registerPush(); api.me().then((m) => setInbox(m.notifications.slice(0, 3))).catch(() => {}); }, []);
   const [open, setOpen] = useState<string | null>(null);
   useEffect(() => { api.tournaments().then(setList).catch(() => {}); }, []);
   if (open) return <Tournament id={open} onBack={() => setOpen(null)} />;
   return (
     <View style={s.pad}>
       <View style={s.row}><Text style={s.h1}>תחרויות</Text><Pressable onPress={onLogout}><Text>יציאה</Text></Pressable></View>
+      {inbox.map((n) => <View key={n.id} style={s.card}><Text style={s.b}>{n.title}</Text><Text>{n.body}</Text></View>)}
       <FlatList data={list} keyExtractor={(t) => t.id} renderItem={({ item }) => (
         <Pressable style={s.card} onPress={() => setOpen(item.id)}><Text style={s.b}>{item.name}</Text><Text>{item.status}</Text></Pressable>
       )} />

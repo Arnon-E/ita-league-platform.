@@ -35,3 +35,43 @@ describe('refunds', () => {
     expect(led.reduce((a, x) => a + x.amountAgorot, 0)).toBe(0);
   });
 });
+
+import { parseRuleData, serialize, hydrate } from '@/services/rules';
+import { ITA_DEFAULT_RULESET } from '@ita/rules-engine';
+
+describe('rule set editing', () => {
+  it('round-trips and rejects invalid seed tables', () => {
+    const good = JSON.stringify(serialize(ITA_DEFAULT_RULESET));
+    const parsed = parseRuleData(good);
+    expect(hydrate('k', 2, parsed).points.W).toBe(100);
+    const bad = JSON.parse(good); bad.seedTiers['8'] = [[1], [9]];
+    expect(() => parseRuleData(JSON.stringify(bad))).toThrow('גדול');
+    const dup = JSON.parse(good); dup.seedTiers['8'] = [[1], [1]];
+    expect(() => parseRuleData(JSON.stringify(dup))).toThrow('פעמיים');
+    const neg = JSON.parse(good); neg.refund.afterDraw = 2;
+    expect(() => parseRuleData(JSON.stringify(neg))).toThrow();
+  });
+});
+
+import { createHmac } from 'node:crypto';
+import { createCheckoutSession, refundPaymentIntent, verifyStripeSignature } from '@/lib/stripe';
+
+describe('stripe adapter', () => {
+  it('verifies signatures with a replay window and builds correct API calls', async () => {
+    const raw = '{"a":1}'; const t = 1_700_000_000;
+    const v1 = createHmac('sha256', 'whsec_x').update(`${t}.${raw}`).digest('hex');
+    expect(verifyStripeSignature(raw, `t=${t},v1=${v1}`, 'whsec_x', t * 1000)).toBe(true);
+    expect(verifyStripeSignature(raw, `t=${t},v1=${v1}`, 'whsec_x', (t + 301) * 1000)).toBe(false);
+    expect(verifyStripeSignature('{"a":2}', `t=${t},v1=${v1}`, 'whsec_x', t * 1000)).toBe(false);
+    const seen: { url: string; body: string }[] = [];
+    const f = (async (url: string, init: RequestInit) => { seen.push({ url, body: String(init.body) }); return new Response(JSON.stringify({ id: 'cs_1', url: 'https://pay/x' }), { status: 200 }); }) as unknown as typeof fetch;
+    const r = await createCheckoutSession('sk', { entryId: 'e1', amountAgorot: 15000, description: 'T', successUrl: 's', cancelUrl: 'c' }, f);
+    expect(r.url).toBe('https://pay/x');
+    expect(seen[0]!.body).toContain('unit_amount%5D=15000');
+    expect(seen[0]!.body).toContain('ils');
+    await refundPaymentIntent('sk', 'pi_1', 500, f);
+    expect(seen[1]!.url).toContain('/refunds');
+    const bad = (async () => new Response(JSON.stringify({ error: { message: 'nope' } }), { status: 402 })) as unknown as typeof fetch;
+    await expect(refundPaymentIntent('sk', 'pi_1', 500, bad)).rejects.toThrow('nope');
+  });
+});

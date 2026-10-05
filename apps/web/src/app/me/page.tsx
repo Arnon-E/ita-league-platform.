@@ -5,6 +5,7 @@ import { requireActor } from '@/lib/session';
 import { ownedPlayerIds, checkDocuments } from '@/services/entries';
 import { inbox } from '@/services/notifications';
 import { signedUrl } from '@/lib/storage';
+import { payAction } from '@/app/actions3';
 import { addPlayerAction, selfRegisterAction, uploadDocAction } from '@/app/actions2';
 
 const DOC: Record<string, string> = { ID_PHOTO: 'תמונת ת״ז', PARENT_CONSENT: 'אישור הורים', MEDICAL_CERTIFICATE: 'אישור רפואי', OTHER: 'אחר' };
@@ -53,7 +54,7 @@ export default async function Me({ searchParams }: { searchParams: Promise<{ err
         </section>
       ))}
       <h2>הרשמות שלי</h2>
-      <div className="card">{ents.length ? ents.map(({ e, c, t }) => <div key={e.id} className="row"><strong>{t.name}</strong><span className="muted">{c.name}</span><span className="pill">{e.status}</span><span className="pill">{e.paymentStatus}</span></div>) : <span className="muted">אין הרשמות.</span>}</div>
+      <div className="card">{ents.length ? ents.map(({ e, c, t }) => <div key={e.id} className="row"><strong>{t.name}</strong><span className="muted">{c.name}</span><span className="pill">{e.status}</span><span className="pill">{e.paymentStatus}</span>{e.paymentStatus === 'UNPAID' && t.feeAgorot > 0 && <form action={payAction}><input type="hidden" name="entry" value={e.id} /><button className="btn small">תשלום ₪{(t.feeAgorot / 100).toFixed(0)}</button></form>}</div>) : <span className="muted">אין הרשמות.</span>}</div>
       <h2>הוספת שחקן</h2>
       <form action={addPlayerAction} className="card row">
         <label>שם פרטי<input name="first" required /></label><label>שם משפחה<input name="last" required /></label>

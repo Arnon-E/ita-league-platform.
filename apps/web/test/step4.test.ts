@@ -125,3 +125,64 @@ describe('payment webhook', () => {
     expect(fed).toBeTruthy();
   });
 });
+
+import { buildSenders } from '@/lib/senders';
+
+describe('delivery drivers', () => {
+  it('calls the email, sms and push providers with the right payloads and fails visibly on errors', async () => {
+    const u = await mkUser('PLAYER', 'drv@x.il');
+    await db.update(schema.users).set({ phone: '+972501234567' }).where(eq(schema.users.id, u.actor.id));
+    await db.insert(schema.deviceTokens).values({ userId: u.actor.id, token: 'ExponentPushToken[abc]', platform: 'ios' });
+    const calls: { url: string; body: string; auth?: string }[] = [];
+    let fail = false;
+    const fakeFetch = (async (url: string, init: RequestInit) => {
+      calls.push({ url, body: String(init.body), auth: (init.headers as Record<string, string>).authorization });
+      return new Response(fail ? 'boom' : '{}', { status: fail ? 500 : 200 });
+    }) as unknown as typeof fetch;
+    const s = buildSenders(db, { RESEND_API_KEY: 'k', EMAIL_FROM: 'a@b.il', TWILIO_SID: 'AC1', TWILIO_TOKEN: 't', TWILIO_FROM: '+1555' }, fakeFetch);
+    const n = { id: 'n', userId: u.actor.id, channel: 'EMAIL', kind: 'x', title: '<b>כותרת</b>', body: 'גוף', status: 'QUEUED', attempts: 0, readAt: null, createdAt: new Date() } as never;
+    await s.EMAIL!(n); await s.SMS!(n); await s.PUSH!(n);
+    expect(calls.map((c) => new URL(c.url).hostname)).toEqual(['api.resend.com', 'api.twilio.com', 'exp.host']);
+    expect(calls[0]!.body).toContain('drv@x.il');
+    expect(calls[0]!.body).toContain('&lt;b&gt;');
+    expect(calls[1]!.body).toContain('%2B972501234567');
+    expect(calls[2]!.body).toContain('ExponentPushToken[abc]');
+    fail = true;
+    await expect(s.EMAIL!(n)).rejects.toThrow('email failed');
+    expect(buildSenders(db, {}, fakeFetch).EMAIL).toBeUndefined();
+  });
+});
+
+import { assertSingleSelect, importFromLogligDb } from '@/services/loglig-db';
+import { sql as dsql } from 'drizzle-orm';
+
+describe('loglig direct DB import', () => {
+  it('only allows a single read-only SELECT', () => {
+    expect(assertSingleSelect('select 1;')).toBe('select 1');
+    expect(() => assertSingleSelect('delete from x')).toThrow();
+    expect(() => assertSingleSelect('select 1; drop table x')).toThrow();
+    expect(() => assertSingleSelect("select * from t where note = 'drop' ")).not.toThrow();
+    expect(() => assertSingleSelect('select * from (update x set a=1 returning *) q')).toThrow();
+  });
+
+  it('imports players and points straight from another database and is idempotent', async () => {
+    const fed = (await mkUser('FEDERATION_ADMIN', 'ldb@x.il')).actor;
+    await db.execute(dsql`create table if not exists src_players (pid int, fn text, ln text, dob date, sex text, club text, nid text)`);
+    await db.execute(dsql`create table if not exists src_points (pid int, tname text, tdate date, pts numeric)`);
+    await db.execute(dsql`truncate src_players, src_points`);
+    await db.execute(dsql`insert into src_players values (9001,'שרה','כהן','2010-05-05','female','חיפה',null),(9002,'דן','לוי','2009-01-01','male','אשדוד',null)`);
+    await db.execute(dsql`insert into src_points values (9001,'אליפות','2026-06-01',70)`);
+    const url = 'postgresql://postgres@localhost:5432/ita_test';
+    const playersSql = 'select pid as loglig_id, fn as first_name, ln as last_name, dob as birth_date, sex as gender, club, nid as id_number from src_players';
+    const pointsSql = 'select pid as loglig_id, tname as tournament, tdate as date, pts as points from src_points';
+    const dry = await importFromLogligDb(db, fed, { url, playersSql, pointsSql, dryRun: true });
+    expect(dry.players!.created).toBe(2);
+    const r1 = await importFromLogligDb(db, fed, { url, playersSql, pointsSql });
+    expect(r1.players).toMatchObject({ created: 2, updated: 0, errors: [] });
+    expect(r1.points).toMatchObject({ created: 1, errors: [] });
+    const r2 = await importFromLogligDb(db, fed, { url, playersSql, pointsSql });
+    expect(r2.players).toMatchObject({ created: 0, updated: 2 });
+    await expect(importFromLogligDb(db, fed, { url, playersSql: 'delete from src_players' })).rejects.toThrow();
+    await expect(importFromLogligDb(db, fed, { url: 'http://x', playersSql })).rejects.toThrow();
+  });
+});

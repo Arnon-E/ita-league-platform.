@@ -46,3 +46,44 @@ export async function refundAction(fd: FormData) {
     return 'ההחזר נרשם';
   });
 }
+
+import { assertCan } from '@/lib/permissions';
+import { parseRuleData, hydrate, latestRuleSet } from '@/services/rules';
+import { publishRuleSetVersion } from '@/services/rules';
+import { audit } from '@/services/audit';
+
+export async function publishRulesAction(fd: FormData) {
+  const a = await requireActor();
+  await guarded('/admin/rules', async () => {
+    assertCan(a, 'ruleset.manage');
+    const data = parseRuleData(s(fd, 'json'));
+    const cur = await latestRuleSet(db);
+    const row = await publishRuleSetVersion(db, cur.key, s(fd, 'name') || cur.name, hydrate(cur.key, cur.version + 1, data));
+    await audit(db, a, 'ruleset.publish', 'ruleset', row.id, { version: row.version, verified: data.verified });
+    return `פורסמה גרסה ${row.version}. תחרויות חדשות ישתמשו בה; תחרויות קיימות נשארות על הגרסה שלהן`;
+  });
+}
+
+import { startCheckout } from '@/services/checkout';
+
+export async function payAction(fd: FormData) {
+  const a = await requireActor();
+  let url = '';
+  let err = '';
+  try { url = (await startCheckout(db, a, s(fd, 'entry'))).url; } catch (e) { err = e instanceof Error ? e.message : 'שגיאה'; }
+  redirect(err ? `/me?err=${encodeURIComponent(err)}` : url);
+}
+
+import { importFromLogligDb } from '@/services/loglig-db';
+
+export async function importDbAction(fd: FormData) {
+  const a = await requireActor();
+  let q = '';
+  try {
+    const dry = fd.get('dry') === '1';
+    const r = await importFromLogligDb(db, a, { url: s(fd, 'url'), playersSql: s(fd, 'playersSql'), pointsSql: s(fd, 'pointsSql'), dryRun: dry });
+    const f = (n: string, x?: { created: number; updated: number; errors: { row: number; reason: string }[] }) => (x ? `${n}: נוצרו ${x.created}, עודכנו ${x.updated}, שגיאות ${x.errors.length}${x.errors.slice(0, 3).map((e) => ` (שורה ${e.row}: ${e.reason})`).join('')}` : '');
+    q = `ok=${encodeURIComponent(`${dry ? 'בדיקה בלבד · ' : ''}${[f('שחקנים', r.players), f('נקודות', r.points)].filter(Boolean).join(' · ')}`)}`;
+  } catch (e) { q = `err=${encodeURIComponent(e instanceof Error ? e.message : 'שגיאה')}`; }
+  redirect(`/admin/import?${q}`);
+}

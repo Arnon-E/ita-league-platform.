@@ -7,6 +7,7 @@ import type { Actor } from '@/lib/auth';
 import { audit } from './audit';
 import { loadRuleSet } from './rules';
 import { scopeFor } from './tournaments';
+import { refundPaymentIntent } from '@/lib/stripe';
 
 const { payments, refunds, ledger, entries, categories, tournaments } = schema;
 
@@ -63,6 +64,12 @@ export async function issueRefund(db: Db, actor: Actor, paymentId: string, amoun
   return db.transaction(async (tx) => {
     const already = await refundedSoFar(tx as unknown as Db, paymentId);
     const cents = Math.round(manualRefund(p.amountAgorot / 100, already / 100, amountAgorot / 100, reason) * 100);
+    // online payments are refunded at the provider first; if that fails nothing is recorded
+    if (p.provider === 'stripe' && p.providerRef) {
+      const key = process.env.STRIPE_SECRET_KEY;
+      if (!key) throw new Error('החזר מקוון דורש הגדרת Stripe');
+      await refundPaymentIntent(key, p.providerRef, cents);
+    }
     const [r] = await tx.insert(refunds).values({ paymentId, amountAgorot: cents, reason, byUserId: actor.id }).returning();
     const row = r as NonNullable<typeof r>;
     await tx.insert(ledger).values({ kind: 'REFUND', amountAgorot: -cents, paymentId, refundId: row.id });

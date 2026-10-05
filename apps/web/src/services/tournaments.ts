@@ -4,7 +4,7 @@ import { schema } from '@/db';
 import { assertCan, type Scope } from '@/lib/permissions';
 import type { Actor } from '@/lib/auth';
 import { audit } from './audit';
-import { ensureDefaultRuleSet } from './rules';
+import { latestRuleSet } from './rules';
 
 const { tournaments, tournamentCourts, tournamentStaff, categories, matches } = schema;
 
@@ -23,7 +23,7 @@ export interface CreateTournamentInput {
 export async function createTournament(db: Db, actor: Actor, input: CreateTournamentInput) {
   assertCan(actor, 'tournament.create');
   if (input.endDate < input.startDate) throw new Error('תאריך הסיום קודם לתאריך ההתחלה');
-  const ruleSetId = input.ruleSetId ?? (await ensureDefaultRuleSet(db)).id;
+  const ruleSetId = input.ruleSetId ?? (await latestRuleSet(db)).id;
   const [t] = await db.insert(tournaments).values({ ...input, ruleSetId }).returning();
   const row = t as NonNullable<typeof t>;
   // the creator manages the tournament they created

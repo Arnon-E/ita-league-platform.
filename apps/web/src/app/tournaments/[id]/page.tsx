@@ -6,6 +6,7 @@ import { tournamentDetail, playersNotIn } from '@/services/queries';
 import { groupStandings } from '@/services/results';
 import { listCourtLabels } from '@/services/tournaments';
 import { formatOf } from '@/services/draws';
+import { loadRuleSet } from '@/services/rules';
 import { FORMAT, fmtTime, GENDER, MSTATUS, NEXT, STATUS } from '@/components/labels';
 import { refundAction } from '@/app/actions3';
 import { suggestedRefund } from '@/services/payments';
@@ -22,6 +23,7 @@ export default async function TournamentPage({ params, searchParams }: { params:
   const d = await tournamentDetail(db, id);
   if (!d) notFound();
   const { t } = d;
+  const rulesVerified = (await loadRuleSet(db, t.ruleSetId)).verified;
   const [st, cls] = STATUS[t.status] ?? [t.status, ''];
   return (
     <Shell nav="home">
@@ -31,6 +33,7 @@ export default async function TournamentPage({ params, searchParams }: { params:
       </div>
       <nav className="tabs">{TABS.map(([k, l]) => <Link key={k} href={`/tournaments/${id}?tab=${k}`} className={tab === k ? 'on' : ''}>{l}</Link>)}</nav>
       <Flash err={err} ok={ok} />
+      {!rulesVerified && <div className="err" style={{ background: 'var(--warnbg)', color: 'var(--warn)' }}>ערכת החוקים של התחרות טרם אומתה מול תקנוני האיגוד. ההגרלה והנקודות עשויות לא להתאים לתקנון.</div>}
       {tab === 'overview' && <Overview d={d} />}
       {tab === 'entries' && <Entries d={d} />}
       {tab === 'draw' && <DrawTab d={d} />}
