@@ -31,3 +31,30 @@ describe('mobile API v1', () => {
     expect((await loginRoute(json('http://x', { email: 'api@x.il', password: 'Passw0rd!!' }))).status).toBe(423);
   });
 });
+
+import { impersonate, setUserRole, recentAudit } from '@/services/users';
+import { verifySession } from '@/lib/auth';
+import { Forbidden } from '@/lib/permissions';
+import { createTournament as mkT } from '@/services/tournaments';
+
+describe('super admin', () => {
+  it('guards role grants, impersonation is audited and attributed', async () => {
+    const sa = await mkUser('SUPER_ADMIN', 'sa@x.il');
+    const fed = await mkUser('FEDERATION_ADMIN', 'fa@x.il');
+    const pl = await mkUser('PLAYER', 'pp@x.il');
+    await expect(setUserRole(db, fed.actor, pl.actor.id, 'FEDERATION_ADMIN')).rejects.toThrow('רק מנהל על');
+    await setUserRole(db, fed.actor, pl.actor.id, 'TOURNAMENT_MANAGER');
+    await expect(setUserRole(db, sa.actor, sa.actor.id, 'PLAYER')).rejects.toThrow('עצמך');
+    await expect(impersonate(db, fed.actor, pl.actor.id)).rejects.toBeInstanceOf(Forbidden);
+    const tok = await impersonate(db, sa.actor, pl.actor.id);
+    const as = (await verifySession(tok))!;
+    expect(as.id).toBe(pl.actor.id);
+    expect(as.impersonatedBy).toBe(sa.actor.id);
+    await expect(impersonate(db, as, fed.actor.id)).rejects.toBeInstanceOf(Forbidden); // no chaining
+    await expect(mkT(db, as, { name: 'x', startDate: new Date(), endDate: new Date() })).resolves.toBeTruthy();
+    const log = await recentAudit(db, sa.actor);
+    expect(log.some((l) => l.action === 'impersonate.start')).toBe(true);
+    const created = log.find((l) => l.action === 'tournament.create' && l.impersonatedBy === sa.actor.id);
+    expect(created).toBeTruthy();
+  });
+});

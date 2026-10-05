@@ -7,6 +7,8 @@ import { groupStandings } from '@/services/results';
 import { listCourtLabels } from '@/services/tournaments';
 import { formatOf } from '@/services/draws';
 import { FORMAT, fmtTime, GENDER, MSTATUS, NEXT, STATUS } from '@/components/labels';
+import { refundAction } from '@/app/actions3';
+import { suggestedRefund } from '@/services/payments';
 import {
   autoScheduleAction, categoryAction, courtsAction, drawAction, entryAction, registerAction, slotAction, statusAction,
 } from '@/app/actions';
@@ -81,6 +83,9 @@ async function Entries({ d }: { d: Detail }) {
   const open = ['DRAFT', 'REGISTRATION_OPEN', 'REGISTRATION_CLOSED'].includes(t.status);
   const addable = await Promise.all(cats.map(async (c) => [c.id, await playersNotIn(db, c.id, c.gender)] as const));
   const docs = await db.select().from(schema.documents);
+  const pays = await db.select().from(schema.payments);
+  const sugg = new Map<string, number>();
+  for (const { e } of ents) if (e.paymentStatus === 'PAID' || e.paymentStatus === 'PARTIALLY_REFUNDED') sugg.set(e.id, (await suggestedRefund(db, e.id)).amountAgorot);
   return (
     <>
       {cats.map((c) => (
@@ -104,6 +109,14 @@ async function Entries({ d }: { d: Detail }) {
                           {e.paymentStatus === 'UNPAID' && t.feeAgorot > 0 && <form action={entryAction}><input type="hidden" name="id" value={t.id} /><input type="hidden" name="entry" value={e.id} /><input type="hidden" name="op" value="pay" /><input type="hidden" name="amount" value={t.feeAgorot} /><button className="btn small ghost">רישום תשלום</button></form>}
                           {e.status === 'PENDING' && <form action={entryAction}><input type="hidden" name="id" value={t.id} /><input type="hidden" name="entry" value={e.id} /><input type="hidden" name="op" value="confirm" /><button className="btn small">אישור</button></form>}
                           {e.status === 'PENDING' && <form action={entryAction}><input type="hidden" name="id" value={t.id} /><input type="hidden" name="entry" value={e.id} /><input type="hidden" name="op" value="confirm" /><input type="hidden" name="override" value="1" /><button className="btn small ghost" title="אישור ידני ללא מסמכים/תשלום">אישור חריג</button></form>}
+                          {sugg.has(e.id) && pays.filter((x) => x.entryId === e.id && x.status !== 'REFUNDED')[0] && (
+                            <form action={refundAction} className="row">
+                              <input type="hidden" name="id" value={t.id} /><input type="hidden" name="payment" value={pays.filter((x) => x.entryId === e.id && x.status !== 'REFUNDED')[0]!.id} />
+                              <input name="amount" type="number" step="1" min="0" defaultValue={(sugg.get(e.id)! / 100).toFixed(0)} style={{ width: 80, minHeight: 34 }} title="סכום מוצע לפי מדיניות ההחזרים" />
+                              <input name="reason" placeholder="סיבה" required style={{ width: 120, minHeight: 34 }} />
+                              <button className="btn small ghost">החזר ₪</button>
+                            </form>
+                          )}
                           {['PENDING', 'CONFIRMED', 'WAITLIST'].includes(e.status) && <form action={entryAction}><input type="hidden" name="id" value={t.id} /><input type="hidden" name="entry" value={e.id} /><input type="hidden" name="op" value="withdraw" /><button className="btn small ghost">פרישה</button></form>}
                         </div>
                       </td>
