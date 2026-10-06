@@ -48,6 +48,7 @@ function Home({ authed, setAuthed }: { authed: boolean; setAuthed: (v: boolean) 
   const [tab, setTab] = useState<Tab>('t');
   const [open, setOpen] = useState<string | null>(null);
   useEffect(() => { if (authed) registerPush(); }, [authed]);
+  useEffect(() => { api.setAuthLostHandler(() => setAuthed(false)); return () => api.setAuthLostHandler(null); }, [setAuthed]);
   return (
     <View style={{ flex: 1 }}>
       <View style={{ flex: 1 }}>
@@ -195,6 +196,9 @@ function Tournament({ id, onBack }: { id: string; onBack: () => void }) {
   );
 }
 
+const ENTRY_HE: Record<string, string> = { PENDING: 'ממתין לאישור', CONFIRMED: 'מאושר', WAITLIST: 'ברשימת המתנה', WITHDRAWN: 'פרש', REJECTED: 'נדחה' };
+const PAY_HE: Record<string, string> = { UNPAID: 'לא שולם', PAID: 'שולם', REFUNDED: 'הוחזר', PARTIALLY_REFUNDED: 'הוחזר חלקית' };
+
 const DOCS: [string, string][] = [['ID_PHOTO', 'תמונת ת״ז'], ['MEDICAL_CERTIFICATE', 'אישור רפואי'], ['PARENT_CONSENT', 'אישור הורים']];
 
 function MyArea({ onLogout }: { onLogout: () => void }) {
@@ -228,7 +232,7 @@ function MyArea({ onLogout }: { onLogout: () => void }) {
       <Text style={s.h2}>ההרשמות שלי</Text>
       {!!d && !d.entries.length && <Text style={s.muted}>אין עדיין הרשמות לתחרויות.</Text>}
       {d?.entries.map((e) => (
-        <View key={e.id} style={s.card}><Text style={s.b}>{e.tournament} · {e.category}</Text><Text>{e.status} · {e.payment}</Text>
+        <View key={e.id} style={s.card}><Text style={s.b}>{e.tournament} · {e.category}</Text><Text>{ENTRY_HE[e.status] ?? e.status} · {PAY_HE[e.payment] ?? e.payment}</Text>
           {e.payment === 'UNPAID' && <Pressable style={s.link} onPress={() => pay(e.id)}><Text style={s.linkT}>לתשלום</Text></Pressable>}</View>
       ))}
       <Text style={s.h2}>התראות</Text>

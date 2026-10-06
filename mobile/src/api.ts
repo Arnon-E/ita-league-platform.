@@ -8,6 +8,9 @@ let role: string | null = null;
 export async function loadToken() { token = await SecureStore.getItemAsync('ita_token'); role = await SecureStore.getItemAsync('ita_role'); return token; }
 export async function logout() { token = null; role = null; await SecureStore.deleteItemAsync('ita_token'); await SecureStore.deleteItemAsync('ita_role'); }
 export const isAuthed = () => !!token;
+/** Called when the server says our session is no longer valid (expired after 12h), so the UI can go back to the login screen. */
+let onAuthLost: (() => void) | null = null;
+export const setAuthLostHandler = (fn: (() => void) | null) => { onAuthLost = fn; };
 /** Roles allowed to enter results (the server enforces this too). */
 export const canScore = () => ['SUPER_ADMIN', 'FEDERATION_ADMIN', 'TOURNAMENT_MANAGER', 'REFEREE'].includes(role ?? '');
 
@@ -21,6 +24,7 @@ function heMessage(err: string | undefined, status: number): string {
 async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
   const res = await fetch(`${BASE}/api/v1${path}`, { ...init, headers: { 'content-type': 'application/json', ...(token ? { authorization: `Bearer ${token}` } : {}), ...(init.headers ?? {}) } });
   const body = await res.json().catch(() => ({}));
+  if (res.status === 401 && token) { await logout(); onAuthLost?.(); }
   if (!res.ok) throw new Error(heMessage(body.error, res.status));
   return body as T;
 }
