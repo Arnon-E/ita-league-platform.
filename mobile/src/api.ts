@@ -35,6 +35,13 @@ export async function login(email: string, password: string) {
   return r.user;
 }
 
+export async function register(name: string, email: string, phone: string, password: string) {
+  const r = await call<{ token: string; user: { name: string; role: string } }>('/auth/register', { method: 'POST', body: JSON.stringify({ name, email, phone, password }) });
+  token = r.token; role = r.user.role; await SecureStore.setItemAsync('ita_token', r.token); await SecureStore.setItemAsync('ita_role', r.user.role);
+  return r.user;
+}
+export const addPlayer = (p: { first: string; last: string; birth: string; gender: 'MALE' | 'FEMALE'; forChild: boolean }) => call<{ id: string }>('/players', { method: 'POST', body: JSON.stringify(p) });
+
 export type Match = { id: string; categoryId: string; stage: string; round: number; status: string; a: { id: string | null; name: string | null }; b: { id: string | null; name: string | null }; court: string | null; start: string | null; sets: { a: number; b: number }[] };
 export const tournaments = () => call<{ id: string; name: string; status: string; level: string; startDate: string }[]>('/tournaments');
 export const tournament = (id: string) => call<{ tournament: { name: string }; matches: Match[] }>(`/tournaments/${id}`);

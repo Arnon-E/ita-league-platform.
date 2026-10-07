@@ -32,15 +32,26 @@ export default function App() {
 }
 
 function Login({ onDone }: { onDone: () => void }) {
-  const [email, setEmail] = useState(''); const [pw, setPw] = useState(''); const [err, setErr] = useState('');
+  const [mode, setMode] = useState<'login' | 'signup'>('login');
+  const [name, setName] = useState(''); const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState(''); const [pw, setPw] = useState(''); const [err, setErr] = useState(''); const [busy, setBusy] = useState(false);
+  const fail = (e: Error) => { setBusy(false); setErr(e.message === 'invalid' ? 'אימייל או סיסמה שגויים' : e.message === 'locked' ? 'החשבון ננעל זמנית' : e.message); };
+  const submit = () => {
+    setErr(''); setBusy(true);
+    (mode === 'login' ? api.login(email.trim(), pw) : api.register(name.trim(), email.trim(), phone.trim(), pw)).then(() => { setBusy(false); onDone(); }).catch(fail);
+  };
   return (
-    <View style={s.pad}>
-      <Text style={s.h1}>כניסה</Text>
+    <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled">
+      <Text style={s.h1}>{mode === 'login' ? 'כניסה' : 'הרשמה'}</Text>
+      {mode === 'signup' && <Text style={s.muted}>יצירת חשבון שחקן או הורה. אחרי ההרשמה מוסיפים שחקן ונרשמים לתחרות.</Text>}
       {!!err && <Text style={s.err}>{err}</Text>}
+      {mode === 'signup' && <TextInput style={s.input} placeholder="שם מלא" placeholderTextColor="#8FA1BA" value={name} onChangeText={setName} />}
       <TextInput style={s.input} placeholder="אימייל" placeholderTextColor="#8FA1BA" autoCapitalize="none" keyboardType="email-address" value={email} onChangeText={setEmail} />
-      <TextInput style={s.input} placeholder="סיסמה" placeholderTextColor="#8FA1BA" secureTextEntry value={pw} onChangeText={setPw} />
-      <Pressable style={s.btn} onPress={() => api.login(email, pw).then(onDone).catch((e) => setErr(e.message === 'invalid' ? 'אימייל או סיסמה שגויים' : e.message === 'locked' ? 'החשבון ננעל זמנית' : e.message))}><Text style={s.btnT}>כניסה</Text></Pressable>
-    </View>
+      {mode === 'signup' && <TextInput style={s.input} placeholder="טלפון (לא חובה)" placeholderTextColor="#8FA1BA" keyboardType="phone-pad" value={phone} onChangeText={setPhone} />}
+      <TextInput style={s.input} placeholder={mode === 'signup' ? 'סיסמה (10 תווים, אותיות וספרות)' : 'סיסמה'} placeholderTextColor="#8FA1BA" secureTextEntry value={pw} onChangeText={setPw} />
+      <Pressable style={[s.btn, busy && { opacity: 0.6 }]} disabled={busy} onPress={submit}><Text style={s.btnT}>{mode === 'login' ? 'כניסה' : 'יצירת חשבון'}</Text></Pressable>
+      <Pressable style={s.link} onPress={() => { setErr(''); setMode(mode === 'login' ? 'signup' : 'login'); }}><Text style={s.linkT}>{mode === 'login' ? 'אין חשבון? הרשמה' : 'כבר רשומים? כניסה'}</Text></Pressable>
+    </ScrollView>
   );
 }
 
@@ -221,6 +232,7 @@ function MyArea({ onLogout }: { onLogout: () => void }) {
       <View style={s.row}><Text style={s.h1}>האזור שלי</Text><Pressable onPress={onLogout}><Text style={s.b}>יציאה</Text></Pressable></View>
       {!!err && <Text style={s.err}>{err}</Text>}{!!msg && <Text style={s.ok}>{msg}</Text>}
       {api.canScore() && <View style={s.card}><Text style={s.cardT}>הזנת תוצאות</Text><Text style={s.muted}>היכנסו ללשונית תחרויות, בחרו תחרות ולחצו על משחק כדי להזין תוצאה או לעדכן תוצאה חיה.</Text></View>}
+      <AddPlayer onAdded={(m) => { setMsg(m); load(); }} onError={setErr} />
       {d?.players.map((p) => (
         <View key={p.id} style={s.card}>
           <Text style={s.b}>{p.name}</Text>
@@ -239,6 +251,29 @@ function MyArea({ onLogout }: { onLogout: () => void }) {
       {!!d && !d.notifications.length && <Text style={s.muted}>אין התראות חדשות.</Text>}
       {d?.notifications.map((n) => <View key={n.id} style={s.card}><Text style={s.b}>{n.title}</Text><Text>{n.body}</Text></View>)}
     </ScrollView>
+  );
+}
+
+function AddPlayer({ onAdded, onError }: { onAdded: (msg: string) => void; onError: (e: string) => void }) {
+  const [openForm, setOpenForm] = useState(false);
+  const [first, setFirst] = useState(''); const [last, setLast] = useState(''); const [birth, setBirth] = useState('');
+  const [gender, setGender] = useState<'MALE' | 'FEMALE'>('MALE'); const [child, setChild] = useState(false);
+  if (!openForm) return <Pressable style={s.btn} onPress={() => setOpenForm(true)}><Text style={s.btnT}>+ הוספת שחקן</Text></Pressable>;
+  const save = () => {
+    onError('');
+    api.addPlayer({ first: first.trim(), last: last.trim(), birth: birth.trim(), gender, forChild: child })
+      .then(() => { setOpenForm(false); setFirst(''); setLast(''); setBirth(''); onAdded('הפרופיל נוצר'); }).catch((e) => onError(e.message));
+  };
+  return (
+    <View style={s.card}>
+      <Text style={s.cardT}>הוספת שחקן</Text>
+      <TextInput style={s.input} placeholder="שם פרטי" placeholderTextColor="#8FA1BA" value={first} onChangeText={setFirst} />
+      <TextInput style={s.input} placeholder="שם משפחה" placeholderTextColor="#8FA1BA" value={last} onChangeText={setLast} />
+      <TextInput style={s.input} placeholder="תאריך לידה (YYYY-MM-DD)" placeholderTextColor="#8FA1BA" keyboardType="numbers-and-punctuation" value={birth} onChangeText={setBirth} />
+      <View style={s.row}>{([['MALE', 'בן / גבר'], ['FEMALE', 'בת / אישה']] as const).map(([k, l]) => <Pressable key={k} style={[s.chip, gender === k && s.chipOn]} onPress={() => setGender(k)}><Text style={gender === k ? s.chipOnT : s.b}>{l}</Text></Pressable>)}</View>
+      <Pressable style={[s.chip, child && s.chipOn, { alignSelf: 'flex-start' }]} onPress={() => setChild(!child)}><Text style={child ? s.chipOnT : s.b}>{child ? '✓ ' : ''}זה ילד/ה שלי (הורה נרשם עבור ילד)</Text></Pressable>
+      <View style={s.row}><Pressable style={[s.btn, { flex: 1 }]} onPress={save}><Text style={s.btnT}>שמירה</Text></Pressable><Pressable style={[s.chip, { minHeight: 54 }]} onPress={() => setOpenForm(false)}><Text style={s.b}>ביטול</Text></Pressable></View>
+    </View>
   );
 }
 
