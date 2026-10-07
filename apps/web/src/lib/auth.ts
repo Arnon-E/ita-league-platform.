@@ -14,7 +14,15 @@ export interface Actor {
   impersonatedBy?: string;
 }
 
-const secret = () => new TextEncoder().encode(process.env.SESSION_SECRET ?? 'dev-only-secret-change-me-32bytes!!');
+const secret = () => {
+  const s = process.env.SESSION_SECRET;
+  // A public deployment must never fall back to the built-in development secret: anyone could then forge a login.
+  if (!s || s.length < 32) {
+    if (process.env.NODE_ENV === 'production' && process.env.VERCEL) throw new Error('SESSION_SECRET must be set to 32+ random characters');
+    return new TextEncoder().encode(s ?? 'dev-only-secret-change-me-32bytes!!');
+  }
+  return new TextEncoder().encode(s);
+};
 export const SESSION_COOKIE = 'ita_session';
 const MAX_FAILS = 5;
 const LOCK_MINUTES = 15;
