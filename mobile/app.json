@@ -2,4 +2,4 @@
   "ios": { "supportsTablet": true, "bundleIdentifier": "il.org.tennis.league" },
   "android": { "package": "il.org.tennis.league" },
   "plugins": ["expo-secure-store", "expo-notifications"],
-  "extra": { "apiUrl": "https://CHANGE-ME.example.com" } } }
+  "extra": { "apiUrl": "https://ita-league-platform-jpgi.vercel.app" } } }
