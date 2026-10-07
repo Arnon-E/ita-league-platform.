@@ -40,6 +40,9 @@ node scripts/gen-secrets.mjs
 | `S3_*` | see step 2 |
 | `RESEND_API_KEY`, `EMAIL_FROM`, `TWILIO_*`, `STRIPE_*` | optional until you turn on email, SMS and payments (see `docs/go-live.md`) |
 
+### First admin and tables
+On the first deploy the build runs `apps/web/scripts/db-init.mjs`: if the database is empty it creates all tables, and if `ADMIN_EMAIL` and `ADMIN_PASSWORD` are set it creates the first super admin. It never touches a database that already has tables. Set a strong `ADMIN_PASSWORD` only for the first deploy, then delete both variables. Do not run the demo seed on a public site (it creates accounts with a well-known password).
+
 ## 5. Deploy and check
 Deploy, then open the address. `/api/v1/tournaments` should return JSON. Log in with a seeded user, or create an admin.
 
