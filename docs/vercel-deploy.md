@@ -43,7 +43,7 @@ node scripts/gen-secrets.mjs
 ## 5. Deploy and check
 Deploy, then open the address. `/api/v1/tournaments` should return JSON. Log in with a seeded user, or create an admin.
 
-Notes: the notification scheduler in `vercel.json` runs every minute; the Vercel Hobby plan only allows daily cron jobs, so use Pro, or call `POST /api/cron/notifications` with `Authorization: Bearer $CRON_SECRET` from any scheduler.
+Notes: the notification scheduler in `vercel.json` runs once a day because the free Vercel Hobby plan only allows daily cron jobs. For near-real-time email/SMS/push, upgrade to Pro and change the schedule to `* * * * *`, or call `POST /api/cron/notifications` with `Authorization: Bearer $CRON_SECRET` every minute from a free external scheduler.
 
 ## 6. Mobile apps
 1. Set `extra.apiUrl` in `mobile/app.json` to the Vercel address (https).

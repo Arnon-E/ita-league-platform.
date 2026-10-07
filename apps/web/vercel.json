@@ -3,5 +3,5 @@
   "framework": "nextjs",
   "installCommand": "cd ../.. && pnpm install --frozen-lockfile",
   "buildCommand": "pnpm build",
-  "crons": [{ "path": "/api/cron/notifications", "schedule": "* * * * *" }]
+  "crons": [{ "path": "/api/cron/notifications", "schedule": "0 6 * * *" }]
 }
