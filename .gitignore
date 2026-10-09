@@ -5,3 +5,7 @@ node_modules/
 # local secrets (never commit)
 .env.local
 .env*.local
+
+# Loglig local sync: login profile and page dumps contain personal data
+apps/web/.loglig-dump/
+apps/web/.loglig-profile/
