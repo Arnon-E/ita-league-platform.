@@ -56,25 +56,36 @@ console.log('Opening Loglig login...');
 await page.goto(`${BASE}/Login`, { waitUntil: 'domcontentloaded' });
 await sleep(1500);
 
-const loggedIn = () => !/\/Login/i.test(page.url()) || false;
-if (!loggedIn() || (await page.locator('input[type=password]').count()) > 0) {
+const hasPassword = async () => (await page.locator('input[type=password]:visible').count()) > 0;
+const onLogin = async () => /\/Login/i.test(page.url()) && (await hasPassword());
+if (await onLogin()) {
   const user = env.LOGLIG_USER, pass = env.LOGLIG_PASSWORD;
   if (user && pass) {
     console.log('Logging in with the account from .env.local ...');
-    const pw = page.locator('input[type=password]').first();
-    const un = page.locator('input:not([type=password]):not([type=hidden]):not([type=checkbox]):not([type=submit])').first();
+    const pw = page.locator('input[type=password]:visible').first();
+    const un = page.locator('input:visible:not([type=password]):not([type=hidden]):not([type=checkbox]):not([type=submit])').first();
     await un.fill(user);
     await pw.fill(pass);
-    await pw.press('Enter');
+    // click the visible submit control if there is one, otherwise press Enter
+    const submit = page.locator('button[type=submit]:visible, input[type=submit]:visible, button:visible').first();
+    if (await submit.count()) await submit.click().catch(() => pw.press('Enter')); else await pw.press('Enter');
   } else {
     console.log('No LOGLIG_USER / LOGLIG_PASSWORD in .env.local: please log in yourself in the Edge window (captcha / 2FA are fine).');
   }
   const t0 = Date.now();
+  let told = false;
   while (Date.now() - t0 < 5 * 60_000) {
     await sleep(1500);
-    if (!/\/Login/i.test(page.url()) && (await page.locator('input[type=password]').count()) === 0) break;
+    if (!(await onLogin())) break;
+    if (!told && Date.now() - t0 > 20_000) {
+      told = true;
+      await page.screenshot({ path: path.join(OUT, 'login-debug.png') }).catch(() => {});
+      const msg = (await page.locator('body').innerText().catch(() => '')).replace(/\s+/g, ' ').slice(0, 300);
+      console.log('Still on the login page after 20s. Page says:', msg);
+      console.log('If a captcha or code is shown in the Edge window, complete it there. Saved login-debug.png in', OUT);
+    }
   }
-  if (/\/Login/i.test(page.url())) { console.error('Still on the login page after 5 minutes. Check the credentials in .env.local, then run again.'); await ctx.close(); process.exit(1); }
+  if (await onLogin()) { console.error('Still on the login page after 5 minutes. Check the credentials in .env.local, then run again.'); await ctx.close(); process.exit(1); }
 }
 console.log('Logged in:', page.url());
 
