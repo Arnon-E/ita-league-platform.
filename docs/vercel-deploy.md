@@ -15,6 +15,8 @@ DATABASE_URL="<hosted connection string>" pnpm db:seed     # optional demo users
 ```
 
 ## 2. Private file storage (documents, gallery photos)
+**Easiest on Vercel:** Project → **Storage → Create Storage → Blob**, choose **Private**, connect it to the project, then redeploy. Vercel adds `BLOB_STORE_ID` automatically and the app uses it. Or use any S3-compatible bucket as below.
+
 Local disk does not persist on Vercel, so use any S3-compatible private bucket (Cloudflare R2, AWS S3, Supabase Storage). Keep the bucket **private**: files are only served through the API. Set `S3_BUCKET`, `S3_ENDPOINT` (R2/Supabase), `S3_REGION`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`.
 
 ## 3. Import the repo

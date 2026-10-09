@@ -26,6 +26,8 @@ const safe = (key: string) => {
 };
 
 const useS3 = () => !!process.env.S3_BUCKET;
+// Vercel Blob (private store): enabled when a Blob store is connected to the project.
+const useBlob = () => !useS3() && !!(process.env.BLOB_STORE_ID || process.env.BLOB_READ_WRITE_TOKEN);
 let s3: Promise<{ client: import('@aws-sdk/client-s3').S3Client; sdk: typeof import('@aws-sdk/client-s3') }> | null = null;
 function s3Client() {
   s3 ??= import('@aws-sdk/client-s3').then((sdk) => ({
@@ -41,6 +43,12 @@ function s3Client() {
 
 export async function putObject(prefix: string, data: Uint8Array): Promise<string> {
   const key = `${prefix}/${randomUUID()}`;
+  if (useBlob()) {
+    safe(key);
+    const { put } = await import('@vercel/blob');
+    await put(key, Buffer.from(data), { access: 'private', addRandomSuffix: false, allowOverwrite: false });
+    return key;
+  }
   if (useS3()) {
     safe(key); // validates the key shape
     const { client, sdk } = await s3Client();
@@ -54,6 +62,13 @@ export async function putObject(prefix: string, data: Uint8Array): Promise<strin
 }
 
 export async function getObject(key: string): Promise<Buffer> {
+  if (useBlob()) {
+    safe(key);
+    const { get } = await import('@vercel/blob');
+    const r = await get(key, { access: 'private' });
+    if (!r || r.statusCode !== 200 || !r.stream) throw new Error('File not found');
+    return Buffer.from(await new Response(r.stream).arrayBuffer());
+  }
   if (useS3()) {
     safe(key);
     const { client, sdk } = await s3Client();
