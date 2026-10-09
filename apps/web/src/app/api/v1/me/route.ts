@@ -11,8 +11,8 @@ export const GET = (req: Request) => handle(req, async (actor) => {
     .innerJoin(schema.categories, eq(schema.categories.id, schema.entries.categoryId)).innerJoin(schema.tournaments, eq(schema.tournaments.id, schema.categories.tournamentId))
     .where(inArray(schema.entries.playerId, ids)) : [];
   return {
-    players: await Promise.all(ps.map(async (p) => ({ id: p.id, name: `${p.firstName} ${p.lastName}`, documents: await checkDocuments(db, p.id, new Date()) }))),
-    entries: ents.map(({ e, c, t }) => ({ id: e.id, tournament: t.name, category: c.name, status: e.status, payment: e.paymentStatus })),
+    players: await Promise.all(ps.map(async (p) => ({ id: p.id, name: `${p.firstName} ${p.lastName}`, gender: p.gender, birthYear: p.birthDate.getUTCFullYear(), documents: await checkDocuments(db, p.id, new Date()) }))),
+    entries: ents.map(({ e, c, t }) => ({ id: e.id, playerId: e.playerId, player: (() => { const p = ps.find((x) => x.id === e.playerId); return p ? `${p.firstName} ${p.lastName}` : ''; })(), tournament: t.name, category: c.name, status: e.status, payment: e.paymentStatus })),
     notifications: (await inbox(db, actor.id)).slice(-30).reverse().map((n) => ({ id: n.id, title: n.title, body: n.body, at: n.createdAt })),
   };
 });

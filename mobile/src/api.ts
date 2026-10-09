@@ -44,12 +44,13 @@ export const addPlayer = (p: { first: string; last: string; birth: string; gende
 
 export type Match = { id: string; categoryId: string; stage: string; round: number; status: string; a: { id: string | null; name: string | null }; b: { id: string | null; name: string | null }; court: string | null; start: string | null; sets: { a: number; b: number }[] };
 export const tournaments = () => call<{ id: string; name: string; status: string; level: string; startDate: string }[]>('/tournaments');
-export const tournament = (id: string) => call<{ tournament: { name: string }; matches: Match[] }>(`/tournaments/${id}`);
-export const me = () => call<{ players: { id: string; name: string; documents: { ok: boolean; missing: string[] } }[]; entries: { id: string; tournament: string; category: string; status: string; payment: string }[]; notifications: { id: string; title: string; body: string }[] }>('/me');
+export type Cat = { id: string; name: string; gender: 'MALE' | 'FEMALE' | 'OPEN'; minBirthYear: number | null; maxBirthYear: number | null };
+export const tournament = (id: string) => call<{ tournament: { name: string; status: string }; categories: Cat[]; matches: Match[] }>(`/tournaments/${id}`);
+export const me = () => call<{ players: { id: string; name: string; gender: 'MALE' | 'FEMALE'; birthYear: number; documents: { ok: boolean; missing: string[] } }[]; entries: { id: string; playerId: string; player: string; tournament: string; category: string; status: string; payment: string }[]; notifications: { id: string; title: string; body: string }[] }>('/me');
 export const sendResult = (matchId: string, body: unknown) => call(`/matches/${matchId}/result`, { method: 'POST', body: JSON.stringify(body) });
 export const registerDevice = (pushToken: string, platform: 'ios' | 'android') => call('/devices', { method: 'POST', body: JSON.stringify({ token: pushToken, platform }) });
 
-export const openCategories = () => call<{ categoryId: string; category: string; tournament: string; feeAgorot: number }[]>('/entries');
+export const openCategories = () => call<{ categoryId: string; category: string; gender: 'MALE' | 'FEMALE' | 'OPEN'; minBirthYear: number | null; maxBirthYear: number | null; tournament: string; feeAgorot: number }[]>('/entries');
 export const enter = (categoryId: string, playerId: string) => call('/entries', { method: 'POST', body: JSON.stringify({ categoryId, playerId }) });
 export const checkout = (entryId: string) => call<{ url: string }>('/checkout', { method: 'POST', body: JSON.stringify({ entryId }) });
 

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, Image, ScrollView, I18nManager, Pressable, SafeAreaView, StatusBar, StyleSheet, Text, TextInput, View } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import * as ImagePicker from 'expo-image-picker';
@@ -63,7 +63,7 @@ function Home({ authed, setAuthed }: { authed: boolean; setAuthed: (v: boolean) 
   return (
     <View style={{ flex: 1 }}>
       <View style={{ flex: 1 }}>
-        {open ? <Tournament id={open} onBack={() => setOpen(null)} />
+        {open ? <Tournament id={open} onBack={() => setOpen(null)} onGoAccount={() => { setOpen(null); setTab('me'); }} />
           : tab === 't' ? <TournamentList onOpen={setOpen} />
           : tab === 'live' ? <Live />
           : tab === 'rank' ? <Rankings />
@@ -171,7 +171,7 @@ function Players() {
   );
 }
 
-function Tournament({ id, onBack }: { id: string; onBack: () => void }) {
+function Tournament({ id, onBack, onGoAccount }: { id: string; onBack: () => void; onGoAccount: () => void }) {
   const [d, setD] = useState<Awaited<ReturnType<typeof api.tournament>> | null>(null);
   const [score, setScore] = useState<api.Match | null>(null);
   const load = () => api.tournament(id).then(setD);
@@ -197,6 +197,7 @@ function Tournament({ id, onBack }: { id: string; onBack: () => void }) {
         <FlatList horizontal data={photos} keyExtractor={(p) => p.id} style={{ flexGrow: 0 }} showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}
           renderItem={({ item }) => <View><Image source={{ uri: api.photoUrl(item.id) }} style={s.photo} />{!!item.caption && <Text style={s.muted}>{item.caption}</Text>}</View>} />
       )}
+      {d && d.tournament.status === 'REGISTRATION_OPEN' && <RegisterBox tournamentName={d.tournament.name} categories={d.categories} onGoAccount={onGoAccount} />}
       <FlatList data={d?.matches ?? []} keyExtractor={(m) => m.id} renderItem={({ item: m }) => (
         <Pressable style={s.card} disabled={!m.a.id || !m.b.id || !api.canScore()} onPress={() => setScore(m)}>
           <Text style={s.b}>{m.a.name ?? 'טרם נקבע'} – {m.b.name ?? 'טרם נקבע'}</Text>
@@ -212,10 +213,67 @@ const PAY_HE: Record<string, string> = { UNPAID: 'לא שולם', PAID: 'שול�
 
 const DOCS: [string, string][] = [['ID_PHOTO', 'תמונת ת״ז'], ['MEDICAL_CERTIFICATE', 'אישור רפואי'], ['PARENT_CONSENT', 'אישור הורים']];
 
+/** Registration right on the competition screen: pick which of my players joins which category. */
+function RegisterBox({ tournamentName, categories, onGoAccount }: { tournamentName: string; categories: api.Cat[]; onGoAccount: () => void }) {
+  const [me, setMe] = useState<Awaited<ReturnType<typeof api.me>> | null>(null);
+  const [msg, setMsg] = useState(''); const [err, setErr] = useState('');
+  const authed = api.isAuthed();
+  const load = () => { api.me().then(setMe).catch((e) => setErr(e.message)); };
+  useEffect(() => { if (authed) load(); }, [authed]);
+
+  if (!authed) {
+    return (
+      <View style={s.card}>
+        <Text style={s.cardT}>הרשמה לתחרות</Text>
+        <Text style={s.muted}>כדי להירשם יש להתחבר או ליצור חשבון, ולהוסיף שחקן.</Text>
+        <Pressable style={s.btn} onPress={onGoAccount}><Text style={s.btnT}>כניסה / הרשמה</Text></Pressable>
+      </View>
+    );
+  }
+  if (!me) return err ? <Text style={s.err}>{err}</Text> : <ActivityIndicator style={{ margin: 8 }} />;
+  if (!me.players.length) {
+    return (
+      <View style={s.card}>
+        <Text style={s.cardT}>הרשמה לתחרות</Text>
+        <Text style={s.muted}>אין עדיין שחקן בחשבון. הוסיפו שחקן (או ילד/ה) כדי להירשם.</Text>
+        <Pressable style={s.btn} onPress={onGoAccount}><Text style={s.btnT}>הוספת שחקן</Text></Pressable>
+      </View>
+    );
+  }
+  const entered = (cat: string, player: string) => me.entries.some((e) => e.tournament === tournamentName && e.category === cat && e.player === player);
+  const register = (cat: api.Cat, p: MePlayer) => {
+    setErr(''); setMsg('');
+    api.enter(cat.id, p.id).then(() => { setMsg(`${p.name} נרשם/ה ל${cat.name}`); load(); }).catch((e) => setErr(e.message));
+  };
+  return (
+    <View style={s.card}>
+      <Text style={s.cardT}>הרשמה לתחרות</Text>
+      {!!msg && <Text style={s.ok}>{msg}</Text>}
+      {!!err && <Text style={s.err}>{err}</Text>}
+      {me.players.map((p) => (
+        <View key={p.id} style={{ gap: 6 }}>
+          <Text style={s.b}>{p.name}</Text>
+          {categories.map((c) => {
+            const ok = fits(c, p);
+            const done = entered(c.name, p.name);
+            return (
+              <Pressable key={c.id} disabled={!ok || done} style={[s.chip, { alignSelf: 'flex-start' }, (!ok || done) && { opacity: 0.55 }]} onPress={() => register(c, p)}>
+                <Text style={s.b}>{done ? `✓ רשום/ה: ${c.name}` : ok ? `הרשמה: ${c.name}` : `${c.name} (${why(c, p)})`}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      ))}
+    </View>
+  );
+}
+
 function MyArea({ onLogout }: { onLogout: () => void }) {
   const [d, setD] = useState<Awaited<ReturnType<typeof api.me>> | null>(null);
   const [open, setOpen] = useState<Awaited<ReturnType<typeof api.openCategories>>>([]);
   const [msg, setMsg] = useState(''); const [err, setErr] = useState('');
+  const scrollRef = useRef<ScrollView>(null);
+  useEffect(() => { if (err || msg) scrollRef.current?.scrollTo({ y: 0, animated: true }); }, [err, msg]);
   const load = () => { api.me().then(setD).catch((e) => setErr(e.message)); api.openCategories().then(setOpen).catch(() => {}); };
   useEffect(load, []);
   const upload = async (playerId: string, type: string) => {
@@ -228,7 +286,7 @@ function MyArea({ onLogout }: { onLogout: () => void }) {
   const register = (cat: string, pid: string) => api.enter(cat, pid).then(() => { setMsg('נרשמתם לקטגוריה'); load(); }).catch((e) => setErr(e.message));
   const pay = (entryId: string) => api.checkout(entryId).then((r) => Linking.openURL(r.url)).catch((e) => setErr(e.message));
   return (
-    <ScrollView contentContainerStyle={s.scroll}>
+    <ScrollView ref={scrollRef} contentContainerStyle={s.scroll}>
       <View style={s.row}><Text style={s.h1}>האזור שלי</Text><Pressable onPress={onLogout}><Text style={s.b}>יציאה</Text></Pressable></View>
       {!!err && <Text style={s.err}>{err}</Text>}{!!msg && <Text style={s.ok}>{msg}</Text>}
       {api.canScore() && <View style={s.card}><Text style={s.cardT}>הזנת תוצאות</Text><Text style={s.muted}>היכנסו ללשונית תחרויות, בחרו תחרות ולחצו על משחק כדי להזין תוצאה או לעדכן תוצאה חיה.</Text></View>}
@@ -238,7 +296,8 @@ function MyArea({ onLogout }: { onLogout: () => void }) {
           <Text style={s.b}>{p.name}</Text>
           <Text>{p.documents.ok ? 'כל המסמכים תקינים' : `חסר: ${p.documents.missing.map((m) => DOCS.find((x) => x[0] === m)?.[1] ?? m).join(', ')}`}</Text>
           {DOCS.map(([k, l]) => <Pressable key={k} style={s.link} onPress={() => upload(p.id, k)}><Text style={s.linkT}>העלאת {l}</Text></Pressable>)}
-          {open.map((o) => <Pressable key={o.categoryId} style={s.link} onPress={() => register(o.categoryId, p.id)}><Text style={s.linkT}>הרשמה: {o.tournament} · {o.category}</Text></Pressable>)}
+          {open.filter((o) => fits(o, p)).map((o) => <Pressable key={o.categoryId} style={s.link} onPress={() => register(o.categoryId, p.id)}><Text style={s.linkT}>הרשמה: {o.tournament} · {o.category}</Text></Pressable>)}
+          {open.length > 0 && open.filter((o) => fits(o, p)).length === 0 && <Text style={s.muted}>אין כרגע תחרות פתוחה שמתאימה לשחקן הזה. {open.map((o) => `${o.tournament} · ${o.category} (${why(o, p)})`).join('; ')}</Text>}
         </View>
       ))}
       <Text style={s.h2}>ההרשמות שלי</Text>
@@ -253,6 +312,16 @@ function MyArea({ onLogout }: { onLogout: () => void }) {
     </ScrollView>
   );
 }
+
+/** Does a player fit a category (gender and birth-year limits)? Mirrors the server rule so we never offer something that will be refused. */
+type OpenCat = Awaited<ReturnType<typeof api.openCategories>>[number];
+type MePlayer = Awaited<ReturnType<typeof api.me>>['players'][number];
+type Limits = { gender: 'MALE' | 'FEMALE' | 'OPEN'; minBirthYear: number | null; maxBirthYear: number | null };
+const fits = (o: Limits, p: MePlayer) =>
+  (o.gender === 'OPEN' || o.gender === p.gender) && !(o.minBirthYear && p.birthYear < o.minBirthYear) && !(o.maxBirthYear && p.birthYear > o.maxBirthYear);
+const why = (o: Limits, p: MePlayer) =>
+  o.gender !== 'OPEN' && o.gender !== p.gender ? (o.gender === 'MALE' ? 'לבנים/גברים בלבד' : 'לבנות/נשים בלבד')
+    : o.minBirthYear && p.birthYear < o.minBirthYear ? `שנת לידה ${o.minBirthYear} ואילך` : `שנת לידה עד ${o.maxBirthYear}`;
 
 function AddPlayer({ onAdded, onError }: { onAdded: (msg: string) => void; onError: (e: string) => void }) {
   const [openForm, setOpenForm] = useState(false);
