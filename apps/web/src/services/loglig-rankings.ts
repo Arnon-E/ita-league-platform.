@@ -49,10 +49,15 @@ export async function importRankings(db: Db, input: RankingImport, now = new Dat
   const { gender, rows } = input;
   if (!rows.length) return { players: 0, clubs: 0, awards: 0 };
   // One JSON document carries the whole batch (a JS array parameter would be expanded into a row list by the driver).
-  const batch = JSON.stringify(rows.map((r) => {
+  // The public table can list the same name + birth year twice; they share one key, so keep the better row.
+  const unique = new Map<string, { key: string; first: string; last: string; by: number; club: string; points: number }>();
+  for (const r of rows) {
     const n = splitName(r.name);
-    return { key: rankKey(gender, r.birthYear, r.name), first: n.first, last: n.last, by: r.birthYear, club: r.club, points: r.total };
-  }));
+    const key = rankKey(gender, r.birthYear, r.name);
+    const prev = unique.get(key);
+    if (!prev || r.total > prev.points) unique.set(key, { key, first: n.first, last: n.last, by: r.birthYear, club: r.club, points: r.total });
+  }
+  const batch = JSON.stringify([...unique.values()]);
   const clubCount = new Set(rows.map((r) => r.club).filter(Boolean)).size;
 
   await db.execute(sql`
