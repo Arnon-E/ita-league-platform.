@@ -1,4 +1,4 @@
-// Runs before `next build` on the host. First deploy only: if the database has no tables yet, create them from the schema,
+// Runs before `next build` on the host. First deploy:  if the database has no tables yet, create them from the schema,
 // and (optionally) create the first super admin from ADMIN_EMAIL / ADMIN_PASSWORD. It never touches a database that already
 // has tables, so redeploys cannot overwrite or alter real data.
 import { spawnSync } from 'node:child_process';
@@ -21,6 +21,12 @@ try {
     const r = spawnSync('npx', ['drizzle-kit', 'push', '--force'], { stdio: 'inherit', env: { ...process.env, DATABASE_URL: url }, shell: true });
     if (r.status !== 0) throw new Error('drizzle-kit push failed');
   }
+
+  // additive column changes for databases created before the column existed (never drops or rewrites anything)
+  await sql`alter table tournaments add column if not exists source_url text`;
+  await sql`alter table tournaments add column if not exists register_url text`;
+  await sql`create table if not exists external_leagues (
+    id text primary key, name text not null, gender gender not null default 'OPEN', data jsonb not null, updated_at timestamptz not null default now())`;
 
   const email = process.env.ADMIN_EMAIL?.trim().toLowerCase();
   const password = process.env.ADMIN_PASSWORD;

@@ -104,7 +104,19 @@ export const tournaments = pgTable('tournaments', {
   pointsTableKey: text('points_table_key').notNull().default('DEFAULT'),
   /** Calendar level: NATIONAL | REGIONAL | INTERNATIONAL | CIRCUIT. */
   level: text('level').notNull().default('NATIONAL'),
+  /** Mirrored competitions: the federation's page and the sign-up form where players really register. */
+  sourceUrl: text('source_url'),
+  registerUrl: text('register_url'),
   createdAt: createdAt(),
+});
+
+/** Team leagues mirrored from the federation's public pages (standings and fixtures kept as one document). */
+export const externalLeagues = pgTable('external_leagues', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  gender: genderEnum('gender').notNull().default('OPEN'),
+  data: jsonb('data').notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const tournamentStaff = pgTable('tournament_staff', {

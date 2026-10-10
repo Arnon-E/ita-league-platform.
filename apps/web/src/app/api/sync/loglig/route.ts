@@ -1,6 +1,7 @@
 import { timingSafeEqual } from 'node:crypto';
 import { db } from '@/db';
-import { importCompetition, validateCompetitionImport } from '@/services/loglig-competitions';
+import { importCompetition, removeTournament, validateCompetitionImport } from '@/services/loglig-competitions';
+import { importLeague, validateLeagueImport } from '@/services/loglig-leagues';
 import { importRankings, validateRankingImport } from '@/services/loglig-rankings';
 
 export const maxDuration = 60;
@@ -18,7 +19,9 @@ export async function POST(req: Request) {
   if (!authorized(req)) return new Response('Unauthorized', { status: 401 });
   try {
     const body = await req.json();
+    if (body?.kind === 'remove-tournament' && typeof body.name === 'string' && body.name.trim()) return Response.json(await removeTournament(db, body.name.trim()));
     if (body?.kind === 'competition') return Response.json(await importCompetition(db, validateCompetitionImport(body)));
+    if (body?.kind === 'league') return Response.json(await importLeague(db, validateLeagueImport(body)));
     return Response.json(await importRankings(db, validateRankingImport(body)));
   } catch (e) {
     return Response.json({ error: e instanceof Error ? e.message : 'error' }, { status: 400 });

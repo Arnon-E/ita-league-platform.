@@ -7,12 +7,14 @@ import { ensureDefaultRuleSet, loadRuleSet } from './rules';
 
 const { players, clubs, entries, categories, matches, tournaments, pointsAwards } = schema;
 
-export async function searchPlayers(db: Db, q: string, clubId?: string, limit = 100) {
+export async function searchPlayers(db: Db, q: string, clubId?: string, limit = 100, opts: { gender?: 'MALE' | 'FEMALE'; age?: number; offset?: number } = {}) {
   const conds = [];
+  if (opts.gender) conds.push(eq(players.gender, opts.gender));
+  if (opts.age) conds.push(sql`${players.birthDate} >= make_date(${new Date().getFullYear() - opts.age}, 1, 1)::timestamptz`);
   for (const w of q.trim().split(/\s+/).filter(Boolean)) conds.push(or(ilike(players.firstName, `%${w}%`), ilike(players.lastName, `%${w}%`)));
   if (clubId) conds.push(eq(players.clubId, clubId));
   return db.select({ p: players, club: clubs.name }).from(players).leftJoin(clubs, eq(clubs.id, players.clubId))
-    .where(conds.length ? and(...conds) : undefined).orderBy(asc(players.lastName), asc(players.firstName)).limit(limit);
+    .where(conds.length ? and(...conds) : undefined).orderBy(asc(players.lastName), asc(players.firstName)).limit(limit).offset(opts.offset ?? 0);
 }
 
 export async function listClubs(db: Db) {
@@ -51,18 +53,20 @@ export async function clubDetail(db: Db, id: string) {
 /** Matches across all tournaments: upcoming with a time slot, and recent results. */
 export async function liveFeed(db: Db) {
   const dayStart = new Date(); dayStart.setHours(0, 0, 0, 0);
-  const rows = await db.select({ m: matches, c: categories, t: tournaments }).from(matches)
-    .innerJoin(categories, eq(categories.id, matches.categoryId)).innerJoin(tournaments, eq(tournaments.id, categories.tournamentId))
-    .where(or(eq(matches.live, true), gte(matches.scheduledStart, dayStart), and(sql`${matches.status} <> 'SCHEDULED'`, gte(matches.updatedAt, new Date(Date.now() - 30 * 864e5)))))
-    .orderBy(asc(matches.scheduledStart)).limit(300);
-  const names = await entryNames(db, [...new Set(rows.map((r) => r.c.id))]);
-  const ready = rows.filter((r) => r.m.aEntryId && r.m.bEntryId);
-  return {
-    live: ready.filter((r) => r.m.status === 'SCHEDULED' && r.m.live),
-    upcoming: ready.filter((r) => r.m.status === 'SCHEDULED' && !r.m.live && r.m.scheduledStart),
-    results: ready.filter((r) => r.m.status !== 'SCHEDULED').sort((a, b) => +b.m.updatedAt - +a.m.updatedAt),
-    names,
-  };
+  const base = () => db.select({ m: matches, c: categories, t: tournaments }).from(matches)
+    .innerJoin(categories, eq(categories.id, matches.categoryId)).innerJoin(tournaments, eq(tournaments.id, categories.tournamentId));
+  const ready = and(sql`${matches.aEntryId} is not null`, sql`${matches.bEntryId} is not null`);
+  // three small, indexed-friendly queries instead of one wide scan: live now, next up, latest results
+  const [live, upcoming, results] = await Promise.all([
+    base().where(and(ready, eq(matches.live, true), eq(matches.status, 'SCHEDULED'))).limit(50),
+    base().where(and(ready, eq(matches.status, 'SCHEDULED'), eq(matches.live, false), gte(matches.scheduledStart, dayStart))).orderBy(asc(matches.scheduledStart)).limit(60),
+    base().where(and(ready, sql`${matches.status} <> 'SCHEDULED'`)).orderBy(desc(sql`coalesce(${matches.scheduledStart}, ${matches.notBefore}, ${matches.updatedAt})`)).limit(40),
+  ]);
+  const ids = [...new Set([...live, ...upcoming, ...results].flatMap((r) => [r.m.aEntryId, r.m.bEntryId]).filter((x): x is string => !!x))];
+  const named = ids.length
+    ? await db.select({ id: entries.id, f: players.firstName, l: players.lastName }).from(entries).innerJoin(players, eq(players.id, entries.playerId)).where(inArray(entries.id, ids))
+    : [];
+  return { live, upcoming, results, names: new Map(named.map((r) => [r.id, `${r.f} ${r.l}`])) };
 }
 
 export const AGE_GROUPS = [12, 14, 16, 18] as const;

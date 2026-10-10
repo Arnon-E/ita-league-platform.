@@ -64,12 +64,50 @@ export function parseCompetitionPage(html, url = '') {
     }
     found.push({ id: m[1], seasonId: m[2], section });
   }
+  // registration: the earliest listed deadline, the sign-up form link (not the generic "register to the union" forms)
+  const deadlines = lines.filter((l) => l.startsWith('מועד אחרון להרשמה')).map((l) => {
+    const r = parseDateRange(l.replace(/^[^:]*:/, ''));
+    const tm = l.match(/(\d{1,2}):(\d{2})/);
+    return r ? `${r.start}T${tm ? `${pad(tm[1])}:${tm[2]}` : '23:59'}` : null;
+  }).filter(Boolean).sort();
+  const form = [...html.matchAll(/href="(https?:\/\/(?:www\.)?loglig\.com\/Activity\/Form\/(\d+)[^"]*)"[^>]*>\s*(?:<[^>]+>\s*)*הרשמה לתחרות/g)].map((x) => x[1].replace(/&#038;|&amp;/g, '&'))[0] ?? '';
+  const isDoubles = /זוגות/.test(name);
+  const planned = [];
+  for (const l of lines) {
+    const m = l.match(/^קטגור(?:יה|ית|יית) גיל\s*:\s*(.+)$/);
+    if (m) for (const c of expandAges(m[1], isDoubles)) if (!planned.some((p) => p.name === c.name)) planned.push(c);
+  }
   return {
     url, name,
     start: starts[0] ?? null, end: ends[ends.length - 1] ?? null, feeShekel: fee, venues,
     categories: found,
-    isDoubles: /זוגות/.test(name),
+    isDoubles,
+    registrationCloses: deadlines[0] ?? null, registerUrl: form, planned,
   };
+}
+
+/** "בנים/בנות 12, 14 ובנים 16" -> [{name:'בנים 12',gender,age}, ...]; "אזור צפון - כל הגילאים" -> one open category with that text. */
+export function expandAges(text, doubles = false) {
+  const pre = doubles ? 'זוגות ' : '';
+  const zone = (text.match(/^(.*?)\s+-\s+(?:בנים|בנות|גברים|נשים|כל)/) ?? [])[1] ?? '';
+  const out = [];
+  let genders = [], lastNum = false;
+  for (const tok of text.replace(zone, '').match(/בנים|בנות|גברים|נשים|\d{2}(?!\d)/g) ?? []) {
+    if (/^\d/.test(tok)) {
+      for (const g of genders.length ? genders : ['OPEN']) {
+        const word = g === 'MALE' ? 'בנים' : g === 'FEMALE' ? 'בנות' : 'פתוח';
+        out.push({ name: `${pre}${word} ${tok}${zone ? ` · ${zone}` : ''}`, gender: g, age: Number(tok) });
+      }
+      lastNum = true;
+    } else {
+      if (lastNum) genders = [];
+      const g = /בנים|גברים/.test(tok) ? 'MALE' : 'FEMALE';
+      if (!genders.includes(g)) genders.push(g);
+      lastNum = false;
+    }
+  }
+  if (!out.length) out.push({ name: `${pre}${text.trim()}`.slice(0, 100), gender: genderOf(text), age: null });
+  return out;
 }
 
 const SCORE_SET = /^(\d{1,2})[-:](\d{1,2})$/;

@@ -15,12 +15,13 @@ export interface MatchIn {
 }
 export interface CategoryIn { name: string; source: string; gender: Gender; age: number | null; format: 'KNOCKOUT' | 'GROUPS_KNOCKOUT'; matches: MatchIn[] }
 export interface CompetitionIn {
-  kind: 'competition'; name: string; start: string; end: string; feeShekel: number; level: 'NATIONAL' | 'REGIONAL';
-  sourceUrl?: string; venues: { club: string; address: string }[]; categories: CategoryIn[];
+  kind: 'competition'; name: string; start: string; end: string; feeShekel: number; level: 'NATIONAL' | 'REGIONAL' | 'INTERNATIONAL' | 'CIRCUIT';
+  sourceUrl?: string; registerUrl?: string; registrationCloses?: string | null; venues: { club: string; address: string }[]; categories: CategoryIn[];
 }
 
 const MAX_MATCHES = 4000;
 const clean = (s: unknown, n = 160) => (typeof s === 'string' ? s.replace(/\s+/g, ' ').trim().slice(0, n) : '');
+const webUrl = (u: unknown) => (typeof u === 'string' && /^https:\/\/[^\s]{4,500}$/.test(u) ? u : '');
 const isDate = (s: unknown) => typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s) && !Number.isNaN(Date.parse(s));
 
 export function validateCompetitionImport(x: unknown): CompetitionIn {
@@ -55,7 +56,10 @@ export function validateCompetitionImport(x: unknown): CompetitionIn {
   if (total > MAX_MATCHES) throw new Error('too many matches');
   return {
     kind: 'competition', name, start: b.start as string, end: b.end as string,
-    feeShekel: Math.max(0, Number(b.feeShekel) || 0), level: b.level === 'REGIONAL' ? 'REGIONAL' : 'NATIONAL',
+    feeShekel: Math.max(0, Number(b.feeShekel) || 0),
+    level: b.level === 'REGIONAL' || b.level === 'INTERNATIONAL' || b.level === 'CIRCUIT' ? b.level : 'NATIONAL',
+    sourceUrl: webUrl(b.sourceUrl), registerUrl: webUrl(b.registerUrl),
+    registrationCloses: typeof b.registrationCloses === 'string' && !Number.isNaN(Date.parse(b.registrationCloses)) ? new Date(b.registrationCloses).toISOString() : null,
     venues: (Array.isArray(b.venues) ? b.venues : []).slice(0, 20).map((v) => ({ club: clean(v?.club, 120), address: clean(v?.address, 200) })).filter((v) => v.club),
     categories: cats,
   };
@@ -76,7 +80,9 @@ export async function importCompetition(db: Db, input: CompetitionIn, now = new 
   const rule = await ensureDefaultRuleSet(db);
   const year = Number(input.start.slice(0, 4));
   const start = new Date(`${input.start}T00:00:00Z`), end = new Date(`${input.end}T23:59:59Z`);
-  const status = end < now ? 'FINISHED' : start <= now ? 'IN_PROGRESS' : 'DRAWN';
+  const drawn = input.categories.some((c) => c.matches.length);
+  const closes = input.registrationCloses ? new Date(input.registrationCloses) : null;
+  const status = end < now ? 'FINISHED' : !drawn ? (closes && closes > now ? 'REGISTRATION_OPEN' : 'REGISTRATION_CLOSED') : start <= now ? 'IN_PROGRESS' : 'DRAWN';
   const stats = { tournament: input.name, categories: 0, players: 0, newPlayers: 0, matches: 0, unresolved: 0 };
 
   await (db as unknown as { transaction: <T>(f: (tx: Db) => Promise<T>) => Promise<T> }).transaction(async (tx) => {
@@ -88,7 +94,10 @@ export async function importCompetition(db: Db, input: CompetitionIn, now = new 
       venueId = found?.id ?? (await tx.insert(schema.venues).values({ name: v.club, city: v.address || null }).returning())[0]!.id;
     }
     const [existing] = await tx.select().from(schema.tournaments).where(and(eq(schema.tournaments.name, input.name), eq(schema.tournaments.startDate, start)));
-    const fields = { endDate: end, status: status as 'FINISHED', level: input.level, feeAgorot: Math.round(input.feeShekel * 100), venueId };
+    const fields = {
+      endDate: end, status: status as 'FINISHED', level: input.level, feeAgorot: Math.round(input.feeShekel * 100), venueId,
+      sourceUrl: input.sourceUrl || null, registerUrl: input.registerUrl || null, registrationCloses: closes,
+    };
     let tid: string;
     if (existing) { tid = existing.id; await tx.update(schema.tournaments).set(fields).where(eq(schema.tournaments.id, tid)); }
     else {
@@ -99,6 +108,11 @@ export async function importCompetition(db: Db, input: CompetitionIn, now = new 
     // categories being refreshed are rebuilt from scratch (entries, groups, matches and draw cascade)
     if (input.categories.length) {
       await tx.delete(schema.categories).where(and(eq(schema.categories.tournamentId, tid), inArray(schema.categories.name, input.categories.map((c) => c.name))));
+      // placeholder categories from an earlier run (before the draw existed) that nobody entered and that have no matches
+      await tx.execute(sql`
+        delete from categories c where c.tournament_id = ${tid}
+          and not exists (select 1 from entries e where e.category_id = c.id) and not exists (select 1 from matches m where m.category_id = c.id)
+          and c.name not in (select jsonb_array_elements_text(${JSON.stringify(input.categories.map((c) => c.name))}::jsonb))`);
     }
 
     // players already known from the ranking mirror: key rk:<G>:<birthYear>:<name> (and cp:<G>:<name> for ones created here)
@@ -232,8 +246,8 @@ export async function importCompetition(db: Db, input: CompetitionIn, now = new 
         return {
           id: x.id, stage: m.stage, round: m.round, index, group: m.group ? groupId.get(m.group) ?? null : null,
           a: x.a, b: x.b, status: state, sets: state === 'WALKOVER' || state === 'VOID' ? [] : m.sets, winner, absent,
-          court: m.venue || null, kind: m.done ? null : m.kind === 'NB' ? 'NOT_BEFORE' : m.kind === 'St' ? 'EXACT' : null,
-          start: !m.done && m.kind !== 'NB' ? m.start : null, nb: !m.done && m.kind === 'NB' ? m.start : null,
+          court: m.venue || null, kind: m.kind === 'NB' ? 'NOT_BEFORE' : m.kind === 'St' ? 'EXACT' : null,
+          start: m.kind !== 'NB' ? m.start : null, nb: m.kind === 'NB' ? m.start : null,
         };
       });
       for (let i = 0; i < rows.length; i += 400) {
@@ -253,9 +267,11 @@ export async function importCompetition(db: Db, input: CompetitionIn, now = new 
       const slots: { entryId: string | null }[] = [];
       for (const x of first) for (const e of [x.a, x.b]) if (!seen.has(e)) { seen.add(e); slots.push({ entryId: e }); }
       for (const e of entryRows.map((r) => r.id)) if (!seen.has(e)) { seen.add(e); slots.push({ entryId: e }); }
-      await tx.insert(schema.draws).values({
-        categoryId: catId, code: 0, ruleSetKey: rule.key, ruleSetVersion: rule.version, size: slots.length, slots, publishedAt: now,
-      });
+      if (rows.length) {
+        await tx.insert(schema.draws).values({
+          categoryId: catId, code: 0, ruleSetKey: rule.key, ruleSetVersion: rule.version, size: slots.length, slots, publishedAt: now,
+        });
+      }
 
       stats.categories++;
       stats.matches += rows.length;
@@ -263,4 +279,31 @@ export async function importCompetition(db: Db, input: CompetitionIn, now = new 
     stats.players = everyone.size;
   });
   return stats;
+}
+
+/**
+ * Removes a tournament by exact name, with everything that hangs off it (entries, matches, draws, unpaid payments, awards, follows).
+ * Refuses when any entry has been paid, so real money records are never deleted by a sync call.
+ */
+export async function removeTournament(db: Db, name: string) {
+  const found = await db.select().from(schema.tournaments).where(eq(schema.tournaments.name, name));
+  if (!found.length) return { removed: 0 };
+  const ids = found.map((t) => t.id);
+  const paid = await db.execute(sql`
+    select count(*)::int as n from payments p join entries e on e.id = p.entry_id join categories c on c.id = e.category_id
+    where c.tournament_id in (select jsonb_array_elements_text(${JSON.stringify(ids)}::jsonb)) and p.status <> 'UNPAID'`);
+  if (Number((paid as unknown as { n: number }[])[0]?.n) > 0) throw new Error('tournament has payments; refusing to delete');
+  await (db as unknown as { transaction: <T>(f: (tx: Db) => Promise<T>) => Promise<T> }).transaction(async (tx) => {
+    const idsJson = JSON.stringify(ids);
+    await tx.execute(sql`
+      delete from ledger where payment_id in (select p.id from payments p join entries e on e.id = p.entry_id join categories c on c.id = e.category_id
+        where c.tournament_id in (select jsonb_array_elements_text(${idsJson}::jsonb)))`);
+    await tx.execute(sql`
+      delete from payments where entry_id in (select e.id from entries e join categories c on c.id = e.category_id
+        where c.tournament_id in (select jsonb_array_elements_text(${idsJson}::jsonb)))`);
+    await tx.execute(sql`delete from points_awards where tournament_id in (select jsonb_array_elements_text(${idsJson}::jsonb))`);
+    await tx.execute(sql`delete from follows where kind = 'TOURNAMENT' and target_id in (select jsonb_array_elements_text(${idsJson}::jsonb))`);
+    await tx.delete(schema.tournaments).where(inArray(schema.tournaments.id, ids));
+  });
+  return { removed: ids.length };
 }

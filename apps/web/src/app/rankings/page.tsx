@@ -4,13 +4,16 @@ import Link from 'next/link';
 import { tr } from '@/lib/i18n';
 import { AGE_GROUPS, listClubs, rankingTable } from '@/services/public';
 
-export default async function Rankings({ searchParams }: { searchParams: Promise<{ g?: string; age?: string; club?: string }> }) {
+export default async function Rankings({ searchParams }: { searchParams: Promise<{ g?: string; age?: string; club?: string; page?: string }> }) {
   const t = await tr();
-  const { g = 'MALE', age = '', club = '' } = await searchParams;
+  const { g = 'MALE', age = '', club = '', page = '1' } = await searchParams;
+  const PAGE = 100;
+  const pageN = Math.max(1, Number(page) || 1);
   const gender = (g === 'FEMALE' ? 'FEMALE' : 'MALE') as 'MALE' | 'FEMALE';
   const ageN = (AGE_GROUPS as readonly number[]).includes(Number(age)) ? Number(age) : undefined;
-  const [rows, clubs] = await Promise.all([rankingTable(db, { gender, ...(ageN ? { age: ageN } : {}), ...(club ? { clubId: club } : {}) }), listClubs(db)]);
-  const href = (o: { g?: string; age?: string; club?: string }) => `/rankings?g=${o.g ?? gender}&age=${o.age ?? age}&club=${o.club ?? club}`;
+  const [all, clubs] = await Promise.all([rankingTable(db, { gender, ...(ageN ? { age: ageN } : {}), ...(club ? { clubId: club } : {}) }), listClubs(db)]);
+  const rows = all.slice((pageN - 1) * PAGE, pageN * PAGE);
+  const href = (o: { g?: string; age?: string; club?: string; page?: number }) => `/rankings?g=${o.g ?? gender}&age=${o.age ?? age}&club=${o.club ?? club}&page=${o.page ?? 1}`;
   return (
     <Shell nav="rank">
       <h1>{t('דירוג')}</h1>
@@ -30,6 +33,11 @@ export default async function Rankings({ searchParams }: { searchParams: Promise
           {rows.map((r) => <tr key={r.playerId}><td>{r.rank}</td><td><Link href={`/players/${r.playerId}`}>{r.name}</Link></td><td>{r.club ?? '—'}</td><td><strong>{r.points}</strong></td><td>{r.counted}</td></tr>)}
         </tbody></table>
         {!rows.length && <p className="muted">{t('אין עדיין נתוני דירוג.')}</p>}
+        <div className="row">
+          {pageN > 1 && <Link className="btn ghost" href={href({ page: pageN - 1 })}>{t('הקודם')}</Link>}
+          {all.length > pageN * PAGE && <Link className="btn ghost" href={href({ page: pageN + 1 })}>{t('הבא')}</Link>}
+          <span className="muted">{all.length ? `${(pageN - 1) * PAGE + 1}–${Math.min(all.length, pageN * PAGE)} / ${all.length}` : ''}</span>
+        </div>
       </div>
     </Shell>
   );

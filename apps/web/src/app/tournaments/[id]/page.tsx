@@ -21,10 +21,10 @@ import {
 type Detail = NonNullable<Awaited<ReturnType<typeof tournamentDetail>>>;
 const TABS: [string, string][] = [['overview', 'סקירה'], ['entries', 'משתתפים'], ['draw', 'הגרלה וטבלאות'], ['results', 'משחקים ותוצאות'], ['schedule', 'לוח משחקים'], ['gallery', 'גלריה']];
 
-export default async function TournamentPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ tab?: string; err?: string; ok?: string }> }) {
+export default async function TournamentPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ tab?: string; err?: string; ok?: string; cat?: string }> }) {
   const tt = await tr();
   const { id } = await params;
-  const { tab = 'overview', err, ok } = await searchParams;
+  const { tab = 'overview', err, ok, cat = '' } = await searchParams;
   const d = await tournamentDetail(db, id);
   if (!d) notFound();
   const { t } = d;
@@ -44,11 +44,29 @@ export default async function TournamentPage({ params, searchParams }: { params:
       {manage && !rulesVerified && <div className="err" style={{ background: 'var(--warnbg)', color: 'var(--warn)' }}>ערכת החוקים של התחרות טרם אומתה מול תקנוני האיגוד. ההגרלה והנקודות עשויות לא להתאים לתקנון.</div>}
       {tab === 'overview' && <Overview d={d} manage={manage} />}
       {tab === 'entries' && <Entries d={d} manage={manage} />}
-      {tab === 'draw' && <DrawTab d={d} manage={manage} />}
-      {tab === 'results' && <Results d={d} scorer={scorer} />}
-      {tab === 'schedule' && <Schedule d={d} manage={manage} />}
+      {(tab === 'draw' || tab === 'results' || tab === 'schedule') && <CatPicker d={d} tab={tab} cat={cat} />}
+      {tab === 'draw' && <DrawTab d={pick(d, cat)} manage={manage} />}
+      {tab === 'results' && <Results d={pick(d, cat)} scorer={scorer} />}
+      {tab === 'schedule' && <Schedule d={pick(d, cat)} manage={manage} />}
       {tab === 'gallery' && <Gallery tournamentId={t.id} manage={scorer} />}
     </Shell>
+  );
+}
+
+/** Big competitions have 15-30 categories: draw and results show one category at a time (the first by default). */
+const pick = (d: Detail, cat: string): Detail => {
+  if (d.cats.length <= 1) return d;
+  const c = d.cats.find((x) => x.id === cat) ?? d.cats[0]!;
+  return { ...d, cats: [c], ms: d.ms.filter((m) => m.categoryId === c.id) };
+};
+
+async function CatPicker({ d, tab, cat }: { d: Detail; tab: string; cat: string }) {
+  if (d.cats.length <= 1) return null;
+  const cur = (d.cats.find((x) => x.id === cat) ?? d.cats[0]!).id;
+  return (
+    <div className="row" style={{ margin: '4px 0 12px' }}>
+      {d.cats.map((c) => <Link key={c.id} href={`/tournaments/${d.t.id}?tab=${tab}&cat=${c.id}`} className={`pill ${cur === c.id ? 'lime' : ''}`}>{c.name}</Link>)}
+    </div>
   );
 }
 
@@ -66,6 +84,13 @@ async function Overview({ d, manage }: { d: Detail; manage: boolean }) {
         )}
         <span className="muted">דמי השתתפות: ₪{(t.feeAgorot / 100).toFixed(0)}</span>
       </div> : <div className="card row"><span className="muted">{tt('דמי השתתפות')}: ₪{(t.feeAgorot / 100).toFixed(0)}</span>{t.status === 'REGISTRATION_OPEN' && <Link className="btn" href="/me">{tt('להרשמה לתחרות')}</Link>}</div>}
+      {(t.registerUrl || t.sourceUrl || t.registrationCloses) && (
+        <div className="card row">
+          {t.registrationCloses && <span><strong>{tt('מועד אחרון להרשמה')}:</strong> {t.registrationCloses.toLocaleString('he-IL', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Jerusalem' })}</span>}
+          {t.registerUrl && t.status === 'REGISTRATION_OPEN' && <a className="btn" href={t.registerUrl} target="_blank" rel="noopener noreferrer">{tt('הרשמה בלוגליג')}</a>}
+          {t.sourceUrl && <a className="btn ghost" href={t.sourceUrl} target="_blank" rel="noopener noreferrer">{tt('עמוד התחרות באתר האיגוד')}</a>}
+        </div>
+      )}
       <h2>{tt('קטגוריות')}</h2>
       <div className="grid cols">
         {cats.map((c) => (
