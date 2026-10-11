@@ -51,6 +51,7 @@ const EN: Record<string, string> = {
   'קבוצה': 'Team', 'נק׳': 'Pts', 'כל הקבוצות': 'All teams',
   'נוער': 'Youth', 'בוגרים': 'Adults', 'מאסטרס': 'Masters', 'אחר': 'Other', 'כל הקטגוריות': 'All sections',
   'תקנונים': 'Regulations', 'תקנונים ונהלים': 'Regulations and procedures', 'אין עדיין מסמכים.': 'No documents yet.', 'ניצח': 'Won',
+  'תפריט': 'Menu',
   'להרשמה לתחרות': 'Register',
   'קטגוריות': 'Categories',
   'מאושרים': 'confirmed',

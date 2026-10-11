@@ -97,14 +97,24 @@ tbody tr{transition:background .12s}tbody tr:hover{background:var(--surface2)}tb
 .stp{width:50px;height:50px;border-radius:14px;border:1px solid var(--line);background:var(--surface2);color:var(--text);font:inherit;font-size:26px;font-weight:700;cursor:pointer;transition:transform .1s,background .15s}
 .stp:active{transform:scale(.92);background:var(--okbg)}
 
-/* mobile: bottom tab bar replaces the top nav */
+/* hamburger button: only on phones */
+header.top .burger{display:none}
+.navscrim{display:none}
+/* mobile: the menu collapses behind a hamburger button and opens as a list under the header */
 @media(max-width:720px){
-  header.top{padding:8px 12px}
-  main{padding:18px 14px 96px}h1{font-size:25px}.hero{padding:22px 18px}.hero h1{font-size:26px}
-  header.top{backdrop-filter:none;-webkit-backdrop-filter:none;background:#0B2545;justify-content:space-between}
-  header.top nav{position:fixed;inset:auto 0 0 0;z-index:30;background:#0B2545;padding:6px 6px calc(6px + env(safe-area-inset-bottom));flex-wrap:nowrap;overflow-x:auto;overflow-y:visible;justify-content:flex-start;gap:0;border-top:1px solid rgba(255,255,255,.12);flex:none}
-  header.top nav a,details.adm summary{flex:0 0 auto;min-width:72px;text-align:center;padding:10px 8px;font-size:12px;border-radius:12px}
-  details.adm>div{top:auto;bottom:calc(100% + 10px);position:fixed;inset-inline:12px;min-width:0}
+  header.top{padding:8px 12px;gap:8px;backdrop-filter:none;-webkit-backdrop-filter:none;background:#0B2545}
+  header.top .brand{order:0;margin-inline-end:auto}
+  header.top .burger{display:inline-flex;order:9;align-items:center;justify-content:center;width:44px;height:44px;border:1px solid rgba(255,255,255,.3);border-radius:12px;background:transparent;color:#fff;font-size:22px;cursor:pointer}
+  header.top .uname{display:none}
+  header.top>form,header.top>.row{order:2}
+  header.top nav{display:none;order:5}
+  header.top nav.open{display:flex;flex-direction:column;position:fixed;top:62px;inset-inline:0;bottom:0;z-index:30;background:#0B2545;padding:10px 14px calc(14px + env(safe-area-inset-bottom));overflow-y:auto;gap:4px;border-top:1px solid rgba(255,255,255,.12);flex:none}
+  header.top nav.open a,header.top nav.open details.adm summary{display:block;padding:14px 16px;font-size:17px;border-radius:12px;text-align:start;min-width:0}
+  header.top nav.open details.adm>div{position:static;margin-top:4px;background:rgba(255,255,255,.06);border:0;box-shadow:none;min-width:0}
+  header.top nav.open details.adm>div a{color:#BFD0E8}
+  header.top nav.open details.adm>div a.on{background:#fff;color:#0B2545}
+  .navscrim{display:block;position:fixed;inset:0;z-index:25;background:rgba(5,15,30,.5)}
+  main{padding:18px 14px 28px}h1{font-size:25px}.hero{padding:22px 18px}.hero h1{font-size:26px}
   .tabs{width:100%}
 }
 @media print{header.top,.noprint,.tabs{display:none!important}body{background:#fff;color:#000}main{max-width:none;padding:0;animation:none}.card{border:0;padding:0;box-shadow:none}th{position:static}}
