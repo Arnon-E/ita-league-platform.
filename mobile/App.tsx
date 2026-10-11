@@ -5,6 +5,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { Linking } from 'react-native';
 import { Platform } from 'react-native';
 import * as api from './src/api';
+import { More } from './src/More';
 
 async function registerPush() {
   try {
@@ -20,8 +21,8 @@ I18nManager.forceRTL(true);
 
 const C = { navy: '#0B2545', blue: '#1659B5', blue2: '#2F7CF6', lime: '#D4F23C', bg: '#F4F6FA', line: '#E3E8F0', muted: '#5B6B80' };
 
-type Tab = 't' | 'live' | 'rank' | 'players' | 'me';
-const TABS: [Tab, string, string][] = [['t', 'תחרויות', '🏆'], ['live', 'משחקים', '🎾'], ['rank', 'דירוג', '📊'], ['players', 'שחקנים', '👥'], ['me', 'חשבון', '👤']];
+type Tab = 't' | 'live' | 'rank' | 'players' | 'more' | 'me';
+const TABS: [Tab, string, string][] = [['t', 'תחרויות', '🏆'], ['live', 'משחקים', '🎾'], ['rank', 'דירוג', '📊'], ['players', 'שחקנים', '👥'], ['more', 'עוד', '☰'], ['me', 'חשבון', '👤']];
 
 export default function App() {
   const [ready, setReady] = useState(false);
@@ -68,6 +69,7 @@ function Home({ authed, setAuthed }: { authed: boolean; setAuthed: (v: boolean) 
           : tab === 'live' ? <Live />
           : tab === 'rank' ? <Rankings />
           : tab === 'players' ? <Players />
+          : tab === 'more' ? <More />
           : authed ? <MyArea onLogout={() => api.logout().then(() => setAuthed(false))} /> : <Login onDone={() => setAuthed(true)} />}
       </View>
       <View style={s.tabbar}>

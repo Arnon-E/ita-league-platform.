@@ -74,3 +74,15 @@ export const live = () => call<{ live: FeedRow[]; upcoming: FeedRow[]; results: 
 export const sendLive = (matchId: string, sets: { a: number; b: number; superTb?: boolean }[]) => call(`/matches/${matchId}/live`, { method: 'POST', body: JSON.stringify({ sets }) });
 export const rankings = (g: 'MALE' | 'FEMALE', age?: number) => call<{ playerId: string; rank: number; points: number; name: string; club: string | null }[]>(`/public/rankings?g=${g}${age ? `&age=${age}` : ''}`);
 export const players = (q: string) => call<{ id: string; name: string; club: string | null }[]>(`/public/players?q=${encodeURIComponent(q)}`);
+
+export type LeagueRow = { id: string; name: string; gender: string; teams: number; played: number; total: number };
+export type LeagueDetail = {
+  id: string; name: string; updatedAt: string;
+  groups: { name: string; standings: { rank: number; team: string; played: number; points: number; wins: number; losses: number; setsFor: number; setsAgainst: number }[] }[];
+  rounds: { name: string; matches: { done: boolean; start: string | null; group: string; home: { team: string }; away: { team: string }; homeScore: number | null; awayScore: number | null; venue: string }[] }[];
+};
+export const leagues = () => call<LeagueRow[]>('/public/leagues');
+export const league = (id: string) => call<LeagueDetail>(`/public/leagues/${id}`);
+export const regulations = () => call<{ id: string; title: string; url: string; category: string }[]>('/public/regulations');
+export const clubs = () => call<{ id: string; name: string; city: string | null; players: number }[]>('/public/clubs');
+export const stats = () => call<{ totals: { tournaments: number; players: number; matches: number }; top: { id: string; name: string; club: string | null; played: number; wins: number }[]; clubs: { id: string; name: string; players: number }[] }>('/public/stats');
