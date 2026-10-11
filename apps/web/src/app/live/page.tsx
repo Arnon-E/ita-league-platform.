@@ -5,6 +5,7 @@ import { liveFeed } from '@/services/public';
 import { fmtTime, MSTATUS, fmtScore } from '@/components/labels';
 import { tr } from '@/lib/i18n';
 import { AutoRefresh } from '@/components/AutoRefresh';
+import { MatchScore } from '@/components/MatchScore';
 
 export default async function Live() {
   const t0 = await tr();
@@ -28,16 +29,15 @@ export default async function Live() {
         {!upcoming.length && <p className="muted">{t0('אין משחקים מתוכננים.')}</p>}
       </div>
       <h2>{t0('תוצאות אחרונות')}</h2>
-      <div className="card" style={{ overflow: 'auto' }}>
-        <table><thead><tr><th>{t0('משחק')}</th><th>{t0('תוצאה')}</th><th>{t0('תחרות')}</th></tr></thead><tbody>
-          {results.map(({ m, c, t }) => <tr key={m.id}>
-            <td><Link href={`/matches/${m.id}`}>{nm(m.aEntryId)} – {nm(m.bEntryId)}</Link></td>
-            <td><span className="pill ok">{t0(MSTATUS[m.status] ?? '')} {fmtScore(m.sets as { a: number; b: number }[])}</span></td>
-            <td><Link href={`/tournaments/${t.id}`}>{t.name} · {c.name}</Link></td>
-          </tr>)}
-        </tbody></table>
-        {!results.length && <p className="muted">{t0('אין עדיין תוצאות.')}</p>}
+      <div className="sbgrid">
+        {results.map(({ m, c, t }) => (
+          <MatchScore key={m.id} href={`/matches/${m.id}`} aName={nm(m.aEntryId)} bName={nm(m.bEntryId)} sets={m.sets as { a: number; b: number }[]}
+            status={m.status} winner={m.winnerEntryId ? (m.winnerEntryId === m.aEntryId ? 'a' : m.winnerEntryId === m.bEntryId ? 'b' : null) : null}
+            caption={`${t.name} · ${c.name}`}
+            labels={{ walkover: t0('ווק-אובר'), retired: t0('פרישה'), void: t0('בוטל'), live: t0('חי'), won: t0('ניצח') }} />
+        ))}
       </div>
+      {!results.length && <p className="muted">{t0('אין עדיין תוצאות.')}</p>}
     </Shell>
   );
 }

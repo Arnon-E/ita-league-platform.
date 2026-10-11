@@ -108,3 +108,17 @@ tbody tr{transition:background .12s}tbody tr:hover{background:var(--surface2)}tb
   .tabs{width:100%}
 }
 @media print{header.top,.noprint,.tabs{display:none!important}body{background:#fff;color:#000}main{max-width:none;padding:0;animation:none}.card{border:0;padding:0;box-shadow:none}th{position:static}}
+
+/* scoreboard: one row per player, winner bold with a check */
+.sb table{width:100%;border-collapse:collapse}
+.sb td{padding:6px 8px;border:0;border-bottom:1px solid var(--line)}
+.sb tr:last-child td{border-bottom:0}
+.sb .who{width:100%;font-weight:500}
+.sb .tick{display:inline-block;width:1.3em;color:var(--ok);font-weight:800}
+.sb tr.won .who{font-weight:800}
+.sb tr.lost .who{color:var(--muted,#5b6b82)}
+.sb .set{text-align:center;min-width:2.2em;font-variant-numeric:tabular-nums;direction:ltr}
+.sb .set.sw{font-weight:800}
+.sb .sbf{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:6px 8px 0;font-size:13px}
+a.sbcard{display:block;padding:10px 12px;margin-bottom:8px}
+.sbgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px}

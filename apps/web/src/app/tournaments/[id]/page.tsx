@@ -4,6 +4,7 @@ import { db, schema } from '@/db';
 import { getActor } from '@/lib/session';
 import { Flash, Shell } from '@/components/Shell';
 import { FollowButton } from '@/components/FollowButton';
+import { MatchScore } from '@/components/MatchScore';
 import { Gallery } from './Gallery';
 import { tr } from '@/lib/i18n';
 import { tournamentDetail, playersNotIn } from '@/services/queries';
@@ -332,8 +333,12 @@ async function Results({ d, scorer }: { d: Detail; scorer: boolean }) {
               {d.ms.filter((m) => m.categoryId === c.id).map((m) => (
                 <tr key={m.id}>
                   <td>{m.stage === 'GROUP' ? `${tt('בית')} · ${tt('מחזור')} ${m.round}` : `${tt('הדחה')} · ${tt('סיבוב')} ${m.round}`}</td>
-                  <td>{nm(m.aEntryId)} – {nm(m.bEntryId)}</td>
-                  <td>{m.status === 'SCHEDULED' ? <span className="pill warn">{tt(MSTATUS[m.status] ?? '')}</span> : <span className="pill ok">{tt(MSTATUS[m.status] ?? '')}{m.status === 'COMPLETED' ? ` ${fmtScore(m.sets as { a: number; b: number }[])}` : ''}</span>}</td>
+                  <td colSpan={2} style={{ minWidth: 260 }}>
+                    <MatchScore aName={nm(m.aEntryId)} bName={nm(m.bEntryId)} sets={m.status === 'SCHEDULED' ? [] : (m.sets as { a: number; b: number }[])} status={m.status}
+                      winner={m.winnerEntryId ? (m.winnerEntryId === m.aEntryId ? 'a' : m.winnerEntryId === m.bEntryId ? 'b' : null) : null}
+                      caption={m.status === 'SCHEDULED' ? tt(MSTATUS.SCHEDULED ?? '') : undefined}
+                      labels={{ walkover: tt('ווק-אובר'), retired: tt('פרישה'), void: tt('בוטל'), live: tt('חי'), won: tt('ניצח') }} />
+                  </td>
                   <td>{m.courtLabel ? `מגרש ${m.courtLabel} · ${fmtTime(m.scheduledStart)}` : '—'}</td>
                   <td>{m.aEntryId && m.bEntryId && <Link className="btn small ghost" href={`/matches/${m.id}`}>{scorer ? (m.status === 'SCHEDULED' ? 'הזנת תוצאה' : 'עריכה') : 'פרטים'}</Link>}</td>
                 </tr>

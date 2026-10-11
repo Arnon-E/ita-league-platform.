@@ -130,9 +130,24 @@ function FeedCard({ r }: { r: api.FeedRow }) {
   return (
     <View style={s.card}>
       {r.status === 'SCHEDULED' && (r.sets ?? []).length > 0 && <View style={[s.chip2, s.chipLive]}><Text style={s.chip2T}>● חי</Text></View>}
-      <Text style={s.cardT}>{r.a} – {r.b}</Text>
+      {r.status === 'SCHEDULED' && !(r.sets ?? []).length ? <>
+        <Text style={s.cardT}>{r.a} – {r.b}</Text>
+        <Text>{`${r.court ? `מגרש ${r.court} · ` : ''}${r.start ? new Date(r.start).toLocaleString('he-IL', { weekday: 'short', hour: '2-digit', minute: '2-digit' }) : ''}`}</Text>
+      </> : <View style={{ gap: 2 }}>
+        {(['a', 'b'] as const).map((side) => {
+          const won = r.winner === side;
+          return (
+            <View key={side} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Text style={{ width: 18, color: '#16794C', fontWeight: '800' }}>{won ? '✓' : ''}</Text>
+              <Text style={[s.b, { flex: 1 }, won && { fontWeight: '800' }, !won && r.winner && { opacity: 0.6 }]}>{side === 'a' ? r.a : r.b}</Text>
+              {(r.sets ?? []).map((x, i) => { const mine = side === 'a' ? x.a : x.b; const other = side === 'a' ? x.b : x.a; return <Text key={i} style={[{ width: 26, textAlign: 'center' }, mine > other && { fontWeight: '800' }]}>{mine}</Text>; })}
+            </View>
+          );
+        })}
+        {r.status === 'WALKOVER' && <Text style={s.muted}>ווק-אובר</Text>}
+        {r.status === 'RETIRED' && <Text style={s.muted}>פרישה</Text>}
+      </View>}
       <Text style={s.muted}>{r.tournament} · {r.category}</Text>
-      <Text>{r.status === 'SCHEDULED' && (r.sets ?? []).length ? `חי · ${fmtSets(r.sets)}` : r.status === 'SCHEDULED' ? `${r.court ? `מגרש ${r.court} · ` : ''}${r.start ? new Date(r.start).toLocaleString('he-IL', { weekday: 'short', hour: '2-digit', minute: '2-digit' }) : ''}` : fmtSets(r.sets)}</Text>
     </View>
   );
 }

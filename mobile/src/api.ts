@@ -65,7 +65,7 @@ export async function uploadDocument(playerId: string, type: string, file: { uri
   return body;
 }
 
-export type FeedRow = { id: string; tournament: string; category: string; status: string; a: string | null; b: string | null; sets: { a: number; b: number }[]; court: string | null; start: string | null };
+export type FeedRow = { id: string; tournament: string; category: string; status: string; a: string | null; b: string | null; sets: { a: number; b: number }[]; court: string | null; start: string | null; winner?: 'a' | 'b' | null };
 export const follows = () => call<{ kind: string; target: string }[]>('/follows');
 export const toggleFollow = (kind: 'PLAYER' | 'CLUB' | 'TOURNAMENT', target: string) => call<{ following: boolean }>('/follows', { method: 'POST', body: JSON.stringify({ kind, target }) });
 export const gallery = (tournamentId: string) => call<{ id: string; caption: string | null }[]>(`/tournaments/${tournamentId}/gallery`);

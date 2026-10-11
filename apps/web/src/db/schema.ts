@@ -112,6 +112,16 @@ export const tournaments = pgTable('tournaments', {
   createdAt: createdAt(),
 });
 
+/** Public regulations, procedures and forms (links to the federation's own documents). */
+export const regulations = pgTable('regulations', {
+  id: text('id').primaryKey(),
+  title: text('title').notNull(),
+  url: text('url').notNull(),
+  category: text('category').notNull().default('אחר'),
+  sort: integer('sort').notNull().default(100),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
 /** Team leagues mirrored from the federation's public pages (standings and fixtures kept as one document). */
 export const externalLeagues = pgTable('external_leagues', {
   id: text('id').primaryKey(),
