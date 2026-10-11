@@ -4,6 +4,7 @@ import { Shell } from '@/components/Shell';
 import { liveFeed } from '@/services/public';
 import { fmtTime, MSTATUS, fmtScore } from '@/components/labels';
 import { tr } from '@/lib/i18n';
+import { AutoRefresh } from '@/components/AutoRefresh';
 
 export default async function Live() {
   const t0 = await tr();
@@ -12,7 +13,7 @@ export default async function Live() {
   return (
     <Shell nav="live">
       <h1>{t0('משחקים')}</h1>
-      <meta httpEquiv="refresh" content="30" />
+      <AutoRefresh seconds={30} />
       {live.length > 0 && <>
         <h2>{t0('משחקים חיים')}</h2>
         <div className="grid cols">

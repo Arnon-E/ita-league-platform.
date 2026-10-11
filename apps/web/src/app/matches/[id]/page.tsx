@@ -1,3 +1,4 @@
+import { AutoRefresh } from '@/components/AutoRefresh';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { db } from '@/db';
@@ -24,7 +25,7 @@ export default async function MatchPage({ params, searchParams }: { params: Prom
       <Link href={`/tournaments/${t.id}?tab=results`} className="muted">{tt('← חזרה לתחרות')}</Link>
       <h1>{c.name} · {m.stage === 'GROUP' ? `${tt('בית, מחזור')} ${m.round}` : `${tt('הדחה, סיבוב')} ${m.round}`}</h1>
       <p className="muted">{m.courtLabel ? `מגרש ${m.courtLabel} · ${fmtTime(m.scheduledStart)} · ` : ''}{t.setsToWin === 2 ? tt('הטוב מ-3 סטים') : `${t.setsToWin} ${tt('סטים')}`}{t.decider === 'superTb' ? tt(', הכרעה בסופר-טייברייק') : ''} · {m.live && m.status === 'SCHEDULED' ? <span className="pill lime">משחק חי</span> : <span className="pill">{tt(MSTATUS[m.status] ?? '')}</span>}</p>
-      {m.live && m.status === 'SCHEDULED' && !scorer && <meta httpEquiv="refresh" content="15" />}
+      {m.live && m.status === 'SCHEDULED' && !scorer && <AutoRefresh seconds={15} />}
       <Flash err={err} ok={ok} />
       {A && B && m.aEntryId && m.bEntryId && !scorer ? (
         <div className="card grid"><h2 style={{ margin: 0 }}>{A} – {B}</h2><strong style={{ fontSize: 22 }}>{(m.sets as { a: number; b: number }[]).length ? fmtScore(m.sets as { a: number; b: number }[]) : tt('טרם התחיל')}</strong>{m.live && m.status === 'SCHEDULED' && <span className="pill lime">{tt('משחק חי · הדף מתרענן אוטומטית')}</span>}{m.winnerEntryId && <span className="pill ok">{tt('מנצח/ת:')} {names.get(m.winnerEntryId)}</span>}</div>

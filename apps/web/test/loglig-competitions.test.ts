@@ -106,6 +106,21 @@ describe('loglig competition mirror', () => {
     expect((await db.select().from(schema.tournaments).where(eq(schema.tournaments.id, t!.id)))[0]!.status).toBe('DRAWN');
   });
 
+  it('keeps the section and gives adults a plausible estimated birth year', async () => {
+    const adults = validateCompetitionImport({
+      kind: 'competition', name: 'לאומית בדיקה', start: '2026-05-01', end: '2026-05-03', feeShekel: 0, level: 'NATIONAL', section: 'ADULTS',
+      categories: [{ name: 'גברים', gender: 'MALE', age: null, format: 'KNOCKOUT', matches: [
+        { stage: 'KO', round: 1, place: 1, order: 0, start: '2026-05-01T07:00:00.000Z', kind: '', venue: '', done: true, a: p('דן בוגר'), b: p('רן בוגר'), sets: [{ a: 6, b: 1 }, { a: 6, b: 2 }], retired: false, walkover: false },
+      ] }],
+    });
+    await importCompetition(db, adults, new Date('2026-10-10'));
+    const [t] = await db.select().from(schema.tournaments).where(eq(schema.tournaments.name, 'לאומית בדיקה'));
+    expect(t!.section).toBe('ADULTS');
+    const [pl] = await db.select().from(schema.players).where(eq(schema.players.firstName, 'דן'));
+    expect(pl!.birthDate.getUTCFullYear()).toBeLessThan(2000);
+    await removeTournament(db, 'לאומית בדיקה');
+  });
+
   it('removes a tournament by name with its dependants', async () => {
     expect(await removeTournament(db, 'סבב קרוב')).toEqual({ removed: 1 });
     expect(await removeTournament(db, 'לא קיים')).toEqual({ removed: 0 });

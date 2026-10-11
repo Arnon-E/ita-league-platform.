@@ -105,6 +105,8 @@ export const tournaments = pgTable('tournaments', {
   /** Calendar level: NATIONAL | REGIONAL | INTERNATIONAL | CIRCUIT. */
   level: text('level').notNull().default('NATIONAL'),
   /** Mirrored competitions: the federation's page and the sign-up form where players really register. */
+  /** YOUTH | ADULTS | MASTERS | OTHER: the federation's competition section. */
+  section: text('section').notNull().default('YOUTH'),
   sourceUrl: text('source_url'),
   registerUrl: text('register_url'),
   createdAt: createdAt(),

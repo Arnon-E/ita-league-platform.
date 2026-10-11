@@ -16,7 +16,7 @@ export interface MatchIn {
 export interface CategoryIn { name: string; source: string; gender: Gender; age: number | null; format: 'KNOCKOUT' | 'GROUPS_KNOCKOUT'; matches: MatchIn[] }
 export interface CompetitionIn {
   kind: 'competition'; name: string; start: string; end: string; feeShekel: number; level: 'NATIONAL' | 'REGIONAL' | 'INTERNATIONAL' | 'CIRCUIT';
-  sourceUrl?: string; registerUrl?: string; registrationCloses?: string | null; venues: { club: string; address: string }[]; categories: CategoryIn[];
+  section?: 'YOUTH' | 'ADULTS' | 'MASTERS' | 'OTHER'; sourceUrl?: string; registerUrl?: string; registrationCloses?: string | null; venues: { club: string; address: string }[]; categories: CategoryIn[];
 }
 
 const MAX_MATCHES = 4000;
@@ -58,6 +58,7 @@ export function validateCompetitionImport(x: unknown): CompetitionIn {
     kind: 'competition', name, start: b.start as string, end: b.end as string,
     feeShekel: Math.max(0, Number(b.feeShekel) || 0),
     level: b.level === 'REGIONAL' || b.level === 'INTERNATIONAL' || b.level === 'CIRCUIT' ? b.level : 'NATIONAL',
+    section: b.section === 'ADULTS' || b.section === 'MASTERS' || b.section === 'OTHER' ? b.section : 'YOUTH',
     sourceUrl: webUrl(b.sourceUrl), registerUrl: webUrl(b.registerUrl),
     registrationCloses: typeof b.registrationCloses === 'string' && !Number.isNaN(Date.parse(b.registrationCloses)) ? new Date(b.registrationCloses).toISOString() : null,
     venues: (Array.isArray(b.venues) ? b.venues : []).slice(0, 20).map((v) => ({ club: clean(v?.club, 120), address: clean(v?.address, 200) })).filter((v) => v.club),
@@ -95,7 +96,7 @@ export async function importCompetition(db: Db, input: CompetitionIn, now = new 
     }
     const [existing] = await tx.select().from(schema.tournaments).where(and(eq(schema.tournaments.name, input.name), eq(schema.tournaments.startDate, start)));
     const fields = {
-      endDate: end, status: status as 'FINISHED', level: input.level, feeAgorot: Math.round(input.feeShekel * 100), venueId,
+      endDate: end, status: status as 'FINISHED', level: input.level, section: input.section ?? 'YOUTH', feeAgorot: Math.round(input.feeShekel * 100), venueId,
       sourceUrl: input.sourceUrl || null, registerUrl: input.registerUrl || null, registrationCloses: closes,
     };
     let tid: string;
@@ -144,7 +145,7 @@ export async function importCompetition(db: Db, input: CompetitionIn, now = new 
           const key = `cp:${c.gender}:${p.name}`;
           if (missing.has(key)) continue;
           const n = splitName(p.name);
-          missing.set(key, { key, first: n.first, last: n.last, by: year - (c.age ?? 14), gender: c.gender, club: p.club });
+          missing.set(key, { key, first: n.first, last: n.last, by: year - (c.age ?? (input.section === 'ADULTS' || input.section === 'MASTERS' ? 30 : 14)), gender: c.gender, club: p.club });
         }
       }
     }

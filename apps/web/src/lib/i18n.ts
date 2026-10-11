@@ -49,6 +49,7 @@ const EN: Record<string, string> = {
   'שנת לידה': 'Birth year', 'הקודם': 'Previous', 'הבא': 'Next', 'ליגות': 'Leagues', 'ליגת Winner': 'Winner League',
   'קבוצות': 'teams', 'מחזורי משחקים שהסתיימו': 'matches played', 'אין עדיין ליגות.': 'No leagues yet.', 'עודכן': 'Updated', 'טבלאות': 'Standings',
   'קבוצה': 'Team', 'נק׳': 'Pts', 'כל הקבוצות': 'All teams',
+  'נוער': 'Youth', 'בוגרים': 'Adults', 'מאסטרס': 'Masters', 'אחר': 'Other', 'כל הקטגוריות': 'All sections',
   'להרשמה לתחרות': 'Register',
   'קטגוריות': 'Categories',
   'מאושרים': 'confirmed',

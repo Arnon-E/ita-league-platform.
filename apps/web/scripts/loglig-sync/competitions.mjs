@@ -16,13 +16,27 @@ import { ageOf, genderOf, israelToUtc, koRound, parseCategoryPage, parseCompetit
 const here = path.dirname(fileURLToPath(import.meta.url));
 const OUT = path.resolve(here, '../../.loglig-dump');
 const slug = (s) => 'https://ita.co.il/' + encodeURI(s) + '/';
-const LISTS = { national: slug('תחרויות-נוער-ארציות'), regional: slug('תחרויות-נוער-אזוריות'), seniors: slug('תחרויות-סניורים') };
+// every competition listing on ita.co.il: key -> { url, level, section }
+const LISTS = {
+  national: { url: slug('תחרויות-נוער-ארציות'), level: 'NATIONAL', section: 'YOUTH' },
+  regional: { url: slug('תחרויות-נוער-אזוריות'), level: 'REGIONAL', section: 'YOUTH' },
+  'youth-intl': { url: slug('תחרויות-נוער-בינלאומיות'), level: 'INTERNATIONAL', section: 'YOUTH' },
+  u10: { url: slug('תחרויות-נוער-סבב-גילאי-10'), level: 'CIRCUIT', section: 'YOUTH' },
+  'masters-national': { url: slug('תחרויות-סניורים-לאומיות'), level: 'NATIONAL', section: 'MASTERS' },
+  'masters-intl': { url: slug('תחרויות-סניורים-בינלאומיות'), level: 'INTERNATIONAL', section: 'MASTERS' },
+  'masters-other': { url: slug('תחרויות-סניורים-תחרויות-נוספות'), level: 'NATIONAL', section: 'MASTERS' },
+  'adults-national': { url: slug('תחרויות-בוגרים-לאומיות'), level: 'NATIONAL', section: 'ADULTS' },
+  'adults-itf': { url: slug('תחרויות-בוגרים-itf'), level: 'INTERNATIONAL', section: 'ADULTS' },
+  'adults-atp': { url: slug('תחרויות-בוגרים-atp'), level: 'INTERNATIONAL', section: 'ADULTS' },
+  'adults-special': { url: slug('תחרויות-בוגרים-אירועים-מיוחדים'), level: 'NATIONAL', section: 'OTHER' },
+};
 
 const args = process.argv.slice(2);
 const opt = (n, d) => (args.includes(n) ? args[args.indexOf(n) + 1] : d);
 const push = args.includes('--push');
 const limit = args.includes('--all') ? Infinity : Number(opt('--limit', 3));
-const listNames = opt('--list', 'national').split(',');
+const listArg = opt('--list', 'national');
+const listNames = listArg === 'all' ? Object.keys(LISTS) : listArg.split(',');
 const recentDays = args.includes('--recent') ? Number(opt('--recent', 30)) : Infinity;
 
 function loadEnv(file) {
@@ -47,7 +61,7 @@ async function get(url, tries = 3) {
 
 // 1) which competitions exist (per listing, so each keeps its level)
 async function listCompetitions(name) {
-  const listUrl = LISTS[name] ?? name;
+  const listUrl = LISTS[name]?.url ?? name;
   const found = [];
   for (let page = 1; page <= 15; page++) {
     let html;
@@ -61,9 +75,22 @@ async function listCompetitions(name) {
   return found.slice(0, limit).map((url) => ({ url, list: name }));
 }
 
-const levelOf = (list, name) => (/^סבב/.test(name) ? 'CIRCUIT' : list === 'regional' ? 'REGIONAL' : list === 'seniors' && /ITF|מאסטרס/.test(name) ? 'INTERNATIONAL' : 'NATIONAL');
+const levelOf = (list, name) => (/^סבב/.test(name) ? 'CIRCUIT' : LISTS[list]?.level ?? 'NATIONAL');
 const today = new Date().toISOString().slice(0, 10);
 const daysAgo = (d) => Math.floor((Date.parse(today) - Date.parse(d)) / 86400000);
+
+const GENERIC = new Set(['תחרות', 'לאומית', 'אזורית', 'ארצית', 'אליפות', 'ישראל', 'לנוער', 'גברים', 'נשים', 'מאסטרס', 'עש', 'של', 'על']);
+/** Same event? Equal/contained names, or the same numbers and at least two shared distinctive words (names differ between pages). */
+function sameCompetition(a, b) {
+  const norm = (x) => x.replace(/["'״׳`]/g, '').replace(/[.,:\-–/]+/g, ' ').replace(/\s+/g, ' ').trim();
+  const x = norm(a), y = norm(b);
+  if (x.includes(y) || y.includes(x)) return true;
+  const toks = (t) => new Set(t.split(' ').filter(Boolean));
+  const tx = toks(x), ty = toks(y);
+  const nums = (t) => [...t].filter((w) => /^\d+$/.test(w)).sort().join(',');
+  if (nums(tx) && nums(ty) && nums(tx) !== nums(ty)) return false;
+  return [...tx].filter((w) => ty.has(w) && w.length >= 3 && !GENERIC.has(w) && !/^\d+$/.test(w)).length >= 2;
+}
 
 // 2) one competition -> normalized document (draws and results when published, otherwise the planned categories)
 async function readCompetition({ url, list }) {
@@ -76,8 +103,7 @@ async function readCompetition({ url, list }) {
       const page = parseCategoryPage(await get(`https://loglig.com:2053/LeagueTable/SchedulesForTennisCompetition/${ref.id}?seasonId=${ref.seasonId}`));
       if (!page.matches.length) continue;
       // some competition pages still embed another competition's draws: keep only pages that belong to this one
-      const norm = (x) => x.replace(/["'״׳`]/g, '').replace(/\s+/g, ' ').trim();
-      if (page.competition && !(norm(page.competition).includes(norm(c.name)) || norm(c.name).includes(norm(page.competition)))) continue;
+      if (page.competition && !sameCompetition(page.competition, c.name)) continue;
       const label = ref.section === 'qualifying' ? 'מוקדמות' : ref.section === 'finals' ? 'בית הגמר' : '';
       const name = label && !page.category.includes(label) ? `${page.category} · ${label}` : page.category;
       const hasGroups = page.matches.some((m) => /^בית\s*\d/.test(m.stage));
@@ -99,7 +125,7 @@ async function readCompetition({ url, list }) {
   }
   if (!cats.length) for (const p of c.planned) cats.push({ name: p.name, source: '', gender: p.gender, age: p.age, format: 'KNOCKOUT', matches: [] });
   return {
-    kind: 'competition', name: c.name, start: c.start, end: c.end, feeShekel: c.feeShekel, level: levelOf(list, c.name), sourceUrl: url,
+    kind: 'competition', name: c.name, start: c.start, end: c.end, feeShekel: c.feeShekel, level: levelOf(list, c.name), section: LISTS[list]?.section ?? 'YOUTH', sourceUrl: url,
     registerUrl: c.registerUrl, registrationCloses: c.registrationCloses ? israelToUtc(c.registrationCloses) : null,
     doubles: c.isDoubles, venues: c.venues, categories: cats,
   };
@@ -108,7 +134,7 @@ async function readCompetition({ url, list }) {
 mkdirSync(OUT, { recursive: true });
 const urls = [];
 for (const n of listNames) {
-  console.log('Listing competitions from', decodeURI(LISTS[n] ?? n));
+  console.log('Listing competitions from', decodeURI(LISTS[n]?.url ?? n));
   for (const x of await listCompetitions(n)) if (!urls.some((u) => u.url === x.url)) urls.push(x);
 }
 console.log(`${urls.length} competition(s)

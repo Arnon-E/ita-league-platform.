@@ -10,13 +10,14 @@ import { LEVEL, STATUS } from '@/components/labels';
 import { tr } from '@/lib/i18n';
 
 const AGES = [10, 12, 14, 16, 18];
+const SEC: Record<string, string> = { YOUTH: 'נוער', ADULTS: 'בוגרים', MASTERS: 'מאסטרס', OTHER: 'אחר' };
 const ST: Record<string, string> = { open: 'הרשמה פתוחה', soon: 'בקרוב', live: 'מתקיימת עכשיו', done: 'הסתיימה' };
 const stGroup = (x: { status: string; endDate: Date }) =>
   x.status === 'REGISTRATION_OPEN' ? 'open' : x.status === 'IN_PROGRESS' ? 'live' : x.status === 'FINISHED' || x.status === 'CANCELLED' || x.endDate < new Date() ? 'done' : 'soon';
 
-export default async function Home({ searchParams }: { searchParams: Promise<{ level?: string; season?: string; q?: string; g?: string; age?: string; st?: string }> }) {
+export default async function Home({ searchParams }: { searchParams: Promise<{ level?: string; season?: string; q?: string; g?: string; age?: string; st?: string; sec?: string }> }) {
   const t = await tr();
-  const { level = '', season = '', q = '', g = '', age = '', st = '' } = await searchParams;
+  const { level = '', season = '', q = '', g = '', age = '', st = '', sec = '' } = await searchParams;
   const [ts, actor, counts, cats] = await Promise.all([
     listTournaments(db),
     getActor(),
@@ -35,6 +36,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ l
   const seasons = [...new Set(ts.map((x) => x.startDate.getFullYear()))].sort((a, b) => b - a);
   const shown = ts.filter((x) => {
     if (level && x.level !== level) return false;
+    if (sec && x.section !== sec) return false;
     if (season && String(x.startDate.getFullYear()) !== season) return false;
     if (st && stGroup(x) !== st) return false;
     if (needle && !x.name.toLowerCase().includes(needle)) return false;
@@ -49,8 +51,8 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ l
     if (ao && bo) return (a.registrationCloses?.getTime() ?? a.startDate.getTime()) - (b.registrationCloses?.getTime() ?? b.startDate.getTime());
     return b.startDate.getTime() - a.startDate.getTime();
   });
-  const filtered = !!(level || season || st || needle || g || age);
-  const href = (o: { st?: string }) => `/?${new URLSearchParams({ level, season, q, g, age, st: o.st ?? st }).toString()}`;
+  const filtered = !!(level || season || st || needle || g || age || sec);
+  const href = (o: { st?: string }) => `/?${new URLSearchParams({ level, season, q, g, age, sec, st: o.st ?? st }).toString()}`;
   const c = (counts as unknown as { players: number; clubs: number; live: number }[])[0]!;
   return (
     <Shell nav="home">
@@ -77,6 +79,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ l
       </div>
       <form className="card row" style={{ marginTop: 12 }}>
         <input type="hidden" name="st" value={st} />
+        <select name="sec" defaultValue={sec}><option value="">{t('כל הקטגוריות')}</option>{Object.entries(SEC).map(([k, v]) => <option key={k} value={k}>{t(v)}</option>)}</select>
         <input name="q" defaultValue={q} placeholder={t('חיפוש לפי שם תחרות')} style={{ flex: 1, minWidth: 180 }} />
         <select name="g" defaultValue={g}><option value="">{t('בנים ובנות')}</option><option value="MALE">{t('בנים')}</option><option value="FEMALE">{t('בנות')}</option></select>
         <select name="age" defaultValue={age}><option value="">{t('כל הגילאים')}</option>{AGES.map((a) => <option key={a} value={a}>{t('גיל')} {a}</option>)}</select>

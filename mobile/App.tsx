@@ -95,15 +95,25 @@ const STATUS_HE: Record<string, string> = { DRAFT: 'טיוטה', REGISTRATION_OP
 function TournamentList({ onOpen }: { onOpen: (id: string) => void }) {
   const { data, err, busy, reload } = useLoad(api.tournaments);
   const [level, setLevel] = useState('');
-  const shown = (data ?? []).filter((x) => !level || x.level === level);
+  const [sec, setSec] = useState('');
+  const [st, setSt] = useState('');
+  const [q, setQ] = useState('');
+  const shown = (data ?? []).filter((x) => (!q.trim() || x.name.includes(q.trim())) && (!level || x.level === level) && (!sec || x.section === sec) && (!st || (st === 'open' ? x.status === 'REGISTRATION_OPEN' : st === 'live' ? x.status === 'IN_PROGRESS' : x.status === 'FINISHED')));
   return (
     <View style={s.pad}>
       <View style={s.hero}><Text style={s.heroT}>איגוד הטניס בישראל</Text><Text style={s.heroS}>תחרויות, לוחות משחקים ותוצאות חיות</Text></View>
       <Text style={s.h2}>תחרויות</Text>
+      <TextInput style={s.input} placeholder="חיפוש לפי שם תחרות" placeholderTextColor="#8FA1BA" value={q} onChangeText={setQ} />
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }} contentContainerStyle={{ gap: 8 }}>
         {([['', 'הכול'], ['NATIONAL', 'ארצית'], ['REGIONAL', 'אזורית'], ['INTERNATIONAL', 'בינלאומית'], ['CIRCUIT', 'סבב']] as const).map(([k, l]) => <Pressable key={k} style={[s.chip, level === k && s.chipOn]} onPress={() => setLevel(k)}><Text style={level === k ? s.chipOnT : s.b}>{l}</Text></Pressable>)}
       </ScrollView>
-      <Status err={err} busy={busy} empty={!!data && !shown.length && 'אין תחרויות ברמה זו'} />
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0, marginTop: 8 }} contentContainerStyle={{ gap: 8 }}>
+        {([['', 'כל הקטגוריות'], ['YOUTH', 'נוער'], ['ADULTS', 'בוגרים'], ['MASTERS', 'מאסטרס'], ['OTHER', 'אחר']] as const).map(([k, l]) => <Pressable key={k} style={[s.chip, sec === k && s.chipOn]} onPress={() => setSec(k)}><Text style={sec === k ? s.chipOnT : s.b}>{l}</Text></Pressable>)}
+      </ScrollView>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0, marginTop: 8 }} contentContainerStyle={{ gap: 8 }}>
+        {([['', 'כל הסטטוסים'], ['open', 'הרשמה פתוחה'], ['live', 'מתקיימת'], ['done', 'הסתיימה']] as const).map(([k, l]) => <Pressable key={k} style={[s.chip, st === k && s.chipOn]} onPress={() => setSt(k)}><Text style={st === k ? s.chipOnT : s.b}>{l}</Text></Pressable>)}
+      </ScrollView>
+      <Status err={err} busy={busy} empty={!!data && !shown.length && 'אין תחרויות לפי הסינון'} />
       <FlatList data={shown} keyExtractor={(t) => t.id} onRefresh={reload} refreshing={false} renderItem={({ item }) => (
         <Pressable style={({ pressed }) => [s.card, pressed && s.pressed]} onPress={() => onOpen(item.id)}>
           <View style={[s.chip2, item.status === 'REGISTRATION_OPEN' ? s.chipOk : item.status === 'IN_PROGRESS' ? s.chipLive : null]}><Text style={s.chip2T}>{STATUS_HE[item.status] ?? item.status}</Text></View>

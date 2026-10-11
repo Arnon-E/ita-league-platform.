@@ -25,6 +25,7 @@ try {
   // additive column changes for databases created before the column existed (never drops or rewrites anything)
   await sql`alter table tournaments add column if not exists source_url text`;
   await sql`alter table tournaments add column if not exists register_url text`;
+  await sql`alter table tournaments add column if not exists section text not null default 'YOUTH'`;
   await sql`create table if not exists external_leagues (
     id text primary key, name text not null, gender gender not null default 'OPEN', data jsonb not null, updated_at timestamptz not null default now())`;
 
