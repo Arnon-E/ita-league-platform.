@@ -10,7 +10,7 @@
   --shadow:0 1px 2px rgba(0,0,0,.4),0 4px 14px rgba(0,0,0,.35);--shadow-lg:0 2px 4px rgba(0,0,0,.5),0 14px 34px rgba(0,0,0,.5)
 }}
 *{box-sizing:border-box}
-html,body{margin:0;background:var(--bg);color:var(--text);font-family:'Heebo',system-ui,-apple-system,'Segoe UI',sans-serif;overflow-x:hidden;-webkit-font-smoothing:antialiased}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:'Heebo',system-ui,-apple-system,'Segoe UI',sans-serif;overflow-x:clip;-webkit-font-smoothing:antialiased}
 a{color:inherit;text-decoration:none}
 ::selection{background:var(--lime);color:#0B2545}
 
@@ -102,7 +102,9 @@ header.top .burger{display:none}
 .navscrim{display:none}
 /* mobile: the menu collapses behind a hamburger button and opens as a list under the header */
 @media(max-width:720px){
-  header.top{padding:8px 12px;gap:8px;backdrop-filter:none;-webkit-backdrop-filter:none;background:#0B2545}
+  /* always visible while scrolling: fixed (sticky is unreliable inside an overflow-x:hidden page on some Android browsers) */
+  body{padding-top:62px}
+  header.top{position:fixed;top:0;inset-inline:0;width:100%;box-sizing:border-box;padding:8px 12px;gap:8px;backdrop-filter:none;-webkit-backdrop-filter:none;background:#0B2545}
   header.top .brand{order:0;margin-inline-end:auto}
   header.top .burger{display:inline-flex;order:9;align-items:center;justify-content:center;width:44px;height:44px;border:1px solid rgba(255,255,255,.3);border-radius:12px;background:transparent;color:#fff;font-size:22px;cursor:pointer}
   header.top .uname{display:none}

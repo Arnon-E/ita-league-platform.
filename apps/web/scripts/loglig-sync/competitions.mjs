@@ -92,6 +92,28 @@ function sameCompetition(a, b) {
   return [...tx].filter((w) => ty.has(w) && w.length >= 3 && !GENERIC.has(w) && !/^\d+$/.test(w)).length >= 2;
 }
 
+/** A parsed category page -> normalized category (knockout rounds numbered from the first round, groups as round 1). */
+function buildCategory(page, label, source) {
+  const name = label && !page.category.includes(label) ? `${page.category} · ${label}` : page.category;
+  const matchesIn = page.matches.filter((m) => !m.a.name.includes('/') && !m.b.name.includes('/')); // doubles pairs are not players
+  if (!matchesIn.length) return null;
+  const hasGroups = matchesIn.some((m) => /^בית\s*\d/.test(m.stage));
+  // knockout depth: final = 0; classification matches (place > 1) sit in the round of their size
+  const ko = matchesIn.filter((m) => !/^בית\s*\d/.test(m.stage)).map((m) => koRound(m.slot)).filter(Boolean);
+  const maxDepth = ko.length ? Math.max(...ko.map((k) => k.depthFromFinal)) : 0;
+  const matches = matchesIn.map((m, i) => {
+    const group = (m.stage.match(/^בית\s*(\d+)/) ?? [])[1];
+    const k = group ? null : koRound(m.slot);
+    return {
+      stage: group ? 'GROUP' : 'KO', group: group ? `בית ${group}` : undefined,
+      round: group ? 1 : k ? maxDepth - k.depthFromFinal + 1 : 1, place: k?.place ?? 1, size: k?.size ?? 0, order: i,
+      start: israelToUtc(m.start), kind: m.kind, venue: m.venue, done: m.done,
+      a: m.a, b: m.b, sets: m.sets, retired: m.retired, walkover: m.walkover,
+    };
+  });
+  return { name, source: String(source), gender: genderOf(page.category), age: ageOf(page.category), format: hasGroups ? 'GROUPS_KNOCKOUT' : 'KNOCKOUT', matches };
+}
+
 // 2) one competition -> normalized document (draws and results when published, otherwise the planned categories)
 async function readCompetition({ url, list }) {
   const c = parseCompetitionPage(await get(url), url);
@@ -105,24 +127,8 @@ async function readCompetition({ url, list }) {
       // some competition pages still embed another competition's draws: keep only pages that belong to this one
       if (page.competition && !sameCompetition(page.competition, c.name)) continue;
       const label = ref.section === 'qualifying' ? 'מוקדמות' : ref.section === 'finals' ? 'בית הגמר' : '';
-      const name = label && !page.category.includes(label) ? `${page.category} · ${label}` : page.category;
-      const hasGroups = page.matches.some((m) => /^בית\s*\d/.test(m.stage));
-      // knockout depth: final = 0; classification matches (place > 1) sit in the round of their size
-      const ko = page.matches.filter((m) => !/^בית\s*\d/.test(m.stage)).map((m) => koRound(m.slot)).filter(Boolean);
-      const maxDepth = ko.length ? Math.max(...ko.map((k) => k.depthFromFinal)) : 0;
-      page.matches = page.matches.filter((m) => !m.a.name.includes('/') && !m.b.name.includes('/')); // doubles pairs are not players
-      if (!page.matches.length) continue;
-      const matches = page.matches.map((m, i) => {
-        const group = (m.stage.match(/^בית\s*(\d+)/) ?? [])[1];
-        const k = group ? null : koRound(m.slot);
-        return {
-          stage: group ? 'GROUP' : 'KO', group: group ? `בית ${group}` : undefined,
-          round: group ? 1 : k ? maxDepth - k.depthFromFinal + 1 : 1, place: k?.place ?? 1, size: k?.size ?? 0, order: i,
-          start: israelToUtc(m.start), kind: m.kind, venue: m.venue, done: m.done,
-          a: m.a, b: m.b, sets: m.sets, retired: m.retired, walkover: m.walkover,
-        };
-      });
-      cats.push({ name, source: ref.id, gender: genderOf(page.category), age: ageOf(page.category), format: hasGroups ? 'GROUPS_KNOCKOUT' : 'KNOCKOUT', matches });
+      const cat = buildCategory(page, label, ref.id);
+      if (cat) cats.push(cat);
     }
   }
   if (!cats.length) for (const p of c.planned) cats.push({ name: p.name, source: '', gender: p.gender, age: p.age, format: 'KNOCKOUT', matches: [] });
@@ -153,6 +159,71 @@ for (const url of urls) {
     docs.push(d);
   } catch (e) { console.warn('  failed', decodeURI(url.url), String(e.message).slice(0, 80)); }
 }
+// 3) the Loglig app's lists (what the app shows under Youth / Adults / Masters / Daily), read from the same public endpoint the app calls.
+//    Each category carries a TeamId = the id of its public draw page, so this also finds draws the ITA site does not link correctly.
+const APP_API = 'https://loglig.com:8443/api/Union';
+const APP_LISTS = [['CompetitionsYouth', 'YOUTH'], ['CompetitionsAdult', 'ADULTS'], ['CompetitionsSenior', 'MASTERS'], ['CompetitionsDaily', 'OTHER']];
+const appLevel = (name) => (/^סבב/.test(name) ? 'CIRCUIT' : /אזורית/.test(name) ? 'REGIONAL' : /ITF|בינלאומ|ATP/.test(name) ? 'INTERNATIONAL' : 'NATIONAL');
+const SEASONS = [1755, 1671];
+
+async function readAppCompetitions() {
+  const byTitle = new Map();
+  for (const [ep, section] of APP_LISTS) {
+    let groups = [];
+    try { groups = JSON.parse(await get(`${APP_API}/${ep}/38`)); } catch (e) { console.warn('  app list failed', ep, String(e.message).slice(0, 60)); continue; }
+    for (const g of groups) {
+      const title = (g.CompetitionTitle ?? '').trim();
+      if (!title || /^(טסט|בדיקה|test)\b/i.test(title)) continue;
+      const entry = byTitle.get(title) ?? { title, section, categories: [], players: 0 };
+      for (const c of g.categoriLIstItem ?? []) if (c.TeamId && !entry.categories.some((x) => x.TeamId === c.TeamId)) entry.categories.push(c);
+      entry.players = Math.max(entry.players, g.categoriPlayersNum ?? 0);
+      byTitle.set(title, entry);
+    }
+  }
+  return [...byTitle.values()];
+}
+
+async function mergeAppCompetitions(docs) {
+  const apps = await readAppCompetitions();
+  console.log(`\nLoglig app: ${apps.length} competitions`);
+  let added = 0, enriched = 0;
+  for (const a of apps) {
+    try {
+      const doc = docs.find((d) => sameCompetition(d.name, a.title));
+      if (doc && daysAgo(doc.end) > recentDays) continue;
+      const cats = [];
+      for (const c of a.categories) {
+        let page = null;
+        for (const season of SEASONS) {
+          try {
+            const p = parseCategoryPage(await get(`https://loglig.com:2053/LeagueTable/SchedulesForTennisCompetition/${c.TeamId}?seasonId=${season}`, 1));
+            if (p.matches.length) { page = p; break; }
+          } catch { /* the page does not exist for this season (HTTP 500): try the next one */ }
+        }
+        if (!page) continue;
+        if (page.competition && !sameCompetition(page.competition, a.title) && !(doc && sameCompetition(page.competition, doc.name))) continue;
+        const cat = buildCategory(page, '', c.TeamId);
+        if (cat && !cats.some((x) => x.name === cat.name)) cats.push(cat);
+      }
+      if (doc) {
+        doc.section = a.section;
+        if (cats.length) { doc.categories = cats; enriched++; }
+        continue;
+      }
+      const all = cats.flatMap((c) => c.matches.map((m) => m.start)).sort();
+      if (!all.length) { console.log(`- app only, no dates yet: ${a.title}`); continue; }
+      docs.push({
+        kind: 'competition', name: a.title, start: all[0].slice(0, 10), end: all[all.length - 1].slice(0, 10), feeShekel: 0, level: appLevel(a.title), section: a.section,
+        sourceUrl: '', registerUrl: '', registrationCloses: null, doubles: false, venues: [], categories: cats,
+      });
+      added++;
+      console.log(`- + from the app: ${a.title}  ${cats.length} categories  ${cats.reduce((n, c) => n + c.matches.length, 0)} matches`);
+    } catch (e) { console.warn('  app competition failed', a.title, String(e.message).slice(0, 80)); }
+  }
+  console.log(`Loglig app: ${added} added, ${enriched} enriched with draws\n`);
+}
+
+if (listArg === 'all' || args.includes('--app')) await mergeAppCompetitions(docs);
 writeFileSync(path.join(OUT, 'competitions.json'), JSON.stringify(docs), 'utf8');
 console.log(`\nSaved ${docs.length} competition(s) to ${OUT}\\competitions.json`);
 if (!push) { console.log('Dry run (nothing sent). Add --push --url <site> to import.'); process.exit(0); }
