@@ -1,20 +1,22 @@
-import Link from 'next/link';
 import { db } from '@/db';
 import { Shell } from '@/components/Shell';
 import { tr } from '@/lib/i18n';
 import { GENDER } from '@/components/labels';
 import { listClubs, searchPlayers } from '@/services/public';
+import { PlayersRows } from '@/components/InfiniteRows';
 
-export default async function Players({ searchParams }: { searchParams: Promise<{ q?: string; club?: string; g?: string; age?: string; page?: string }> }) {
+const PAGE = 60;
+
+export default async function Players({ searchParams }: { searchParams: Promise<{ q?: string; club?: string; g?: string; age?: string }> }) {
   const t = await tr();
-  const { q = '', club = '', g = '', age = '', page = '1' } = await searchParams;
-  const pageN = Math.max(1, Number(page) || 1);
+  const { q = '', club = '', g = '', age = '' } = await searchParams;
   const gender = g === 'MALE' || g === 'FEMALE' ? g : undefined;
   const ageN = [10, 12, 14, 16, 18].includes(Number(age)) ? Number(age) : undefined;
   const [rows, clubs] = await Promise.all([
-    searchPlayers(db, q, club || undefined, 100, { ...(gender ? { gender } : {}), ...(ageN ? { age: ageN } : {}), offset: (pageN - 1) * 100 }), listClubs(db),
+    searchPlayers(db, q, club || undefined, PAGE, { ...(gender ? { gender } : {}), ...(ageN ? { age: ageN } : {}) }), listClubs(db),
   ]);
-  const link = (n: number) => `/players?${new URLSearchParams({ q, club, g, age, page: String(n) }).toString()}`;
+  // the same filters the page used, passed on to the endpoint that serves the following pages
+  const query = new URLSearchParams({ q, club, g: gender ?? '', age: ageN ? String(ageN) : '' }).toString();
   return (
     <Shell nav="players">
       <h1>{t('שחקנים')}</h1>
@@ -25,16 +27,13 @@ export default async function Players({ searchParams }: { searchParams: Promise<
         <select name="club" defaultValue={club}><option value="">{t('כל המועדונים')}</option>{clubs.map(({ c }) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
         <button className="btn">{t('חיפוש')}</button>
       </form>
-      <div className="card" style={{ overflow: 'auto' }}>
-        <table><thead><tr><th>{t('שחקן')}</th><th>{t('מועדון')}</th><th>{t('מין')}</th><th>{t('שנת לידה')}</th></tr></thead><tbody>
-          {rows.map(({ p, club: cn }) => <tr key={p.id}><td><Link href={`/players/${p.id}`}><strong>{p.firstName} {p.lastName}</strong></Link></td><td>{cn ?? '—'}</td><td>{t(GENDER[p.gender] ?? '')}</td><td>{p.birthDate.getUTCFullYear()}</td></tr>)}
-        </tbody></table>
-        {!rows.length && <p className="muted">{t('לא נמצאו שחקנים.')}</p>}
-        <div className="row">
-          {pageN > 1 && <Link className="btn ghost" href={link(pageN - 1)}>{t('הקודם')}</Link>}
-          {rows.length === 100 && <Link className="btn ghost" href={link(pageN + 1)}>{t('הבא')}</Link>}
-        </div>
-      </div>
+      <PlayersRows
+        key={query}
+        initial={rows.map(({ p, club: cn }) => ({ id: p.id, name: `${p.firstName} ${p.lastName}`, club: cn, gender: p.gender, birthYear: p.birthDate.getUTCFullYear() }))}
+        query={query} pageSize={PAGE}
+        genders={Object.fromEntries(Object.entries(GENDER).map(([k, v]) => [k, t(v)]))}
+        labels={{ player: t('שחקן'), club: t('מועדון'), gender: t('מין'), birth: t('שנת לידה'), loading: t('טוען...'), retry: t('נסו שוב'), end: '', none: t('לא נמצאו שחקנים.') }}
+      />
     </Shell>
   );
 }

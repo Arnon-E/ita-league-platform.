@@ -42,7 +42,7 @@ export async function register(name: string, email: string, phone: string, passw
 }
 export const addPlayer = (p: { first: string; last: string; birth: string; gender: 'MALE' | 'FEMALE'; forChild: boolean }) => call<{ id: string }>('/players', { method: 'POST', body: JSON.stringify(p) });
 
-export type Match = { id: string; categoryId: string; stage: string; round: number; status: string; a: { id: string | null; name: string | null }; b: { id: string | null; name: string | null }; court: string | null; start: string | null; sets: { a: number; b: number }[] };
+export type Match = { id: string; categoryId: string; stage: string; round: number; status: string; a: { id: string | null; name: string | null }; b: { id: string | null; name: string | null }; court: string | null; start: string | null; sets: { a: number; b: number }[]; winnerEntryId?: string | null };
 export const tournaments = () => call<{ id: string; name: string; status: string; level: string; section: string; startDate: string }[]>('/tournaments');
 export type Cat = { id: string; name: string; gender: 'MALE' | 'FEMALE' | 'OPEN'; minBirthYear: number | null; maxBirthYear: number | null };
 export const tournament = (id: string) => call<{ tournament: { name: string; status: string }; categories: Cat[]; matches: Match[] }>(`/tournaments/${id}`);
@@ -73,7 +73,7 @@ export const photoUrl = (photoId: string) => `${BASE}/api/gallery/${photoId}`;
 export const live = () => call<{ live: FeedRow[]; upcoming: FeedRow[]; results: FeedRow[] }>('/public/live');
 export const sendLive = (matchId: string, sets: { a: number; b: number; superTb?: boolean }[]) => call(`/matches/${matchId}/live`, { method: 'POST', body: JSON.stringify({ sets }) });
 export const rankings = (g: 'MALE' | 'FEMALE', age?: number) => call<{ playerId: string; rank: number; points: number; name: string; club: string | null }[]>(`/public/rankings?g=${g}${age ? `&age=${age}` : ''}`);
-export const players = (q: string) => call<{ id: string; name: string; club: string | null }[]>(`/public/players?q=${encodeURIComponent(q)}`);
+export const players = (q: string, offset = 0, limit = 50) => call<{ id: string; name: string; club: string | null; birthYear?: number }[]>(`/public/players?q=${encodeURIComponent(q)}&offset=${offset}&limit=${limit}`);
 
 export type LeagueRow = { id: string; name: string; gender: string; teams: number; played: number; total: number };
 export type LeagueDetail = {

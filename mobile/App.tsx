@@ -100,7 +100,8 @@ function TournamentList({ onOpen }: { onOpen: (id: string) => void }) {
   const [sec, setSec] = useState('');
   const [st, setSt] = useState('');
   const [q, setQ] = useState('');
-  const shown = (data ?? []).filter((x) => (!q.trim() || x.name.includes(q.trim())) && (!level || x.level === level) && (!sec || x.section === sec) && (!st || (st === 'open' ? x.status === 'REGISTRATION_OPEN' : st === 'live' ? x.status === 'IN_PROGRESS' : x.status === 'FINISHED')));
+  const rank = (x: { status: string }) => (x.status === 'REGISTRATION_OPEN' ? 0 : x.status === 'IN_PROGRESS' ? 1 : 2);
+  const shown = [...(data ?? [])].sort((a, b) => rank(a) - rank(b) || +new Date(b.startDate) - +new Date(a.startDate)).filter((x) => (!q.trim() || x.name.includes(q.trim())) && (!level || x.level === level) && (!sec || x.section === sec) && (!st || (st === 'open' ? x.status === 'REGISTRATION_OPEN' : st === 'live' ? x.status === 'IN_PROGRESS' : x.status === 'FINISHED')));
   return (
     <View style={s.pad}>
       <View style={s.hero}><Text style={s.heroT}>איגוד הטניס בישראל</Text><Text style={s.heroS}>תחרויות, לוחות משחקים ותוצאות חיות</Text></View>
@@ -187,13 +188,27 @@ function Rankings() {
 
 function Players() {
   const [q, setQ] = useState('');
-  const { data, err, busy } = useLoad(() => api.players(q), [q]);
+  const [rows, setRows] = useState<{ id: string; name: string; club: string | null; birthYear?: number }[]>([]);
+  const [busy, setBusy] = useState(true); const [err, setErr] = useState(''); const [done, setDone] = useState(false);
+  const PAGE = 50;
+  useEffect(() => {
+    let live = true;
+    setBusy(true); setErr(''); setDone(false);
+    api.players(q, 0, PAGE).then((r) => { if (live) { setRows(r); setDone(r.length < PAGE); } }).catch((e) => live && setErr(e.message)).finally(() => live && setBusy(false));
+    return () => { live = false; };
+  }, [q]);
+  const more = () => {
+    if (busy || done) return;
+    setBusy(true);
+    api.players(q, rows.length, PAGE).then((r) => { setRows((x) => [...x, ...r]); setDone(r.length < PAGE); }).catch((e) => setErr(e.message)).finally(() => setBusy(false));
+  };
+  const data = rows;
   return (
     <View style={s.pad}>
       <Text style={s.h1}>שחקנים</Text>
       <TextInput style={s.input} placeholder="🔍  חיפוש שחקן לפי שם" placeholderTextColor="#8FA1BA" value={q} onChangeText={setQ} />
       <Status err={err} busy={busy} empty={!!data && !data.length && 'לא נמצאו שחקנים'} />
-      <FlatList data={data ?? []} keyExtractor={(p) => p.id} renderItem={({ item }) => <View style={s.card}><Text style={s.b}>{item.name}</Text><Text style={s.muted}>{item.club ?? ''}</Text></View>} />
+      <FlatList data={data} keyExtractor={(p) => p.id} onEndReached={more} onEndReachedThreshold={0.6} renderItem={({ item }) => <View style={s.card}><Text style={s.b}>{item.name}</Text><Text style={s.muted}>{item.club ?? ''}{item.birthYear ? ` · ${item.birthYear}` : ''}</Text></View>} />
     </View>
   );
 }
@@ -204,6 +219,7 @@ function Tournament({ id, onBack, onGoAccount }: { id: string; onBack: () => voi
   const load = () => api.tournament(id).then(setD);
   const [photos, setPhotos] = useState<{ id: string; caption: string | null }[]>([]);
   const [following, setFollowing] = useState(false); const [fErr, setFErr] = useState('');
+  const [fg, setFg] = useState(''); const [fage, setFage] = useState(''); const [fcat, setFcat] = useState('');
   useEffect(() => { load(); }, [id]);
   useEffect(() => {
     api.gallery(id).then(setPhotos).catch(() => {});
@@ -225,12 +241,58 @@ function Tournament({ id, onBack, onGoAccount }: { id: string; onBack: () => voi
           renderItem={({ item }) => <View><Image source={{ uri: api.photoUrl(item.id) }} style={s.photo} />{!!item.caption && <Text style={s.muted}>{item.caption}</Text>}</View>} />
       )}
       {d && d.tournament.status === 'REGISTRATION_OPEN' && <RegisterBox tournamentName={d.tournament.name} categories={d.categories} onGoAccount={onGoAccount} />}
-      <FlatList data={d?.matches ?? []} keyExtractor={(m) => m.id} renderItem={({ item: m }) => (
-        <Pressable style={s.card} disabled={!m.a.id || !m.b.id || !api.canScore()} onPress={() => setScore(m)}>
-          <Text style={s.b}>{m.a.name ?? 'טרם נקבע'} – {m.b.name ?? 'טרם נקבע'}</Text>
-          <Text>{m.status === 'SCHEDULED' ? (m.court ? `מגרש ${m.court}` : 'טרם שובץ') : `הסתיים ${fmtSets(m.sets)}`}</Text>
-        </Pressable>
-      )} />
+      {(d?.categories.length ?? 0) > 1 && (() => {
+        const cats = d!.categories;
+        const ageOf = (n: string) => (n.match(/(\d{2})/) ?? [])[1] ?? '';
+        const ages = [...new Set(cats.map((c) => ageOf(c.name)).filter(Boolean))].sort();
+        const chip = (on: boolean, label: string, press: () => void, key: string) => (
+          <Pressable key={key} style={[s.chip, on && s.chipOn]} onPress={press}><Text style={on ? s.chipOnT : s.b}>{label}</Text></Pressable>
+        );
+        const shownCats = cats.filter((c) => (!fg || c.gender === fg) && (!fage || ageOf(c.name) === fage));
+        return (
+          <View style={{ gap: 8 }}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }} contentContainerStyle={{ gap: 8 }}>
+              {chip(!fg, 'בנים ובנות', () => { setFg(''); setFcat(''); }, 'g0')}
+              {chip(fg === 'MALE', 'בנים', () => { setFg('MALE'); setFcat(''); }, 'g1')}
+              {chip(fg === 'FEMALE', 'בנות', () => { setFg('FEMALE'); setFcat(''); }, 'g2')}
+              {chip(!fage, 'כל הגילאים', () => { setFage(''); setFcat(''); }, 'a0')}
+              {ages.map((a) => chip(fage === a, `גיל ${a}`, () => { setFage(a); setFcat(''); }, 'a' + a))}
+            </ScrollView>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }} contentContainerStyle={{ gap: 8 }}>
+              {chip(!fcat, 'כל הקטגוריות', () => setFcat(''), 'c0')}
+              {shownCats.map((c) => chip(fcat === c.id, c.name, () => setFcat(c.id), c.id))}
+            </ScrollView>
+          </View>
+        );
+      })()}
+      <FlatList
+        data={(d?.matches ?? []).filter((m) => {
+          if (fcat) return m.categoryId === fcat;
+          if (!fg && !fage) return true;
+          const c = d?.categories.find((x) => x.id === m.categoryId);
+          return !!c && (!fg || c.gender === fg) && (!fage || ((c.name.match(/(\d{2})/) ?? [])[1] ?? '') === fage);
+        })}
+        keyExtractor={(m) => m.id} initialNumToRender={12}
+        renderItem={({ item: m }) => {
+          const done = m.status !== 'SCHEDULED' && m.status !== 'VOID';
+          const win = m.winnerEntryId ? (m.winnerEntryId === m.a.id ? 'a' : m.winnerEntryId === m.b.id ? 'b' : null) : null;
+          const row = (side: 'a' | 'b') => {
+            const won = done && win === side;
+            return (
+              <View key={side} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Text style={{ width: 18, color: '#16794C', fontWeight: '800' }}>{won ? '✓' : ''}</Text>
+                <Text style={[s.b, { flex: 1 }, won && { fontWeight: '800' }, done && win && !won && { opacity: 0.6 }]}>{(side === 'a' ? m.a.name : m.b.name) ?? 'טרם נקבע'}</Text>
+                {done && (m.sets ?? []).map((x, i) => { const mine = side === 'a' ? x.a : x.b; const other = side === 'a' ? x.b : x.a; return <Text key={i} style={[{ width: 26, textAlign: 'center' }, mine > other && { fontWeight: '800' }]}>{mine}</Text>; })}
+              </View>
+            );
+          };
+          return (
+            <Pressable style={s.card} disabled={!m.a.id || !m.b.id || !api.canScore()} onPress={() => setScore(m)}>
+              {row('a')}{row('b')}
+              <Text style={s.muted}>{m.status === 'SCHEDULED' ? (m.court ? `מגרש ${m.court}` : 'טרם שובץ') : m.status === 'WALKOVER' ? 'ווק-אובר' : m.status === 'RETIRED' ? 'פרישה' : ''}</Text>
+            </Pressable>
+          );
+        }} />
     </View>
   );
 }

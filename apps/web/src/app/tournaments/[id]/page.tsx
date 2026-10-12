@@ -22,10 +22,11 @@ import {
 type Detail = NonNullable<Awaited<ReturnType<typeof tournamentDetail>>>;
 const TABS: [string, string][] = [['overview', 'סקירה'], ['entries', 'משתתפים'], ['draw', 'הגרלה וטבלאות'], ['results', 'משחקים ותוצאות'], ['schedule', 'לוח משחקים'], ['gallery', 'גלריה']];
 
-export default async function TournamentPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ tab?: string; err?: string; ok?: string; cat?: string }> }) {
+export default async function TournamentPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ tab?: string; err?: string; ok?: string; cat?: string; g?: string; age?: string }> }) {
   const tt = await tr();
   const { id } = await params;
-  const { tab = 'overview', err, ok, cat = '' } = await searchParams;
+  const { tab = 'overview', err, ok, cat = '', g = '', age = '' } = await searchParams;
+  const flt = { g: g === 'MALE' || g === 'FEMALE' ? g : '', age: /^\d{2}$/.test(age) ? age : '' };
   const d = await tournamentDetail(db, id);
   if (!d) notFound();
   const { t } = d;
@@ -43,12 +44,13 @@ export default async function TournamentPage({ params, searchParams }: { params:
       <nav className="tabs">{TABS.map(([k, l]) => <Link key={k} href={`/tournaments/${id}?tab=${k}`} className={tab === k ? 'on' : ''}>{tt(l)}</Link>)}</nav>
       <Flash err={err} ok={ok} />
       {manage && !rulesVerified && <div className="err" style={{ background: 'var(--warnbg)', color: 'var(--warn)' }}>ערכת החוקים של התחרות טרם אומתה מול תקנוני האיגוד. ההגרלה והנקודות עשויות לא להתאים לתקנון.</div>}
-      {tab === 'overview' && <Overview d={d} manage={manage} />}
+      {tab === 'overview' && <CatFilter d={d} tab="overview" cat="" flt={flt} withCats={false} />}
+      {tab === 'overview' && <Overview d={narrow(d, flt)} manage={manage} />}
       {tab === 'entries' && <Entries d={d} manage={manage} />}
-      {(tab === 'draw' || tab === 'results' || tab === 'schedule') && <CatPicker d={d} tab={tab} cat={cat} />}
-      {tab === 'draw' && <DrawTab d={pick(d, cat)} manage={manage} />}
-      {tab === 'results' && <Results d={pick(d, cat)} scorer={scorer} />}
-      {tab === 'schedule' && <Schedule d={pick(d, cat)} manage={manage} />}
+      {(tab === 'draw' || tab === 'results' || tab === 'schedule') && <CatFilter d={d} tab={tab} cat={cat} flt={flt} withCats />}
+      {tab === 'draw' && <DrawTab d={pick(narrow(d, flt), cat)} manage={manage} />}
+      {tab === 'results' && <Results d={pick(narrow(d, flt), cat)} scorer={scorer} />}
+      {tab === 'schedule' && <Schedule d={pick(narrow(d, flt), cat)} manage={manage} />}
       {tab === 'gallery' && <Gallery tournamentId={t.id} manage={scorer} />}
     </Shell>
   );
@@ -61,12 +63,50 @@ const pick = (d: Detail, cat: string): Detail => {
   return { ...d, cats: [c], ms: d.ms.filter((m) => m.categoryId === c.id) };
 };
 
-async function CatPicker({ d, tab, cat }: { d: Detail; tab: string; cat: string }) {
+type Flt = { g: string; age: string };
+const ageOf = (name: string) => (name.match(/(\d{2})/) ?? [])[1] ?? '';
+
+/** Keeps only the categories matching the chosen gender and age (and their matches). */
+const narrow = (d: Detail, f: Flt): Detail => {
+  if (!f.g && !f.age) return d;
+  const cats = d.cats.filter((c) => (!f.g || c.gender === f.g) && (!f.age || ageOf(c.name) === f.age));
+  const ids = new Set(cats.map((c) => c.id));
+  return { ...d, cats, ms: d.ms.filter((m) => ids.has(m.categoryId)), ents: d.ents.filter((x) => ids.has(x.e.categoryId)) };
+};
+
+/** Filter row for big competitions: gender, age, then the matching categories one at a time. */
+async function CatFilter({ d, tab, cat, flt, withCats }: { d: Detail; tab: string; cat: string; flt: Flt; withCats: boolean }) {
+  const tt = await tr();
   if (d.cats.length <= 1) return null;
-  const cur = (d.cats.find((x) => x.id === cat) ?? d.cats[0]!).id;
+  const ages = [...new Set(d.cats.map((c) => ageOf(c.name)).filter(Boolean))].sort();
+  const genders = [...new Set(d.cats.map((c) => c.gender).filter((x) => x === 'MALE' || x === 'FEMALE'))];
+  const url = (o: Partial<Flt> & { cat?: string }) => {
+    const p = new URLSearchParams({ tab, g: o.g ?? flt.g, age: o.age ?? flt.age });
+    if (o.cat) p.set('cat', o.cat);
+    return `/tournaments/${d.t.id}?${p.toString()}`;
+  };
+  const shown = narrow(d, flt).cats;
+  const cur = (shown.find((x) => x.id === cat) ?? shown[0])?.id;
   return (
-    <div className="row" style={{ margin: '4px 0 12px' }}>
-      {d.cats.map((c) => <Link key={c.id} href={`/tournaments/${d.t.id}?tab=${tab}&cat=${c.id}`} className={`pill ${cur === c.id ? 'lime' : ''}`}>{c.name}</Link>)}
+    <div className="grid" style={{ gap: 8, margin: '4px 0 12px' }}>
+      <div className="row">
+        {genders.length > 1 && <>
+          <Link href={url({ g: '' })} className={`pill ${!flt.g ? 'lime' : ''}`}>{tt('בנים ובנות')}</Link>
+          {genders.includes('MALE') && <Link href={url({ g: 'MALE' })} className={`pill ${flt.g === 'MALE' ? 'lime' : ''}`}>{tt('בנים')}</Link>}
+          {genders.includes('FEMALE') && <Link href={url({ g: 'FEMALE' })} className={`pill ${flt.g === 'FEMALE' ? 'lime' : ''}`}>{tt('בנות')}</Link>}
+        </>}
+        {ages.length > 1 && <>
+          <span className="muted">|</span>
+          <Link href={url({ age: '' })} className={`pill ${!flt.age ? 'lime' : ''}`}>{tt('כל הגילאים')}</Link>
+          {ages.map((a) => <Link key={a} href={url({ age: a })} className={`pill ${flt.age === a ? 'lime' : ''}`}>{tt('גיל')} {a}</Link>)}
+        </>}
+      </div>
+      {withCats && (
+        <div className="row">
+          {shown.map((c) => <Link key={c.id} href={url({ cat: c.id })} className={`pill ${cur === c.id ? 'lime' : ''}`}>{c.name}</Link>)}
+          {!shown.length && <span className="muted">{tt('אין קטגוריות לפי הסינון.')}</span>}
+        </div>
+      )}
     </div>
   );
 }

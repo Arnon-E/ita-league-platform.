@@ -52,6 +52,8 @@ const EN: Record<string, string> = {
   'נוער': 'Youth', 'בוגרים': 'Adults', 'מאסטרס': 'Masters', 'אחר': 'Other', 'כל הקטגוריות': 'All sections',
   'תקנונים': 'Regulations', 'תקנונים ונהלים': 'Regulations and procedures', 'אין עדיין מסמכים.': 'No documents yet.', 'ניצח': 'Won',
   'תפריט': 'Menu',
+  'טוען...': 'Loading...', 'נסו שוב': 'Try again',
+  'אין קטגוריות לפי הסינון.': 'No categories match the filter.',
   'להרשמה לתחרות': 'Register',
   'קטגוריות': 'Categories',
   'מאושרים': 'confirmed',

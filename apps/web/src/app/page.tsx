@@ -8,6 +8,7 @@ import { getActor } from '@/lib/session';
 import { can } from '@/lib/permissions';
 import { LEVEL, STATUS } from '@/components/labels';
 import { tr } from '@/lib/i18n';
+import { InfiniteCards } from '@/components/InfiniteCards';
 
 const AGES = [10, 12, 14, 16, 18];
 const SEC: Record<string, string> = { YOUTH: 'נוער', ADULTS: 'בוגרים', MASTERS: 'מאסטרס', OTHER: 'אחר' };
@@ -89,18 +90,17 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ l
         {filtered && <Link className="btn ghost" href="/">{t('ניקוי')}</Link>}
       </form>
       <p className="muted" style={{ margin: '10px 0 0' }}>{shown.length} {t('תחרויות')}</p>
-      <div className="grid cols" style={{ marginTop: 14 }}>
-        {shown.map((x) => (
-          <Link key={x.id} href={`/tournaments/${x.id}`} className="card grid" style={{ gap: 8 }}>
-            <span><span className={`pill ${STATUS[x.status]?.[1] ?? ''}`}>{t(STATUS[x.status]?.[0] ?? x.status)}</span></span>
-            <strong style={{ fontSize: 18, lineHeight: 1.3 }}>{x.name}</strong>
-            <span className="muted">{t(LEVEL[x.level] ?? '')}</span>
-            <span className="muted">{x.startDate.toLocaleDateString('he-IL')} – {x.endDate.toLocaleDateString('he-IL')}</span>
-            {x.status === 'REGISTRATION_OPEN' && x.registrationCloses && <span className="muted">{t('הרשמה עד')} {x.registrationCloses.toLocaleDateString('he-IL', { timeZone: 'Asia/Jerusalem' })}</span>}
-          </Link>
-        ))}
-        {!shown.length && <div className="card muted">{filtered ? t('לא נמצאו תחרויות לפי הסינון.') : t('אין עדיין תחרויות. צרו תחרות חדשה כדי להתחיל.')}</div>}
-      </div>
+      {shown.length ? (
+        <InfiniteCards
+          items={shown.map((x) => ({
+            id: x.id, name: x.name, status: x.status, statusLabel: t(STATUS[x.status]?.[0] ?? x.status), statusCls: STATUS[x.status]?.[1] ?? '',
+            level: t(LEVEL[x.level] ?? ''), dates: `${x.startDate.toLocaleDateString('he-IL')} – ${x.endDate.toLocaleDateString('he-IL')}`,
+            deadline: x.status === 'REGISTRATION_OPEN' && x.registrationCloses ? `${t('הרשמה עד')} ${x.registrationCloses.toLocaleDateString('he-IL', { timeZone: 'Asia/Jerusalem' })}` : null,
+          }))}
+        />
+      ) : (
+        <div className="card muted" style={{ marginTop: 14 }}>{filtered ? t('לא נמצאו תחרויות לפי הסינון.') : t('אין עדיין תחרויות. צרו תחרות חדשה כדי להתחיל.')}</div>
+      )}
     </Shell>
   );
 }
