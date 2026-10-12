@@ -35,9 +35,15 @@ function useInfinite<T>(initial: T[], pageSize: number, url: (offset: number) =>
   useEffect(() => {
     const el = sentinel.current;
     if (!el || done) return;
-    const io = new IntersectionObserver((e) => { if (e[0]?.isIntersecting) void more(); }, { rootMargin: '400px' });
-    io.observe(el);
-    return () => io.disconnect();
+    // IntersectionObserver where available, plus a scroll check as a fallback (older browsers, embedded webviews)
+    const near = () => el.getBoundingClientRect().top < window.innerHeight + 400;
+    const io = typeof IntersectionObserver === 'undefined' ? null : new IntersectionObserver((e) => { if (e[0]?.isIntersecting) void more(); }, { rootMargin: '400px' });
+    io?.observe(el);
+    const onScroll = () => { if (near()) void more(); };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll);
+    if (near()) void more();
+    return () => { io?.disconnect(); window.removeEventListener('scroll', onScroll); window.removeEventListener('resize', onScroll); };
   }, [more, done, rows.length]);
 
   return { rows, done, busy, err, more, sentinel };

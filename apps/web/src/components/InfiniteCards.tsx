@@ -12,9 +12,12 @@ export function InfiniteCards({ items, step = 24 }: { items: CompCard[]; step?: 
   useEffect(() => {
     const el = end.current;
     if (!el || shown >= items.length) return;
-    const io = new IntersectionObserver((e) => { if (e[0]?.isIntersecting) setShown((n) => Math.min(items.length, n + step)); }, { rootMargin: '500px' });
-    io.observe(el);
-    return () => io.disconnect();
+    const grow = () => setShown((n) => Math.min(items.length, n + step));
+    const io = typeof IntersectionObserver === 'undefined' ? null : new IntersectionObserver((e) => { if (e[0]?.isIntersecting) grow(); }, { rootMargin: '500px' });
+    io?.observe(el);
+    const onScroll = () => { if (el.getBoundingClientRect().top < window.innerHeight + 500) grow(); };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => { io?.disconnect(); window.removeEventListener('scroll', onScroll); };
   }, [shown, items.length, step]);
   return (
     <>
