@@ -9,6 +9,9 @@ export interface RankingRow {
   national: number;
   international: number;
   total: number;
+  /** Loglig user id and exact birth date (YYYY-MM-DD), when the source provides them. */
+  userId?: number;
+  birthDate?: string;
 }
 export interface RankingImport { gender: 'MALE' | 'FEMALE'; rows: RankingRow[] }
 
@@ -32,7 +35,10 @@ export function validateRankingImport(x: unknown): RankingImport {
     const name = typeof r?.name === 'string' ? r.name.trim() : '';
     const birthYear = Number(r?.birthYear);
     if (!name || name.includes('/') || name.length > 120 || !Number.isInteger(birthYear) || birthYear < 1930 || birthYear > new Date().getFullYear()) continue;
+    const userId = Number.isInteger(Number(r.userId)) && Number(r.userId) > 0 ? Number(r.userId) : undefined;
+    const bd = typeof r.birthDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(r.birthDate) && Number(r.birthDate.slice(0, 4)) === birthYear ? r.birthDate : undefined;
     rows.push({
+      ...(userId ? { userId } : {}), ...(bd ? { birthDate: bd } : {}),
       rank: Number(r.rank) || 0, name, birthYear, club: String(r.club ?? '').trim().slice(0, 120),
       national: Number(r.national) || 0, international: Number(r.international) || 0, total: Number(r.total) || 0,
     });
@@ -50,12 +56,13 @@ export async function importRankings(db: Db, input: RankingImport, now = new Dat
   if (!rows.length) return { players: 0, clubs: 0, awards: 0 };
   // One JSON document carries the whole batch (a JS array parameter would be expanded into a row list by the driver).
   // The public table can list the same name + birth year twice; they share one key, so keep the better row.
-  const unique = new Map<string, { key: string; first: string; last: string; by: number; club: string; points: number }>();
+  const unique = new Map<string, { key: string; legacy: string; first: string; last: string; by: number; bd: string; club: string; points: number }>();
   for (const r of rows) {
     const n = splitName(r.name);
-    const key = rankKey(gender, r.birthYear, r.name);
+    const legacy = rankKey(gender, r.birthYear, r.name);
+    const key = r.userId ? `ll:${r.userId}` : legacy;
     const prev = unique.get(key);
-    if (!prev || r.total > prev.points) unique.set(key, { key, first: n.first, last: n.last, by: r.birthYear, club: r.club, points: r.total });
+    if (!prev || r.total > prev.points) unique.set(key, { key, legacy, first: n.first, last: n.last, by: r.birthYear, bd: r.birthDate ?? `${r.birthYear}-07-01`, club: r.club, points: r.total });
   }
   const batch = JSON.stringify([...unique.values()]);
   const clubCount = new Set(rows.map((r) => r.club).filter(Boolean)).size;
@@ -64,12 +71,19 @@ export async function importRankings(db: Db, input: RankingImport, now = new Dat
     insert into clubs (id, name)
     select gen_random_uuid()::text, c from (select distinct club as c from jsonb_to_recordset(${batch}::jsonb) as t(club text) where club <> '') x
     on conflict (name) do nothing`);
+  // players stored earlier under the name-based key move to the stable Loglig user id (their points awards are re-created below)
+  await db.execute(sql`
+    delete from points_awards where loglig_key in (select t.legacy from jsonb_to_recordset(${batch}::jsonb) as t(key text, legacy text) where t.key <> t.legacy)`);
+  await db.execute(sql`
+    update players p set loglig_id = t.key
+    from jsonb_to_recordset(${batch}::jsonb) as t(key text, legacy text)
+    where t.key <> t.legacy and p.loglig_id = t.legacy and not exists (select 1 from players q where q.loglig_id = t.key)`);
   await db.execute(sql`
     insert into players (id, first_name, last_name, birth_date, gender, club_id, loglig_id)
-    select gen_random_uuid()::text, t.first, t.last, make_date(t.by, 7, 1)::timestamptz, ${gender}::gender, c.id, t.key
-    from jsonb_to_recordset(${batch}::jsonb) as t(key text, first text, last text, by int, club text, points double precision)
+    select gen_random_uuid()::text, t.first, t.last, t.bd::date::timestamptz, ${gender}::gender, c.id, t.key
+    from jsonb_to_recordset(${batch}::jsonb) as t(key text, first text, last text, by int, bd text, club text, points double precision)
     left join clubs c on c.name = t.club
-    on conflict (loglig_id) do update set club_id = coalesce(excluded.club_id, players.club_id)`);
+    on conflict (loglig_id) do update set club_id = coalesce(excluded.club_id, players.club_id), birth_date = excluded.birth_date`);
   await db.execute(sql`
     delete from points_awards where loglig_key in (select key from jsonb_to_recordset(${batch}::jsonb) as t(key text))`);
   await db.execute(sql`

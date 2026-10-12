@@ -8,5 +8,6 @@ echo ===== %date% %time% ===== >> .loglig-dump\daily-sync.log
 node scripts\loglig-sync\rankings.mjs --push --url %URL% >> .loglig-dump\daily-sync.log 2>&1
 node scripts\loglig-sync\competitions.mjs --list all --all --recent 21 --push --url %URL% >> .loglig-dump\daily-sync.log 2>&1
 node scripts\loglig-sync\leagues.mjs --push --url %URL% >> .loglig-dump\daily-sync.log 2>&1
+node scripts\loglig-sync\app-data.mjs --push --url %URL% >> .loglig-dump\daily-sync.log 2>&1
 node scripts\loglig-sync\regulations.mjs --push --url %URL% >> .loglig-dump\daily-sync.log 2>&1
 echo done >> .loglig-dump\daily-sync.log

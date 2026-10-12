@@ -13,7 +13,7 @@ export default async function Clubs() {
       <div className="grid cols" style={{ marginTop: 16 }}>
         {rows.map(({ c, n }) => (
           <Link key={c.id} href={`/clubs/${c.id}`} className="card grid" style={{ gap: 4 }}>
-            <strong style={{ fontSize: 17 }}>{c.name}</strong><span className="muted">{c.city ?? ''} · {n} {t('שחקנים')}</span>
+            <strong style={{ fontSize: 17 }}>{c.name}</strong><span className="muted">{c.city ?? ''} · {n} {t('שחקנים')}{(c.info as { phone?: string } | null)?.phone ? ` · ${(c.info as { phone?: string }).phone}` : ''}</span>
           </Link>
         ))}
         {!rows.length && <div className="card muted">{t('אין מועדונים.')}</div>}

@@ -1,6 +1,7 @@
 import { timingSafeEqual } from 'node:crypto';
 import { db } from '@/db';
 import { importCompetition, removePairPlayers, removeTournament, validateCompetitionImport } from '@/services/loglig-competitions';
+import { importClubs, importSiteInfo, validateClubsImport, validateSiteInfoImport } from '@/services/loglig-app';
 import { importRegulations, validateRegulationsImport } from '@/services/regulations';
 import { importLeague, validateLeagueImport } from '@/services/loglig-leagues';
 import { importRankings, validateRankingImport } from '@/services/loglig-rankings';
@@ -23,6 +24,8 @@ export async function POST(req: Request) {
     if (body?.kind === 'cleanup-pairs') return Response.json(await removePairPlayers(db));
     if (body?.kind === 'remove-tournament' && typeof body.name === 'string' && body.name.trim()) return Response.json(await removeTournament(db, body.name.trim()));
     if (body?.kind === 'competition') return Response.json(await importCompetition(db, validateCompetitionImport(body)));
+    if (body?.kind === 'clubs') return Response.json(await importClubs(db, validateClubsImport(body)));
+    if (body?.kind === 'site-info') return Response.json(await importSiteInfo(db, validateSiteInfoImport(body)));
     if (body?.kind === 'regulations') return Response.json(await importRegulations(db, validateRegulationsImport(body)));
     if (body?.kind === 'league') return Response.json(await importLeague(db, validateLeagueImport(body)));
     return Response.json(await importRankings(db, validateRankingImport(body)));

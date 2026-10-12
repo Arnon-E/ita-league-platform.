@@ -5,7 +5,9 @@ export interface LeagueStanding {
   rank: number; team: string; played: number; points: number; wins: number; losses: number; draws: number;
   setsFor: number; setsAgainst: number; gamesFor: number; gamesAgainst: number;
 }
+export interface Rubber { n: number; doubles: boolean; home: string[]; away: string[]; sets: { h: number; g: number; tb: boolean }[]; winner: 'home' | 'away' | null; done: boolean }
 export interface LeagueMatch {
+  rubbers?: Rubber[];
   done: boolean; venue: string; group: string; start: string | null;
   home: { team: string; club: string }; away: { team: string; club: string }; homeScore: number | null; awayScore: number | null;
 }
@@ -35,6 +37,11 @@ export function validateLeagueImport(x: unknown): LeagueImport {
       done: !!m.done, venue: s(m.venue), group: s(m.group), start: typeof m.start === 'string' && !Number.isNaN(Date.parse(m.start)) ? m.start : null,
       home: { team: s(m.home?.team), club: s(m.home?.club) }, away: { team: s(m.away?.team), club: s(m.away?.club) },
       homeScore: m.homeScore == null ? null : n(m.homeScore), awayScore: m.awayScore == null ? null : n(m.awayScore),
+      rubbers: (Array.isArray(m.rubbers) ? m.rubbers : []).slice(0, 12).map((x) => ({
+        n: n(x.n), doubles: !!x.doubles, done: !!x.done, winner: x.winner === 'home' || x.winner === 'away' ? x.winner : null,
+        home: (Array.isArray(x.home) ? x.home : []).slice(0, 2).map((t) => s(t, 80)), away: (Array.isArray(x.away) ? x.away : []).slice(0, 2).map((t) => s(t, 80)),
+        sets: (Array.isArray(x.sets) ? x.sets : []).slice(0, 5).map((t) => ({ h: n(t.h), g: n(t.g), tb: !!t.tb })),
+      })),
     })).filter((m) => m.home.team && m.away.team),
   }));
   return { kind: 'league', id: String(b.id), name: s(b.name), gender: b.gender === 'FEMALE' ? 'FEMALE' : b.gender === 'MALE' ? 'MALE' : 'OPEN', data: { groups, rounds } };

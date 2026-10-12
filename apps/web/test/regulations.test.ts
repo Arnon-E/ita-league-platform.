@@ -26,3 +26,23 @@ describe('regulations list', () => {
     expect(() => validateRegulationsImport({ kind: 'x' })).toThrow();
   });
 });
+
+import { importClubs, importSiteInfo, validateClubsImport, validateSiteInfoImport } from '@/services/loglig-app';
+
+describe('app data: clubs and site info', () => {
+  it('stores club contact details and updates them in place; site info replaces by key', async () => {
+    await importClubs(db, validateClubsImport({ kind: 'clubs', items: [{ logligId: 1, name: 'מועדון חדש', area: 2, address: 'רחוב 1', phone: '03', roster: [{ name: 'א ב', age: 12 }] }, { name: '' }] }));
+    await importClubs(db, validateClubsImport({ kind: 'clubs', items: [{ logligId: 1, name: 'מועדון חדש', area: 2, address: 'רחוב 2', phone: '04' }] }));
+    const rows = await db.select().from(schema.clubs);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]!.city).toBe('רחוב 2');
+    expect((rows[0]!.info as { phone: string }).phone).toBe('04');
+
+    await importSiteInfo(db, validateSiteInfoImport({ kind: 'site-info', key: 'events', data: [{ title: 'אירוע', url: 'https://x.example/a' }, { title: 'זדוני', url: 'javascript:alert(1)' }] }));
+    await importSiteInfo(db, validateSiteInfoImport({ kind: 'site-info', key: 'events', data: [{ title: 'אירוע 2' }] }));
+    const info = await db.select().from(schema.siteInfo);
+    expect(info).toHaveLength(1);
+    expect((info[0]!.data as { title: string }[])[0]!.title).toBe('אירוע 2');
+    expect(() => validateSiteInfoImport({ kind: 'site-info', key: 'secrets', data: [] })).toThrow();
+  });
+});

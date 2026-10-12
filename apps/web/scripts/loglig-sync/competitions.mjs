@@ -164,17 +164,17 @@ for (const url of urls) {
 const APP_API = 'https://loglig.com:8443/api/Union';
 const APP_LISTS = [['CompetitionsYouth', 'YOUTH'], ['CompetitionsAdult', 'ADULTS'], ['CompetitionsSenior', 'MASTERS'], ['CompetitionsDaily', 'OTHER']];
 const appLevel = (name) => (/^סבב/.test(name) ? 'CIRCUIT' : /אזורית/.test(name) ? 'REGIONAL' : /ITF|בינלאומ|ATP/.test(name) ? 'INTERNATIONAL' : 'NATIONAL');
-const SEASONS = [1755, 1671];
+const CURRENT_SEASON = 1755;
 
-async function readAppCompetitions() {
+async function readAppCompetitions(seasonIds) {
   const byTitle = new Map();
-  for (const [ep, section] of APP_LISTS) {
+  for (const season of seasonIds) for (const [ep, section] of APP_LISTS) {
     let groups = [];
-    try { groups = JSON.parse(await get(`${APP_API}/${ep}/38`)); } catch (e) { console.warn('  app list failed', ep, String(e.message).slice(0, 60)); continue; }
+    try { groups = JSON.parse(await get(`${APP_API}/${ep}/38?seasonId=${season}`)); } catch (e) { console.warn('  app list failed', ep, season, String(e.message).slice(0, 60)); continue; }
     for (const g of groups) {
       const title = (g.CompetitionTitle ?? '').trim();
       if (!title || /^(טסט|בדיקה|test)\b/i.test(title)) continue;
-      const entry = byTitle.get(title) ?? { title, section, categories: [], players: 0 };
+      const entry = byTitle.get(title) ?? { title, section, season, categories: [], players: 0 };
       for (const c of g.categoriLIstItem ?? []) if (c.TeamId && !entry.categories.some((x) => x.TeamId === c.TeamId)) entry.categories.push(c);
       entry.players = Math.max(entry.players, g.categoriPlayersNum ?? 0);
       byTitle.set(title, entry);
@@ -184,7 +184,12 @@ async function readAppCompetitions() {
 }
 
 async function mergeAppCompetitions(docs) {
-  const apps = await readAppCompetitions();
+  // --seasons all: every season the app knows (history); default: the current season only
+  let seasonIds = [CURRENT_SEASON];
+  if (opt('--seasons', 'current') === 'all') {
+    try { seasonIds = JSON.parse(await get(`https://loglig.com:8443/api/Leauges/AthleticsSeasons/38`)).map((x) => x.Id); } catch { /* keep current */ }
+  }
+  const apps = await readAppCompetitions(seasonIds);
   console.log(`\nLoglig app: ${apps.length} competitions`);
   let added = 0, enriched = 0;
   for (const a of apps) {
@@ -194,7 +199,7 @@ async function mergeAppCompetitions(docs) {
       const cats = [];
       for (const c of a.categories) {
         let page = null;
-        for (const season of SEASONS) {
+        for (const season of [a.season, CURRENT_SEASON, 1671].filter((x, i, arr) => arr.indexOf(x) === i)) {
           try {
             const p = parseCategoryPage(await get(`https://loglig.com:2053/LeagueTable/SchedulesForTennisCompetition/${c.TeamId}?seasonId=${season}`, 1));
             if (p.matches.length) { page = p; break; }

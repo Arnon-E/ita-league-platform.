@@ -117,16 +117,17 @@ export async function importCompetition(db: Db, input: CompetitionIn, now = new 
     }
 
     // players already known from the ranking mirror: key rk:<G>:<birthYear>:<name> (and cp:<G>:<name> for ones created here)
-    const known = await tx.select({ id: schema.players.id, key: schema.players.logligId }).from(schema.players)
-      .where(sql`${schema.players.logligId} like 'rk:%' or ${schema.players.logligId} like 'cp:%'`);
+    const known = await tx.select({
+      id: schema.players.id, key: schema.players.logligId, first: schema.players.firstName, last: schema.players.lastName,
+      gender: schema.players.gender, birth: schema.players.birthDate,
+    }).from(schema.players).where(sql`${schema.players.logligId} like 'rk:%' or ${schema.players.logligId} like 'cp:%' or ${schema.players.logligId} like 'll:%'`);
     const byName = new Map<string, { id: string; by: number | null }[]>();
     for (const k of known) {
-      const m = k.key?.match(/^(?:rk:([A-Z]+):(\d{4}):|cp:([A-Z]+):)(.+)$/);
-      if (!m) continue;
-      const gender = m[1] ?? m[3], by = m[2] ? Number(m[2]) : null, nm = m[4]!.replace(/\s+/g, ' ');
-      const list = byName.get(`${gender}|${nm}`) ?? [];
+      const nm = `${k.first} ${k.last}`.replace(/\s+/g, ' ').trim();
+      const by = k.key?.startsWith('cp:') ? null : k.birth.getUTCFullYear(); // created-here players only have an estimated year
+      const list = byName.get(`${k.gender}|${nm}`) ?? [];
       list.push({ id: k.id, by });
-      byName.set(`${gender}|${nm}`, list);
+      byName.set(`${k.gender}|${nm}`, list);
     }
     const pick = (gender: Gender, name: string, age: number | null) => {
       const list = byName.get(`${gender}|${name}`);

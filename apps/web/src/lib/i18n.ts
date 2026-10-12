@@ -55,6 +55,8 @@ const EN: Record<string, string> = {
   'טוען...': 'Loading...', 'נסו שוב': 'Try again',
   'אין קטגוריות לפי הסינון.': 'No categories match the filter.',
   'שחקנים פעילים': 'Active players', 'כל השחקנים': 'All players',
+  'פירוט משחקים': 'Match details',
+  'אודות': 'About', 'אודות האיגוד': 'About the federation', 'תקנון': 'Regulation', 'הצהרת שחקן': 'Player statement', 'טפסי הרשמה': 'Registration forms', 'אירועים': 'Events', 'לפרטים': 'Details', 'נותני חסות': 'Sponsors', 'אין עדיין מידע.': 'No information yet.',
   'להרשמה לתחרות': 'Register',
   'קטגוריות': 'Categories',
   'מאושרים': 'confirmed',

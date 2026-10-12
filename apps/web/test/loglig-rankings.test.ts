@@ -45,3 +45,23 @@ describe('loglig ranking mirror', () => {
     expect(() => validateRankingImport({ gender: 'MALE', rows: 'no' })).toThrow();
   });
 });
+
+describe('ranking mirror with Loglig user ids', () => {
+  it('moves name-keyed players to their user id, sets the exact birth date and keeps points once', async () => {
+    const { eq } = await import('drizzle-orm');
+    const legacy = await importRankings(db, { gender: 'FEMALE', rows: [row(1, 'דנה כהן', 2012, 'מועדון ג', 900)] });
+    expect(legacy.players).toBe(1);
+    const withId = validateRankingImport({ gender: 'FEMALE', rows: [{ ...row(1, 'דנה כהן', 2012, 'מועדון ג', 950), userId: 777, birthDate: '2012-03-09' }, { ...row(2, 'בלי תאריך', 2012, 'מועדון ג', 10), userId: 778, birthDate: '1999-01-01' }] });
+    expect(withId.rows[0]).toMatchObject({ userId: 777, birthDate: '2012-03-09' });
+    expect(withId.rows[1]!.birthDate).toBeUndefined(); // a date that disagrees with the birth year is ignored
+    await importRankings(db, withId);
+    await importRankings(db, withId); // idempotent
+    const ps = await db.select().from(schema.players).where(eq(schema.players.firstName, 'דנה'));
+    expect(ps).toHaveLength(1);
+    expect(ps[0]!.logligId).toBe('ll:777');
+    expect(ps[0]!.birthDate.toISOString().slice(0, 10)).toBe('2012-03-09');
+    const awards = await db.select().from(schema.pointsAwards).where(eq(schema.pointsAwards.playerId, ps[0]!.id));
+    expect(awards).toHaveLength(1);
+    expect(awards[0]!.points).toBe(950);
+  });
+});

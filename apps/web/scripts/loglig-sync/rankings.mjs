@@ -38,7 +38,32 @@ function parse(html) {
   return rows;
 }
 
+/** The Loglig app's own ranking endpoint: every ranked player with the Loglig user id and the exact birth date. */
+async function fetchGenderFromApp(genderId) {
+  const r = await fetch(`https://loglig.com:8443/api/Union/UnionRankingsNewMethod/${UNION}/ageId/0?genderId=${genderId}`);
+  if (!r.ok) throw new Error(`Loglig app API answered ${r.status}`);
+  const j = await r.json();
+  const list = (Array.isArray(j) ? j : []).flatMap((x) => x.Value ?? []);
+  return list
+    .filter((p) => p.FullName && Number(p.YearOfBirth) > 1930 && !String(p.FullName).includes('/'))
+    .map((p) => ({
+      name: String(p.FullName).replace(/\s+/g, ' ').trim(), birthYear: Number(p.YearOfBirth), birthDate: String(p.BirthDay ?? '').slice(0, 10),
+      userId: Number(p.UserId) || undefined, club: p.ClubName ?? '', national: Number(p.NationalPoints) || 0, international: Number(p.InternationalPoints) || 0,
+      total: Number(p.TotalPoints) || 0,
+    }))
+    .sort((x, y) => y.total - x.total)
+    .map((p, i) => ({ rank: i + 1, ...p }));
+}
+
 async function fetchGender(genderId) {
+  try {
+    const rows = await fetchGenderFromApp(genderId);
+    if (rows.length) return rows;
+  } catch (e) { console.warn('  app API failed, using the public ranking page:', String(e.message).slice(0, 80)); }
+  return fetchGenderFromPage(genderId);
+}
+
+async function fetchGenderFromPage(genderId) {
   const body = new URLSearchParams({ unionId: String(UNION), seasonId: String(SEASON), ageId: '', genderId: String(genderId), isModal: 'true' });
   const r = await fetch(SRC, { method: 'POST', body, headers: { 'content-type': 'application/x-www-form-urlencoded; charset=UTF-8', 'x-requested-with': 'XMLHttpRequest' } });
   if (!r.ok) throw new Error(`Loglig answered ${r.status}`);

@@ -53,6 +53,25 @@ export default async function League({ params, searchParams }: { params: Promise
                   <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}><strong>{m.done ? `${m.homeScore ?? 0} – ${m.awayScore ?? 0}` : '–'}</strong></td>
                   <td>{m.away.team}</td>
                   <td className="muted">{m.venue}</td>
+                  <td>
+                    {!!m.rubbers?.length && (
+                      <details>
+                        <summary className="muted">{t('פירוט משחקים')}</summary>
+                        <table><tbody>
+                          {m.rubbers.map((x) => {
+                            const sc = x.sets.map((s) => `${s.h}-${s.g}`).join(' ');
+                            return (
+                              <tr key={x.n}>
+                                <td style={{ fontWeight: x.winner === 'home' ? 800 : 400 }}>{x.winner === 'home' ? '✓ ' : ''}{x.home.join(' / ')}</td>
+                                <td style={{ whiteSpace: 'nowrap', direction: 'ltr', textAlign: 'center' }}>{sc || '–'}</td>
+                                <td style={{ fontWeight: x.winner === 'away' ? 800 : 400 }}>{x.winner === 'away' ? '✓ ' : ''}{x.away.join(' / ')}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody></table>
+                      </details>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody></table>

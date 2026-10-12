@@ -20,6 +20,8 @@ export const channelEnum = pgEnum('channel', ['PUSH', 'EMAIL', 'SMS']);
 
 export const clubs = pgTable('clubs', {
   id: id(), name: text('name').notNull().unique(), city: text('city'),
+  /** Mirrored from the Loglig app: area, contact details, officials, teams and registered players. */
+  info: jsonb('info'),
 });
 
 export const users = pgTable('users', {
@@ -110,6 +112,13 @@ export const tournaments = pgTable('tournaments', {
   sourceUrl: text('source_url'),
   registerUrl: text('register_url'),
   createdAt: createdAt(),
+});
+
+/** Federation-wide information mirrored from the Loglig app: about text, events, registration forms, sponsors. */
+export const siteInfo = pgTable('site_info', {
+  key: text('key').primaryKey(),
+  data: jsonb('data').notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
 /** Public regulations, procedures and forms (links to the federation's own documents). */
