@@ -31,7 +31,7 @@ export function validateRankingImport(x: unknown): RankingImport {
   for (const r of b.rows) {
     const name = typeof r?.name === 'string' ? r.name.trim() : '';
     const birthYear = Number(r?.birthYear);
-    if (!name || name.length > 120 || !Number.isInteger(birthYear) || birthYear < 1930 || birthYear > new Date().getFullYear()) continue;
+    if (!name || name.includes('/') || name.length > 120 || !Number.isInteger(birthYear) || birthYear < 1930 || birthYear > new Date().getFullYear()) continue;
     rows.push({
       rank: Number(r.rank) || 0, name, birthYear, club: String(r.club ?? '').trim().slice(0, 120),
       national: Number(r.national) || 0, international: Number(r.international) || 0, total: Number(r.total) || 0,

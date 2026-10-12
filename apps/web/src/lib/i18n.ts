@@ -54,6 +54,7 @@ const EN: Record<string, string> = {
   'תפריט': 'Menu',
   'טוען...': 'Loading...', 'נסו שוב': 'Try again',
   'אין קטגוריות לפי הסינון.': 'No categories match the filter.',
+  'שחקנים פעילים': 'Active players', 'כל השחקנים': 'All players',
   'להרשמה לתחרות': 'Register',
   'קטגוריות': 'Categories',
   'מאושרים': 'confirmed',

@@ -7,8 +7,15 @@ import { ensureDefaultRuleSet, loadRuleSet } from './rules';
 
 const { players, clubs, entries, categories, matches, tournaments, pointsAwards } = schema;
 
-export async function searchPlayers(db: Db, q: string, clubId?: string, limit = 100, opts: { gender?: 'MALE' | 'FEMALE'; age?: number; offset?: number } = {}) {
+export async function searchPlayers(db: Db, q: string, clubId?: string, limit = 100, opts: { gender?: 'MALE' | 'FEMALE'; age?: number; offset?: number; activeOnly?: boolean } = {}) {
   const conds = [];
+  // Active = has an account, ranking points from the last 18 months, or an entry in a competition that ended within the last 12 months.
+  if (opts.activeOnly) {
+    conds.push(sql`(${players.accountId} is not null
+      or exists (select 1 from points_awards pa where pa.player_id = ${players.id} and pa.date >= now() - interval '18 months')
+      or exists (select 1 from entries e join categories c on c.id = e.category_id join tournaments t on t.id = c.tournament_id
+                 where e.player_id = ${players.id} and t.end_date >= now() - interval '12 months'))`);
+  }
   if (opts.gender) conds.push(eq(players.gender, opts.gender));
   if (opts.age) conds.push(sql`${players.birthDate} >= make_date(${new Date().getFullYear() - opts.age}, 1, 1)::timestamptz`);
   for (const w of q.trim().split(/\s+/).filter(Boolean)) conds.push(or(ilike(players.firstName, `%${w}%`), ilike(players.lastName, `%${w}%`)));

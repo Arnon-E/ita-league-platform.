@@ -110,6 +110,8 @@ async function readCompetition({ url, list }) {
       // knockout depth: final = 0; classification matches (place > 1) sit in the round of their size
       const ko = page.matches.filter((m) => !/^בית\s*\d/.test(m.stage)).map((m) => koRound(m.slot)).filter(Boolean);
       const maxDepth = ko.length ? Math.max(...ko.map((k) => k.depthFromFinal)) : 0;
+      page.matches = page.matches.filter((m) => !m.a.name.includes('/') && !m.b.name.includes('/')); // doubles pairs are not players
+      if (!page.matches.length) continue;
       const matches = page.matches.map((m, i) => {
         const group = (m.stage.match(/^בית\s*(\d+)/) ?? [])[1];
         const k = group ? null : koRound(m.slot);

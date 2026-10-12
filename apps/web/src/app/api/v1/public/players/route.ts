@@ -13,6 +13,7 @@ export const GET = (req: Request) => handlePublic(async () => {
     ...(g === 'MALE' || g === 'FEMALE' ? { gender: g } : {}),
     ...([10, 12, 14, 16, 18].includes(age) ? { age } : {}),
     offset,
+    activeOnly: p.get('show') !== 'all',
   });
   return rows.map(({ p: pl, club }) => ({ id: pl.id, name: `${pl.firstName} ${pl.lastName}`, club, gender: pl.gender, birthYear: pl.birthDate.getUTCFullYear() }));
 });

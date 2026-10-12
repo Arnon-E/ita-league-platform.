@@ -7,16 +7,17 @@ import { PlayersRows } from '@/components/InfiniteRows';
 
 const PAGE = 60;
 
-export default async function Players({ searchParams }: { searchParams: Promise<{ q?: string; club?: string; g?: string; age?: string }> }) {
+export default async function Players({ searchParams }: { searchParams: Promise<{ q?: string; club?: string; g?: string; age?: string; show?: string }> }) {
   const t = await tr();
-  const { q = '', club = '', g = '', age = '' } = await searchParams;
+  const { q = '', club = '', g = '', age = '', show = '' } = await searchParams;
+  const activeOnly = show !== 'all';
   const gender = g === 'MALE' || g === 'FEMALE' ? g : undefined;
   const ageN = [10, 12, 14, 16, 18].includes(Number(age)) ? Number(age) : undefined;
   const [rows, clubs] = await Promise.all([
-    searchPlayers(db, q, club || undefined, PAGE, { ...(gender ? { gender } : {}), ...(ageN ? { age: ageN } : {}) }), listClubs(db),
+    searchPlayers(db, q, club || undefined, PAGE, { ...(gender ? { gender } : {}), ...(ageN ? { age: ageN } : {}), activeOnly }), listClubs(db),
   ]);
   // the same filters the page used, passed on to the endpoint that serves the following pages
-  const query = new URLSearchParams({ q, club, g: gender ?? '', age: ageN ? String(ageN) : '' }).toString();
+  const query = new URLSearchParams({ q, club, g: gender ?? '', age: ageN ? String(ageN) : '', show: activeOnly ? '' : 'all' }).toString();
   return (
     <Shell nav="players">
       <h1>{t('שחקנים')}</h1>
@@ -25,6 +26,7 @@ export default async function Players({ searchParams }: { searchParams: Promise<
         <select name="g" defaultValue={g}><option value="">{t('בנים ובנות')}</option><option value="MALE">{t('בנים')}</option><option value="FEMALE">{t('בנות')}</option></select>
         <select name="age" defaultValue={age}><option value="">{t('כל הגילאים')}</option>{[10, 12, 14, 16, 18].map((a) => <option key={a} value={a}>{t('עד גיל')} {a}</option>)}</select>
         <select name="club" defaultValue={club}><option value="">{t('כל המועדונים')}</option>{clubs.map(({ c }) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
+        <select name="show" defaultValue={show}><option value="">{t('שחקנים פעילים')}</option><option value="all">{t('כל השחקנים')}</option></select>
         <button className="btn">{t('חיפוש')}</button>
       </form>
       <PlayersRows

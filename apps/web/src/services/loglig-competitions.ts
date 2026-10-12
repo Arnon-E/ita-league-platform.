@@ -37,7 +37,7 @@ export function validateCompetitionImport(x: unknown): CompetitionIn {
     const matches: MatchIn[] = [];
     for (const m of c.matches) {
       const an = clean(m?.a?.name), bn = clean(m?.b?.name);
-      if (!an || !bn || Number.isNaN(Date.parse(m.start))) continue;
+      if (!an || !bn || an.includes('/') || bn.includes('/') || Number.isNaN(Date.parse(m.start))) continue;
       matches.push({
         stage: m.stage === 'GROUP' ? 'GROUP' : 'KO', ...(m.group ? { group: clean(m.group, 40) } : {}),
         round: Math.max(1, Math.min(12, Number(m.round) || 1)), place: Math.max(1, Number(m.place) || 1), order: Number(m.order) || 0,
@@ -307,4 +307,30 @@ export async function removeTournament(db: Db, name: string) {
     await tx.delete(schema.tournaments).where(inArray(schema.tournaments.id, ids));
   });
   return { removed: ids.length };
+}
+
+/**
+ * Doubles pairs ("A / B") that earlier imports stored as one player: removes them with their entries, matches and points.
+ * Players that have a user account are never touched.
+ */
+export async function removePairPlayers(db: Db) {
+  const ids = (await db.execute(sql`
+    select id from players where (first_name || ' ' || last_name) like '%/%' and account_id is null`)) as unknown as { id: string }[];
+  if (!ids.length) return { players: 0, matches: 0 };
+  const list = JSON.stringify(ids.map((r) => r.id));
+  let matches = 0;
+  await (db as unknown as { transaction: <T>(f: (tx: Db) => Promise<T>) => Promise<T> }).transaction(async (tx) => {
+    const del = (await tx.execute(sql`
+      delete from matches where a_entry_id in (select id from entries where player_id in (select jsonb_array_elements_text(${list}::jsonb)))
+         or b_entry_id in (select id from entries where player_id in (select jsonb_array_elements_text(${list}::jsonb))) returning id`)) as unknown as unknown[];
+    matches = del.length;
+    await tx.execute(sql`delete from payments where entry_id in (select id from entries where player_id in (select jsonb_array_elements_text(${list}::jsonb)))`);
+    await tx.execute(sql`delete from entries where player_id in (select jsonb_array_elements_text(${list}::jsonb))`);
+    await tx.execute(sql`delete from points_awards where player_id in (select jsonb_array_elements_text(${list}::jsonb))`);
+    await tx.execute(sql`delete from follows where kind = 'PLAYER' and target_id in (select jsonb_array_elements_text(${list}::jsonb))`);
+    await tx.execute(sql`delete from guardians where player_id in (select jsonb_array_elements_text(${list}::jsonb))`);
+    await tx.execute(sql`delete from documents where player_id in (select jsonb_array_elements_text(${list}::jsonb))`);
+    await tx.execute(sql`delete from players where id in (select jsonb_array_elements_text(${list}::jsonb))`);
+  });
+  return { players: ids.length, matches };
 }
