@@ -79,8 +79,16 @@ export type LeagueRow = { id: string; name: string; gender: string; teams: numbe
 export type LeagueDetail = {
   id: string; name: string; updatedAt: string;
   groups: { name: string; standings: { rank: number; team: string; played: number; points: number; wins: number; losses: number; setsFor: number; setsAgainst: number }[] }[];
-  rounds: { name: string; matches: { done: boolean; start: string | null; group: string; home: { team: string }; away: { team: string }; homeScore: number | null; awayScore: number | null; venue: string }[] }[];
+  rounds: { name: string; matches: { done: boolean; start: string | null; group: string; home: { team: string }; away: { team: string }; homeScore: number | null; awayScore: number | null; venue: string;
+    rubbers?: { n: number; home: string[]; away: string[]; sets: { h: number; g: number }[]; winner: 'home' | 'away' | null }[] }[] }[];
 };
+export type About = {
+  union: { description?: string; about?: string; regulation?: string; statement?: string };
+  events: { title: string; place: string; start: string; end: string; description: string; url: string }[];
+  forms: { id: number; name: string; description: string; url: string }[];
+  sponsors: { id: number; url: string }[];
+};
+export const about = () => call<About>('/public/about');
 export const leagues = () => call<LeagueRow[]>('/public/leagues');
 export const league = (id: string) => call<LeagueDetail>(`/public/leagues/${id}`);
 export const regulations = () => call<{ id: string; title: string; url: string; category: string }[]>('/public/regulations');

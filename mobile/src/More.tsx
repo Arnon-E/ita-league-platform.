@@ -36,6 +36,7 @@ function Leagues({ onBack }: { onBack: () => void }) {
 function LeagueView({ id, onBack }: { id: string; onBack: () => void }) {
   const { data, err, busy } = useData(() => api.league(id));
   const [team, setTeam] = useState('');
+  const [openTie, setOpenTie] = useState('');
   return (
     <ScrollView contentContainerStyle={st.pad}>
       <Head title={data?.name ?? 'ליגה'} onBack={onBack} />
@@ -64,16 +65,49 @@ function LeagueView({ id, onBack }: { id: string; onBack: () => void }) {
               const hw = m.done && (m.homeScore ?? 0) > (m.awayScore ?? 0);
               const aw = m.done && (m.awayScore ?? 0) > (m.homeScore ?? 0);
               return (
-                <View key={i} style={{ gap: 2, paddingVertical: 4, borderTopWidth: i ? 1 : 0, borderColor: C.line }}>
+                <Pressable key={i} onPress={() => setOpenTie(openTie === `${r.name}${i}` ? '' : `${r.name}${i}`)} style={{ gap: 2, paddingVertical: 4, borderTopWidth: i ? 1 : 0, borderColor: C.line }}>
                   <View style={st.row}><Text style={[{ flex: 1 }, hw && { fontWeight: '800' }]}>{hw ? '✓ ' : ''}{m.home.team}</Text><Text style={[st.sc, hw && { fontWeight: '800' }]}>{m.done ? m.homeScore : ''}</Text></View>
                   <View style={st.row}><Text style={[{ flex: 1 }, aw && { fontWeight: '800' }]}>{aw ? '✓ ' : ''}{m.away.team}</Text><Text style={[st.sc, aw && { fontWeight: '800' }]}>{m.done ? m.awayScore : ''}</Text></View>
-                  <Text style={st.muted}>{m.start ? new Date(m.start).toLocaleString('he-IL', { weekday: 'short', day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}{m.venue ? ` · ${m.venue}` : ''}</Text>
-                </View>
+                  <Text style={st.muted}>{m.start ? new Date(m.start).toLocaleString('he-IL', { weekday: 'short', day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}{m.venue ? ` · ${m.venue}` : ''}{m.rubbers?.length ? ' · לחצו לפירוט' : ''}</Text>
+                  {openTie === `${r.name}${i}` && (m.rubbers ?? []).map((x) => (
+                    <View key={x.n} style={{ paddingLeft: 8, paddingVertical: 2 }}>
+                      <Text style={x.winner === 'home' ? { fontWeight: '800' } : undefined}>{x.winner === 'home' ? '✓ ' : ''}{x.home.join(' / ')}</Text>
+                      <Text style={{ color: C.muted }}>{x.sets.map((z) => `${z.h}-${z.g}`).join('  ')}</Text>
+                      <Text style={x.winner === 'away' ? { fontWeight: '800' } : undefined}>{x.winner === 'away' ? '✓ ' : ''}{x.away.join(' / ')}</Text>
+                    </View>
+                  ))}
+                </Pressable>
               );
             })}
           </View>
         );
       })}
+    </ScrollView>
+  );
+}
+
+function AboutScreen({ onBack }: { onBack: () => void }) {
+  const { data, err, busy } = useData(api.about);
+  return (
+    <ScrollView contentContainerStyle={st.pad}>
+      <Head title="אודות האיגוד" onBack={onBack} />
+      <Wait err={err} busy={busy} />
+      {data?.union.description ? <View style={st.card}><Text>{data.union.description}</Text></View> : null}
+      {data?.union.about ? <View style={st.card}><Text>{data.union.about}</Text></View> : null}
+      {data?.union.regulation ? <><Text style={st.h2}>תקנון</Text><View style={st.card}><Text>{data.union.regulation}</Text></View></> : null}
+      {data?.union.statement ? <><Text style={st.h2}>הצהרת שחקן</Text><View style={st.card}><Text>{data.union.statement}</Text></View></> : null}
+      {!!data?.forms.length && <Text style={st.h2}>טפסי הרשמה</Text>}
+      {(data?.forms ?? []).map((f) => (
+        <Pressable key={f.id} style={st.card} onPress={() => Linking.openURL(f.url)}><Text style={st.b}>{f.name}</Text><Text style={st.muted}>{f.description}</Text></Pressable>
+      ))}
+      {!!data?.events.length && <Text style={st.h2}>אירועים</Text>}
+      {(data?.events ?? []).map((e, i) => (
+        <Pressable key={i} style={st.card} disabled={!e.url} onPress={() => Linking.openURL(e.url)}>
+          <Text style={st.b}>{e.title}</Text>
+          <Text style={st.muted}>{e.start ? new Date(e.start).toLocaleDateString('he-IL') : ''}{e.place ? ` · ${e.place}` : ''}</Text>
+          {!!e.description && <Text>{e.description}</Text>}
+        </Pressable>
+      ))}
     </ScrollView>
   );
 }
@@ -142,6 +176,7 @@ const ITEMS = [
   ['regs', '📄', 'תקנונים ונהלים', 'כל התקנונים והמסמכים של האיגוד'],
   ['clubs', '🏟️', 'מועדונים', 'רשימת המועדונים וכמות השחקנים'],
   ['stats', '📈', 'סטטיסטיקות', 'מובילים בניצחונות ומועדונים גדולים'],
+  ['about', 'ℹ️', 'אודות האיגוד', 'מי אנחנו, טפסי הרשמה ואירועים'],
 ] as const;
 
 /** The "More" tab: the website's remaining sections (leagues, regulations, clubs, statistics). */
@@ -150,6 +185,7 @@ export function More() {
   const back = () => setPage(null);
   if (page === 'leagues') return <Leagues onBack={back} />;
   if (page === 'regs') return <Regulations onBack={back} />;
+  if (page === 'about') return <AboutScreen onBack={back} />;
   if (page === 'clubs') return <Clubs onBack={back} />;
   if (page === 'stats') return <Stats onBack={back} />;
   return (
