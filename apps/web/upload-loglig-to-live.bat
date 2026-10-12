@@ -9,14 +9,14 @@ echo.
 echo === Rankings ===
 node scripts\loglig-sync\rankings.mjs --push --url %URL%
 echo.
-echo === Competitions: national, regional, seniors - draws, results and upcoming registrations (about 15 minutes) ===
+echo === Competitions: all ITA listings - draws, results and upcoming registrations (about 30 minutes) ===
 node scripts\loglig-sync\competitions.mjs --list all --all --push --url %URL%
 echo.
 echo === Team leagues ===
 node scripts\loglig-sync\leagues.mjs --push --url %URL%
 echo.
 echo === Regulations and procedures ===
-node scripts\loglig-syncegulations.mjs --push --url %URL%
+node scripts\loglig-sync\regulations.mjs --push --url %URL%
 echo.
 echo Finished. Check %URL%
 pause
