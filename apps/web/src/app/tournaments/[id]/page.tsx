@@ -38,8 +38,8 @@ export default async function TournamentPage({ params, searchParams }: { params:
   return (
     <Shell nav="home">
       <div className="row" style={{ justifyContent: 'space-between' }}>
-        <div><h1>{t.name}</h1><span className="muted">{t.startDate.toLocaleDateString('he-IL')} – {t.endDate.toLocaleDateString('he-IL')} · {tt(FORMAT[t.format] ?? '')}</span></div>
-        <div className="row"><FollowButton kind="TOURNAMENT" target={t.id} back={`/tournaments/${t.id}`} /><span className={`pill ${cls}`}>{tt(st)}</span></div>
+        <div style={{ minWidth: 0 }}><span className={`pill ${cls}`}>{tt(st)}</span><h1 style={{ marginTop: 6 }}>{t.name}</h1><span className="muted">{t.startDate.toLocaleDateString('he-IL')} – {t.endDate.toLocaleDateString('he-IL')}</span></div>
+        <FollowButton kind="TOURNAMENT" target={t.id} back={`/tournaments/${t.id}`} />
       </div>
       <nav className="tabs">{TABS.map(([k, l]) => <Link key={k} href={`/tournaments/${id}?tab=${k}`} className={tab === k ? 'on' : ''}>{tt(l)}</Link>)}</nav>
       <Flash err={err} ok={ok} />
@@ -124,12 +124,21 @@ async function Overview({ d, manage }: { d: Detail; manage: boolean }) {
           <form action={statusAction}><input type="hidden" name="id" value={t.id} /><input type="hidden" name="to" value="CANCELLED" /><button className="btn ghost">ביטול תחרות</button></form>
         )}
         <span className="muted">דמי השתתפות: ₪{(t.feeAgorot / 100).toFixed(0)}</span>
-      </div> : <div className="card row"><span className="muted">{tt('דמי השתתפות')}: ₪{(t.feeAgorot / 100).toFixed(0)}</span>{t.status === 'REGISTRATION_OPEN' && <Link className="btn" href="/me">{tt('להרשמה לתחרות')}</Link>}</div>}
-      {(t.registerUrl || t.sourceUrl || t.registrationCloses) && (
-        <div className="card row">
-          {t.registrationCloses && <span><strong>{tt('מועד אחרון להרשמה')}:</strong> {t.registrationCloses.toLocaleString('he-IL', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Jerusalem' })}</span>}
-          {t.registerUrl && t.status === 'REGISTRATION_OPEN' && <a className="btn" href={t.registerUrl} target="_blank" rel="noopener noreferrer">{tt('הרשמה בלוגליג')}</a>}
-          {t.sourceUrl && <a className="btn ghost" href={t.sourceUrl} target="_blank" rel="noopener noreferrer">{tt('עמוד התחרות באתר האיגוד')}</a>}
+      </div> : (t.registerUrl || t.registrationCloses || t.sourceUrl || t.feeAgorot > 0 || t.status === 'REGISTRATION_OPEN') && (
+        <div className="card grid" style={{ gap: 10 }}>
+          {t.status === 'REGISTRATION_OPEN' && (
+            <div className="row">
+              {t.registerUrl
+                ? <a className="btn" href={t.registerUrl} target="_blank" rel="noopener noreferrer">{tt('להרשמה')}</a>
+                : <Link className="btn" href="/me">{tt('להרשמה')}</Link>}
+              {t.registerUrl && <span className="muted">{tt('ההרשמה מתבצעת באתר Loglig, באתר נפרד שנפתח בלשונית חדשה.')}</span>}
+            </div>
+          )}
+          <div className="row" style={{ gap: 18 }}>
+            {t.registrationCloses && <span><strong>{tt('ההרשמה נסגרת')}:</strong> {t.registrationCloses.toLocaleString('he-IL', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Jerusalem' })}</span>}
+            {t.feeAgorot > 0 && <span><strong>{tt('דמי השתתפות')}:</strong> ₪{(t.feeAgorot / 100).toFixed(0)}</span>}
+            {t.sourceUrl && <a className="muted" href={t.sourceUrl} target="_blank" rel="noopener noreferrer"><u>{tt('עמוד התחרות באתר האיגוד')}</u></a>}
+          </div>
         </div>
       )}
       <h2>{tt('קטגוריות')}</h2>
@@ -138,7 +147,11 @@ async function Overview({ d, manage }: { d: Detail; manage: boolean }) {
           <div key={c.id} className="card grid" style={{ gap: 4 }}>
             <strong>{c.name}</strong>
             <span className="muted">{tt(GENDER[c.gender] ?? '')} · {tt(FORMAT[formatOf(c, t)] ?? '')}{c.capacity ? ` · ${tt('עד')} ${c.capacity}` : ''}</span>
-            <span className="muted">{ents.filter((x) => x.e.categoryId === c.id && x.e.status === 'CONFIRMED').length} מאושרים · {ents.filter((x) => x.e.categoryId === c.id && x.e.status === 'PENDING').length} ממתינים</span>
+            <span className="muted">{(() => {
+              const ok = ents.filter((x) => x.e.categoryId === c.id && x.e.status === 'CONFIRMED').length;
+              const wait = ents.filter((x) => x.e.categoryId === c.id && x.e.status === 'PENDING').length;
+              return ok + wait === 0 ? tt('עדיין אין נרשמים') : `${ok} ${tt('מאושרים')}${wait ? ` · ${wait} ${tt('ממתינים')}` : ''}`;
+            })()}</span>
           </div>
         ))}
       </div>

@@ -19,7 +19,7 @@ export default async function Rankings({ searchParams }: { searchParams: Promise
   return (
     <Shell nav="rank">
       <h1>{t('דירוג')}</h1>
-      <p className="muted">{t('52 שבועות אחרונים · 6 תוצאות יחיד הטובות ביותר')} · {all.length} {t('שחקנים')}</p>
+      <p className="muted">{t('הדירוג מחושב לפי 6 התוצאות הטובות ביותר ב-52 השבועות האחרונים')} · {all.length.toLocaleString('he-IL')} {t('שחקנים')}</p>
       <nav className="tabs">{[['MALE', 'בנים/גברים'], ['FEMALE', 'בנות/נשים']].map(([k, l]) => <a key={k} href={href({ g: k })} className={gender === k ? 'on' : ''}>{t(l ?? '')}</a>)}</nav>
       <div className="row" style={{ marginBottom: 14 }}>
         <Link href={href({ age: '' })} className={`pill ${!ageN ? 'lime' : ''}`}>{t('כללי')}</Link>
@@ -33,7 +33,7 @@ export default async function Rankings({ searchParams }: { searchParams: Promise
       <RankingRows
         key={query}
         initial={all.slice(0, PAGE)} query={query} pageSize={PAGE}
-        labels={{ player: t('שחקן'), club: t('מועדון'), points: t('נקודות'), counted: t('תוצאות נספרות'), loading: t('טוען...'), retry: t('נסו שוב'), end: '', none: t('אין עדיין נתוני דירוג.') }}
+        labels={{ player: t('שחקן'), club: t('מועדון'), points: t('נקודות'), counted: t('תוצאות שנספרו'), loading: t('טוען...'), retry: t('נסו שוב'), end: '', none: t('אין עדיין נתוני דירוג.') }}
       />
     </Shell>
   );

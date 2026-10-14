@@ -76,8 +76,8 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ l
           </form>
           <div className="row" style={{ marginTop: 18, gap: 28 }}>
             <a href="#list" className="stat"><b>{ts.length}</b><span style={{ color: '#CFE0F7' }}>{t('תחרויות')}</span></a>
-            <Link href="/players" className="stat"><b>{c.players}</b><span style={{ color: '#CFE0F7' }}>{t('שחקנים')}</span></Link>
-            <Link href="/clubs" className="stat"><b>{c.clubs}</b><span style={{ color: '#CFE0F7' }}>{t('מועדונים')}</span></Link>
+            <Link href="/players" className="stat"><b>{c.players.toLocaleString('he-IL')}</b><span style={{ color: '#CFE0F7' }}>{t('שחקנים')}</span></Link>
+            <Link href="/clubs" className="stat"><b>{c.clubs.toLocaleString('he-IL')}</b><span style={{ color: '#CFE0F7' }}>{t('מועדונים')}</span></Link>
           </div>
           <div className="row" style={{ marginTop: 18 }}>
             <Link className="btn ghost" style={{ background: 'rgba(255,255,255,.12)', color: '#fff', borderColor: 'rgba(255,255,255,.25)' }} href="/live">{c.live ? `${c.live} ${t('משחקים חיים עכשיו')}` : t('משחקים ותוצאות')}</Link>
