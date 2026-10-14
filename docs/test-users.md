@@ -40,3 +40,4 @@ Deletes every `@ita-test.invalid` account and what it owns (player profiles, ent
 
 | Date | Action | By |
 |---|---|---|
+| 2026-10-14 | נוצר `qa-test-admin@ita-test.invalid` (FEDERATION_ADMIN) | Arnon |
