@@ -18,9 +18,16 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
   const mine = ranking.find((r) => r.playerId === p.id);
   const age = Math.floor((Date.now() - p.birthDate.getTime()) / (365.25 * 864e5));
   const catOf = new Map(ents.map((x) => [x.c.id, x]));
+  const recent = matches
+    .filter((m) => m.status !== 'SCHEDULED' && m.status !== 'VOID' && m.winnerEntryId)
+    .sort((a, b) => (b.scheduledStart?.getTime() ?? 0) - (a.scheduledStart?.getTime() ?? 0))
+    .slice(0, 5)
+    .map((m) => entryIds.includes(m.winnerEntryId!));
+  const next = ents.filter(({ t }) => t.endDate.getTime() >= Date.now()).sort((a, b) => a.t.startDate.getTime() - b.t.startDate.getTime())[0];
+  const initials = `${p.firstName.slice(0, 1)}${p.lastName.slice(0, 1)}`;
   return (
     <Shell nav="players">
-      <div className="row" style={{ justifyContent: 'space-between' }}><h1>{p.firstName} {p.lastName}</h1><FollowButton kind="PLAYER" target={p.id} back={`/players/${p.id}`} /></div>
+      <div className="row" style={{ justifyContent: 'space-between' }}><span className="row" style={{ flexWrap: 'nowrap' }}><span className="pavatar" aria-hidden>{initials}</span><h1>{p.firstName} {p.lastName}</h1></span><FollowButton kind="PLAYER" target={p.id} back={`/players/${p.id}`} /></div>
       <p className="muted">{club ? <>מועדון: {p.clubId ? <Link href={`/clubs/${p.clubId}`}><u>{club}</u></Link> : club} · </> : ''}{GENDER[p.gender]} · גיל {age}</p>
       <div className="grid cols" style={{ marginTop: 12 }}>
         <div className="card"><div className="muted">דירוג</div><strong style={{ fontSize: 28 }}>{mine ? `#${mine.rank}` : '—'}</strong></div>
@@ -28,6 +35,12 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
         <div className="card"><div className="muted">ניצחונות / הפסדים</div><strong dir="ltr" style={{ fontSize: 28 }}>{wins} / {losses}</strong></div>
         <div className="card"><div className="muted">תחרויות</div><strong style={{ fontSize: 28 }}>{new Set(ents.map((x) => x.t.id)).size}</strong></div>
       </div>
+      {(recent.length > 0 || next) && (
+        <div className="card row" style={{ marginTop: 12, justifyContent: 'space-between' }}>
+          {recent.length > 0 && <div><div className="muted" style={{ marginBottom: 6 }}>משחקים אחרונים</div><div className="pform">{recent.map((w, i) => <i key={i} className={w ? 'w' : 'l'}>{w ? 'נ' : 'ה'}</i>)}</div></div>}
+          {next && <div><div className="muted" style={{ marginBottom: 6 }}>התחרות הבאה</div><Link href={`/tournaments/${next.t.id}`}><strong>{next.t.name}</strong></Link> <span className="muted">· {next.t.startDate.toLocaleDateString('he-IL')}</span></div>}
+        </div>
+      )}
       <h2>תחרויות</h2>
       <div className="card" style={{ overflow: 'auto' }}>
         <table><thead><tr><th>תחרות</th><th>קטגוריה</th><th>תאריך</th></tr></thead><tbody>

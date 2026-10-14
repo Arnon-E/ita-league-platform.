@@ -24,7 +24,7 @@ export default async function Live() {
       <h2>{t0('משחקים קרובים')}</h2>
       <div className="card" style={{ overflow: 'auto' }}>
         <table><thead><tr><th>{t0('שעה')}</th><th>{t0('מגרש')}</th><th>{t0('משחק')}</th><th>{t0('תחרות')}</th></tr></thead><tbody>
-          {upcoming.map(({ m, c, t }) => <tr key={m.id}><td>{fmtTime(m.scheduledStart)}</td><td>{m.courtLabel ?? '—'}</td><td><Link href={`/matches/${m.id}`}>{nm(m.aEntryId)} – {nm(m.bEntryId)}</Link></td><td><Link href={`/tournaments/${t.id}`}>{t.name} · {c.name}</Link></td></tr>)}
+          {upcoming.map(({ m, c, t }) => <tr key={m.id}><td>{fmtTime(m.scheduledStart)}</td><td>{m.courtLabel ?? <span className="muted">{t0('יוקצה בבוקר')}</span>}</td><td><Link href={`/matches/${m.id}`}>{nm(m.aEntryId)} – {nm(m.bEntryId)}</Link></td><td><Link href={`/tournaments/${t.id}`}>{t.name} · {c.name}</Link></td></tr>)}
         </tbody></table>
         {!upcoming.length && <p className="muted">{t0('אין משחקים מתוכננים.')}</p>}
       </div>

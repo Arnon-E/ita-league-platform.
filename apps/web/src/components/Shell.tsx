@@ -27,6 +27,13 @@ export async function Shell({ children, nav }: { children: ReactNode; nav?: stri
         <form action={setLangAction}><input type="hidden" name="lang" value={lang === 'en' ? 'he' : 'en'} /><button className="btn small ghost" title="Language" style={{ minWidth: 44 }}>{lang === 'en' ? 'עב' : 'EN'}</button></form>
       </header>
       <main>{children}</main>
+      <nav className="tabbar" aria-label={t('ניווט מהיר')}>
+        <Link href="/" className={nav === 'home' ? 'on' : ''}><span aria-hidden>🏠</span>{t('בית')}</Link>
+        <Link href="/live" className={nav === 'live' ? 'on' : ''}><span aria-hidden>🎾</span>{t('משחקים')}</Link>
+        <Link href="/rankings" className={nav === 'rank' ? 'on' : ''}><span aria-hidden>📈</span>{t('דירוג')}</Link>
+        <Link href="/players" className={nav === 'players' ? 'on' : ''}><span aria-hidden>👤</span>{t('שחקנים')}</Link>
+        <Link href="/search" className={nav === 'search' ? 'on' : ''}><span aria-hidden>🔍</span>{t('חיפוש')}</Link>
+      </nav>
     </>
   );
 }
