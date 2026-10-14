@@ -22,10 +22,17 @@ export default async function Live() {
         </div>
       </>}
       <h2>{t0('משחקים קרובים')}</h2>
-      <div className="card" style={{ overflow: 'auto' }}>
-        <table><thead><tr><th>{t0('שעה')}</th><th>{t0('מגרש')}</th><th>{t0('משחק')}</th><th>{t0('תחרות')}</th></tr></thead><tbody>
-          {upcoming.map(({ m, c, t }) => <tr key={m.id}><td>{fmtTime(m.scheduledStart)}</td><td>{m.courtLabel ?? <span className="muted">{t0('יוקצה בבוקר')}</span>}</td><td><Link href={`/matches/${m.id}`}>{nm(m.aEntryId)} – {nm(m.bEntryId)}</Link></td><td><Link href={`/tournaments/${t.id}`}>{t.name} · {c.name}</Link></td></tr>)}
-        </tbody></table>
+      <div className="card ulist">
+        {upcoming.map(({ m, c, t }) => (
+          <div key={m.id} className="urow">
+            <span className="utime">{fmtTime(m.scheduledStart)}</span>
+            <span className="umain">
+              <Link href={`/matches/${m.id}`}><strong>{nm(m.aEntryId)} – {nm(m.bEntryId)}</strong></Link>
+              <Link href={`/tournaments/${t.id}`} className="muted">{t.name} · {c.name}</Link>
+            </span>
+            <span className={`ucourt ${m.courtLabel ? '' : 'muted'}`}>{m.courtLabel ? `${t0('מגרש')} ${m.courtLabel}` : t0('יוקצה בבוקר')}</span>
+          </div>
+        ))}
         {!upcoming.length && <p className="muted">{t0('אין משחקים מתוכננים.')}</p>}
       </div>
       <h2>{t0('תוצאות אחרונות')}</h2>
