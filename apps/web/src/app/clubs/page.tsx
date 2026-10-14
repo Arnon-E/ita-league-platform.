@@ -12,9 +12,9 @@ export default async function Clubs({ searchParams }: { searchParams: Promise<{ 
   const { q = '' } = await searchParams;
   const needle = q.trim().toLowerCase();
   const all = await listClubs(db);
-  // Biggest clubs first. Clubs without players only show up when searched for by name.
+  // Biggest clubs first. Clubs without players, and "A, B" entries (a player listed under two clubs in the source) with one or two players, only show up when searched for.
   const rows = all
-    .filter(({ c, n }) => (needle ? c.name.toLowerCase().includes(needle) || (c.city ?? '').toLowerCase().includes(needle) : n > 0))
+    .filter(({ c, n }) => (needle ? c.name.toLowerCase().includes(needle) || (c.city ?? '').toLowerCase().includes(needle) : n > 0 && !(c.name.includes(',') && n <= 2)))
     .sort((a, b) => b.n - a.n || a.c.name.localeCompare(b.c.name, 'he'));
   return (
     <Shell nav="clubs">
