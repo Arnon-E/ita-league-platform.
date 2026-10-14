@@ -15,20 +15,22 @@ async function doLogin(fd: FormData) {
 
 const MSG: Record<string, string> = { invalid: 'אימייל או סיסמה שגויים', locked: 'החשבון ננעל זמנית. נסו שוב בעוד 15 דקות', inactive: 'החשבון אינו פעיל' };
 
-export default async function Login({ searchParams }: { searchParams: Promise<{ err?: string; next?: string }> }) {
-  const { err, next = '' } = await searchParams;
+export default async function Login({ searchParams }: { searchParams: Promise<{ err?: string; next?: string; reset?: string }> }) {
+  const { err, next = '', reset } = await searchParams;
   const t = await tr();
   const en = (await getLang()) === 'en';
   return (
     <main dir={en ? 'ltr' : 'rtl'} style={{ maxWidth: 380, paddingTop: 80 }}>
       <h1>{t('כניסה')}</h1>
       <p className="muted">{t('איגוד הטניס בישראל')}</p>
+      {reset && <div className="okmsg">{t('הסיסמה עודכנה. אפשר להיכנס.')}</div>}
       {err && <div className="err" role="alert">{t(MSG[err] ?? 'שגיאה')}</div>}
       <form action={doLogin} className="card grid">
         <input type="hidden" name="next" value={next} />
         <label>{t('אימייל')}<input name="email" type="email" required autoComplete="username" /></label>
         <label>{t('סיסמה')}<input name="password" type="password" required autoComplete="current-password" /></label>
         <button className="btn">{t('כניסה')}</button>
+        <a className="muted" href="/forgot">{t('שכחתי סיסמה')}</a>
         <a className="muted" href={next ? `/register?next=${encodeURIComponent(next)}` : '/register'}>{t('אין חשבון? הרשמה')}</a>
       </form>
     </main>
