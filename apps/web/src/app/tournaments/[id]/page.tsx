@@ -102,10 +102,21 @@ async function CatFilter({ d, tab, cat, flt, withCats }: { d: Detail; tab: strin
         </>}
       </div>
       {withCats && (
-        <div className="row">
-          {shown.map((c) => <Link key={c.id} href={url({ cat: c.id })} className={`pill ${cur === c.id ? 'lime' : ''}`}>{c.name}</Link>)}
-          {!shown.length && <span className="muted">{tt('אין קטגוריות לפי הסינון.')}</span>}
-        </div>
+        shown.length > 8 ? (
+          <form className="row" action={`/tournaments/${d.t.id}`}>
+            <input type="hidden" name="tab" value={tab} /><input type="hidden" name="g" value={flt.g} /><input type="hidden" name="age" value={flt.age} />
+            <select name="cat" defaultValue={cur} aria-label={tt('קטגוריה')} style={{ flex: 1, minWidth: 220 }}>
+              {shown.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+            <button className="btn small">{tt('הצגה')}</button>
+            <span className="muted">{shown.length} {tt('קטגוריות. צמצמו לפי בנים/בנות וגיל למעלה.')}</span>
+          </form>
+        ) : (
+          <div className="row">
+            {shown.map((c) => <Link key={c.id} href={url({ cat: c.id })} className={`pill ${cur === c.id ? 'lime' : ''}`}>{c.name}</Link>)}
+            {!shown.length && <span className="muted">{tt('אין קטגוריות לפי הסינון.')}</span>}
+          </div>
+        )
       )}
     </div>
   );
