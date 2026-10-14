@@ -1,6 +1,7 @@
-import { and, asc, desc, eq, gte, ilike, inArray, or, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, ilike, inArray, or, sql, type SQL } from 'drizzle-orm';
 import type { Db } from '@/db';
 import { schema } from '@/db';
+import { PLACEHOLDER_SQL } from '@/lib/placeholders';
 import { entryNames } from './queries';
 import { rankingFor } from './rankings';
 import { ensureDefaultRuleSet, loadRuleSet } from './rules';
@@ -8,7 +9,7 @@ import { ensureDefaultRuleSet, loadRuleSet } from './rules';
 const { players, clubs, entries, categories, matches, tournaments, pointsAwards } = schema;
 
 export async function searchPlayers(db: Db, q: string, clubId?: string, limit = 100, opts: { gender?: 'MALE' | 'FEMALE'; age?: number; offset?: number; activeOnly?: boolean } = {}) {
-  const conds = [];
+  const conds: (SQL | undefined)[] = [sql`not ((${players.firstName} || ' ' || ${players.lastName}) ~* ${PLACEHOLDER_SQL})`];
   // Active = has an account, ranking points from the last 18 months, or an entry in a competition that ended within the last 12 months.
   if (opts.activeOnly) {
     conds.push(sql`(${players.accountId} is not null

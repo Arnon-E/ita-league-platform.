@@ -4,6 +4,7 @@ import { resolveCompleted, BEST_OF_3_SUPER_TB } from '@ita/rules-engine';
 import { schema, type Db } from '@/db';
 import { ensureDefaultRuleSet } from '@/services/rules';
 import { splitName } from '@/services/loglig-rankings';
+import { PLACEHOLDER_NAME, PLACEHOLDER_SQL } from '@/lib/placeholders';
 
 type Gender = 'MALE' | 'FEMALE' | 'OPEN';
 interface SetIn { a: number; b: number; superTb?: boolean }
@@ -37,7 +38,7 @@ export function validateCompetitionImport(x: unknown): CompetitionIn {
     const matches: MatchIn[] = [];
     for (const m of c.matches) {
       const an = clean(m?.a?.name), bn = clean(m?.b?.name);
-      if (!an || !bn || an.includes('/') || bn.includes('/') || Number.isNaN(Date.parse(m.start))) continue;
+      if (!an || !bn || an.includes('/') || bn.includes('/') || PLACEHOLDER_NAME.test(an) || PLACEHOLDER_NAME.test(bn) || Number.isNaN(Date.parse(m.start))) continue;
       matches.push({
         stage: m.stage === 'GROUP' ? 'GROUP' : 'KO', ...(m.group ? { group: clean(m.group, 40) } : {}),
         round: Math.max(1, Math.min(12, Number(m.round) || 1)), place: Math.max(1, Number(m.place) || 1), order: Number(m.order) || 0,
@@ -311,12 +312,12 @@ export async function removeTournament(db: Db, name: string) {
 }
 
 /**
- * Doubles pairs ("A / B") that earlier imports stored as one player: removes them with their entries, matches and points.
+ * Doubles pairs ("A / B") and draw placeholders ("Bye Bye") that earlier imports stored as players: removes them with their entries, matches and points.
  * Players that have a user account are never touched.
  */
 export async function removePairPlayers(db: Db) {
   const ids = (await db.execute(sql`
-    select id from players where (first_name || ' ' || last_name) like '%/%' and account_id is null`)) as unknown as { id: string }[];
+    select id from players where ((first_name || ' ' || last_name) like '%/%' or (first_name || ' ' || last_name) ~* ${PLACEHOLDER_SQL}) and account_id is null`)) as unknown as { id: string }[];
   if (!ids.length) return { players: 0, matches: 0 };
   const list = JSON.stringify(ids.map((r) => r.id));
   let matches = 0;
