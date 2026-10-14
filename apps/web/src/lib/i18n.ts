@@ -12,7 +12,7 @@ const EN: Record<string, string> = {
   // navigation
   'תחרויות': 'Tournaments', 'משחקים': 'Matches', 'דירוג': 'Rankings', 'שחקנים': 'Players', 'מועדונים': 'Clubs', 'סטטיסטיקות': 'Statistics',
   'חיפוש': 'Search', 'האזור שלי': 'My area', 'ניהול': 'Admin', 'הודעות': 'Messages', 'דוחות': 'Reports', 'מסמכים': 'Documents', 'ייבוא': 'Import',
-  'מתקנים': 'Venues', 'משתמשים': 'Users', 'חוקים': 'Rules', 'ביקורת': 'Audit', 'כניסה': 'Log in', 'הרשמה': 'Sign up', 'יציאה': 'Log out',
+  'מתקנים': 'Venues', 'משתמשים': 'Users', 'שיוך שחקנים': 'Link players', 'חוקים': 'Rules', 'ביקורת': 'Audit', 'כניסה': 'Log in', 'הרשמה': 'Sign up', 'יציאה': 'Log out',
   // home
   'איגוד הטניס בישראל': 'Israel Tennis Association', 'תחרויות, לוחות משחקים, תוצאות חיות ודירוג. הכול במקום אחד.': 'Tournaments, schedules, live scores and rankings. All in one place.',
   'משחקים ותוצאות': 'Matches & results', 'לדירוג': 'Rankings', 'תחרות חדשה': 'New tournament',

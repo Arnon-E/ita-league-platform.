@@ -60,6 +60,26 @@ export const guardians = pgTable('guardians', {
   relation: text('relation'),
 }, (t) => [uniqueIndex('guardian_uq').on(t.playerId, t.userId)]);
 
+/** A user asking to be linked to an existing player (or to a child) when the ID + birth date could not be matched automatically. */
+export const claimRequests = pgTable('claim_requests', {
+  id: id(),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  /** Candidate player found by the system, if any. The admin may pick another one on approval. */
+  playerId: text('player_id').references(() => players.id, { onDelete: 'set null' }),
+  firstName: text('first_name').notNull(),
+  lastName: text('last_name').notNull(),
+  birthDate: timestamp('birth_date', { withTimezone: true }).notNull(),
+  /** Hash only, same as players.id_hash. */
+  idHash: text('id_hash'),
+  forChild: boolean('for_child').notNull().default(false),
+  reason: text('reason'),
+  status: text('status').notNull().default('PENDING'),
+  reviewedById: text('reviewed_by_id'),
+  reviewNote: text('review_note'),
+  reviewedAt: timestamp('reviewed_at', { withTimezone: true }),
+  createdAt: createdAt(),
+}, (t) => [index('claim_requests_status_idx').on(t.status)]);
+
 export const documents = pgTable('documents', {
   id: id(),
   playerId: text('player_id').notNull().references(() => players.id, { onDelete: 'cascade' }),

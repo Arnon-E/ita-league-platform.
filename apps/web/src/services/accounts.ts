@@ -4,6 +4,7 @@ import { schema } from '@/db';
 import { hashPassword, validatePassword, type Actor } from '@/lib/auth';
 import { audit } from './audit';
 import { hashNationalId } from './imports';
+import { claimPlayer, isMinor } from './claims';
 
 const { users, players, guardians } = schema;
 
@@ -20,16 +21,18 @@ export async function signUp(db: Db, input: { email: string; password: string; n
   return u as NonNullable<typeof u>;
 }
 
-const isMinor = (birth: Date, now = new Date()) => now.getUTCFullYear() - birth.getUTCFullYear() - (now < new Date(Date.UTC(now.getUTCFullYear(), birth.getUTCMonth(), birth.getUTCDate())) ? 1 : 0) < 18;
-
-/** Creates a player profile. For a child, the account becomes the guardian; a self profile links the account itself. */
+/**
+ * Creates a player profile. For a child, the account becomes the guardian; a self profile links the account itself.
+ * If a player with the same national ID already exists, the account is linked to it when the birth date matches and nobody
+ * else has claimed it; otherwise a request for an admin is queued and ClaimPending is thrown.
+ */
 export async function addPlayerProfile(db: Db, actor: Actor, input: {
   firstName: string; lastName: string; birthDate: Date; gender: 'MALE' | 'FEMALE'; clubId?: string; nationalId?: string; forChild?: boolean;
 }) {
   const idHash = input.nationalId ? hashNationalId(input.nationalId) : null;
   if (idHash) {
     const [dup] = await db.select().from(players).where(eq(players.idHash, idHash));
-    if (dup) throw new Error('שחקן עם תעודת זהות זו כבר קיים. פנו לאיגוד לצירוף לחשבון');
+    if (dup) return claimPlayer(db, actor, { firstName: input.firstName, lastName: input.lastName, birthDate: input.birthDate, nationalId: input.nationalId, forChild: input.forChild });
   }
   if (!input.forChild && isMinor(input.birthDate)) throw new Error('שחקן מתחת לגיל 18 נרשם על ידי הורה (בחרו "ילד/ה")');
   const [p] = await db.insert(players).values({

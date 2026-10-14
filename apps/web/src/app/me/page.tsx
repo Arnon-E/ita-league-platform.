@@ -1,4 +1,4 @@
-import { eq, inArray } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import { db, schema } from '@/db';
 import { Flash, Shell } from '@/components/Shell';
 import { requireActor } from '@/lib/session';
@@ -7,6 +7,7 @@ import { inbox } from '@/services/notifications';
 import { signedUrl } from '@/lib/storage';
 import { payAction } from '@/app/actions3';
 import { addPlayerAction, selfRegisterAction, uploadDocAction } from '@/app/actions2';
+import { claimPlayerAction } from '@/app/actions9';
 
 const DOC: Record<string, string> = { ID_PHOTO: 'תמונת ת״ז', PARENT_CONSENT: 'אישור הורים', MEDICAL_CERTIFICATE: 'אישור רפואי', OTHER: 'אחר' };
 const DS: Record<string, string> = { PENDING: 'ממתין לאישור', APPROVED: 'אושר', REJECTED: 'נדחה', EXPIRED: 'פג תוקף' };
@@ -23,6 +24,7 @@ export default async function Me({ searchParams }: { searchParams: Promise<{ err
   const open = await db.select({ c: schema.categories, t: schema.tournaments }).from(schema.categories)
     .innerJoin(schema.tournaments, eq(schema.tournaments.id, schema.categories.tournamentId)).where(eq(schema.tournaments.status, 'REGISTRATION_OPEN'));
   const notes = await inbox(db, actor.id);
+  const pendingClaims = await db.select().from(schema.claimRequests).where(and(eq(schema.claimRequests.userId, actor.id), eq(schema.claimRequests.status, 'PENDING')));
   const checks = new Map(await Promise.all(ps.map(async (p) => [p.id, await checkDocuments(db, p.id, new Date())] as const)));
   return (
     <Shell nav="me">
@@ -75,6 +77,17 @@ export default async function Me({ searchParams }: { searchParams: Promise<{ err
         <label>ת״ז (נשמר כמזהה מוצפן בלבד)<input name="nid" inputMode="numeric" /></label>
         <label style={{ flexDirection: 'row', alignItems: 'center' }}><input type="checkbox" name="child" value="1" style={{ minHeight: 0 }} /> זה ילד/ה שלי</label>
         <button className="btn">הוספה</button>
+      </form>
+      <h2 id="claim-player">אני כבר רשום באיגוד</h2>
+      <p className="muted" style={{ margin: '0 0 8px' }}>אם אתם או ילדכם כבר מופיעים במערכת (למשל מתחרויות קודמות), שייכו את הפרופיל הקיים לחשבון. עם ת״ז ותאריך לידה תואמים השיוך מיידי, אחרת הבקשה עוברת לאישור האיגוד.</p>
+      {pendingClaims.map((c) => <div key={c.id} className="card row"><strong>{c.firstName} {c.lastName}</strong><span className="pill warn">ממתין לאישור האיגוד</span></div>)}
+      <form action={claimPlayerAction} className="card row">
+        <label>שם פרטי<input name="first" required /></label><label>שם משפחה<input name="last" required /></label>
+        <label>תאריך לידה<input name="birth" type="date" required /></label>
+        <label>ת״ז (נשמר כמזהה מוצפן בלבד)<input name="nid" inputMode="numeric" /></label>
+        <label>הערה לאיגוד<input name="reason" /></label>
+        <label style={{ flexDirection: 'row', alignItems: 'center' }}><input type="checkbox" name="child" value="1" style={{ minHeight: 0 }} /> זה ילד/ה שלי</label>
+        <button className="btn">שיוך שחקן קיים</button>
       </form>
       <h2>התראות</h2>
       <div className="card grid">{notes.length ? notes.slice().reverse().slice(0, 20).map((n) => <div key={n.id}><strong>{n.title}</strong> <span className="muted">{n.body}</span></div>) : <span className="muted">אין התראות.</span>}</div>

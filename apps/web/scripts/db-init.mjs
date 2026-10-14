@@ -33,6 +33,12 @@ try {
   await sql`create table if not exists external_leagues (
     id text primary key, name text not null, gender gender not null default 'OPEN', data jsonb not null, updated_at timestamptz not null default now())`;
 
+  await sql`create table if not exists claim_requests (
+    id text primary key, user_id text not null references users(id) on delete cascade, player_id text references players(id) on delete set null,
+    first_name text not null, last_name text not null, birth_date timestamptz not null, id_hash text, for_child boolean not null default false,
+    reason text, status text not null default 'PENDING', reviewed_by_id text, review_note text, reviewed_at timestamptz, created_at timestamptz not null default now())`;
+  await sql`create index if not exists claim_requests_status_idx on claim_requests (status)`;
+
   const email = process.env.ADMIN_EMAIL?.trim().toLowerCase();
   const password = process.env.ADMIN_PASSWORD;
   if (email && password) {
