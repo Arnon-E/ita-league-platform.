@@ -9,6 +9,7 @@
 | 3 | סליקה | Stripe: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` (webhook ל-`/api/webhooks/stripe`), `PUBLIC_URL`. ספק ישראלי: מתאם ב-`src/lib/` עם `createCheckoutSession`, `refundPaymentIntent`, `verify...Signature` | תשלום בכרטיס בדיקה מסמן "שולם"; החזר מקוון עובד |
 | 4 | ייבוא ישיר מלוגליג | חיבור קריאה בלבד ל-DB (או עותק) ושתי שאילתות מיפוי ב-`/admin/import`; להריץ קודם "בדיקה בלבד" | דוח ללא שגיאות; הרצה שנייה מעדכנת ולא משכפלת |
 | 5 | Expo על מכשיר | `cd mobile`, עדכון `extra.apiUrl` ב-`app.json`, `npx expo start`, פתיחה ב-Expo Go / TestFlight | כניסה, הזנת תוצאה, העלאת מסמך והרשמה עובדים בטלפון |
+| 6 | מחיקת חשבונות בדיקה | `cd apps/web` ואז `node scripts/test-user.mjs delete` (פירוט ב-`docs/test-users.md`) | אין משתמשים עם `@ita-test.invalid` |
 
 משתני חובה לכל סביבה: `DATABASE_URL`, `SESSION_SECRET` (32+ בתים אקראיים), `ID_HASH_SALT`, `STORAGE_DIR` (או מתאם S3 בייצור).
 

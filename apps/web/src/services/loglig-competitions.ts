@@ -318,8 +318,13 @@ export async function removeTournament(db: Db, name: string) {
 export async function removePairPlayers(db: Db) {
   const ids = (await db.execute(sql`
     select id from players where ((first_name || ' ' || last_name) like '%/%' or (first_name || ' ' || last_name) ~* ${PLACEHOLDER_SQL}) and account_id is null`)) as unknown as { id: string }[];
-  if (!ids.length) return { players: 0, matches: 0 };
-  const list = JSON.stringify(ids.map((r) => r.id));
+  return deletePlayersById(db, ids.map((r) => r.id));
+}
+
+/** Deletes players with their entries, matches, payments, points, follows, guardians and documents. */
+export async function deletePlayersById(db: Db, playerIds: string[]) {
+  if (!playerIds.length) return { players: 0, matches: 0 };
+  const list = JSON.stringify(playerIds);
   let matches = 0;
   await (db as unknown as { transaction: <T>(f: (tx: Db) => Promise<T>) => Promise<T> }).transaction(async (tx) => {
     const del = (await tx.execute(sql`
@@ -334,5 +339,5 @@ export async function removePairPlayers(db: Db) {
     await tx.execute(sql`delete from documents where player_id in (select jsonb_array_elements_text(${list}::jsonb))`);
     await tx.execute(sql`delete from players where id in (select jsonb_array_elements_text(${list}::jsonb))`);
   });
-  return { players: ids.length, matches };
+  return { players: playerIds.length, matches };
 }

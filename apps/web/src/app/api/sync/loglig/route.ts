@@ -4,6 +4,7 @@ import { importCompetition, removePairPlayers, removeTournament, validateCompeti
 import { importClubs, importSiteInfo, validateClubsImport, validateSiteInfoImport } from '@/services/loglig-app';
 import { importRegulations, validateRegulationsImport } from '@/services/regulations';
 import { importLeague, validateLeagueImport } from '@/services/loglig-leagues';
+import { createTestUser, removeTestUsers } from '@/services/test-users';
 import { importRankings, validateRankingImport } from '@/services/loglig-rankings';
 
 export const maxDuration = 60;
@@ -21,6 +22,8 @@ export async function POST(req: Request) {
   if (!authorized(req)) return new Response('Unauthorized', { status: 401 });
   try {
     const body = await req.json();
+    if (body?.kind === 'test-user-create') return Response.json(await createTestUser(db, body.role === 'FEDERATION_ADMIN' ? 'FEDERATION_ADMIN' : 'PLAYER'));
+    if (body?.kind === 'test-user-delete') return Response.json(await removeTestUsers(db));
     if (body?.kind === 'cleanup-pairs') return Response.json(await removePairPlayers(db));
     if (body?.kind === 'remove-tournament' && typeof body.name === 'string' && body.name.trim()) return Response.json(await removeTournament(db, body.name.trim()));
     if (body?.kind === 'competition') return Response.json(await importCompetition(db, validateCompetitionImport(body)));
