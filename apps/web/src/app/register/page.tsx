@@ -9,7 +9,7 @@ export default async function Register({ searchParams }: { searchParams: Promise
   return (
     <main dir={en ? 'ltr' : 'rtl'} style={{ maxWidth: 420, paddingTop: 60 }}>
       <h1>{t('הרשמה')}</h1>
-      <p className="muted">{t('יצירת חשבון שחקן או הורה')}</p>
+      <p className="muted">{t('יצירת חשבון שחקן, הורה או אוהד. אפשר לעקוב אחרי שחקנים ולקבל התראות.')}</p>
       <Flash err={err} />
       <form action={signUpAction} className="card grid">
         <label>{t('שם מלא')}<input name="name" required /></label>
