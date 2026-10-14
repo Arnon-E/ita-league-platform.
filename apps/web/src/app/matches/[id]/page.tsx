@@ -22,8 +22,9 @@ export default async function MatchPage({ params, searchParams }: { params: Prom
   const B = m.bEntryId ? names.get(m.bEntryId) ?? '?' : null;
   return (
     <Shell nav="home">
-      <Link href={`/tournaments/${t.id}?tab=results`} className="muted">{tt('← חזרה לתחרות')}</Link>
-      <h1>{c.name} · {m.stage === 'GROUP' ? `${tt('בית, מחזור')} ${m.round}` : `${tt('הדחה, סיבוב')} ${m.round}`}</h1>
+      <Link href={`/tournaments/${t.id}?tab=results`} className="muted">← {t.name}</Link>
+      <h1>{A && B ? `${A} – ${B}` : c.name}</h1>
+      <p className="muted" style={{ margin: '4px 0' }}>{c.name} · {m.stage === 'GROUP' ? `${tt('בית, מחזור')} ${m.round}` : `${tt('הדחה, סיבוב')} ${m.round}`}</p>
       <p className="muted">{m.courtLabel ? `מגרש ${m.courtLabel} · ${fmtTime(m.scheduledStart)} · ` : ''}{t.setsToWin === 2 ? tt('הטוב מ-3 סטים') : `${t.setsToWin} ${tt('סטים')}`}{t.decider === 'superTb' ? tt(', הכרעה בסופר-טייברייק') : ''} · {m.live && m.status === 'SCHEDULED' ? <span className="pill lime">משחק חי</span> : <span className="pill">{tt(MSTATUS[m.status] ?? '')}</span>}</p>
       {m.live && m.status === 'SCHEDULED' && !scorer && <AutoRefresh seconds={15} />}
       <Flash err={err} ok={ok} />

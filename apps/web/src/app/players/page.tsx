@@ -2,7 +2,7 @@ import { db } from '@/db';
 import { Shell } from '@/components/Shell';
 import { tr } from '@/lib/i18n';
 import { GENDER } from '@/components/labels';
-import { listClubs, searchPlayers } from '@/services/public';
+import { listClubs, rankLookup, searchPlayers } from '@/services/public';
 import { PlayersRows } from '@/components/InfiniteRows';
 
 const PAGE = 60;
@@ -13,8 +13,8 @@ export default async function Players({ searchParams }: { searchParams: Promise<
   const activeOnly = show !== 'all';
   const gender = g === 'MALE' || g === 'FEMALE' ? g : undefined;
   const ageN = [10, 12, 14, 16, 18].includes(Number(age)) ? Number(age) : undefined;
-  const [rows, clubs] = await Promise.all([
-    searchPlayers(db, q, club || undefined, PAGE, { ...(gender ? { gender } : {}), ...(ageN ? { age: ageN } : {}), activeOnly }), listClubs(db),
+  const [rows, clubs, rk] = await Promise.all([
+    searchPlayers(db, q, club || undefined, PAGE, { ...(gender ? { gender } : {}), ...(ageN ? { age: ageN } : {}), activeOnly }), listClubs(db), rankLookup(db),
   ]);
   // the same filters the page used, passed on to the endpoint that serves the following pages
   const query = new URLSearchParams({ q, club, g: gender ?? '', age: ageN ? String(ageN) : '', show: activeOnly ? '' : 'all' }).toString();
@@ -34,10 +34,10 @@ export default async function Players({ searchParams }: { searchParams: Promise<
       </p>
       <PlayersRows
         key={query}
-        initial={rows.map(({ p, club: cn }) => ({ id: p.id, name: `${p.firstName} ${p.lastName}`, club: cn, gender: p.gender, birthYear: p.birthDate.getUTCFullYear() }))}
+        initial={rows.map(({ p, club: cn }) => ({ id: p.id, name: `${p.firstName} ${p.lastName}`, club: cn, gender: p.gender, birthYear: p.birthDate.getUTCFullYear(), rank: rk.get(p.id) ?? null }))}
         query={query} pageSize={PAGE}
         genders={Object.fromEntries(Object.entries(GENDER).map(([k, v]) => [k, t(v)]))}
-        labels={{ player: t('שחקן'), club: t('מועדון'), gender: t('מין'), birth: t('שנת לידה'), loading: t('טוען...'), retry: t('נסו שוב'), end: '', none: t('לא נמצאו שחקנים.') }}
+        labels={{ player: t('שחקן'), club: t('מועדון'), gender: t('מין'), birth: t('שנת לידה'), rank: t('דירוג'), loading: t('טוען...'), retry: t('נסו שוב'), end: '', none: t('לא נמצאו שחקנים.') }}
       />
     </Shell>
   );

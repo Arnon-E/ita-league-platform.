@@ -28,6 +28,17 @@ export default async function Me({ searchParams }: { searchParams: Promise<{ err
     <Shell nav="me">
       <h1>האזור האישי</h1>
       <Flash err={err} ok={ok} />
+      {ps.length === 0 && (
+        <div className="card grid" style={{ gap: 10, marginBottom: 14 }}>
+          <strong style={{ fontSize: 18 }}>ברוכים הבאים</strong>
+          <span className="muted">כאן מנהלים הרשמות לתחרויות. מה תרצו לעשות?</span>
+          <div className="row">
+            <a className="btn" href="#add-player">להירשם לתחרות: הוספת שחקן או ילד</a>
+            <a className="btn ghost" href="/following">לעקוב אחרי שחקנים ולקבל תוצאות</a>
+            <a className="btn ghost" href="/">לצפות בתחרויות</a>
+          </div>
+        </div>
+      )}
       {ps.map((p) => (
         <section key={p.id} className="card grid" style={{ marginBottom: 12 }}>
           <div className="row" style={{ justifyContent: 'space-between' }}>
@@ -55,7 +66,8 @@ export default async function Me({ searchParams }: { searchParams: Promise<{ err
       ))}
       <h2>הרשמות שלי</h2>
       <div className="card">{ents.length ? ents.map(({ e, c, t }) => <div key={e.id} className="row"><strong>{t.name}</strong><span className="muted">{c.name}</span><span className="pill">{e.status}</span><span className="pill">{e.paymentStatus}</span>{e.paymentStatus === 'UNPAID' && t.feeAgorot > 0 && <form action={payAction}><input type="hidden" name="entry" value={e.id} /><button className="btn small">תשלום ₪{(t.feeAgorot / 100).toFixed(0)}</button></form>}</div>) : <span className="muted">אין הרשמות.</span>}</div>
-      <h2>הוספת שחקן</h2>
+      <h2 id="add-player">{ps.length ? 'הוספת שחקן או ילד נוסף' : 'הוספת שחקן'}</h2>
+      {ps.length === 0 && <p className="muted" style={{ margin: '0 0 8px' }}>כדי להירשם לתחרות צריך קודם פרופיל שחקן: שלכם, או של ילד/ה שאתם מלווים. התעודה נשמרת מוצפנת.</p>}
       <form action={addPlayerAction} className="card row">
         <label>שם פרטי<input name="first" required /></label><label>שם משפחה<input name="last" required /></label>
         <label>תאריך לידה<input name="birth" type="date" required /></label>

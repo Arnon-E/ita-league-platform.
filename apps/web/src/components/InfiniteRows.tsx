@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-export interface PlayerRow { id: string; name: string; club: string | null; gender: string; birthYear: number }
+export interface PlayerRow { id: string; name: string; club: string | null; gender: string; birthYear: number; rank: number | null }
 export interface RankRow { rank: number; playerId: string; name: string; club: string | null; points: number; counted: number }
 
 /** Shared "load the next page when the bottom comes into view" behaviour. */
@@ -56,13 +56,13 @@ const Footer = ({ done, busy, err, sentinel, more, labels }: { done: boolean; bu
 );
 
 export function PlayersRows({ initial, query, pageSize, genders, labels }: {
-  initial: PlayerRow[]; query: string; pageSize: number; genders: Record<string, string>; labels: { player: string; club: string; gender: string; birth: string; loading: string; retry: string; end: string; none: string };
+  initial: PlayerRow[]; query: string; pageSize: number; genders: Record<string, string>; labels: { player: string; club: string; gender: string; birth: string; rank: string; loading: string; retry: string; end: string; none: string };
 }) {
   const { rows, done, busy, err, more, sentinel } = useInfinite<PlayerRow>(initial, pageSize, (o) => `/api/v1/public/players?${query}&offset=${o}&limit=${pageSize}`);
   return (
     <div className="card" style={{ overflow: 'auto' }}>
-      <table><thead><tr><th>{labels.player}</th><th>{labels.club}</th><th>{labels.gender}</th><th>{labels.birth}</th></tr></thead><tbody>
-        {rows.map((p) => <tr key={p.id}><td><Link href={`/players/${p.id}`}><strong>{p.name}</strong></Link></td><td>{p.club ?? '—'}</td><td>{genders[p.gender] ?? ''}</td><td>{p.birthYear}</td></tr>)}
+      <table><thead><tr><th>{labels.player}</th><th>{labels.rank}</th><th>{labels.club}</th><th>{labels.gender}</th><th>{labels.birth}</th></tr></thead><tbody>
+        {rows.map((p) => <tr key={p.id}><td><Link href={`/players/${p.id}`}><strong>{p.name}</strong></Link></td><td>{p.rank ? `#${p.rank}` : '—'}</td><td>{p.club ?? '—'}</td><td>{genders[p.gender] ?? ''}</td><td>{p.birthYear}</td></tr>)}
       </tbody></table>
       {!rows.length && <p className="muted">{labels.none}</p>}
       <Footer done={done} busy={busy} err={err} sentinel={sentinel} more={more} labels={labels} />

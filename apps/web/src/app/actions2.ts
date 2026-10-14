@@ -18,7 +18,9 @@ export async function signUpAction(fd: FormData) {
     const r = await login(db, s(fd, 'email'), s(fd, 'password'));
     if (r.ok) (await cookies()).set(SESSION_COOKIE, r.token, { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production', path: '/', maxAge: 12 * 3600 });
   } catch (e) { err = e instanceof Error ? e.message : 'שגיאה'; }
-  redirect(err ? `/register?err=${encodeURIComponent(err)}` : '/me');
+  const next = s(fd, 'next');
+  const safe = next.startsWith('/') && !next.startsWith('//') ? next : '/me';
+  redirect(err ? `/register?err=${encodeURIComponent(err)}${next ? `&next=${encodeURIComponent(next)}` : ''}` : safe);
 }
 
 export async function addPlayerAction(fd: FormData) {

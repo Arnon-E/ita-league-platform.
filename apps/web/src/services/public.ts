@@ -8,6 +8,18 @@ import { ensureDefaultRuleSet, loadRuleSet } from './rules';
 
 const { players, clubs, entries, categories, matches, tournaments, pointsAwards } = schema;
 
+let rankCache: { at: number; map: Map<string, number> } | null = null;
+/** Current ranking position of every ranked player (both genders), cached for a minute. */
+export async function rankLookup(db: Db): Promise<Map<string, number>> {
+  if (rankCache && Date.now() - rankCache.at < 60_000) return rankCache.map;
+  const rs = await ensureDefaultRuleSet(db);
+  const rules = await loadRuleSet(db, rs.id);
+  const map = new Map<string, number>();
+  for (const g of ['MALE', 'FEMALE'] as const) for (const r of await rankingFor(db, g, new Date(), rules)) map.set(r.playerId, r.rank);
+  rankCache = { at: Date.now(), map };
+  return map;
+}
+
 export async function searchPlayers(db: Db, q: string, clubId?: string, limit = 100, opts: { gender?: 'MALE' | 'FEMALE'; age?: number; offset?: number; activeOnly?: boolean } = {}) {
   const conds: (SQL | undefined)[] = [sql`not ((${players.firstName} || ' ' || ${players.lastName}) ~* ${PLACEHOLDER_SQL})`];
   // Active = has an account, ranking points from the last 18 months, or an entry in a competition that ended within the last 12 months.

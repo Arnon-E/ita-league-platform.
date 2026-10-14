@@ -29,7 +29,7 @@ export default async function Login({ searchParams }: { searchParams: Promise<{ 
         <label>{t('אימייל')}<input name="email" type="email" required autoComplete="username" /></label>
         <label>{t('סיסמה')}<input name="password" type="password" required autoComplete="current-password" /></label>
         <button className="btn">{t('כניסה')}</button>
-        <a className="muted" href="/register">{t('אין חשבון? הרשמה')}</a>
+        <a className="muted" href={next ? `/register?next=${encodeURIComponent(next)}` : '/register'}>{t('אין חשבון? הרשמה')}</a>
       </form>
     </main>
   );
