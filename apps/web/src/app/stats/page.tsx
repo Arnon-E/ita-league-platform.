@@ -30,9 +30,9 @@ export default async function Stats() {
     <Shell nav="stats">
       <h1>{tt('סטטיסטיקות')}</h1>
       <div className="grid cols" style={{ marginTop: 12 }}>
-        <div className="card"><div className="muted">{tt('תחרויות')}</div><strong style={{ fontSize: 28 }}>{t.tournaments}</strong></div>
-        <div className="card"><div className="muted">{tt('שחקנים')}</div><strong style={{ fontSize: 28 }}>{t.players}</strong></div>
-        <div className="card"><div className="muted">{tt('משחקים שהסתיימו')}</div><strong style={{ fontSize: 28 }}>{t.matches}</strong></div>
+        <div className="card"><div className="muted">{tt('תחרויות')}</div><strong style={{ fontSize: 28 }}>{t.tournaments.toLocaleString('he-IL')}</strong></div>
+        <div className="card"><div className="muted">{tt('שחקנים')}</div><strong style={{ fontSize: 28 }}>{t.players.toLocaleString('he-IL')}</strong></div>
+        <div className="card"><div className="muted">{tt('משחקים שהסתיימו')}</div><strong style={{ fontSize: 28 }}>{t.matches.toLocaleString('he-IL')}</strong></div>
       </div>
       <h2>{tt('מובילים בניצחונות')}</h2>
       <div className="card" style={{ overflow: 'auto' }}>

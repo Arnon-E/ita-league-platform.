@@ -184,3 +184,7 @@ a.sbcard{display:block;padding:10px 12px;margin-bottom:8px}
 .utime{font-variant-numeric:tabular-nums;color:var(--muted);font-size:14px}
 .ucourt{font-weight:700;font-size:14px;white-space:nowrap}
 @media(max-width:720px){.urow{grid-template-columns:1fr auto}.utime{grid-column:1/-1}}
+
+/* links inside text and tables must look like links (the global reset removes the underline) */
+td a:not(.btn),p a:not(.btn),.muted a:not(.btn){text-decoration:underline;text-decoration-color:var(--line);text-underline-offset:3px;text-decoration-thickness:1.5px}
+td a:not(.btn):hover,p a:not(.btn):hover,.muted a:not(.btn):hover{color:var(--blue);text-decoration-color:currentColor}
