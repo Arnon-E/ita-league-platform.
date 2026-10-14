@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 
-export interface CompCard { id: string; name: string; status: string; statusLabel: string; statusCls: string; level: string; dates: string; deadline: string | null }
+export interface CompCard { id: string; name: string; status: string; statusLabel: string; statusCls: string; level: string; dates: string; deadline: string | null; group: string; action: string; day: string; mon: string }
 
 /** Competition cards, revealed a screenful at a time as the user scrolls (the filtered list itself is small, only the DOM is big). */
 export function InfiniteCards({ items, step = 24 }: { items: CompCard[]; step?: number }) {
@@ -23,12 +23,17 @@ export function InfiniteCards({ items, step = 24 }: { items: CompCard[]; step?: 
     <>
       <div className="grid cols" style={{ marginTop: 14 }}>
         {items.slice(0, shown).map((x) => (
-          <Link key={x.id} href={`/tournaments/${x.id}`} className="card grid" style={{ gap: 8 }}>
-            <span><span className={`pill ${x.statusCls}`}>{x.statusLabel}</span></span>
-            <strong style={{ fontSize: 18, lineHeight: 1.3 }}>{x.name}</strong>
-            <span className="muted">{x.level}</span>
+          <Link key={x.id} href={`/tournaments/${x.id}`} className={`card grid comp ${x.group}`} style={{ gap: 8 }}>
+            <span className="top"><span className={`pill ${x.statusCls}`}>{x.statusLabel}</span><span className="muted">{x.level}</span></span>
+            <span className="row" style={{ flexWrap: 'nowrap' }}>
+              <span className="dateblk"><b>{x.day}</b><span>{x.mon}</span></span>
+              <strong style={{ fontSize: 17, lineHeight: 1.3 }}>{x.name}</strong>
+            </span>
             <span className="muted">{x.dates}</span>
-            {x.deadline && <span className="muted">{x.deadline}</span>}
+            <span className="foot">
+              <span className="muted">{x.deadline ?? ''}</span>
+              <span className={`act ${x.group === 'open' ? 'primary' : ''}`}>{x.action}</span>
+            </span>
           </Link>
         ))}
       </div>

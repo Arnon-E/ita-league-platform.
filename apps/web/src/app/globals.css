@@ -134,3 +134,28 @@ header.top .burger{display:none}
 .sb .sbf{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:6px 8px 0;font-size:13px}
 a.sbcard{display:block;padding:10px 12px;margin-bottom:8px}
 .sbgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px}
+
+/* home: search-first hero, next registration with countdown, status-weighted competition cards */
+.home-hero{display:grid;grid-template-columns:1.15fr 1fr;gap:26px;align-items:stretch}
+.hsearch{display:flex;gap:6px;margin-top:18px;max-width:480px;background:#fff;border-radius:14px;padding:5px}
+.hsearch input{flex:1;min-width:0;border:0;background:transparent;color:#0F1B2D;min-height:42px}
+.hsearch input:focus{box-shadow:none}
+.stat{color:#fff}
+.feat{display:flex;flex-direction:column;gap:10px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.22);border-radius:16px;padding:18px;color:#fff;min-width:0}
+.feat small{color:var(--lime);font-weight:700;letter-spacing:.04em}
+.feat strong{font-size:20px;line-height:1.3}
+.feat .meta{color:#CFE0F7;font-size:14px}
+.feat .count{display:flex;gap:8px;align-items:stretch;margin-top:auto;flex-wrap:wrap}
+.feat .count>span{background:rgba(0,0,0,.25);border-radius:10px;padding:6px 12px;text-align:center;font-size:12px;color:#CFE0F7;min-width:56px}
+.feat .count b{display:block;font-size:22px;color:#fff;font-variant-numeric:tabular-nums}
+.feat .count .till{background:none;text-align:start;align-self:center;font-size:13px;padding:0 4px}
+.comp .top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.comp .foot{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:auto}
+.comp .act{font-weight:700;font-size:14px;color:var(--blue);padding:5px 12px;border:1px solid var(--line);border-radius:10px}
+.comp .act.primary{background:var(--blue);border-color:var(--blue);color:#fff}
+.dateblk{flex:none;width:50px;text-align:center;background:var(--surface2);border-radius:10px;padding:5px 0;line-height:1.15;border:1px solid var(--line)}
+.dateblk b{display:block;font-size:20px;font-variant-numeric:tabular-nums}.dateblk span{font-size:12px;color:var(--muted)}
+.comp.open{background:linear-gradient(160deg,var(--okbg),var(--surface) 75%);border-color:var(--ok)}
+.comp.done{box-shadow:none;background:transparent}
+.comp.done .act{border-color:transparent;padding-inline:0}
+@media(max-width:720px){.home-hero{grid-template-columns:1fr}}
