@@ -29,6 +29,9 @@ export default async function Players({ searchParams }: { searchParams: Promise<
         <select name="show" defaultValue={show}><option value="">{t('שחקנים פעילים')}</option><option value="all">{t('כל השחקנים')}</option></select>
         <button className="btn">{t('חיפוש')}</button>
       </form>
+      <p className="muted" style={{ margin: '0 0 8px' }}>
+        {activeOnly ? t('מוצגים שחקנים פעילים בלבד (תחרו ב-18 החודשים האחרונים). לכולם בחרו "כל השחקנים".') : t('מוצגים כל השחקנים, כולל לא פעילים.')}
+      </p>
       <PlayersRows
         key={query}
         initial={rows.map(({ p, club: cn }) => ({ id: p.id, name: `${p.firstName} ${p.lastName}`, club: cn, gender: p.gender, birthYear: p.birthDate.getUTCFullYear() }))}

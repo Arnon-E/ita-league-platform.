@@ -9,7 +9,7 @@ export async function followAction(fd: FormData) {
   const back = String(fd.get('back') ?? '/');
   // only same-site paths, never an arbitrary URL
   const to = back.startsWith('/') && !back.startsWith('//') ? back : '/';
-  if (!a) redirect(`/login`);
+  if (!a) redirect(`/login?next=${encodeURIComponent(to)}`);
   await toggleFollow(db, a.id, String(fd.get('kind') ?? ''), String(fd.get('target') ?? ''));
   redirect(to);
 }
