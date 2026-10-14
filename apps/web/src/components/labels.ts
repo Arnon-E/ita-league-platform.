@@ -13,6 +13,8 @@ export const LEVEL: Record<string, string> = { NATIONAL: 'ארצית', REGIONAL:
 export const FORMAT: Record<string, string> = { KNOCKOUT: 'הדחה', GROUPS_KNOCKOUT: 'בתים + הדחה', ROUND_ROBIN: 'ליגה (כולם נגד כולם)' };
 export const GENDER: Record<string, string> = { MALE: 'בנים/גברים', FEMALE: 'בנות/נשים', OPEN: 'פתוח' };
 export const MSTATUS: Record<string, string> = { SCHEDULED: 'טרם שוחק', COMPLETED: 'הסתיים', WALKOVER: 'ווק-אובר', RETIRED: 'פרישה', VOID: 'בוטל' };
+/** Dates are shown in Israel time on the server too, so a tournament never ends "a day earlier" in one place than another. */
+export const fmtDate = (d: Date) => d.toLocaleDateString('he-IL', { timeZone: 'Asia/Jerusalem' });
 export const fmtTime = (d: Date | null) => d ? d.toLocaleString('he-IL', { weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—';
 
 /** Set scores always read left to right (6-4 3-2), even inside right-to-left pages. */

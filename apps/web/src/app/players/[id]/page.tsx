@@ -6,7 +6,7 @@ import { FollowButton } from '@/components/FollowButton';
 import { playerProfile } from '@/services/public';
 import { ensureDefaultRuleSet, loadRuleSet } from '@/services/rules';
 import { rankingFor } from '@/services/rankings';
-import { fmtTime, GENDER, MSTATUS, fmtScore } from '@/components/labels';
+import { fmtDate, fmtTime, GENDER, MSTATUS, fmtScore } from '@/components/labels';
 
 export default async function PlayerPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -38,13 +38,13 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
       {(recent.length > 0 || next) && (
         <div className="card row" style={{ marginTop: 12, justifyContent: 'space-between' }}>
           {recent.length > 0 && <div><div className="muted" style={{ marginBottom: 6 }}>משחקים אחרונים</div><div className="pform">{recent.map((w, i) => <i key={i} className={w ? 'w' : 'l'}>{w ? 'נ' : 'ה'}</i>)}</div></div>}
-          {next && <div><div className="muted" style={{ marginBottom: 6 }}>התחרות הבאה</div><Link href={`/tournaments/${next.t.id}`}><strong>{next.t.name}</strong></Link> <span className="muted">· {next.t.startDate.toLocaleDateString('he-IL')}</span></div>}
+          {next && <div><div className="muted" style={{ marginBottom: 6 }}>התחרות הבאה</div><Link href={`/tournaments/${next.t.id}`}><strong>{next.t.name}</strong></Link> <span className="muted">· {fmtDate(next.t.startDate)}</span></div>}
         </div>
       )}
       <h2>תחרויות</h2>
       <div className="card" style={{ overflow: 'auto' }}>
         <table><thead><tr><th>תחרות</th><th>קטגוריה</th><th>תאריך</th></tr></thead><tbody>
-          {ents.map(({ e, c, t }) => <tr key={e.id}><td><Link href={`/tournaments/${t.id}`}><u>{t.name}</u></Link></td><td>{c.name}</td><td>{t.startDate.toLocaleDateString('he-IL')}</td></tr>)}
+          {ents.map(({ e, c, t }) => <tr key={e.id}><td><Link href={`/tournaments/${t.id}`}><u>{t.name}</u></Link></td><td>{c.name}</td><td>{fmtDate(t.startDate)}</td></tr>)}
         </tbody></table>
         {!ents.length && <p className="muted">טרם השתתף בתחרויות.</p>}
       </div>
@@ -67,7 +67,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
       <h2>היסטוריית נקודות</h2>
       <div className="card" style={{ overflow: 'auto' }}>
         <table><thead><tr><th>תאריך</th><th>נקודות</th></tr></thead><tbody>
-          {awards.map((a) => <tr key={a.id}><td>{a.date.toLocaleDateString('he-IL')}</td><td>{a.points}</td></tr>)}
+          {awards.map((a) => <tr key={a.id}><td>{fmtDate(a.date)}</td><td>{a.points}</td></tr>)}
         </tbody></table>
         {!awards.length && <p className="muted">אין נקודות דירוג.</p>}
       </div>

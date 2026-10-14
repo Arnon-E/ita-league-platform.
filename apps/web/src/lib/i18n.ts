@@ -14,6 +14,9 @@ const EN: Record<string, string> = {
   'חיפוש': 'Search', 'האזור שלי': 'My area', 'ניהול': 'Admin', 'הודעות': 'Messages', 'דוחות': 'Reports', 'מסמכים': 'Documents', 'ייבוא': 'Import',
   'מתקנים': 'Venues', 'משתמשים': 'Users', 'חוקים': 'Rules', 'ביקורת': 'Audit', 'כניסה': 'Log in', 'הרשמה': 'Sign up', 'יציאה': 'Log out',
   // home
+  'מחכה לך': 'Waiting for you', 'חסרים מסמכים': 'Missing documents', 'ממתין לתשלום': 'Payment due',
+  'להירשם לתחרות': 'Register for a tournament', 'פתוחות עכשיו': 'open now', 'אין כרגע הרשמה פתוחה': 'No registration open', 'לוחות ותוצאות': 'Schedules and results', 'פתיחת חשבון': 'Create account', 'הצגה': 'Show', 
+  'תאריכים': 'Dates', 'מקום': 'Venue', 'סוג': 'Type', 'ימים': 'days', 'משתתפים מאושרים': 'confirmed players', 'שלבי התחרות': 'Tournament stages', 'הגרלה': 'Draw', 'סיום': 'Finish', 'נותרו': 'Left:', 'ימים להרשמה': 'days to register', 'ההרשמה נסגרת היום': 'Registration closes today', 'עדיין אין משתתפים מאושרים באתר.': 'No confirmed players yet.',
   'איגוד הטניס בישראל': 'Israel Tennis Association', 'תחרויות, לוחות משחקים, תוצאות חיות ודירוג. הכול במקום אחד.': 'Tournaments, schedules, live scores and rankings. All in one place.',
   'משחקים ותוצאות': 'Matches & results', 'לדירוג': 'Rankings', 'תחרות חדשה': 'New tournament',
   'אין עדיין תחרויות. צרו תחרות חדשה כדי להתחיל.': 'No tournaments yet.',

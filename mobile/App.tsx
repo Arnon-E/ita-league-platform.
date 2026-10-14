@@ -98,29 +98,40 @@ function TournamentList({ onOpen }: { onOpen: (id: string) => void }) {
   const { data, err, busy, reload } = useLoad(api.tournaments);
   const [level, setLevel] = useState('');
   const [sec, setSec] = useState('');
-  const [st, setSt] = useState('');
+  const [st, setSt] = useState('up');
   const [q, setQ] = useState('');
-  const rank = (x: { status: string }) => (x.status === 'REGISTRATION_OPEN' ? 0 : x.status === 'IN_PROGRESS' ? 1 : 2);
-  const shown = [...(data ?? [])].sort((a, b) => rank(a) - rank(b) || +new Date(b.startDate) - +new Date(a.startDate)).filter((x) => (!q.trim() || x.name.includes(q.trim())) && (!level || x.level === level) && (!sec || x.section === sec) && (!st || (st === 'open' ? x.status === 'REGISTRATION_OPEN' : st === 'live' ? x.status === 'IN_PROGRESS' : x.status === 'FINISHED')));
+  const [more, setMore] = useState(false);
+  const isDone = (x: { status: string; endDate: string }) => x.status === 'FINISHED' || x.status === 'CANCELLED' || +new Date(x.endDate) < Date.now();
+  // open registration, then running, then upcoming soonest first, then finished latest first
+  const rank = (x: { status: string; endDate: string }) => (x.status === 'REGISTRATION_OPEN' ? 0 : x.status === 'IN_PROGRESS' ? 1 : isDone(x) ? 3 : 2);
+  const dm = (iso: string) => new Date(iso).toLocaleDateString('he-IL', { day: 'numeric', month: 'short' });
+  const shown = [...(data ?? [])]
+    .sort((a, b) => rank(a) - rank(b) || (rank(a) === 3 ? +new Date(b.startDate) - +new Date(a.startDate) : +new Date(a.startDate) - +new Date(b.startDate)))
+    .filter((x) => (!q.trim() || x.name.includes(q.trim())) && (!level || x.level === level) && (!sec || x.section === sec)
+      && (st === 'all' || (st === 'up' ? !isDone(x) : st === 'open' ? x.status === 'REGISTRATION_OPEN' : st === 'live' ? x.status === 'IN_PROGRESS' : isDone(x))));
   return (
     <View style={s.pad}>
       <View style={s.hero}><Text style={s.heroT}>איגוד הטניס בישראל</Text><Text style={s.heroS}>תחרויות, לוחות משחקים ותוצאות חיות</Text></View>
       <Text style={s.h2}>תחרויות</Text>
       <TextInput style={s.input} placeholder="חיפוש לפי שם תחרות" placeholderTextColor="#8FA1BA" value={q} onChangeText={setQ} />
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }} contentContainerStyle={{ gap: 8 }}>
-        {([['', 'הכול'], ['NATIONAL', 'ארצית'], ['REGIONAL', 'אזורית'], ['INTERNATIONAL', 'בינלאומית'], ['CIRCUIT', 'סבב']] as const).map(([k, l]) => <Pressable key={k} style={[s.chip, level === k && s.chipOn]} onPress={() => setLevel(k)}><Text style={level === k ? s.chipOnT : s.b}>{l}</Text></Pressable>)}
+        {([['up', 'קרובות'], ['open', 'הרשמה פתוחה'], ['live', 'מתקיימת'], ['done', 'הסתיימה'], ['all', 'הכול']] as const).map(([k, l]) => <Pressable key={k} style={[s.chip, st === k && s.chipOn]} onPress={() => setSt(k)}><Text style={st === k ? s.chipOnT : s.b}>{l}</Text></Pressable>)}
+        <Pressable style={[s.chip, (more || !!level || !!sec) && s.chipOn]} onPress={() => setMore(!more)}><Text style={(more || !!level || !!sec) ? s.chipOnT : s.b}>{level || sec ? 'סינון ·' : 'סינון'}</Text></Pressable>
       </ScrollView>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0, marginTop: 8 }} contentContainerStyle={{ gap: 8 }}>
-        {([['', 'כל הקטגוריות'], ['YOUTH', 'נוער'], ['ADULTS', 'בוגרים'], ['MASTERS', 'מאסטרס'], ['OTHER', 'אחר']] as const).map(([k, l]) => <Pressable key={k} style={[s.chip, sec === k && s.chipOn]} onPress={() => setSec(k)}><Text style={sec === k ? s.chipOnT : s.b}>{l}</Text></Pressable>)}
-      </ScrollView>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0, marginTop: 8 }} contentContainerStyle={{ gap: 8 }}>
-        {([['', 'כל הסטטוסים'], ['open', 'הרשמה פתוחה'], ['live', 'מתקיימת'], ['done', 'הסתיימה']] as const).map(([k, l]) => <Pressable key={k} style={[s.chip, st === k && s.chipOn]} onPress={() => setSt(k)}><Text style={st === k ? s.chipOnT : s.b}>{l}</Text></Pressable>)}
-      </ScrollView>
+      {more && <>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0, marginTop: 8 }} contentContainerStyle={{ gap: 8 }}>
+          {([['', 'כל הסוגים'], ['NATIONAL', 'ארצית'], ['REGIONAL', 'אזורית'], ['INTERNATIONAL', 'בינלאומית'], ['CIRCUIT', 'סבב']] as const).map(([k, l]) => <Pressable key={k} style={[s.chip, level === k && s.chipOn]} onPress={() => setLevel(k)}><Text style={level === k ? s.chipOnT : s.b}>{l}</Text></Pressable>)}
+        </ScrollView>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0, marginTop: 8 }} contentContainerStyle={{ gap: 8 }}>
+          {([['', 'כל הקטגוריות'], ['YOUTH', 'נוער'], ['ADULTS', 'בוגרים'], ['MASTERS', 'מאסטרס'], ['OTHER', 'אחר']] as const).map(([k, l]) => <Pressable key={k} style={[s.chip, sec === k && s.chipOn]} onPress={() => setSec(k)}><Text style={sec === k ? s.chipOnT : s.b}>{l}</Text></Pressable>)}
+        </ScrollView>
+      </>}
       <Status err={err} busy={busy} empty={!!data && !shown.length && 'אין תחרויות לפי הסינון'} />
       <FlatList data={shown} keyExtractor={(t) => t.id} onRefresh={reload} refreshing={false} renderItem={({ item }) => (
         <Pressable style={({ pressed }) => [s.card, pressed && s.pressed]} onPress={() => onOpen(item.id)}>
           <View style={[s.chip2, item.status === 'REGISTRATION_OPEN' ? s.chipOk : item.status === 'IN_PROGRESS' ? s.chipLive : null]}><Text style={s.chip2T}>{STATUS_HE[item.status] ?? item.status}</Text></View>
           <Text style={s.cardT}>{item.name}</Text>
+          <Text style={s.muted}>{`${dm(item.startDate)} – ${dm(item.endDate)}`}{item.status === 'REGISTRATION_OPEN' && item.registrationCloses ? ` · הרשמה עד ${dm(item.registrationCloses)}` : ''}</Text>
         </Pressable>
       )} />
     </View>
@@ -240,7 +251,14 @@ function Tournament({ id, onBack, onGoAccount }: { id: string; onBack: () => voi
         <FlatList horizontal data={photos} keyExtractor={(p) => p.id} style={{ flexGrow: 0 }} showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}
           renderItem={({ item }) => <View><Image source={{ uri: api.photoUrl(item.id) }} style={s.photo} />{!!item.caption && <Text style={s.muted}>{item.caption}</Text>}</View>} />
       )}
-      {d && d.tournament.status === 'REGISTRATION_OPEN' && <RegisterBox tournamentName={d.tournament.name} categories={d.categories} onGoAccount={onGoAccount} />}
+      {d && d.tournament.status === 'REGISTRATION_OPEN' && (d.tournament.registerUrl
+        ? <View style={s.card}>
+            <Text style={s.cardT}>הרשמה לתחרות</Text>
+            <Text style={s.muted}>{`ההרשמה מתבצעת באתר Loglig ונפתחת בדפדפן.${d.tournament.registrationCloses ? ` נסגרת ב-${new Date(d.tournament.registrationCloses).toLocaleDateString('he-IL')}.` : ''}`}</Text>
+            <Pressable style={s.btn} onPress={() => Linking.openURL(d.tournament.registerUrl!)}><Text style={s.btnT}>להרשמה</Text></Pressable>
+          </View>
+        : <RegisterBox tournamentName={d.tournament.name} categories={d.categories} onGoAccount={onGoAccount} />)}
+      {d && !d.matches.length && <Text style={s.muted}>לוח המשחקים והתוצאות יופיעו כאן אחרי ההגרלה.</Text>}
       {(d?.categories.length ?? 0) > 1 && (() => {
         const cats = d!.categories;
         const ageOf = (n: string) => (n.match(/(\d{2})/) ?? [])[1] ?? '';

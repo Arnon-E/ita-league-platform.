@@ -43,9 +43,9 @@ export async function register(name: string, email: string, phone: string, passw
 export const addPlayer = (p: { first: string; last: string; birth: string; gender: 'MALE' | 'FEMALE'; forChild: boolean }) => call<{ id: string }>('/players', { method: 'POST', body: JSON.stringify(p) });
 
 export type Match = { id: string; categoryId: string; stage: string; round: number; status: string; a: { id: string | null; name: string | null }; b: { id: string | null; name: string | null }; court: string | null; start: string | null; sets: { a: number; b: number }[]; winnerEntryId?: string | null };
-export const tournaments = () => call<{ id: string; name: string; status: string; level: string; section: string; startDate: string }[]>('/tournaments');
+export const tournaments = () => call<{ id: string; name: string; status: string; level: string; section: string; startDate: string; endDate: string; registrationCloses: string | null }[]>('/tournaments');
 export type Cat = { id: string; name: string; gender: 'MALE' | 'FEMALE' | 'OPEN'; minBirthYear: number | null; maxBirthYear: number | null };
-export const tournament = (id: string) => call<{ tournament: { name: string; status: string }; categories: Cat[]; matches: Match[] }>(`/tournaments/${id}`);
+export const tournament = (id: string) => call<{ tournament: { name: string; status: string; startDate: string; endDate: string; registrationCloses: string | null; registerUrl: string | null }; categories: Cat[]; matches: Match[] }>(`/tournaments/${id}`);
 export const me = () => call<{ players: { id: string; name: string; gender: 'MALE' | 'FEMALE'; birthYear: number; documents: { ok: boolean; missing: string[] } }[]; entries: { id: string; playerId: string; player: string; tournament: string; category: string; status: string; payment: string }[]; notifications: { id: string; title: string; body: string }[] }>('/me');
 export const sendResult = (matchId: string, body: unknown) => call(`/matches/${matchId}/result`, { method: 'POST', body: JSON.stringify(body) });
 export const registerDevice = (pushToken: string, platform: 'ios' | 'android') => call('/devices', { method: 'POST', body: JSON.stringify({ token: pushToken, platform }) });
