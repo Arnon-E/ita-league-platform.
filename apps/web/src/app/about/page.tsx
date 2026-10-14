@@ -18,7 +18,9 @@ export default async function About() {
   const rows = await db.select().from(schema.siteInfo).where(inArray(schema.siteInfo.key, ['union', 'events', 'forms', 'sponsors']));
   const get = <T,>(k: string, d: T) => (rows.find((r) => r.key === k)?.data as T | undefined) ?? d;
   const union = get<Union>('union', {});
-  const events = get<Ev[]>('events', []);
+  // only events that have not ended; old ones from the source feed just make the page look abandoned
+  const dayStart = new Date(); dayStart.setHours(0, 0, 0, 0);
+  const events = get<Ev[]>('events', []).filter((e) => { const d = new Date(e.end || e.start); return Number.isNaN(d.getTime()) || d >= dayStart; });
   const forms = get<Form[]>('forms', []);
   const sponsors = get<Sponsor[]>('sponsors', []);
   const pre = { whiteSpace: 'pre-line' as const, lineHeight: 1.7 };
