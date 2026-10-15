@@ -23,7 +23,7 @@ export async function Shell({ children, nav }: { children: ReactNode; nav?: stri
         {actor ? <>
           <span className="uname">{u?.name}</span>
           <form action="/logout" method="post"><button className="btn small ghost">{t('יציאה')}</button></form>
-        </> : <span className="row"><Link className="btn small ghost" href="/login">{t('כניסה')}</Link><Link className="btn small" href="/register">{t('פתיחת חשבון')}</Link></span>}
+        </> : <span className="row"><Link className="btn small ghost" href="/login">{t('כניסה')}</Link><Link className="btn small" href="/register">{t('הצטרפות')}</Link></span>}
         <form action={setLangAction}><input type="hidden" name="lang" value={lang === 'en' ? 'he' : 'en'} /><button className="btn small ghost" title="Language" style={{ minWidth: 44 }}>{lang === 'en' ? 'עב' : 'EN'}</button></form>
       </header>
       <main>{children}</main>
