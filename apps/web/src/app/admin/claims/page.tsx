@@ -26,7 +26,7 @@ export default async function Claims({ searchParams }: { searchParams: Promise<{
             {c.reason && <div className="muted">הערה: {c.reason}</div>}
             <div>{p
               ? <>שחקן מועמד: <a href={`/players/${p.id}`}>{p.firstName} {p.lastName}</a>, נולד/ה {d(p.birthDate)}{p.accountId && <span className="pill bad"> כבר משויך לחשבון</span>}{p.birthDate && d(p.birthDate) !== d(c.birthDate) && <span className="pill warn"> תאריך לידה שונה</span>}</>
-              : <span className="muted">לא נמצא שחקן מתאים אוטומטית. חפשו בחיפוש למטה ושייכו ידנית.</span>}</div>
+              : <span className="muted">לא נמצא שחקן מתאים אוטומטית. חפשו את השחקן בשיוך ידני למטה ובחרו בו את הבקשה הזו.</span>}</div>
             <form action={resolveClaimAction} className="row">
               <input type="hidden" name="claim" value={c.id} />
               {p && <input type="hidden" name="player" value={p.id} />}
@@ -52,7 +52,8 @@ export default async function Claims({ searchParams }: { searchParams: Promise<{
                 </td>
                 <td><form action={linkPlayerAction} className="row">
                   <input type="hidden" name="q" value={q} /><input type="hidden" name="player" value={p.id} />
-                  <input name="email" type="email" placeholder="אימייל המשתמש" required />
+                  {pending.length > 0 && <select name="claim"><option value="">ללא בקשה (לפי אימייל)</option>{pending.map(({ c, u }) => <option key={c.id} value={c.id}>בקשה: {u.name} ({c.firstName} {c.lastName})</option>)}</select>}
+                  <input name="email" type="email" placeholder="אימייל המשתמש (אם לא נבחרה בקשה)" />
                   <select name="mode"><option value="self">השחקן עצמו</option><option value="guardian">הורה/אפוטרופוס</option></select>
                   <button className="btn small">שיוך</button></form></td>
               </tr>

@@ -110,6 +110,9 @@ export async function linkPlayer(db: Db, actor: Actor, playerId: string, userId:
   if (!forChild && p.accountId && p.accountId !== userId) throw new Error('השחקן כבר משויך למשתמש אחר. יש לבטל את השיוך קודם');
   await attach(db, userId, p, forChild);
   await audit(db, actor, 'player.link', 'player', playerId, { userId, forChild });
+  // a manual link answers any request the same user has open for this player, so it does not linger in the queue
+  await db.update(claimRequests).set({ status: 'APPROVED', reviewedById: actor.id, reviewNote: 'שויך ידנית', reviewedAt: new Date() })
+    .where(and(eq(claimRequests.userId, userId), eq(claimRequests.playerId, playerId), eq(claimRequests.status, 'PENDING')));
   await notifyUser(db, userId, 'claim', 'שחקן שויך לחשבון שלך', `${p.firstName} ${p.lastName} שויך לחשבון שלך על ידי האיגוד.`);
 }
 

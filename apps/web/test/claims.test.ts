@@ -112,4 +112,14 @@ describe('linking accounts to imported players', () => {
     await linkPlayer(db, fed, p.id, u2.user.id);
     expect(await ownedPlayerIds(db, u2.actor)).toContain(p.id);
   });
+
+  it('a manual link settles the same user\'s open request for that player', async () => {
+    const p = await imported('סגור', 'בקשה', { nid: '444444442' });
+    const u = await mkUser('PLAYER', 'settle@x.il');
+    const fed = (await mkUser('FEDERATION_ADMIN', 'fed5@x.il')).actor;
+    const e = await pendingOf(() => claimPlayer(db, u.actor, { firstName: 'סגור', lastName: 'בקשה', birthDate: new Date('1990-01-01'), nationalId: '444444442' }));
+    await linkPlayer(db, fed, p.id, u.user.id);
+    expect((await db.select().from(schema.claimRequests).where(eq(schema.claimRequests.id, e.requestId)))[0]!.status).toBe('APPROVED');
+    await expect(resolveClaim(db, fed, e.requestId, 'REJECTED', { note: 'x' })).rejects.toThrow('כבר טופלה');
+  });
 });

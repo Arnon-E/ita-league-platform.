@@ -32,6 +32,11 @@ export async function linkPlayerAction(fd: FormData) {
   const a = await requireActor();
   const back = `/admin/claims?q=${encodeURIComponent(s(fd, 'q'))}`;
   await guarded(back, async () => {
+    // linking on behalf of a pending request approves that request onto the chosen player
+    if (s(fd, 'claim')) {
+      await resolveClaim(db, a, s(fd, 'claim'), 'APPROVED', { playerId: s(fd, 'player') });
+      return 'הבקשה אושרה והשחקן שויך';
+    }
     const u = await findUserByEmail(db, a, s(fd, 'email'));
     if (!u) throw new Error('לא נמצא משתמש עם האימייל הזה');
     await linkPlayer(db, a, s(fd, 'player'), u.id, s(fd, 'mode') === 'guardian');
