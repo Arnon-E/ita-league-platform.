@@ -5,6 +5,7 @@ import { db } from '@/db';
 import { login, SESSION_COOKIE } from '@/lib/auth';
 import { guarded, requireActor } from '@/lib/session';
 import { addPlayerProfile, signUp } from '@/services/accounts';
+import { ClaimPending } from '@/services/claims';
 import { reviewDocument, uploadDocument } from '@/services/documents';
 import { importPlayersCsv, importPointsCsv } from '@/services/imports';
 import { registerEntry } from '@/services/entries';
@@ -26,10 +27,15 @@ export async function signUpAction(fd: FormData) {
 export async function addPlayerAction(fd: FormData) {
   const a = await requireActor();
   await guarded('/me', async () => {
-    await addPlayerProfile(db, a, {
-      firstName: s(fd, 'first'), lastName: s(fd, 'last'), birthDate: new Date(s(fd, 'birth')), gender: s(fd, 'gender') as 'MALE', nationalId: s(fd, 'nid') || undefined, forChild: fd.get('child') === '1',
-    });
-    return 'הפרופיל נוצר';
+    try {
+      await addPlayerProfile(db, a, {
+        firstName: s(fd, 'first'), lastName: s(fd, 'last'), birthDate: new Date(s(fd, 'birth')), gender: s(fd, 'gender') as 'MALE', nationalId: s(fd, 'nid') || undefined, forChild: fd.get('child') === '1',
+      });
+    } catch (e) {
+      if (e instanceof ClaimPending) return 'נמצא שחקן עם ת״ז זו אך הפרטים לא תואמים. הבקשה נשלחה לאישור האיגוד';
+      throw e;
+    }
+    return 'הפרופיל נוצר או שויך לחשבון';
   });
 }
 

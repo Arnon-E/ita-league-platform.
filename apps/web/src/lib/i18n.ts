@@ -12,7 +12,7 @@ const EN: Record<string, string> = {
   // navigation
   'תחרויות': 'Tournaments', 'משחקים': 'Matches', 'דירוג': 'Rankings', 'שחקנים': 'Players', 'מועדונים': 'Clubs', 'סטטיסטיקות': 'Statistics',
   'חיפוש': 'Search', 'האזור שלי': 'My area', 'ניהול': 'Admin', 'הודעות': 'Messages', 'דוחות': 'Reports', 'מסמכים': 'Documents', 'ייבוא': 'Import',
-  'מתקנים': 'Venues', 'משתמשים': 'Users', 'חוקים': 'Rules', 'ביקורת': 'Audit', 'כניסה': 'Log in', 'הרשמה': 'Sign up', 'יציאה': 'Log out',
+  'מתקנים': 'Venues', 'משתמשים': 'Users', 'שיוך שחקנים': 'Link players', 'חוקים': 'Rules', 'ביקורת': 'Audit', 'כניסה': 'Log in', 'הרשמה': 'Sign up', 'יציאה': 'Log out',
   // home
   'מחכה לך': 'Waiting for you', 'חסרים מסמכים': 'Missing documents', 'ממתין לתשלום': 'Payment due',
   'להירשם לתחרות': 'Register for a tournament', 'פתוחות עכשיו': 'open now', 'אין כרגע הרשמה פתוחה': 'No registration open', 'לוחות ותוצאות': 'Schedules and results', 'הצטרפות': 'Join', 'הצגה': 'Show', 

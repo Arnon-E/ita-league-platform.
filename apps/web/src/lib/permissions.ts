@@ -1,7 +1,7 @@
 import type { Actor, Role } from './auth';
 
 export type Action =
-  | 'user.manage' | 'ruleset.manage' | 'impersonate' | 'audit.read'
+  | 'user.manage' | 'player.link' | 'ruleset.manage' | 'impersonate' | 'audit.read'
   | 'tournament.create' | 'tournament.manage' | 'tournament.view'
   | 'draw.run' | 'draw.edit' | 'result.enter' | 'result.override'
   | 'schedule.manage' | 'courts.manage'
@@ -11,7 +11,7 @@ export type Action =
   | 'ranking.recalculate' | 'notification.send' | 'import.run';
 
 const FED: Action[] = [
-  'user.manage', 'ruleset.manage', 'audit.read', 'tournament.create', 'tournament.manage', 'tournament.view', 'draw.run', 'draw.edit',
+  'user.manage', 'player.link', 'ruleset.manage', 'audit.read', 'tournament.create', 'tournament.manage', 'tournament.view', 'draw.run', 'draw.edit',
   'result.enter', 'result.override', 'schedule.manage', 'courts.manage', 'entry.manage', 'document.review', 'payment.refund',
   'payment.view', 'ranking.recalculate', 'notification.send', 'import.run', 'entry.registerSelf', 'document.upload',
 ];
