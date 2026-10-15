@@ -24,6 +24,14 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
     .slice(0, 5)
     .map((m) => entryIds.includes(m.winnerEntryId!));
   const next = ents.filter(({ t }) => t.endDate.getTime() >= Date.now()).sort((a, b) => a.t.startDate.getTime() - b.t.startDate.getTime())[0];
+  // The same tournament can appear once per category entered: show it once, with its categories listed.
+  const byTournament: { t: (typeof ents)[number]['t']; cats: string[] }[] = [];
+  for (const { c, t } of ents) {
+    const g = byTournament.find((x) => x.t.id === t.id);
+    if (!g) byTournament.push({ t, cats: [c.name] });
+    else if (!g.cats.includes(c.name)) g.cats.push(c.name);
+  }
+  byTournament.sort((a, b) => b.t.startDate.getTime() - a.t.startDate.getTime());
   const initials = `${p.firstName.slice(0, 1)}${p.lastName.slice(0, 1)}`;
   return (
     <Shell nav="players">
@@ -44,9 +52,9 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
       <h2>תחרויות</h2>
       <div className="card" style={{ overflow: 'auto' }}>
         <table><thead><tr><th>תחרות</th><th>קטגוריה</th><th>תאריך</th></tr></thead><tbody>
-          {ents.map(({ e, c, t }) => <tr key={e.id}><td><Link href={`/tournaments/${t.id}`}><u>{t.name}</u></Link></td><td>{c.name}</td><td>{fmtDate(t.startDate)}</td></tr>)}
+          {byTournament.map((g) => <tr key={g.t.id}><td><Link href={`/tournaments/${g.t.id}`}><u>{g.t.name}</u></Link></td><td>{g.cats.join(' · ')}</td><td>{fmtDate(g.t.startDate)}</td></tr>)}
         </tbody></table>
-        {!ents.length && <p className="muted">טרם השתתף בתחרויות.</p>}
+        {!byTournament.length && <p className="muted">טרם השתתף בתחרויות.</p>}
       </div>
       <h2>משחקים</h2>
       <div className="card" style={{ overflow: 'auto' }}>

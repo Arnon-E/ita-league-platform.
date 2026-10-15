@@ -25,7 +25,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ l
   const [ts, actor, counts, cats] = await Promise.all([
     listTournaments(db),
     getActor(),
-    db.execute(sql`select (select count(*) from players)::int as players, (select count(*) from clubs)::int as clubs,
+    db.execute(sql`select (select count(*) from players)::int as players, (select count(*) from clubs c where exists (select 1 from players p where p.club_id = c.id) and not (c.name like '%,%' and (select count(*) from players p where p.club_id = c.id) <= 2))::int as clubs,
       (select count(*) from matches where live and status = 'SCHEDULED')::int as live`),
     db.select({ tid: schema.categories.tournamentId, gender: schema.categories.gender, name: schema.categories.name }).from(schema.categories),
   ]);
@@ -101,8 +101,8 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ l
           <div className="qtiles">
             <Link href="/?st=open#list" className="pri"><b>{t('להירשם לתחרות')}</b><small>{openCount ? `${openCount} ${t('פתוחות עכשיו')}` : t('אין כרגע הרשמה פתוחה')}</small></Link>
             <Link href="/live"><b>{t('משחקים ותוצאות')}</b><small>{c.live ? `${c.live} ${t('משחקים חיים עכשיו')}` : t('לוחות ותוצאות')}</small></Link>
-            <Link href="/rankings"><b>{t('דירוג')}</b><small>{c.players.toLocaleString('he-IL')} {t('שחקנים')}</small></Link>
-            <Link href="/clubs"><b>{t('מועדונים')}</b><small>{c.clubs.toLocaleString('he-IL')} {t('מועדונים')}</small></Link>
+            <Link href="/rankings"><b>{t('דירוג')}</b><small>{c.players.toLocaleString('he-IL')} {t('שחקנים רשומים')}</small></Link>
+            <Link href="/clubs"><b>{t('מועדונים')}</b><small>{c.clubs.toLocaleString('he-IL')} {t('מועדונים עם שחקנים')}</small></Link>
           </div>
         </div>
         {nextOpen && closes && (

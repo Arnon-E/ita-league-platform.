@@ -31,7 +31,7 @@ export default async function Stats() {
       <h1>{tt('סטטיסטיקות')}</h1>
       <div className="grid cols" style={{ marginTop: 12 }}>
         <div className="card"><div className="muted">{tt('תחרויות')}</div><strong style={{ fontSize: 28 }}>{t.tournaments.toLocaleString('he-IL')}</strong></div>
-        <div className="card"><div className="muted">{tt('שחקנים')}</div><strong style={{ fontSize: 28 }}>{t.players.toLocaleString('he-IL')}</strong></div>
+        <div className="card"><div className="muted">{tt('שחקנים רשומים')}</div><strong style={{ fontSize: 28 }}>{t.players.toLocaleString('he-IL')}</strong></div>
         <div className="card"><div className="muted">{tt('משחקים שהסתיימו')}</div><strong style={{ fontSize: 28 }}>{t.matches.toLocaleString('he-IL')}</strong></div>
       </div>
       <h2>{tt('מובילים בניצחונות')}</h2>
