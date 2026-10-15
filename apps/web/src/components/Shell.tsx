@@ -23,19 +23,23 @@ export async function Shell({ children, nav }: { children: ReactNode; nav?: stri
         {actor ? <>
           <span className="uname">{u?.name}</span>
           <form action="/logout" method="post"><button className="btn small ghost">{t('יציאה')}</button></form>
-        </> : <span className="row"><Link className="btn small ghost" href="/login">{t('כניסה')}</Link><Link className="btn small" href="/register">{t('הרשמה')}</Link></span>}
+        </> : <span className="row"><Link className="btn small ghost" href="/login">{t('כניסה')}</Link><Link className="btn small" href="/register">{t('הצטרפות')}</Link></span>}
         <form action={setLangAction}><input type="hidden" name="lang" value={lang === 'en' ? 'he' : 'en'} /><button className="btn small ghost" title="Language" style={{ minWidth: 44 }}>{lang === 'en' ? 'עב' : 'EN'}</button></form>
       </header>
       <main>{children}</main>
       <nav className="tabbar" aria-label={t('ניווט מהיר')}>
-        <Link href="/" className={nav === 'home' ? 'on' : ''}><span aria-hidden>🏠</span>{t('בית')}</Link>
-        <Link href="/live" className={nav === 'live' ? 'on' : ''}><span aria-hidden>🎾</span>{t('משחקים')}</Link>
-        <Link href="/rankings" className={nav === 'rank' ? 'on' : ''}><span aria-hidden>📈</span>{t('דירוג')}</Link>
-        <Link href="/players" className={nav === 'players' ? 'on' : ''}><span aria-hidden>👤</span>{t('שחקנים')}</Link>
-        <Link href="/search" className={nav === 'search' ? 'on' : ''}><span aria-hidden>🔍</span>{t('חיפוש')}</Link>
+        <Link href="/" className={nav === 'home' ? 'on' : ''}><Ico d="M3 11l9-8 9 8M5 10v10h5v-6h4v6h5V10" />{t('בית')}</Link>
+        <Link href="/live" className={nav === 'live' ? 'on' : ''}><Ico d="M3 5h18v14H3zM12 5v14M3 12h18" />{t('משחקים')}</Link>
+        <Link href="/rankings" className={nav === 'rank' ? 'on' : ''}><Ico d="M5 20V10M12 20V4M19 20v-7" />{t('דירוג')}</Link>
+        <Link href="/players" className={nav === 'players' ? 'on' : ''}><Ico d="M9 11a3.5 3.5 0 100-7 3.5 3.5 0 000 7zM2 20c.7-3.5 3.5-5 7-5s6.3 1.5 7 5M17 4.2a3.5 3.5 0 010 6.6M18 15c2 .6 3.4 2.2 4 5" />{t('שחקנים')}</Link>
+        <Link href="/search" className={nav === 'search' ? 'on' : ''}><Ico d="M11 18a7 7 0 100-14 7 7 0 000 14zM20 20l-4-4" />{t('חיפוש')}</Link>
       </nav>
     </>
   );
+}
+
+function Ico({ d }: { d: string }) {
+  return <svg aria-hidden viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={d} /></svg>;
 }
 
 export function Flash({ err, ok }: { err?: string; ok?: string }) {

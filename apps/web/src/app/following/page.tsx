@@ -4,7 +4,7 @@ import { Shell } from '@/components/Shell';
 import { FollowButton } from '@/components/FollowButton';
 import { requireActor } from '@/lib/session';
 import { followedOverview } from '@/services/follows';
-import { fmtTime } from '@/components/labels';
+import { fmtDate, fmtTime } from '@/components/labels';
 import { STATUS } from '@/components/labels';
 import { tr } from '@/lib/i18n';
 
@@ -71,7 +71,7 @@ export default async function Following() {
           <Link key={x.id} href={`/tournaments/${x.id}`} className="card grid" style={{ gap: 6 }}>
             <span><span className={`pill ${STATUS[x.status]?.[1] ?? ''}`}>{t(STATUS[x.status]?.[0] ?? x.status)}</span></span>
             <strong>{x.name}</strong>
-            <span className="muted">{x.startDate.toLocaleDateString('he-IL')} – {x.endDate.toLocaleDateString('he-IL')}</span>
+            <span className="muted">{fmtDate(x.startDate)} – {fmtDate(x.endDate)}</span>
           </Link>
         ))}
       </div>

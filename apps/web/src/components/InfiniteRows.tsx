@@ -61,7 +61,7 @@ export function PlayersRows({ initial, query, pageSize, genders, labels }: {
   const { rows, done, busy, err, more, sentinel } = useInfinite<PlayerRow>(initial, pageSize, (o) => `/api/v1/public/players?${query}&offset=${o}&limit=${pageSize}`);
   return (
     <div className="card" style={{ overflow: 'auto' }}>
-      <table><thead><tr><th>{labels.player}</th><th>{labels.rank}</th><th>{labels.club}</th><th>{labels.gender}</th><th>{labels.birth}</th></tr></thead><tbody>
+      <table className="stack plist"><thead><tr><th>{labels.player}</th><th>{labels.rank}</th><th>{labels.club}</th><th>{labels.gender}</th><th>{labels.birth}</th></tr></thead><tbody>
         {rows.map((p) => <tr key={p.id}><td><Link href={`/players/${p.id}`}><strong>{p.name}</strong></Link></td><td>{p.rank ? `#${p.rank}` : '—'}</td><td>{p.club ?? '—'}</td><td>{genders[p.gender] ?? ''}</td><td>{p.birthYear}</td></tr>)}
       </tbody></table>
       {!rows.length && <p className="muted">{labels.none}</p>}
@@ -76,8 +76,8 @@ export function RankingRows({ initial, query, pageSize, labels }: {
   const { rows, done, busy, err, more, sentinel } = useInfinite<RankRow>(initial, pageSize, (o) => `/api/v1/public/rankings?${query}&offset=${o}&limit=${pageSize}`);
   return (
     <div className="card" style={{ overflow: 'auto' }}>
-      <table><thead><tr><th>#</th><th>{labels.player}</th><th>{labels.club}</th><th>{labels.points}</th><th>{labels.counted}</th></tr></thead><tbody>
-        {rows.map((r) => <tr key={r.playerId}><td>{r.rank}</td><td><Link href={`/players/${r.playerId}`}>{r.name}</Link></td><td>{r.club ?? '—'}</td><td><strong>{r.points}</strong></td><td>{r.counted}</td></tr>)}
+      <table className="stack rank"><thead><tr><th>#</th><th>{labels.player}</th><th>{labels.club}</th><th>{labels.points}</th><th>{labels.counted}</th></tr></thead><tbody>
+        {rows.map((r) => <tr key={r.playerId}><td>{r.rank}</td><td><Link href={`/players/${r.playerId}`}>{r.name}</Link></td><td>{r.club ?? '—'}</td><td><strong>{r.points}</strong></td><td>{r.counted}<span className="cnt-l">{labels.counted}</span></td></tr>)}
       </tbody></table>
       {!rows.length && <p className="muted">{labels.none}</p>}
       <Footer done={done} busy={busy} err={err} sentinel={sentinel} more={more} labels={labels} />

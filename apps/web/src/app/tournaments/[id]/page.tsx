@@ -5,14 +5,16 @@ import { getActor } from '@/lib/session';
 import { Flash, Shell } from '@/components/Shell';
 import { FollowButton } from '@/components/FollowButton';
 import { MatchScore } from '@/components/MatchScore';
+import { eq } from 'drizzle-orm';
 import { Gallery } from './Gallery';
+import { listPhotos } from '@/services/gallery';
 import { tr } from '@/lib/i18n';
 import { tournamentDetail, playersNotIn } from '@/services/queries';
 import { groupStandings } from '@/services/results';
 import { listCourtLabels } from '@/services/tournaments';
 import { formatOf } from '@/services/draws';
 import { loadRuleSet } from '@/services/rules';
-import { FORMAT, fmtTime, GENDER, MSTATUS, NEXT, STATUS, fmtScore } from '@/components/labels';
+import { FORMAT, fmtDate, fmtTime, GENDER, LEVEL, MSTATUS, NEXT, STATUS, fmtScore } from '@/components/labels';
 import { refundAction } from '@/app/actions3';
 import { suggestedRefund } from '@/services/payments';
 import {
@@ -35,13 +37,24 @@ export default async function TournamentPage({ params, searchParams }: { params:
   const scorer = manage || actor?.role === 'REFEREE';
   const rulesVerified = (await loadRuleSet(db, t.ruleSetId)).verified;
   const [st, cls] = STATUS[t.status] ?? [t.status, ''];
+  // Public visitors only see tabs that have something in them; staff see them all, and a tab opened by link stays visible.
+  const photoCount = manage ? 1 : (await listPhotos(db, t.id)).length;
+  const hasContent: Record<string, boolean> = {
+    overview: true,
+    entries: d.ents.some((x) => x.e.status === 'CONFIRMED'),
+    draw: d.draws.some((x) => x.publishedAt),
+    results: d.ms.some((m) => m.status !== 'SCHEDULED'),
+    schedule: d.ms.some((m) => m.scheduledStart && m.aEntryId && m.bEntryId),
+    gallery: photoCount > 0,
+  };
+  const tabs = TABS.filter(([k]) => manage || k === tab || hasContent[k]);
   return (
     <Shell nav="home">
       <div className="row" style={{ justifyContent: 'space-between' }}>
-        <div style={{ minWidth: 0 }}><span className={`pill ${cls}`}>{tt(st)}</span><h1 style={{ marginTop: 6 }}>{t.name}</h1><span className="muted">{t.startDate.toLocaleDateString('he-IL')} – {t.endDate.toLocaleDateString('he-IL')}</span></div>
+        <div style={{ minWidth: 0 }}><span className={`pill ${cls}`}>{tt(st)}</span><h1 style={{ marginTop: 6 }}>{t.name}</h1><span className="muted">{fmtDate(t.startDate)} – {fmtDate(t.endDate)}</span></div>
         <FollowButton kind="TOURNAMENT" target={t.id} back={`/tournaments/${t.id}`} />
       </div>
-      <nav className="tabs">{TABS.map(([k, l]) => <Link key={k} href={`/tournaments/${id}?tab=${k}`} className={tab === k ? 'on' : ''}>{tt(l)}</Link>)}</nav>
+      <nav className="tabs">{tabs.map(([k, l]) => <Link key={k} href={`/tournaments/${id}?tab=${k}`} className={tab === k ? 'on' : ''}>{tt(l)}</Link>)}</nav>
       <Flash err={err} ok={ok} />
       {manage && !rulesVerified && <div className="err" style={{ background: 'var(--warnbg)', color: 'var(--warn)' }}>ערכת החוקים של התחרות טרם אומתה מול תקנוני האיגוד. ההגרלה והנקודות עשויות לא להתאים לתקנון.</div>}
       {tab === 'overview' && <CatFilter d={d} tab="overview" cat="" flt={flt} withCats={false} />}
@@ -122,9 +135,24 @@ async function CatFilter({ d, tab, cat, flt, withCats }: { d: Detail; tab: strin
   );
 }
 
+const STEPS = ['הרשמה', 'הגרלה', 'משחקים', 'סיום'];
+const STEP_OF: Record<string, number> = { DRAFT: 0, REGISTRATION_OPEN: 0, REGISTRATION_CLOSED: 1, DRAWN: 2, IN_PROGRESS: 2, FINISHED: 3 };
+
 async function Overview({ d, manage }: { d: Detail; manage: boolean }) {
   const tt = await tr();
   const { t, cats, ents } = d;
+  const venue = t.venueId ? (await db.select().from(schema.venues).where(eq(schema.venues.id, t.venueId)))[0] : undefined;
+  const days = Math.max(1, Math.round((+t.endDate - +t.startDate) / 864e5) + 1);
+  const confirmed = ents.filter((x) => x.e.status === 'CONFIRMED').length;
+  const closesIn = t.status === 'REGISTRATION_OPEN' && t.registrationCloses ? Math.ceil((+t.registrationCloses - Date.now()) / 864e5) : null;
+  const step = STEP_OF[t.status];
+  const facts: [string, string][] = [
+    ['תאריכים', `${fmtDate(t.startDate)} – ${fmtDate(t.endDate)} · ${days} ${tt('ימים')}`],
+    ...(venue ? [['מקום', [venue.name, venue.city].filter(Boolean).join(', ')] as [string, string]] : []),
+    ['סוג', `${tt(LEVEL[t.level] ?? '')} · ${tt(FORMAT[t.format] ?? '')}`],
+    ...(t.feeAgorot > 0 ? [['דמי השתתפות', `₪${(t.feeAgorot / 100).toFixed(0)}`] as [string, string]] : []),
+    ['קטגוריות', `${cats.length}${confirmed ? ` · ${confirmed} ${tt('משתתפים מאושרים')}` : ''}`],
+  ];
   return (
     <>
       {manage ? <div className="card row">
@@ -152,17 +180,31 @@ async function Overview({ d, manage }: { d: Detail; manage: boolean }) {
           </div>
         </div>
       )}
-      <h2>{tt('קטגוריות')}</h2>
+      {!manage && (
+        <>
+          <dl className="facts card">
+            {facts.map(([k, v]) => <div key={k}><dt>{tt(k)}</dt><dd>{v}</dd></div>)}
+          </dl>
+          {step !== undefined && t.status !== 'CANCELLED' && (
+            <ol className="steps" aria-label={tt('שלבי התחרות')}>
+              {STEPS.map((s, i) => <li key={s} className={i < step ? 'done' : i === step ? 'now' : ''}>{tt(s)}</li>)}
+            </ol>
+          )}
+          {closesIn !== null && closesIn >= 0 && <p className="muted" style={{ margin: 0 }}>{closesIn === 0 ? tt('ההרשמה נסגרת היום') : `${tt('נותרו')} ${closesIn} ${tt('ימים להרשמה')}`}</p>}
+        </>
+      )}
+      <h2>{tt('קטגוריות')} <span className="muted" style={{ fontWeight: 400 }}>· {cats.length}</span></h2>
+      {ents.length === 0 && cats.length > 0 && <p className="muted" style={{ margin: 0 }}>{tt('עדיין אין משתתפים מאושרים באתר.')}</p>}
       <div className="grid cols">
         {cats.map((c) => (
           <div key={c.id} className="card grid" style={{ gap: 4 }}>
             <strong>{c.name}</strong>
             <span className="muted">{tt(GENDER[c.gender] ?? '')} · {tt(FORMAT[formatOf(c, t)] ?? '')}{c.capacity ? ` · ${tt('עד')} ${c.capacity}` : ''}</span>
-            <span className="muted">{(() => {
+            {ents.length > 0 && <span className="muted">{(() => {
               const ok = ents.filter((x) => x.e.categoryId === c.id && x.e.status === 'CONFIRMED').length;
               const wait = ents.filter((x) => x.e.categoryId === c.id && x.e.status === 'PENDING').length;
               return ok + wait === 0 ? tt('עדיין אין נרשמים') : `${ok} ${tt('מאושרים')}${wait ? ` · ${wait} ${tt('ממתינים')}` : ''}`;
-            })()}</span>
+            })()}</span>}
           </div>
         ))}
       </div>
