@@ -9,6 +9,7 @@ import { can } from '@/lib/permissions';
 import { fmtDate, LEVEL, STATUS } from '@/components/labels';
 import { tr } from '@/lib/i18n';
 import { InfiniteCards } from '@/components/InfiniteCards';
+import { Court } from '@/components/Brand';
 import { inArray } from 'drizzle-orm';
 import { checkDocuments, ownedPlayerIds } from '@/services/entries';
 
@@ -91,19 +92,14 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ l
   return (
     <Shell nav="home">
       <section className="hero home-hero">
+        <Court />
         <div>
           <h1>{t('איגוד הטניס בישראל')}</h1>
           <p>{t('תחרויות, לוחות משחקים, תוצאות חיות ודירוג. הכול במקום אחד.')}</p>
           <form action="/search" className="hsearch">
             <input name="q" placeholder={t('חיפוש תחרות, שחקן או מועדון')} aria-label={t('חיפוש')} />
-            <button className="btn" style={{ background: 'var(--lime)', color: '#0B2545', boxShadow: 'none' }}>{t('חיפוש')}</button>
+            <button className="btn ink">{t('חיפוש')}</button>
           </form>
-          <div className="qtiles">
-            <Link href="/?st=open#list" className="pri"><b>{t('להירשם לתחרות')}</b><small>{openCount ? `${openCount} ${t('פתוחות עכשיו')}` : t('אין כרגע הרשמה פתוחה')}</small></Link>
-            <Link href="/live"><b>{t('משחקים ותוצאות')}</b><small>{c.live ? `${c.live} ${t('משחקים חיים עכשיו')}` : t('לוחות ותוצאות')}</small></Link>
-            <Link href="/rankings"><b>{t('דירוג')}</b><small>{c.players.toLocaleString('he-IL')} {t('שחקנים רשומים')}</small></Link>
-            <Link href="/clubs"><b>{t('מועדונים')}</b><small>{c.clubs.toLocaleString('he-IL')} {t('מועדונים עם שחקנים')}</small></Link>
-          </div>
         </div>
         {nextOpen && closes && (
           <Link href={`/tournaments/${nextOpen.id}`} className="feat">
@@ -115,10 +111,16 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ l
               <span><b>{Math.floor((left % 86400000) / 3600000)}</b>{t('שעות')}</span>
               <span className="till">{t('עד סגירת ההרשמה')}, {closes.toLocaleDateString('he-IL', { timeZone: 'Asia/Jerusalem' })}</span>
             </span>
-            <span className="btn" style={{ background: 'var(--lime)', color: '#0B2545', boxShadow: 'none' }}>{t('להרשמה')}</span>
+            <span className="btn ink">{t('להרשמה')}</span>
           </Link>
         )}
       </section>
+      <nav className="bento" aria-label={t('ניווט מהיר')}>
+        <Link href="/?st=open#list" className="pri"><span className="n">{openCount}</span><b>{t('להירשם לתחרות')}</b><small>{openCount ? t('פתוחות עכשיו') : t('אין כרגע הרשמה פתוחה')}</small></Link>
+        <Link href="/live"><span className="n">{c.live}</span><b>{t('משחקים ותוצאות')}</b><small>{c.live ? t('משחקים חיים עכשיו') : t('לוחות ותוצאות')}</small></Link>
+        <Link href="/rankings"><span className="n">{c.players.toLocaleString('he-IL')}</span><b>{t('דירוג')}</b><small>{t('שחקנים רשומים')}</small></Link>
+        <Link href="/clubs"><span className="n">{c.clubs.toLocaleString('he-IL')}</span><b>{t('מועדונים')}</b><small>{t('מועדונים עם שחקנים')}</small></Link>
+      </nav>
       {todo.length > 0 && (
         <section className="card todo" aria-label={t('מחכה לך')}>
           <strong>{t('מחכה לך')}</strong>

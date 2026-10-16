@@ -1,3 +1,4 @@
+import { AuthFrame } from '@/components/AuthFrame';
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { db } from '@/db';
@@ -18,7 +19,7 @@ export default async function Forgot({ searchParams }: { searchParams: Promise<{
   const t = await tr();
   const en = (await getLang()) === 'en';
   return (
-    <main dir={en ? 'ltr' : 'rtl'} style={{ maxWidth: 380, paddingTop: 80 }}>
+    <AuthFrame en={en}>
       <h1>{t('שכחתי סיסמה')}</h1>
       <p className="muted">{t('נשלח קישור לבחירת סיסמה חדשה לכתובת האימייל שלכם.')}</p>
       {sent && <div className="okmsg">{t('אם הכתובת רשומה, נשלח אליה קישור. בדקו גם בתיקיית הספאם.')}</div>}
@@ -28,6 +29,6 @@ export default async function Forgot({ searchParams }: { searchParams: Promise<{
         <button className="btn">{t('שליחת קישור')}</button>
         <a className="muted" href="/login">{t('חזרה לכניסה')}</a>
       </form>
-    </main>
+    </AuthFrame>
   );
 }

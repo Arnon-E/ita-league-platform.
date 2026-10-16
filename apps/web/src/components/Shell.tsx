@@ -7,6 +7,7 @@ import { stopImpersonationAction } from '@/app/actions3';
 import { setLangAction } from '@/app/actions7';
 import { getLang, tr } from '@/lib/i18n';
 import { NavMenu } from './NavMenu';
+import { BallMark } from './Brand';
 
 export async function Shell({ children, nav }: { children: ReactNode; nav?: string }) {
   const t = await tr();
@@ -18,15 +19,28 @@ export async function Shell({ children, nav }: { children: ReactNode; nav?: stri
     <>
       {actor?.impersonatedBy && <form action={stopImpersonationAction} style={{ background: 'var(--lime)', padding: '8px 24px', display: 'flex', gap: 12, alignItems: 'center' }}><strong>מצב התחזות: {u?.name}</strong><button className="btn small">חזרה לחשבון שלי</button></form>}
       <header className="top">
-        <span className="brand">ITA</span>
-        <NavMenu label={t('תפריט')}>{l('/', 'תחרויות', 'home')}{l('/live', 'משחקים', 'live')}{l('/rankings', 'דירוג', 'rank')}{l('/players', 'שחקנים', 'players')}{l('/clubs', 'מועדונים', 'clubs')}{l('/leagues', 'ליגות', 'leagues')}<details className="adm"><summary>{t('עוד')}</summary><div>{l('/regulations', 'תקנונים', 'regs')}{l('/stats', 'סטטיסטיקות', 'stats')}{l('/about', 'אודות', 'about')}</div></details>{l('/search', 'חיפוש', 'search')}{actor && l('/following', 'המעקב שלי', 'following')}{actor && l('/me', 'האזור שלי', 'me')}{actor && ['SUPER_ADMIN', 'FEDERATION_ADMIN'].includes(actor.role) && <details className="adm"><summary>{t('ניהול')}</summary><div>{l('/admin/messages', 'הודעות', 'messages')}{l('/admin/reports', 'דוחות', 'reports')}{l('/admin/documents', 'מסמכים', 'docs')}{l('/admin/import', 'ייבוא', 'import')}{l('/admin/venues', 'מתקנים', 'venues')}{l('/admin/users', 'משתמשים', 'users')}{l('/admin/claims', 'שיוך שחקנים', 'claims')}{l('/admin/rules', 'חוקים', 'rules')}{l('/admin/audit', 'ביקורת', 'audit')}</div></details>}</NavMenu>
-        {actor ? <>
-          <span className="uname">{u?.name}</span>
-          <form action="/logout" method="post"><button className="btn small ghost">{t('יציאה')}</button></form>
-        </> : <span className="row"><Link className="btn small ghost" href="/login">{t('כניסה')}</Link><Link className="btn small" href="/register">{t('הצטרפות')}</Link></span>}
+        <Link href="/" className="brand" aria-label={t('איגוד הטניס בישראל')}><BallMark />ITA</Link>
+        <NavMenu label={t('תפריט')}>
+          <div className="navmain">{l('/', 'תחרויות', 'home')}{l('/live', 'משחקים', 'live')}{l('/rankings', 'דירוג', 'rank')}{l('/players', 'שחקנים', 'players')}{l('/clubs', 'מועדונים', 'clubs')}{l('/leagues', 'ליגות', 'leagues')}<details className="adm"><summary>{t('עוד')}</summary><div>{l('/regulations', 'תקנונים', 'regs')}{l('/stats', 'סטטיסטיקות', 'stats')}{l('/about', 'אודות', 'about')}</div></details></div>
+          <div className="navacct">
+            <Link href="/search" className={`srch ${nav === 'search' ? 'on' : ''}`} aria-label={t('חיפוש')}><Ico d="M11 18a7 7 0 100-14 7 7 0 000 14zM20 20l-4-4" /><span className="lbl">{t('חיפוש')}</span></Link>
+            {actor && ['SUPER_ADMIN', 'FEDERATION_ADMIN'].includes(actor.role) && <details className="adm"><summary>{t('ניהול')}</summary><div>{l('/admin/messages', 'הודעות', 'messages')}{l('/admin/reports', 'דוחות', 'reports')}{l('/admin/documents', 'מסמכים', 'docs')}{l('/admin/import', 'ייבוא', 'import')}{l('/admin/venues', 'מתקנים', 'venues')}{l('/admin/users', 'משתמשים', 'users')}{l('/admin/claims', 'שיוך שחקנים', 'claims')}{l('/admin/rules', 'חוקים', 'rules')}{l('/admin/audit', 'ביקורת', 'audit')}</div></details>}
+            {actor && <details className="adm acct"><summary><span className="av" aria-hidden>{(u?.name ?? '?').trim().charAt(0).toUpperCase()}</span><span className="uname">{u?.name}</span></summary><div>{l('/me', 'האזור שלי', 'me')}{l('/following', 'המעקב שלי', 'following')}<form action="/logout" method="post"><button className="out">{t('יציאה')}</button></form></div></details>}
+          </div>
+        </NavMenu>
+        {!actor && <span className="row"><Link className="btn small ghost" href="/login">{t('כניסה')}</Link><Link className="btn small" href="/register">{t('הצטרפות')}</Link></span>}
         <form action={setLangAction}><input type="hidden" name="lang" value={lang === 'en' ? 'he' : 'en'} /><button className="btn small ghost" title="Language" style={{ minWidth: 44 }}>{lang === 'en' ? 'עב' : 'EN'}</button></form>
       </header>
       <main>{children}</main>
+      <footer className="sitefoot">
+        <div>
+          <span className="brand"><BallMark size={24} />ITA</span>
+          <nav aria-label={t('ניווט תחתון')}>
+            <Link href="/">{t('תחרויות')}</Link><Link href="/rankings">{t('דירוג')}</Link><Link href="/clubs">{t('מועדונים')}</Link><Link href="/regulations">{t('תקנונים')}</Link><Link href="/about">{t('אודות')}</Link>
+          </nav>
+          <span>{t('איגוד הטניס בישראל')}</span>
+        </div>
+      </footer>
       <nav className="tabbar" aria-label={t('ניווט מהיר')}>
         <Link href="/" className={nav === 'home' ? 'on' : ''}><Ico d="M3 11l9-8 9 8M5 10v10h5v-6h4v6h5V10" />{t('בית')}</Link>
         <Link href="/live" className={nav === 'live' ? 'on' : ''}><Ico d="M3 5h18v14H3zM12 5v14M3 12h18" />{t('משחקים')}</Link>

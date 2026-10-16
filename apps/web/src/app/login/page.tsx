@@ -1,3 +1,4 @@
+import { AuthFrame } from '@/components/AuthFrame';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { db } from '@/db';
@@ -20,7 +21,7 @@ export default async function Login({ searchParams }: { searchParams: Promise<{ 
   const t = await tr();
   const en = (await getLang()) === 'en';
   return (
-    <main dir={en ? 'ltr' : 'rtl'} style={{ maxWidth: 380, paddingTop: 80 }}>
+    <AuthFrame en={en}>
       <h1>{t('כניסה')}</h1>
       <p className="muted">{t('איגוד הטניס בישראל')}</p>
       {reset && <div className="okmsg">{t('הסיסמה עודכנה. אפשר להיכנס.')}</div>}
@@ -33,6 +34,6 @@ export default async function Login({ searchParams }: { searchParams: Promise<{ 
         <a className="muted" href="/forgot">{t('שכחתי סיסמה')}</a>
         <a className="muted" href={next ? `/register?next=${encodeURIComponent(next)}` : '/register'}>{t('אין חשבון? הרשמה')}</a>
       </form>
-    </main>
+    </AuthFrame>
   );
 }

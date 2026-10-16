@@ -1,3 +1,4 @@
+import { AuthFrame } from '@/components/AuthFrame';
 import { redirect } from 'next/navigation';
 import { db } from '@/db';
 import { applyPasswordReset } from '@/lib/password-reset';
@@ -17,7 +18,7 @@ export default async function Reset({ searchParams }: { searchParams: Promise<{ 
   const t = await tr();
   const en = (await getLang()) === 'en';
   return (
-    <main dir={en ? 'ltr' : 'rtl'} style={{ maxWidth: 380, paddingTop: 80 }}>
+    <AuthFrame en={en}>
       <h1>{t('בחירת סיסמה חדשה')}</h1>
       {err === 'invalid' && <div className="err" role="alert">{t('הקישור פג תוקף או כבר נוצל. אפשר לבקש קישור חדש.')} <a href="/forgot"><u>{t('בקשת קישור חדש')}</u></a></div>}
       {err && err !== 'invalid' && <div className="err" role="alert">{err}</div>}
@@ -26,6 +27,6 @@ export default async function Reset({ searchParams }: { searchParams: Promise<{ 
         <label>{t('סיסמה חדשה (10 תווים, אותיות וספרות)')}<input name="password" type="password" required minLength={10} autoComplete="new-password" /></label>
         <button className="btn">{t('שמירה וכניסה')}</button>
       </form>
-    </main>
+    </AuthFrame>
   );
 }

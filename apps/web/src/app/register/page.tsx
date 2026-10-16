@@ -1,3 +1,4 @@
+import { AuthFrame } from '@/components/AuthFrame';
 import { Flash } from '@/components/Shell';
 import { signUpAction } from '@/app/actions2';
 import { getLang, tr } from '@/lib/i18n';
@@ -7,7 +8,7 @@ export default async function Register({ searchParams }: { searchParams: Promise
   const t = await tr();
   const en = (await getLang()) === 'en';
   return (
-    <main dir={en ? 'ltr' : 'rtl'} style={{ maxWidth: 420, paddingTop: 60 }}>
+    <AuthFrame en={en}>
       <h1>{t('הרשמה')}</h1>
       <p className="muted">{t('יצירת חשבון שחקן, הורה או אוהד. אפשר לעקוב אחרי שחקנים ולקבל התראות.')}</p>
       <Flash err={err} />
@@ -20,6 +21,6 @@ export default async function Register({ searchParams }: { searchParams: Promise
         <button className="btn">{t('יצירת חשבון')}</button>
         <a className="muted" href={next ? `/login?next=${encodeURIComponent(next)}` : '/login'}>{t('כבר רשומים? כניסה')}</a>
       </form>
-    </main>
+    </AuthFrame>
   );
 }

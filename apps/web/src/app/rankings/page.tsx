@@ -31,6 +31,18 @@ export default async function Rankings({ searchParams }: { searchParams: Promise
           <button className="btn small ghost">{t('סינון')}</button>
         </form>
       </div>
+      {all.length >= 3 && (
+        <div className="podium" aria-label={t('שלושת המובילים')}>
+          {[all[1]!, all[0]!, all[2]!].map((r) => (
+            <Link key={r.playerId} href={`/players/${r.playerId}`} className={`pod p${r.rank}`}>
+              <span className="n">{r.rank}</span>
+              <strong>{r.name}</strong>
+              <span className="muted">{r.club ?? ''}</span>
+              <span className="pts">{r.points.toLocaleString('he-IL')} <small>{t('נקודות')}</small></span>
+            </Link>
+          ))}
+        </div>
+      )}
       <RankingRows
         key={query}
         initial={all.slice(0, PAGE)} query={query} pageSize={PAGE}
