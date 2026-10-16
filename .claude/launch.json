@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "web",
+      "runtimeExecutable": "cmd",
+      "runtimeArgs": ["/c", "set DATABASE_URL=postgresql://postgres@localhost:5432/ita&& pnpm --filter @ita/web dev --port 3000"],
+      "port": 3000
+    }
+  ]
+}
