@@ -359,3 +359,44 @@ details.acct .out:hover{background:var(--badbg)}
 .pod.p1{min-height:210px;background:var(--volt);border-color:transparent;color:var(--ink)}
 .pod.p1 .n{color:var(--ink);font-size:84px}.pod.p1 .muted,.pod.p1 .pts small{color:#3C4E12}
 @media(max-width:720px){.podium{gap:8px}.pod{padding:14px;min-height:130px;border-radius:20px}.pod.p1{min-height:170px}.pod .n{font-size:38px}.pod.p1 .n{font-size:56px}.pod strong{font-size:14px}.pod .pts{font-size:18px}}
+
+/* small screens: grid/flex children may shrink below their content, and nothing may push the page wider than the phone */
+.home-hero>*,.grid>*,.row>*,.bento>*,.podium>*,.sbgrid>*{min-width:0}
+.hsearch,.hero p{max-width:100%}
+@media(max-width:900px){.home-hero{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:720px){
+  .hsearch input{padding-inline:14px;font-size:16px}
+  .hsearch .btn{padding:0 18px}
+  .feat strong{font-size:23px}
+  .feat .count>span{min-width:0;flex:1}
+  .feat .count b{font-size:32px}
+  .hero h1{overflow-wrap:anywhere}
+  h2{margin-top:32px}
+  .card{padding:18px}
+  .urow{padding:14px 16px}
+}
+@media(max-width:380px){
+  main{padding-inline:10px}
+  header.top{inset-inline:6px;gap:4px}
+  header.top a.btn,header.top .btn.small{padding:0 12px}
+  .hero{padding:24px 18px}.hero h1{font-size:36px}
+  .bento a{padding:16px;min-height:118px}.bento .n{font-size:42px}
+  .tabbar{inset-inline:6px}.tabbar a{font-size:10.5px}
+  .podium{gap:6px}.pod{padding:12px}.pod strong{font-size:13px}
+}
+/* dynamic toolbar on phones */
+main.auth{min-height:100dvh}
+.only-m{display:none!important}
+@media(max-width:720px){
+  header.top nav.open .only-m{display:flex!important}
+  header.top nav.open .only-m.reg{background:var(--btn);color:var(--btn-text);font-weight:600}
+  .feat .count .till{flex-basis:100%;order:3;padding:2px 0 0}
+}
+@media(max-width:440px){header.top>.row .btn:not(.ghost){display:none}}
+@media(max-width:720px) and (max-height:720px){header.top nav.open a,header.top nav.open details.adm summary{padding:11px 16px;font-size:16px}header.top nav.open .navacct{margin-top:6px;padding-top:6px}}
+/* older mobile browsers without color-mix(): plain fallbacks */
+@supports not (background:color-mix(in srgb,red,blue)){
+  header.top a:not(.btn):hover,details.adm[open] summary,details.adm summary:hover{background:var(--surface2)}
+  .comp.open{background:var(--okbg);border-color:var(--ok)}
+  input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px var(--line2)}
+}

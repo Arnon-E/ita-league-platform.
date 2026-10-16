@@ -25,6 +25,7 @@ export async function Shell({ children, nav }: { children: ReactNode; nav?: stri
           <div className="navacct">
             <Link href="/search" className={`srch ${nav === 'search' ? 'on' : ''}`} aria-label={t('חיפוש')}><Ico d="M11 18a7 7 0 100-14 7 7 0 000 14zM20 20l-4-4" /><span className="lbl">{t('חיפוש')}</span></Link>
             {actor && ['SUPER_ADMIN', 'FEDERATION_ADMIN'].includes(actor.role) && <details className="adm"><summary>{t('ניהול')}</summary><div>{l('/admin/messages', 'הודעות', 'messages')}{l('/admin/reports', 'דוחות', 'reports')}{l('/admin/documents', 'מסמכים', 'docs')}{l('/admin/import', 'ייבוא', 'import')}{l('/admin/venues', 'מתקנים', 'venues')}{l('/admin/users', 'משתמשים', 'users')}{l('/admin/claims', 'שיוך שחקנים', 'claims')}{l('/admin/rules', 'חוקים', 'rules')}{l('/admin/audit', 'ביקורת', 'audit')}</div></details>}
+            {!actor && <><Link href="/login" className="only-m">{t('כניסה')}</Link><Link href="/register" className="only-m reg">{t('הצטרפות')}</Link></>}
             {actor && <details className="adm acct"><summary><span className="av" aria-hidden>{(u?.name ?? '?').trim().charAt(0).toUpperCase()}</span><span className="uname">{u?.name}</span></summary><div>{l('/me', 'האזור שלי', 'me')}{l('/following', 'המעקב שלי', 'following')}<form action="/logout" method="post"><button className="out">{t('יציאה')}</button></form></div></details>}
           </div>
         </NavMenu>
