@@ -1,17 +1,18 @@
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Linking, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import * as api from './api';
+import { T, Icon } from './theme';
 
-const C = { navy: '#0B2545', blue: '#1659B5', line: '#E3E8F0', muted: '#55657A' };
+const C = { navy: T.text, blue: T.blue, line: T.line, muted: T.muted };
 
 function useData<T>(fn: () => Promise<T>) {
   const [data, setData] = useState<T | null>(null); const [err, setErr] = useState(''); const [busy, setBusy] = useState(true);
   useEffect(() => { fn().then(setData).catch((e) => setErr(e.message)).finally(() => setBusy(false)); }, []);
   return { data, err, busy };
 }
-const Wait = ({ err, busy }: { err: string; busy: boolean }) => (busy ? <ActivityIndicator style={{ margin: 16 }} /> : err ? <Text style={st.err}>{err}</Text> : null);
+const Wait = ({ err, busy }: { err: string; busy: boolean }) => (busy ? <ActivityIndicator color={T.blue} style={{ margin: 16 }} /> : err ? <Text style={st.err}>{err}</Text> : null);
 const Head = ({ title, onBack }: { title: string; onBack?: () => void }) => (
-  <View style={st.head}>{onBack && <Pressable onPress={onBack} hitSlop={10}><Text style={st.back}>→</Text></Pressable>}<Text style={st.h1}>{title}</Text></View>
+  <View style={st.head}>{onBack && <Pressable onPress={onBack} hitSlop={10}><View style={st.backBtn}><Icon name="back" size={20} color={T.text} /></View></Pressable>}<Text style={st.h1}>{title}</Text></View>
 );
 
 function Leagues({ onBack }: { onBack: () => void }) {
@@ -22,7 +23,7 @@ function Leagues({ onBack }: { onBack: () => void }) {
     <View style={st.pad}>
       <Head title="ליגות" onBack={onBack} />
       <Wait err={err} busy={busy} />
-      <FlatList data={data ?? []} keyExtractor={(l) => l.id} ListEmptyComponent={!busy && !err ? <Text style={st.muted}>אין עדיין ליגות</Text> : null}
+      <FlatList contentContainerStyle={{ paddingBottom: 100 }} data={data ?? []} keyExtractor={(l) => l.id} ListEmptyComponent={!busy && !err ? <Text style={st.muted}>אין עדיין ליגות</Text> : null}
         renderItem={({ item }) => (
           <Pressable style={st.card} onPress={() => setOpen(item.id)}>
             <Text style={st.b}>{item.name}</Text>
@@ -120,7 +121,7 @@ function Regulations({ onBack }: { onBack: () => void }) {
   return (
     <ScrollView contentContainerStyle={st.pad}>
       <Head title="תקנונים ונהלים" onBack={onBack} />
-      <TextInput style={st.input} placeholder="🔍  חיפוש מסמך" placeholderTextColor="#8FA1BA" value={q} onChangeText={setQ} />
+      <TextInput style={st.input} placeholder="חיפוש מסמך" placeholderTextColor={T.muted} value={q} onChangeText={setQ} />
       <Wait err={err} busy={busy} />
       {cats.map((c) => (
         <View key={c}>
@@ -142,9 +143,9 @@ function Clubs({ onBack }: { onBack: () => void }) {
   return (
     <View style={st.pad}>
       <Head title="מועדונים" onBack={onBack} />
-      <TextInput style={st.input} placeholder="🔍  חיפוש מועדון" placeholderTextColor="#8FA1BA" value={q} onChangeText={setQ} />
+      <TextInput style={st.input} placeholder="חיפוש מועדון" placeholderTextColor={T.muted} value={q} onChangeText={setQ} />
       <Wait err={err} busy={busy} />
-      <FlatList data={rows} keyExtractor={(c) => c.id} renderItem={({ item }) => <View style={st.card}><Text style={st.b}>{item.name}</Text><Text style={st.muted}>{item.city ? `${item.city} · ` : ''}{item.players} שחקנים</Text></View>} />
+      <FlatList contentContainerStyle={{ paddingBottom: 100 }} data={rows} keyExtractor={(c) => c.id} renderItem={({ item }) => <View style={st.card}><Text style={st.b}>{item.name}</Text><Text style={st.muted}>{item.city ? `${item.city} · ` : ''}{item.players} שחקנים</Text></View>} />
     </View>
   );
 }
@@ -172,11 +173,11 @@ function Stats({ onBack }: { onBack: () => void }) {
 }
 
 const ITEMS = [
-  ['leagues', '🏅', 'ליגות', 'ליגת Winner: טבלאות ולוח משחקים'],
-  ['regs', '📄', 'תקנונים ונהלים', 'כל התקנונים והמסמכים של האיגוד'],
-  ['clubs', '🏟️', 'מועדונים', 'רשימת המועדונים וכמות השחקנים'],
-  ['stats', '📈', 'סטטיסטיקות', 'מובילים בניצחונות ומועדונים גדולים'],
-  ['about', 'ℹ️', 'אודות האיגוד', 'מי אנחנו, טפסי הרשמה ואירועים'],
+  ['leagues', 'leagues', 'ליגות', 'ליגת Winner: טבלאות ולוח משחקים'],
+  ['regs', 'doc', 'תקנונים ונהלים', 'כל התקנונים והמסמכים של האיגוד'],
+  ['clubs', 'club', 'מועדונים', 'רשימת המועדונים וכמות השחקנים'],
+  ['stats', 'stats', 'סטטיסטיקות', 'מובילים בניצחונות ומועדונים גדולים'],
+  ['about', 'info', 'אודות האיגוד', 'מי אנחנו, טפסי הרשמה ואירועים'],
 ] as const;
 
 /** The "More" tab: the website's remaining sections (leagues, regulations, clubs, statistics). */
@@ -192,8 +193,8 @@ export function More() {
     <View style={st.pad}>
       <Head title="עוד" />
       {ITEMS.map(([k, ic, t, sub]) => (
-        <Pressable key={k} style={st.card} onPress={() => setPage(k)}>
-          <Text style={st.b}>{ic}  {t}</Text><Text style={st.muted}>{sub}</Text>
+        <Pressable key={k} style={[st.card, st.menu]} onPress={() => setPage(k)}>
+          <View style={st.ic}><Icon name={ic} size={22} color={T.ink} /></View><View style={{ flex: 1 }}><Text style={st.b}>{t}</Text><Text style={st.muted}>{sub}</Text></View>
         </Pressable>
       ))}
     </View>
@@ -201,20 +202,22 @@ export function More() {
 }
 
 const st = StyleSheet.create({
-  pad: { padding: 16, gap: 10 },
+  menu: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  ic: { width: 44, height: 44, borderRadius: 22, backgroundColor: T.volt, alignItems: 'center', justifyContent: 'center' },
+  pad: { padding: 16, gap: 10, paddingBottom: 110 },
   head: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 6 },
-  back: { fontSize: 26, color: C.navy },
-  h1: { fontSize: 26, fontWeight: '800', color: C.navy, flexShrink: 1 },
-  h2: { fontSize: 18, fontWeight: '700', color: C.navy, marginTop: 8, marginBottom: 6 },
-  card: { backgroundColor: '#fff', borderWidth: 1, borderColor: C.line, borderRadius: 16, padding: 14, marginBottom: 8, gap: 4 },
-  b: { fontSize: 16, fontWeight: '600', color: C.navy },
-  muted: { color: C.muted },
-  err: { color: '#B3261E', margin: 12 },
-  input: { backgroundColor: '#fff', borderWidth: 1, borderColor: C.line, borderRadius: 12, padding: 12, fontSize: 16, textAlign: 'right' },
+  backBtn: { width: 40, height: 40, borderRadius: 20, borderWidth: 1, borderColor: T.line2, backgroundColor: T.surface, alignItems: 'center', justifyContent: 'center' },
+  h1: { fontSize: 32, fontWeight: '800', color: T.text, letterSpacing: -0.8, flexShrink: 1 },
+  h2: { fontSize: 22, fontWeight: '700', color: T.text, letterSpacing: -0.4, marginTop: 8, marginBottom: 6 },
+  card: { backgroundColor: T.surface, borderWidth: 1, borderColor: T.line, borderRadius: 22, padding: 18, marginBottom: 8, gap: 4 },
+  b: { fontSize: 16, fontWeight: '700', color: T.text },
+  muted: { color: T.muted, fontSize: 14 },
+  err: { backgroundColor: T.badbg, color: T.bad, padding: 12, borderRadius: 14, overflow: 'hidden', margin: 12 },
+  input: { backgroundColor: T.surface, borderWidth: 1, borderColor: T.line2, borderRadius: 14, paddingHorizontal: 16, minHeight: 48, fontSize: 16, textAlign: 'right', color: T.text },
   row: { flexDirection: 'row', gap: 8, alignItems: 'center' },
-  tr: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 4 },
-  th: { fontWeight: '700', color: C.muted, fontSize: 12 },
-  th2: { width: 34, textAlign: 'center', fontWeight: '700', color: C.muted, fontSize: 12 },
-  td2: { width: 34, textAlign: 'center' },
-  sc: { width: 28, textAlign: 'center' },
+  tr: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 6, borderBottomWidth: 1, borderColor: T.line },
+  th: { fontWeight: '600', color: T.muted, fontSize: 12 },
+  th2: { width: 34, textAlign: 'center', fontWeight: '600', color: T.muted, fontSize: 12 },
+  td2: { width: 34, textAlign: 'center', color: T.text },
+  sc: { width: 28, textAlign: 'center', color: T.text },
 });

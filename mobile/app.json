@@ -1,4 +1,4 @@
-{ "expo": { "name": "ITA", "slug": "ita-league", "version": "0.1.0", "orientation": "default", "userInterfaceStyle": "light",
+{ "expo": { "name": "ITA", "slug": "ita-league", "version": "0.1.0", "orientation": "default", "userInterfaceStyle": "automatic",
   "ios": { "supportsTablet": true, "bundleIdentifier": "il.org.tennis.league" },
   "android": { "package": "il.org.tennis.league" },
   "plugins": ["expo-secure-store", "expo-notifications"],
