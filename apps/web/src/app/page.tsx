@@ -55,7 +55,8 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ l
     const grp = stGroup(x);
     if (mode === 'up' ? grp === 'done' : mode !== 'all' && grp !== mode) return false;
     if (needle && !x.name.toLowerCase().includes(needle)) return false;
-    if (relevantOnly && !relevantIds.has(x.id)) return false;
+    // searching by name looks at everything, whatever the player's age
+    if (relevantOnly && !(needle || level || sec || season || g || age) && !relevantIds.has(x.id)) return false;
     if (g || age) {
       const cs = catsOf.get(x.id) ?? [];
       if (!cs.some((c) => (!g || c.gender === g) && (!age || c.age === Number(age)))) return false;
@@ -122,7 +123,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ l
       </div>
       {mine.length > 0 && (
         <p className="muted" style={{ margin: '10px 0 0' }}>
-          {relevantOnly ? `${t('מוצגות תחרויות שמתאימות לשחקנים שלך.')} ` : ''}
+          {relevantOnly && !(needle || level || sec || season || g || age) ? `${t('מוצגות תחרויות שמתאימות לשחקנים שלך. חיפוש או סינון מציגים את כולן.')} ` : ''}
           <Link href={relevantOnly ? '/?rel=all' : '/'}><u>{relevantOnly ? t('הצגת כל התחרויות') : t('רק תחרויות שמתאימות לי')}</u></Link>
         </p>
       )}
