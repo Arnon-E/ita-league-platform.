@@ -1,6 +1,7 @@
 'use server';
 import { cookies } from 'next/headers';
 import { setChildLogin, suggestEntry } from '@/services/children';
+import { flushNotifications } from '@/lib/senders';
 import { redirect } from 'next/navigation';
 import { db } from '@/db';
 import { login, SESSION_COOKIE } from '@/lib/auth';
@@ -63,7 +64,7 @@ export async function childLoginAction(fd: FormData) {
 
 export async function suggestEntryAction(fd: FormData) {
   const a = await requireActor();
-  await guarded('/me', async () => { await suggestEntry(db, a, s(fd, 'category')); return 'ההצעה נשלחה להורה'; });
+  await guarded('/me', async () => { await suggestEntry(db, a, s(fd, 'category')); await flushNotifications(db); return 'ההצעה נשלחה להורה'; });
 }
 
 export async function reviewDocAction(fd: FormData) {

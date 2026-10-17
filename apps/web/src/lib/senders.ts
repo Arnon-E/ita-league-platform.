@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm';
 import type { Db } from '@/db';
 import { schema } from '@/db';
-import type { Sender } from '@/services/notifications';
+import { dispatchQueued, type Sender } from '@/services/notifications';
 
 type Env = Record<string, string | undefined>;
 type Fetch = typeof fetch;
@@ -55,3 +55,12 @@ export function buildSenders(db: Db, env: Env = process.env, f: Fetch = fetch): 
 }
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] as string);
+
+/**
+ * Sends what is queued right now, for things a person is waiting on (a child's request to a parent). The scheduled run
+ * is only a safety net (once a day on the free plan), so time-sensitive actions flush themselves. Never throws:
+ * a delivery problem must not fail the action, the row stays queued and the scheduler retries.
+ */
+export async function flushNotifications(db: Db) {
+  try { await dispatchQueued(db, buildSenders(db)); } catch { /* retried by the scheduler */ }
+}

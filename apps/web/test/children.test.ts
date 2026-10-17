@@ -8,6 +8,7 @@ import { registerEntry } from '@/services/entries';
 import { uploadDocument } from '@/services/documents';
 import { childLoginName, setChildLogin, suggestEntry } from '@/services/children';
 import { myHome } from '@/services/home';
+import { dispatchQueued } from '@/services/notifications';
 
 beforeAll(resetDb);
 
@@ -53,6 +54,12 @@ describe("child's own login", () => {
     await suggestEntry(db, child, cat.id);
     const notes = await db.select().from(schema.notifications).where(eq(schema.notifications.userId, parent.id));
     expect(notes.some((n) => n.kind === 'ENTRY_SUGGESTION')).toBe(true);
+    expect(notes.filter((n) => n.kind === 'ENTRY_SUGGESTION').map((n) => n.channel).sort()).toEqual(['EMAIL', 'PUSH']);
+    // ...and it is pushed to the parent's phone
+    await db.insert(schema.deviceTokens).values({ userId: parent.id, token: 'ExponentPushToken[parent]', platform: 'android' });
+    const pushed: string[] = [];
+    await dispatchQueued(db, { PUSH: async (n) => { if (n.userId === parent.id) pushed.push(n.title); } });
+    expect(pushed.some((x) => x.includes('דני'))).toBe(true);
 
     // the parent can still register the child, and reset the password
     await registerEntry(db, parent, cat.id, kid.id);

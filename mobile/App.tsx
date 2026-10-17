@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, Image, ScrollView, I18nManager, Pressable, SafeAreaView, StatusBar, StyleSheet, Text, TextInput, View } from 'react-native';
 import * as Notifications from 'expo-notifications';
+import Constants from 'expo-constants';
 import * as ImagePicker from 'expo-image-picker';
 import { Linking } from 'react-native';
 import { Platform } from 'react-native';
@@ -13,7 +14,8 @@ async function registerPush() {
   try {
     const perm = await Notifications.requestPermissionsAsync();
     if (!perm.granted) return;
-    const t = await Notifications.getExpoPushTokenAsync();
+    const projectId = (Constants.expoConfig?.extra as { eas?: { projectId?: string } } | undefined)?.eas?.projectId;
+    const t = await Notifications.getExpoPushTokenAsync(projectId ? { projectId } : undefined);
     await api.registerDevice(t.data, Platform.OS === 'ios' ? 'ios' : 'android');
   } catch { /* push is optional: the in-app inbox still works */ }
 }
