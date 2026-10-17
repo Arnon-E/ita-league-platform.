@@ -106,3 +106,17 @@ export async function confirmedEntries(db: Db, categoryId: string) {
   return db.select({ e: entries, p: players }).from(entries).innerJoin(players, eq(players.id, entries.playerId))
     .where(and(eq(entries.categoryId, categoryId), inArray(entries.status, ['CONFIRMED'])));
 }
+
+/**
+ * A parent or player cancels their own registration. Only while it is still unpaid: once money was taken the refund rules apply,
+ * and that goes through the federation. Staff cancel with withdrawEntry directly.
+ */
+export async function cancelMyEntry(db: Db, actor: Actor, entryId: string) {
+  await assertNotChild(db, actor);
+  const [e] = await db.select().from(entries).where(eq(entries.id, entryId));
+  if (!e) throw new Error('ההרשמה לא נמצאה');
+  if (!(await ownedPlayerIds(db, actor)).includes(e.playerId)) throw new Error('אין הרשאה להרשמה הזו');
+  if (e.status === 'WITHDRAWN' || e.status === 'REJECTED') throw new Error('ההרשמה כבר בוטלה');
+  if (e.paymentStatus !== 'UNPAID') throw new Error('ההרשמה שולמה. לביטול והחזר כספי פנו לאיגוד');
+  return withdrawEntry(db, actor, entryId);
+}

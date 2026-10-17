@@ -11,7 +11,7 @@ import { addPlayerProfile, signUp } from '@/services/accounts';
 import { ClaimPending } from '@/services/claims';
 import { reviewDocument, uploadDocument } from '@/services/documents';
 import { importPlayersCsv, importPointsCsv } from '@/services/imports';
-import { registerEntry } from '@/services/entries';
+import { registerEntry, cancelMyEntry } from '@/services/entries';
 
 const s = (fd: FormData, k: string) => String(fd.get(k) ?? '').trim();
 
@@ -56,6 +56,11 @@ export async function uploadDocAction(fd: FormData) {
 export async function selfRegisterAction(fd: FormData) {
   const a = await requireActor();
   await guarded('/me', async () => { await registerEntry(db, a, s(fd, 'category'), s(fd, 'player')); return 'נרשמתם לקטגוריה'; });
+}
+
+export async function cancelEntryAction(fd: FormData) {
+  const a = await requireActor();
+  await guarded('/me', async () => { await cancelMyEntry(db, a, s(fd, 'entry')); return 'ההרשמה בוטלה'; });
 }
 
 export async function updateProfileAction(fd: FormData) {

@@ -6,7 +6,7 @@ import { ownedPlayerIds, checkDocuments } from '@/services/entries';
 import { inbox } from '@/services/notifications';
 import { signedUrl } from '@/lib/storage';
 import { payAction } from '@/app/actions3';
-import { addPlayerAction, childLoginAction, removeProfileAction, updateProfileAction, selfRegisterAction, suggestEntryAction, uploadDocAction } from '@/app/actions2';
+import { addPlayerAction, cancelEntryAction, childLoginAction, removeProfileAction, updateProfileAction, selfRegisterAction, suggestEntryAction, uploadDocAction } from '@/app/actions2';
 import { childLoginName, isChildActor } from '@/services/children';
 import { ineligibleReason } from '@/services/eligibility';
 import { claimPlayerAction } from '@/app/actions9';
@@ -101,7 +101,7 @@ export default async function Me({ searchParams }: { searchParams: Promise<{ err
         </section>
       ))}
       <h2>הרשמות שלי</h2>
-      <div className="card">{ents.length ? ents.map(({ e, c, t }) => <div key={e.id} className="row"><strong>{t.name}</strong><span className="muted">{c.name}</span><span className="pill">{e.status}</span><span className="pill">{e.paymentStatus}</span>{e.paymentStatus === 'UNPAID' && t.feeAgorot > 0 && <form action={payAction}><input type="hidden" name="entry" value={e.id} /><button className="btn small">תשלום ₪{(t.feeAgorot / 100).toFixed(0)}</button></form>}</div>) : <span className="muted">אין הרשמות.</span>}</div>
+      <div className="card">{ents.length ? ents.map(({ e, c, t }) => <div key={e.id} className="row"><strong>{t.name}</strong><span className="muted">{c.name}</span><span className="pill">{e.status}</span><span className="pill">{e.paymentStatus}</span>{!isChild && e.status !== 'WITHDRAWN' && e.status !== 'REJECTED' && e.paymentStatus === 'UNPAID' && <form action={cancelEntryAction}><input type="hidden" name="entry" value={e.id} /><button className="btn small ghost" style={{ color: 'var(--bad)' }}>ביטול הרשמה</button></form>}{e.paymentStatus === 'UNPAID' && t.feeAgorot > 0 && <form action={payAction}><input type="hidden" name="entry" value={e.id} /><button className="btn small">תשלום ₪{(t.feeAgorot / 100).toFixed(0)}</button></form>}</div>) : <span className="muted">אין הרשמות.</span>}</div>
       {!isChild && (<>
       <h2 id="add-player">{ps.length ? 'הוספת שחקן או ילד נוסף' : 'הוספת שחקן'}</h2>
       {ps.length === 0 && <p className="muted" style={{ margin: '0 0 8px' }}>כדי להירשם לתחרות צריך קודם פרופיל שחקן: שלכם, או של ילד/ה שאתם מלווים. התעודה נשמרת מוצפנת.</p>}

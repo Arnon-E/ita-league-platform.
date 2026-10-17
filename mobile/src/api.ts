@@ -60,6 +60,7 @@ export const sendResult = (matchId: string, body: unknown) => call(`/matches/${m
 export const registerDevice = (pushToken: string, platform: 'ios' | 'android') => call('/devices', { method: 'POST', body: JSON.stringify({ token: pushToken, platform }) });
 
 export const openCategories = () => call<{ categoryId: string; category: string; gender: 'MALE' | 'FEMALE' | 'OPEN'; minBirthYear: number | null; maxBirthYear: number | null; tournament: string; feeAgorot: number }[]>('/entries');
+export const cancelEntry = (entryId: string) => call<{ ok: true }>(`/entries/${entryId}`, { method: 'DELETE' });
 export const enter = (categoryId: string, playerId: string) => call('/entries', { method: 'POST', body: JSON.stringify({ categoryId, playerId }) });
 export const checkout = (entryId: string) => call<{ url: string }>('/checkout', { method: 'POST', body: JSON.stringify({ entryId }) });
 
