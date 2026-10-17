@@ -3,7 +3,9 @@ import { db, schema } from '@/db';
 import { mkPlayer, mkUser, resetDb } from './helpers';
 import { addCategory, createTournament, setStatus } from '@/services/tournaments';
 import { registerEntry } from '@/services/entries';
-import { effectiveMaxBirthYear, minAgeFor } from '@/services/eligibility';
+import { effectiveMaxBirthYear, minAgeFor, relevantFor } from '@/services/eligibility';
+import { myPlayersForRelevance } from '@/services/home';
+import { GET as tournamentsRoute } from '@/app/api/v1/tournaments/route';
 import { myHome } from '@/services/home';
 
 beforeAll(resetDb);
@@ -49,5 +51,26 @@ describe('minimum age by competition section', () => {
     const h = await myHome(db, parent);
     const kidCard = h.people.find((x) => x.id === kid.id)!;
     expect(kidCard.canRegister.some((r) => r.tournamentId === masters.t.id)).toBe(false);
+
+    // hiding what can never apply: a 12-year-old does not see masters or adult-championship competitions
+    const kidP = { gender: 'MALE' as const, birthDate: kid.birthDate };
+    const open = [{ gender: 'OPEN' as const, minBirthYear: null, maxBirthYear: null }];
+    expect(relevantFor(kidP, { section: 'MASTERS', startDate: new Date('2026-12-10') }, open)).toBe(false);
+    expect(relevantFor(kidP, { section: 'ADULTS', startDate: new Date('2026-12-10') }, open)).toBe(false);
+    expect(relevantFor(kidP, { section: 'YOUTH', startDate: new Date('2026-12-10') }, open)).toBe(true);
+    expect(relevantFor(kidP, { section: 'YOUTH', startDate: new Date('2026-12-10') }, [{ gender: 'MALE', minBirthYear: 2007, maxBirthYear: null }, { gender: 'MALE', minBirthYear: 2019, maxBirthYear: null }])).toBe(true); // U19 fits
+    expect(relevantFor(kidP, { section: 'YOUTH', startDate: new Date('2026-12-10') }, [{ gender: 'FEMALE', minBirthYear: null, maxBirthYear: null }])).toBe(false);
+    expect(relevantFor({ gender: 'MALE', birthDate: adult.birthDate }, { section: 'MASTERS', startDate: new Date('2026-12-10') }, [{ gender: 'MALE', minBirthYear: 1991, maxBirthYear: null }])).toBe(true); // age bands are not birth-year ranges
+    expect(relevantFor(kidP, { section: 'MASTERS', startDate: new Date('2026-12-10') }, [])).toBe(false);
+
+    // the app's tournament list marks what is relevant for the signed-in user, and staff see everything
+    expect((await myPlayersForRelevance(db, fed)).length).toBe(0);
+    const { signSession } = await import('@/lib/auth');
+    const tok = await signSession(parent);
+    const rows = (await (await tournamentsRoute(new Request('http://x', { headers: { authorization: `Bearer ${tok}` } }))).json()) as { name: string; relevant: boolean }[];
+    expect(rows.find((x) => x.name === 'מאסטרס')?.relevant).toBe(true);   // the parent also has a 41-year-old on the account
+    const tok2 = await signSession((await mkUser('PLAYER', 'solo@t.il')).actor);
+    const solo = (await (await tournamentsRoute(new Request('http://x', { headers: { authorization: `Bearer ${tok2}` } }))).json()) as { relevant: boolean }[];
+    expect(solo.every((x) => x.relevant)).toBe(true); // no profiles: nothing is hidden
   });
 });

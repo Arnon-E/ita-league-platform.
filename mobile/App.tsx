@@ -133,13 +133,14 @@ function TournamentList({ onOpen, authed, onGoAccount }: { onOpen: (id: string) 
   const [st, setSt] = useState('up');
   const [q, setQ] = useState('');
   const [more, setMore] = useState(false);
+  const [mineOnly, setMineOnly] = useState(true);
   const isDone = (x: { status: string; endDate: string }) => x.status === 'FINISHED' || x.status === 'CANCELLED' || +new Date(x.endDate) < Date.now();
   // open registration, then running, then upcoming soonest first, then finished latest first
   const rank = (x: { status: string; endDate: string }) => (x.status === 'REGISTRATION_OPEN' ? 0 : x.status === 'IN_PROGRESS' ? 1 : isDone(x) ? 3 : 2);
   const dm = (iso: string) => new Date(iso).toLocaleDateString('he-IL', { day: 'numeric', month: 'short' });
   const shown = [...(data ?? [])]
     .sort((a, b) => rank(a) - rank(b) || (rank(a) === 3 ? +new Date(b.startDate) - +new Date(a.startDate) : +new Date(a.startDate) - +new Date(b.startDate)))
-    .filter((x) => (!q.trim() || x.name.includes(q.trim())) && (!level || x.level === level) && (!sec || x.section === sec)
+    .filter((x) => (!mineOnly || x.relevant !== false) && (!q.trim() || x.name.includes(q.trim())) && (!level || x.level === level) && (!sec || x.section === sec)
       && (st === 'all' || (st === 'up' ? !isDone(x) : st === 'open' ? x.status === 'REGISTRATION_OPEN' : st === 'live' ? x.status === 'IN_PROGRESS' : isDone(x))));
   return (
       <FlatList style={s.pad} contentContainerStyle={{ paddingBottom: 100, gap: 10 }} ListHeaderComponent={<View style={{ gap: 10 }}>
@@ -149,6 +150,7 @@ function TournamentList({ onOpen, authed, onGoAccount }: { onOpen: (id: string) 
       <TextInput style={s.input} placeholder="חיפוש לפי שם תחרות" placeholderTextColor={T.muted} value={q} onChangeText={setQ} />
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0, flexShrink: 0 }} contentContainerStyle={{ gap: 8 }}>
         {([['up', 'קרובות'], ['open', 'הרשמה פתוחה'], ['live', 'מתקיימת'], ['done', 'הסתיימה'], ['all', 'הכול']] as const).map(([k, l]) => <Pressable key={k} style={[s.chip, st === k && s.chipOn]} onPress={() => setSt(k)}><Text style={st === k ? s.chipOnT : s.b}>{l}</Text></Pressable>)}
+        {(data ?? []).some((x) => x.relevant === false) && <Pressable style={[s.chip, mineOnly && s.chipOn]} onPress={() => setMineOnly(!mineOnly)}><Text style={mineOnly ? s.chipOnT : s.b}>{mineOnly ? '✓ מתאימות לי' : 'מתאימות לי'}</Text></Pressable>}
         <Pressable style={[s.chip, (more || !!level || !!sec) && s.chipOn]} onPress={() => setMore(!more)}><Text style={(more || !!level || !!sec) ? s.chipOnT : s.b}>{level || sec ? 'סינון ·' : 'סינון'}</Text></Pressable>
       </ScrollView>
       {more && <>

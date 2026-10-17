@@ -1,7 +1,7 @@
 import { and, eq, gte, inArray, lt, sql } from 'drizzle-orm';
 import { schema, type Db } from '@/db';
 import type { Actor } from '@/lib/auth';
-import { checkDocuments } from '@/services/entries';
+import { checkDocuments, ownedPlayerIds } from '@/services/entries';
 import { childLoginName, isChildActor } from '@/services/children';
 import { playerProfile } from '@/services/public';
 import { ineligibleReason } from '@/services/eligibility';
@@ -125,4 +125,12 @@ async function myPeople(db: Db, actor: Actor) {
   }));
   const role = people.some((x) => x.relation === 'CHILD') ? (people.some((x) => x.relation === 'SELF') ? 'BOTH' : 'PARENT') : 'PLAYER';
   return { role: role as 'PLAYER' | 'PARENT' | 'BOTH', people };
+}
+
+/** The players a signed-in person plays or manages, for hiding competitions that cannot apply. Staff and admins get none, so they always see everything. */
+export async function myPlayersForRelevance(db: Db, actor: Actor | null) {
+  if (!actor || actor.role !== 'PLAYER') return [] as { gender: 'MALE' | 'FEMALE' | 'OPEN'; birthDate: Date }[];
+  const ids = await ownedPlayerIds(db, actor);
+  if (!ids.length) return [];
+  return db.select({ gender: players.gender, birthDate: players.birthDate }).from(players).where(inArray(players.id, ids));
 }

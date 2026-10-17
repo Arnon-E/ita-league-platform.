@@ -47,3 +47,23 @@ export function effectiveMaxBirthYear(c: { gender: 'MALE' | 'FEMALE' | 'OPEN'; m
   const ceiling = t.startDate.getUTCFullYear() - min;
   return c.maxBirthYear == null ? ceiling : Math.min(c.maxBirthYear, ceiling);
 }
+
+/**
+ * Is this competition relevant to a player at all, i.e. could they enter any of its categories? Used to hide competitions
+ * that can never apply (a 12-year-old and a masters tournament). The section's minimum age always counts. Birth-year limits only count for
+ * youth competitions: the federation's adult and masters categories are age bands (35+, 40+...) that the imported data cannot express as
+ * a birth-year range, so there they are ignored rather than risk hiding something that does apply.
+ */
+export function relevantFor(
+  p: { gender: 'MALE' | 'FEMALE' | 'OPEN'; birthDate: Date },
+  t: { section: string | null; startDate: Date },
+  cats: { gender: 'MALE' | 'FEMALE' | 'OPEN'; minBirthYear: number | null; maxBirthYear: number | null }[],
+): boolean {
+  const floor = minAgeFor(t.section, p.gender);
+  if (floor && ageOn(p.birthDate, t.startDate) < floor) return false;
+  if (!cats.length) return true;
+  const by = p.birthDate.getUTCFullYear();
+  const youth = t.section !== 'ADULTS' && t.section !== 'MASTERS';
+  return cats.some((c) => (c.gender === 'OPEN' || c.gender === p.gender) && (!youth || !((c.minBirthYear && by < c.minBirthYear) || (c.maxBirthYear && by > c.maxBirthYear))));
+}
+

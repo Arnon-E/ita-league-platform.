@@ -10,8 +10,9 @@ import { fmtDate, LEVEL, STATUS } from '@/components/labels';
 import { tr } from '@/lib/i18n';
 import { InfiniteCards } from '@/components/InfiniteCards';
 import { Court } from '@/components/Brand';
-import { myHome } from '@/services/home';
+import { myHome, myPlayersForRelevance } from '@/services/home';
 import { MyHome } from '@/components/MyHome';
+import { relevantFor } from '@/services/eligibility';
 
 const AGES = [10, 12, 14, 16, 18];
 const SEC: Record<string, string> = { YOUTH: 'נוער', ADULTS: 'בוגרים', MASTERS: 'מאסטרס', OTHER: 'אחר' };
@@ -20,15 +21,15 @@ const ACTION: Record<string, string> = { open: 'להרשמה', live: 'ללוח �
 const stGroup = (x: { status: string; endDate: Date }) =>
   x.status === 'REGISTRATION_OPEN' ? 'open' : x.status === 'IN_PROGRESS' ? 'live' : x.status === 'FINISHED' || x.status === 'CANCELLED' || x.endDate < new Date() ? 'done' : 'soon';
 
-export default async function Home({ searchParams }: { searchParams: Promise<{ level?: string; season?: string; q?: string; g?: string; age?: string; st?: string; sec?: string }> }) {
+export default async function Home({ searchParams }: { searchParams: Promise<{ level?: string; season?: string; q?: string; g?: string; age?: string; st?: string; sec?: string; rel?: string }> }) {
   const t = await tr();
-  const { level = '', season = '', q = '', g = '', age = '', st = '', sec = '' } = await searchParams;
+  const { level = '', season = '', q = '', g = '', age = '', st = '', sec = '', rel = '' } = await searchParams;
   const [ts, actor, counts, cats] = await Promise.all([
     listTournaments(db),
     getActor(),
     db.execute(sql`select (select count(*) from players)::int as players, (select count(*) from clubs c where exists (select 1 from players p where p.club_id = c.id) and not (c.name like '%,%' and (select count(*) from players p where p.club_id = c.id) <= 2))::int as clubs,
       (select count(*) from matches where live and status = 'SCHEDULED')::int as live`),
-    db.select({ tid: schema.categories.tournamentId, gender: schema.categories.gender, name: schema.categories.name }).from(schema.categories),
+    db.select({ tid: schema.categories.tournamentId, gender: schema.categories.gender, name: schema.categories.name, minBirthYear: schema.categories.minBirthYear, maxBirthYear: schema.categories.maxBirthYear }).from(schema.categories),
   ]);
   const catsOf = new Map<string, { gender: string; age: number | null }[]>();
   for (const c of cats) {
@@ -39,6 +40,10 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ l
   }
   // Signed-in players and parents get a personal home: their standing, next match, results and what needs doing.
   const home = actor ? await myHome(db, actor).catch(() => null) : null;
+  // a player or parent sees the competitions that can apply to them; "show all" is one tap away
+  const mine = await myPlayersForRelevance(db, actor).catch(() => []);
+  const relevantOnly = mine.length > 0 && rel !== 'all';
+  const relevantIds = new Set(ts.filter((x) => !mine.length || mine.some((p) => relevantFor(p, x, cats.filter((c) => c.tid === x.id)))).map((x) => x.id));
   const needle = q.trim().toLowerCase();
   // Default view is what a visitor can act on: open, in progress and upcoming. Searching or picking a season looks at everything.
   const mode = st || (needle || season ? 'all' : 'up');
@@ -50,6 +55,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ l
     const grp = stGroup(x);
     if (mode === 'up' ? grp === 'done' : mode !== 'all' && grp !== mode) return false;
     if (needle && !x.name.toLowerCase().includes(needle)) return false;
+    if (relevantOnly && !relevantIds.has(x.id)) return false;
     if (g || age) {
       const cs = catsOf.get(x.id) ?? [];
       if (!cs.some((c) => (!g || c.gender === g) && (!age || c.age === Number(age)))) return false;
@@ -114,6 +120,12 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ l
           <Link key={k} href={href({ st: k })} className={`pill ${mode === k ? 'lime' : ''}`}>{t(v)}{k === 'up' ? ` ${counts2.up}` : k === 'done' ? ` ${counts2.done}` : ''}</Link>
         ))}
       </div>
+      {mine.length > 0 && (
+        <p className="muted" style={{ margin: '10px 0 0' }}>
+          {relevantOnly ? `${t('מוצגות תחרויות שמתאימות לשחקנים שלך.')} ` : ''}
+          <Link href={relevantOnly ? '/?rel=all' : '/'}><u>{relevantOnly ? t('הצגת כל התחרויות') : t('רק תחרויות שמתאימות לי')}</u></Link>
+        </p>
+      )}
       <details className="filters" open={filtered}>
       <summary>{t('סינון')}{filtered ? ` · ${[level, season, needle, g, age, sec].filter(Boolean).length}` : ''}</summary>
       <form className="card row" style={{ marginTop: 8 }}>
