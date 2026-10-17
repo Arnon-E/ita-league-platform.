@@ -1,3 +1,4 @@
+import { assertNotChild } from './children';
 import { and, desc, eq, gte, ilike, inArray, lt, or, sql } from 'drizzle-orm';
 import type { Db } from '@/db';
 import { schema } from '@/db';
@@ -40,6 +41,7 @@ async function attach(db: Db, userId: string, p: PlayerRow, forChild: boolean) {
 export async function claimPlayer(db: Db, actor: Actor, input: {
   firstName: string; lastName: string; birthDate: Date; nationalId?: string; forChild?: boolean; reason?: string;
 }): Promise<PlayerRow> {
+  await assertNotChild(db, actor);
   const forChild = !!input.forChild;
   const firstName = input.firstName.trim();
   const lastName = input.lastName.trim();

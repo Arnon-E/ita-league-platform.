@@ -1,5 +1,6 @@
 'use server';
 import { cookies } from 'next/headers';
+import { setChildLogin, suggestEntry } from '@/services/children';
 import { redirect } from 'next/navigation';
 import { db } from '@/db';
 import { login, SESSION_COOKIE } from '@/lib/auth';
@@ -53,6 +54,16 @@ export async function uploadDocAction(fd: FormData) {
 export async function selfRegisterAction(fd: FormData) {
   const a = await requireActor();
   await guarded('/me', async () => { await registerEntry(db, a, s(fd, 'category'), s(fd, 'player')); return 'נרשמתם לקטגוריה'; });
+}
+
+export async function childLoginAction(fd: FormData) {
+  const a = await requireActor();
+  await guarded('/me', async () => { const r = await setChildLogin(db, a, s(fd, 'player'), s(fd, 'username'), s(fd, 'password')); return `הכניסה של הילד/ה מוכנה. שם משתמש: ${r.username}`; });
+}
+
+export async function suggestEntryAction(fd: FormData) {
+  const a = await requireActor();
+  await guarded('/me', async () => { await suggestEntry(db, a, s(fd, 'category')); return 'ההצעה נשלחה להורה'; });
 }
 
 export async function reviewDocAction(fd: FormData) {

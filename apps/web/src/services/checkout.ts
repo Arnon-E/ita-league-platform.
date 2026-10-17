@@ -1,3 +1,4 @@
+import { assertNotChild } from './children';
 import { eq } from 'drizzle-orm';
 import type { Db } from '@/db';
 import { schema } from '@/db';
@@ -7,6 +8,7 @@ import { ownedPlayerIds } from './entries';
 
 /** Hosted checkout for the tournament fee. Only the player or guardian can pay for their entry. */
 export async function startCheckout(db: Db, actor: Actor, entryId: string) {
+  await assertNotChild(db, actor);
   const key = process.env.STRIPE_SECRET_KEY;
   if (!key) throw new Error('התשלום המקוון אינו מוגדר');
   const [row] = await db.select({ e: schema.entries, t: schema.tournaments, c: schema.categories }).from(schema.entries)

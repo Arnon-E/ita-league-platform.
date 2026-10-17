@@ -5,6 +5,7 @@ import { hashPassword, validatePassword, type Actor } from '@/lib/auth';
 import { audit } from './audit';
 import { hashNationalId } from './imports';
 import { claimPlayer, isMinor } from './claims';
+import { assertNotChild } from './children';
 
 const { users, players, guardians } = schema;
 
@@ -29,6 +30,7 @@ export async function signUp(db: Db, input: { email: string; password: string; n
 export async function addPlayerProfile(db: Db, actor: Actor, input: {
   firstName: string; lastName: string; birthDate: Date; gender: 'MALE' | 'FEMALE'; clubId?: string; nationalId?: string; forChild?: boolean;
 }) {
+  await assertNotChild(db, actor);
   const idHash = input.nationalId ? hashNationalId(input.nationalId) : null;
   if (idHash) {
     const [dup] = await db.select().from(players).where(eq(players.idHash, idHash));

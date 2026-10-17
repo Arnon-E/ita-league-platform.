@@ -46,7 +46,7 @@ export type Match = { id: string; categoryId: string; stage: string; round: numb
 export const tournaments = () => call<{ id: string; name: string; status: string; level: string; section: string; startDate: string; endDate: string; registrationCloses: string | null }[]>('/tournaments');
 export type Cat = { id: string; name: string; gender: 'MALE' | 'FEMALE' | 'OPEN'; minBirthYear: number | null; maxBirthYear: number | null };
 export const tournament = (id: string) => call<{ tournament: { name: string; status: string; startDate: string; endDate: string; registrationCloses: string | null; registerUrl: string | null }; categories: Cat[]; matches: Match[] }>(`/tournaments/${id}`);
-export const me = () => call<{ players: { id: string; name: string; gender: 'MALE' | 'FEMALE'; birthYear: number; documents: { ok: boolean; missing: string[] } }[]; entries: { id: string; playerId: string; player: string; tournament: string; category: string; status: string; payment: string }[]; notifications: { id: string; title: string; body: string }[] }>('/me');
+export const me = () => call<{ isChild: boolean; players: { id: string; name: string; gender: 'MALE' | 'FEMALE'; birthYear: number; own: boolean; childLogin: string | null; documents: { ok: boolean; missing: string[] } }[]; entries: { id: string; playerId: string; player: string; tournament: string; category: string; status: string; payment: string }[]; notifications: { id: string; title: string; body: string }[] }>('/me');
 export const sendResult = (matchId: string, body: unknown) => call(`/matches/${matchId}/result`, { method: 'POST', body: JSON.stringify(body) });
 export const registerDevice = (pushToken: string, platform: 'ios' | 'android') => call('/devices', { method: 'POST', body: JSON.stringify({ token: pushToken, platform }) });
 
@@ -97,7 +97,7 @@ export const stats = () => call<{ totals: { tournaments: number; players: number
 
 export type HomeMatch = { id: string; tournament: string; category: string; status: string; opponent: string | null; start: string | null; court: string | null; won: boolean | null; sets: { a: number; b: number }[] };
 export type HomePerson = {
-  id: string; name: string; relation: 'SELF' | 'CHILD'; age: number; club: string | null; rank: number | null; points: number; wins: number; losses: number; form: boolean[];
+  id: string; name: string; relation: 'SELF' | 'CHILD'; childLogin: string | null; age: number; club: string | null; rank: number | null; points: number; wins: number; losses: number; form: boolean[];
   nextMatch: HomeMatch | null; recent: HomeMatch[]; nextTournament: { id: string; name: string; start: string; category: string; status: string; payment: string } | null;
   docsOk: boolean; missingDocs: string[]; todo: string[];
   canRegister: { tournamentId: string; tournament: string; categoryId: string; category: string; closes: string | null }[];
@@ -108,4 +108,6 @@ export type HomeWork = {
   tournaments: { id: string; name: string; status: string; start: string; end: string; waiting: number; upcoming: number }[];
   club: { id: string; name: string; players: number; upcomingEntries: number; top: { id: string; name: string; rank: number; points: number }[] } | null;
 };
-export const myHome = () => call<{ role: 'NONE' | 'PLAYER' | 'PARENT' | 'BOTH'; people: HomePerson[]; work: HomeWork | null }>('/me/home');
+export const myHome = () => call<{ role: 'NONE' | 'PLAYER' | 'PARENT' | 'BOTH'; isChild: boolean; people: HomePerson[]; work: HomeWork | null }>('/me/home');
+export const setChildLogin = (playerId: string, username: string, password: string) => call<{ username: string }>('/children/login', { method: 'POST', body: JSON.stringify({ playerId, username, password }) });
+export const suggestEntry = (categoryId: string) => call<{ ok: true }>('/entries/suggest', { method: 'POST', body: JSON.stringify({ categoryId }) });

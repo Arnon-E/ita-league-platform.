@@ -1,3 +1,4 @@
+import { assertNotChild } from './children';
 import { and, asc, eq, inArray } from 'drizzle-orm';
 import type { Db } from '@/db';
 import { schema } from '@/db';
@@ -38,6 +39,7 @@ export async function checkDocuments(db: Db, playerId: string, onDate: Date): Pr
 }
 
 export async function registerEntry(db: Db, actor: Actor, categoryId: string, playerId: string, now = new Date()) {
+  await assertNotChild(db, actor);
   const [row] = await db.select({ c: categories, t: tournaments }).from(categories).innerJoin(tournaments, eq(tournaments.id, categories.tournamentId)).where(eq(categories.id, categoryId));
   if (!row) throw new Error('Category not found');
   const { c, t } = row;

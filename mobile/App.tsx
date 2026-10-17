@@ -49,7 +49,7 @@ function Login({ onDone }: { onDone: (signedUp: boolean) => void }) {
       {mode === 'signup' && <Text style={s.muted}>יצירת חשבון אחד לשחקנים, להורים ולאוהדים. בשלב הבא תבחרו מי משחק.</Text>}
       {!!err && <Text style={s.err}>{err}</Text>}
       {mode === 'signup' && <TextInput style={s.input} placeholder="שם מלא" placeholderTextColor={T.muted} value={name} onChangeText={setName} />}
-      <TextInput style={s.input} placeholder="אימייל" placeholderTextColor={T.muted} autoCapitalize="none" keyboardType="email-address" value={email} onChangeText={setEmail} />
+      <TextInput style={s.input} placeholder={mode === 'login' ? 'אימייל או שם משתמש' : 'אימייל'} placeholderTextColor={T.muted} autoCapitalize="none" autoCorrect={false} keyboardType={mode === 'login' ? 'default' : 'email-address'} value={email} onChangeText={setEmail} />
       {mode === 'signup' && <TextInput style={s.input} placeholder="טלפון (לא חובה)" placeholderTextColor={T.muted} keyboardType="phone-pad" value={phone} onChangeText={setPhone} />}
       <TextInput style={s.input} placeholder={mode === 'signup' ? 'סיסמה (10 תווים, אותיות וספרות)' : 'סיסמה'} placeholderTextColor={T.muted} secureTextEntry value={pw} onChangeText={setPw} />
       <Pressable style={[s.btn, busy && { opacity: 0.6 }]} disabled={busy} onPress={submit}><Text style={s.btnT}>{mode === 'login' ? 'כניסה' : 'יצירת חשבון'}</Text></Pressable>
@@ -369,6 +369,7 @@ function RegisterBox({ tournamentName, categories, onGoAccount }: { tournamentNa
   const entered = (cat: string, player: string) => me.entries.some((e) => e.tournament === tournamentName && e.category === cat && e.player === player);
   const register = (cat: api.Cat, p: MePlayer) => {
     setErr(''); setMsg('');
+    if (me?.isChild) { api.suggestEntry(cat.id).then(() => setMsg(`ההצעה להירשם ל${cat.name} נשלחה להורה`)).catch((e) => setErr(e.message)); return; }
     api.enter(cat.id, p.id).then(() => { setMsg(`${p.name} נרשם/ה ל${cat.name}`); load(); }).catch((e) => setErr(e.message));
   };
   return (
@@ -384,7 +385,7 @@ function RegisterBox({ tournamentName, categories, onGoAccount }: { tournamentNa
             const done = entered(c.name, p.name);
             return (
               <Pressable key={c.id} disabled={!ok || done} style={[s.chip, { alignSelf: 'flex-start' }, (!ok || done) && { opacity: 0.55 }]} onPress={() => register(c, p)}>
-                <Text style={s.b}>{done ? `✓ רשום/ה: ${c.name}` : ok ? `הרשמה: ${c.name}` : `${c.name} (${why(c, p)})`}</Text>
+                <Text style={s.b}>{done ? `✓ רשום/ה: ${c.name}` : ok ? `${me.isChild ? 'הצעה להורה' : 'הרשמה'}: ${c.name}` : `${c.name} (${why(c, p)})`}</Text>
               </Pressable>
             );
           })}
@@ -409,20 +410,23 @@ function MyArea({ onLogout, preset }: { onLogout: () => void; preset?: 'self' | 
     const a = r.assets[0];
     try { await api.uploadDocument(playerId, type, { uri: a.uri, name: a.fileName ?? 'doc.jpg', mime: a.mimeType ?? 'image/jpeg' }); setMsg('המסמך הועלה וממתין לאישור'); load(); } catch (e) { setErr((e as Error).message); }
   };
-  const register = (cat: string, pid: string) => api.enter(cat, pid).then(() => { setMsg('נרשמתם לקטגוריה'); load(); }).catch((e) => setErr(e.message));
+  const child = !!d?.isChild;
+  const register = (cat: string, pid: string) => (child ? api.suggestEntry(cat).then(() => setMsg('ההצעה נשלחה להורה')) : api.enter(cat, pid).then(() => { setMsg('נרשמתם לקטגוריה'); load(); })).catch((e) => setErr(e.message));
   const pay = (entryId: string) => api.checkout(entryId).then((r) => Linking.openURL(r.url)).catch((e) => setErr(e.message));
   return (
     <ScrollView ref={scrollRef} contentContainerStyle={s.scroll}>
       <View style={s.row}><Text style={s.h1}>האזור שלי</Text><Pressable onPress={onLogout}><Text style={s.b}>יציאה</Text></Pressable></View>
       {!!err && <Text style={s.err}>{err}</Text>}{!!msg && <Text style={s.ok}>{msg}</Text>}
       {api.canScore() && <View style={s.card}><Text style={s.cardT}>הזנת תוצאות</Text><Text style={s.muted}>היכנסו ללשונית תחרויות, בחרו תחרות ולחצו על משחק כדי להזין תוצאה או לעדכן תוצאה חיה.</Text></View>}
-      <AddPlayer preset={preset} onAdded={(m) => { setMsg(m); load(); }} onError={setErr} />
+      {!child && <AddPlayer preset={preset} onAdded={(m) => { setMsg(m); load(); }} onError={setErr} />}
+      {child && <Text style={s.muted}>זה חשבון צפייה. אפשר לראות תחרויות, דירוגים ותוצאות, ולהציע להורה להירשם.</Text>}
       {d?.players.map((p) => (
         <View key={p.id} style={s.card}>
           <Text style={s.b}>{p.name}</Text>
           <Text>{p.documents.ok ? 'כל המסמכים תקינים' : `חסר: ${p.documents.missing.map((m) => DOCS.find((x) => x[0] === m)?.[1] ?? m).join(', ')}`}</Text>
-          {DOCS.map(([k, l]) => <Pressable key={k} style={s.link} onPress={() => upload(p.id, k)}><Text style={s.linkT}>העלאת {l}</Text></Pressable>)}
-          {open.filter((o) => fits(o, p)).map((o) => <Pressable key={o.categoryId} style={s.link} onPress={() => register(o.categoryId, p.id)}><Text style={s.linkT}>הרשמה: {o.tournament} · {o.category}</Text></Pressable>)}
+          {!child && DOCS.map(([k, l]) => <Pressable key={k} style={s.link} onPress={() => upload(p.id, k)}><Text style={s.linkT}>העלאת {l}</Text></Pressable>)}
+          {!child && !p.own && <ChildLogin player={p} onDone={(m) => { setMsg(m); load(); }} onError={setErr} />}
+          {open.filter((o) => fits(o, p)).map((o) => <Pressable key={o.categoryId} style={s.link} onPress={() => register(o.categoryId, p.id)}><Text style={s.linkT}>{child ? 'הצעה להורה' : 'הרשמה'}: {o.tournament} · {o.category}</Text></Pressable>)}
           {open.length > 0 && open.filter((o) => fits(o, p)).length === 0 && <Text style={s.muted}>אין כרגע תחרות פתוחה שמתאימה לשחקן הזה. {open.map((o) => `${o.tournament} · ${o.category} (${why(o, p)})`).join('; ')}</Text>}
         </View>
       ))}
@@ -430,12 +434,30 @@ function MyArea({ onLogout, preset }: { onLogout: () => void; preset?: 'self' | 
       {!!d && !d.entries.length && <Text style={s.muted}>אין עדיין הרשמות לתחרויות.</Text>}
       {d?.entries.map((e) => (
         <View key={e.id} style={s.card}><Text style={s.b}>{e.tournament} · {e.category}</Text><Text>{ENTRY_HE[e.status] ?? e.status} · {PAY_HE[e.payment] ?? e.payment}</Text>
-          {e.payment === 'UNPAID' && <Pressable style={s.link} onPress={() => pay(e.id)}><Text style={s.linkT}>לתשלום</Text></Pressable>}</View>
+          {e.payment === 'UNPAID' && !child && <Pressable style={s.link} onPress={() => pay(e.id)}><Text style={s.linkT}>לתשלום</Text></Pressable>}</View>
       ))}
       <Text style={s.h2}>התראות</Text>
       {!!d && !d.notifications.length && <Text style={s.muted}>אין התראות חדשות.</Text>}
       {d?.notifications.map((n) => <View key={n.id} style={s.card}><Text style={s.b}>{n.title}</Text><Text>{n.body}</Text></View>)}
     </ScrollView>
+  );
+}
+
+/** A parent creates (or resets) a child's login: a user name and a password, no email. */
+function ChildLogin({ player, onDone, onError }: { player: { id: string; childLogin: string | null }; onDone: (msg: string) => void; onError: (e: string) => void }) {
+  const [openForm, setOpenForm] = useState(false);
+  const [u, setU] = useState(player.childLogin ?? ''); const [pw, setPw] = useState('');
+  if (!openForm) return <Pressable style={s.link} onPress={() => setOpenForm(true)}><Text style={s.linkT}>{player.childLogin ? `כניסה לילד/ה: ${player.childLogin} · עדכון סיסמה` : 'יצירת כניסה לילד/ה'}</Text></Pressable>;
+  const save = () => {
+    onError('');
+    api.setChildLogin(player.id, u.trim(), pw).then((r) => { setOpenForm(false); setPw(''); onDone(`הכניסה של הילד/ה מוכנה. שם משתמש: ${r.username}`); }).catch((e) => onError(e.message));
+  };
+  return (
+    <View style={{ gap: 8 }}>
+      <TextInput style={s.input} placeholder="שם משתמש (אנגלית)" placeholderTextColor={T.muted} autoCapitalize="none" autoCorrect={false} value={u} onChangeText={setU} />
+      <TextInput style={s.input} placeholder="סיסמה (10 תווים, אותיות וספרות)" placeholderTextColor={T.muted} secureTextEntry value={pw} onChangeText={setPw} />
+      <View style={s.row}><Pressable style={[s.btn, { flex: 1 }]} onPress={save}><Text style={s.btnT}>שמירה</Text></Pressable><Pressable style={s.chip} onPress={() => setOpenForm(false)}><Text style={s.b}>ביטול</Text></Pressable></View>
+    </View>
   );
 }
 

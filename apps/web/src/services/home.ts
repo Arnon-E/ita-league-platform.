@@ -2,6 +2,7 @@ import { and, eq, gte, inArray, lt, sql } from 'drizzle-orm';
 import { schema, type Db } from '@/db';
 import type { Actor } from '@/lib/auth';
 import { checkDocuments } from '@/services/entries';
+import { childLoginName, isChildActor } from '@/services/children';
 import { playerProfile } from '@/services/public';
 import { rankingFor } from '@/services/rankings';
 import { ensureDefaultRuleSet, loadRuleSet } from '@/services/rules';
@@ -14,8 +15,8 @@ const { players, guardians, categories, tournaments, entries, matches, documents
  * and someone with both sees both. Nothing here is a new rule, it only gathers what the system already knows.
  */
 export async function myHome(db: Db, actor: Actor) {
-  const [people, work] = await Promise.all([myPeople(db, actor), workHome(db, actor)]);
-  return { ...people, work };
+  const [people, work, isChild] = await Promise.all([myPeople(db, actor), workHome(db, actor), isChildActor(db, actor)]);
+  return { ...people, work, isChild };
 }
 
 /**
@@ -108,6 +109,7 @@ async function myPeople(db: Db, actor: Actor) {
     for (const x of entered) if (x.e.paymentStatus === 'UNPAID' && x.t.feeAgorot > 0 && x.t.endDate > now) todo.push(`PAY:${x.t.name}`);
     return {
       id: p.id, name: `${p.firstName} ${p.lastName}`, relation, gender: p.gender, birthYear: by,
+      childLogin: relation === 'CHILD' ? await childLoginName(db, p.id) : null,
       age: now.getUTCFullYear() - by, club: d?.club ?? null,
       rank: row?.rank ?? null, points: row?.points ?? 0, wins: d?.wins ?? 0, losses: d?.losses ?? 0,
       form: played.slice(0, 5).map((m) => mineEntry(m.winnerEntryId)),

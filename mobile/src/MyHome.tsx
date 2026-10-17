@@ -58,7 +58,7 @@ export function MyHome({ authed, onOpen, onGoAccount }: { authed: boolean; onOpe
             <View style={m.stat}><Text style={m.statN}>{`⁦${p.wins}/${p.losses}⁩`}</Text><Text style={m.muted}>נצ׳/הפ׳</Text></View>
             {p.form.length > 0 && <View style={m.form}>{p.form.map((w, i) => <View key={i} style={[m.dot, { backgroundColor: w ? T.okbg : T.badbg }]}><Text style={{ color: w ? T.ok : T.bad, fontWeight: '800', fontSize: 12 }}>{w ? 'נ' : 'ה'}</Text></View>)}</View>}
           </View>
-          {p.todo.map((x, i) => (
+          {!h.isChild && p.todo.map((x, i) => (
             <Pressable key={i} onPress={onGoAccount} style={m.warn}><Text style={m.warnT}>{x.startsWith('DOCS:') ? `חסר: ${x.slice(5).split(',').map((d) => DOC[d] ?? d).join(', ')}` : `ממתין לתשלום: ${x.slice(4)}`}</Text></Pressable>
           ))}
           {p.nextMatch && <View style={m.sec}><Text style={m.label}>המשחק הבא</Text><Text style={m.b}>{p.nextMatch.opponent ?? 'יתברר'}</Text><Text style={m.muted}>{p.nextMatch.tournament}{p.nextMatch.start ? ` · ${when(p.nextMatch.start)}` : ''}{p.nextMatch.court ? ` · מגרש ${p.nextMatch.court}` : ''}</Text></View>}

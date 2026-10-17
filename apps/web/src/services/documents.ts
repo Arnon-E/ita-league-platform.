@@ -7,11 +7,13 @@ import { ALLOWED_MIME, MAX_BYTES, putObject, sniff } from '@/lib/storage';
 import { audit } from './audit';
 import { ownedPlayerIds } from './entries';
 import { notifyPlayer } from './notifications';
+import { assertNotChild } from './children';
 
 const { documents, players } = schema;
 type DocType = (typeof documents.$inferInsert)['type'];
 
 export async function uploadDocument(db: Db, actor: Actor, playerId: string, type: DocType, data: Uint8Array, declaredMime: string, expiresAt?: Date) {
+  await assertNotChild(db, actor);
   const mine = await ownedPlayerIds(db, actor);
   assertCan(actor, 'document.upload', { ownedPlayerIds: mine, playerId });
   if (data.byteLength === 0) throw new Error('הקובץ ריק');

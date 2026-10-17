@@ -55,7 +55,9 @@ export type LoginResult = { ok: true; actor: Actor; token: string } | { ok: fals
 
 /** Email + password login with lockout after repeated failures. */
 export async function login(db: Db, email: string, password: string, now = new Date()): Promise<LoginResult> {
-  const [u] = await db.select().from(users).where(eq(users.email, email.trim().toLowerCase()));
+  // A child signs in with just the user name their parent chose; it is stored as name@kid.ita.invalid.
+  const id = email.trim().toLowerCase();
+  const [u] = await db.select().from(users).where(eq(users.email, id.includes('@') ? id : `${id}@kid.ita.invalid`));
   if (!u) { await bcrypt.compare(password, '$2a$10$invalidinvalidinvalidinvalidinvalidinvalidinvalidinvalid.'); return { ok: false, reason: 'invalid' }; }
   if (u.lockedUntil && u.lockedUntil > now) return { ok: false, reason: 'locked' };
   if (!u.active) return { ok: false, reason: 'inactive' };

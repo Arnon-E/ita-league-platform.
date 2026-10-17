@@ -6,7 +6,8 @@ import { ownedPlayerIds, checkDocuments } from '@/services/entries';
 import { inbox } from '@/services/notifications';
 import { signedUrl } from '@/lib/storage';
 import { payAction } from '@/app/actions3';
-import { addPlayerAction, selfRegisterAction, uploadDocAction } from '@/app/actions2';
+import { addPlayerAction, childLoginAction, selfRegisterAction, suggestEntryAction, uploadDocAction } from '@/app/actions2';
+import { childLoginName, isChildActor } from '@/services/children';
 import { claimPlayerAction } from '@/app/actions9';
 
 const DOC: Record<string, string> = { ID_PHOTO: 'תמונת ת״ז', PARENT_CONSENT: 'אישור הורים', MEDICAL_CERTIFICATE: 'אישור רפואי', OTHER: 'אחר' };
@@ -15,6 +16,7 @@ const DS: Record<string, string> = { PENDING: 'ממתין לאישור', APPROVE
 export default async function Me({ searchParams }: { searchParams: Promise<{ err?: string; ok?: string; who?: string }> }) {
   const { err, ok, who } = await searchParams;
   const actor = await requireActor();
+  const isChild = await isChildActor(db, actor);
   const ids = await ownedPlayerIds(db, actor);
   const ps = ids.length ? await db.select().from(schema.players).where(inArray(schema.players.id, ids)) : [];
   const docs = ids.length ? await db.select().from(schema.documents).where(inArray(schema.documents.playerId, ids)) : [];
@@ -25,6 +27,7 @@ export default async function Me({ searchParams }: { searchParams: Promise<{ err
     .innerJoin(schema.tournaments, eq(schema.tournaments.id, schema.categories.tournamentId)).where(eq(schema.tournaments.status, 'REGISTRATION_OPEN'));
   const notes = await inbox(db, actor.id);
   const pendingClaims = await db.select().from(schema.claimRequests).where(and(eq(schema.claimRequests.userId, actor.id), eq(schema.claimRequests.status, 'PENDING')));
+  const loginNames = new Map(await Promise.all(ps.filter((p) => p.accountId !== actor.id).map(async (p) => [p.id, await childLoginName(db, p.id)] as const)));
   const checks = new Map(await Promise.all(ps.map(async (p) => [p.id, await checkDocuments(db, p.id, new Date())] as const)));
   return (
     <Shell nav="me">
@@ -50,6 +53,7 @@ export default async function Me({ searchParams }: { searchParams: Promise<{ err
           {docs.filter((d) => d.playerId === p.id).map((d) => (
             <div key={d.id} className="row"><span>{DOC[d.type]}</span><span className={`pill ${d.status === 'APPROVED' ? 'ok' : d.status === 'REJECTED' ? 'bad' : 'warn'}`}>{DS[d.status]}</span>{d.reviewNote && <span className="muted">{d.reviewNote}</span>}<a className="muted" href={signedUrl(d.storageKey)} target="_blank">צפייה</a></div>
           ))}
+          {!isChild && (
           <form action={uploadDocAction} className="row">
             <input type="hidden" name="player" value={p.id} />
             <select name="type">{Object.entries(DOC).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
@@ -57,17 +61,28 @@ export default async function Me({ searchParams }: { searchParams: Promise<{ err
             <label style={{ flexDirection: 'row', alignItems: 'center' }}>תוקף<input name="expires" type="date" /></label>
             <button className="btn small">העלאה</button>
           </form>
+          )}
           {open.length > 0 && (
-            <form action={selfRegisterAction} className="row">
+            <form action={isChild ? suggestEntryAction : selfRegisterAction} className="row">
               <input type="hidden" name="player" value={p.id} />
               <select name="category">{open.filter((o) => o.c.gender === 'OPEN' || o.c.gender === p.gender).map((o) => <option key={o.c.id} value={o.c.id}>{o.t.name} · {o.c.name}</option>)}</select>
-              <button className="btn small ghost">הרשמה לתחרות</button>
+              <button className="btn small ghost">{isChild ? 'הצעה להורה להירשם' : 'הרשמה לתחרות'}</button>
+            </form>
+          )}
+          {!isChild && p.accountId !== actor.id && (
+            <form action={childLoginAction} className="row" style={{ borderTop: '1px solid var(--line)', paddingTop: 10 }}>
+              <input type="hidden" name="player" value={p.id} />
+              <strong>{loginNames.get(p.id) ? `כניסה לילד/ה: ${loginNames.get(p.id)}` : 'כניסה לילד/ה'}</strong>
+              <label>שם משתמש<input name="username" defaultValue={loginNames.get(p.id) ?? ''} required pattern="[A-Za-z0-9._]{3,20}" autoCapitalize="none" /></label>
+              <label>סיסמה<input name="password" type="password" required minLength={10} autoComplete="new-password" /></label>
+              <button className="btn small ghost">{loginNames.get(p.id) ? 'עדכון סיסמה' : 'יצירת כניסה'}</button>
             </form>
           )}
         </section>
       ))}
       <h2>הרשמות שלי</h2>
       <div className="card">{ents.length ? ents.map(({ e, c, t }) => <div key={e.id} className="row"><strong>{t.name}</strong><span className="muted">{c.name}</span><span className="pill">{e.status}</span><span className="pill">{e.paymentStatus}</span>{e.paymentStatus === 'UNPAID' && t.feeAgorot > 0 && <form action={payAction}><input type="hidden" name="entry" value={e.id} /><button className="btn small">תשלום ₪{(t.feeAgorot / 100).toFixed(0)}</button></form>}</div>) : <span className="muted">אין הרשמות.</span>}</div>
+      {!isChild && (<>
       <h2 id="add-player">{ps.length ? 'הוספת שחקן או ילד נוסף' : 'הוספת שחקן'}</h2>
       {ps.length === 0 && <p className="muted" style={{ margin: '0 0 8px' }}>כדי להירשם לתחרות צריך קודם פרופיל שחקן: שלכם, או של ילד/ה שאתם מלווים. התעודה נשמרת מוצפנת.</p>}
       <form action={addPlayerAction} className="card row">
@@ -89,6 +104,7 @@ export default async function Me({ searchParams }: { searchParams: Promise<{ err
         <label style={{ flexDirection: 'row', alignItems: 'center' }}><input type="checkbox" name="child" value="1" style={{ minHeight: 0 }} /> זה ילד/ה שלי</label>
         <button className="btn">שיוך שחקן קיים</button>
       </form>
+      </>)}
       <h2>התראות</h2>
       <div className="card grid">{notes.length ? notes.slice().reverse().slice(0, 20).map((n) => <div key={n.id}><strong>{n.title}</strong> <span className="muted">{n.body}</span></div>) : <span className="muted">אין התראות.</span>}</div>
     </Shell>

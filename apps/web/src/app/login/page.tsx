@@ -28,7 +28,7 @@ export default async function Login({ searchParams }: { searchParams: Promise<{ 
       {err && <div className="err" role="alert">{t(MSG[err] ?? 'שגיאה')}</div>}
       <form action={doLogin} className="card grid">
         <input type="hidden" name="next" value={next} />
-        <label>{t('אימייל')}<input name="email" type="email" required autoComplete="username" /></label>
+        <label>{t('אימייל או שם משתמש')}<input name="email" required autoComplete="username" autoCapitalize="none" /></label>
         <label>{t('סיסמה')}<input name="password" type="password" required autoComplete="current-password" /></label>
         <button className="btn">{t('כניסה')}</button>
         <a className="muted" href="/forgot">{t('שכחתי סיסמה')}</a>

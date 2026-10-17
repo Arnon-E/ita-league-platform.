@@ -22,6 +22,7 @@ export function MyHome({ home, t }: { home: Home; t: (s: string) => string }) {
               <div style={{ minWidth: 0 }}>
                 <Link href={`/players/${p.id}`}><strong style={{ fontSize: 18 }}>{p.name}</strong></Link>
                 <div className="muted">{p.relation === 'CHILD' ? `${t('ילד/ה')} · ` : ''}{t('גיל')} {p.age}{p.club ? ` · ${p.club}` : ''}</div>
+                {p.relation === 'CHILD' && <Link href="/me" className="muted"><u>{p.childLogin ? `${t('כניסה לילד/ה')}: ${p.childLogin}` : t('יצירת כניסה לילד/ה')}</u></Link>}
               </div>
             </div>
             <div className="mh-stats">
@@ -30,7 +31,7 @@ export function MyHome({ home, t }: { home: Home; t: (s: string) => string }) {
               <span><b dir="ltr">{p.wins}/{p.losses}</b><small>{t('נצ׳/הפ׳')}</small></span>
               {p.form.length > 0 && <span className="pform" aria-label={t('משחקים אחרונים')}>{p.form.map((w, i) => <i key={i} className={w ? 'w' : 'l'}>{w ? 'נ' : 'ה'}</i>)}</span>}
             </div>
-            {p.todo.length > 0 && (
+            {!home.isChild && p.todo.length > 0 && (
               <div className="mh-todo">
                 {p.todo.map((x, i) => x.startsWith('DOCS:')
                   ? <Link key={i} href="/me" className="pill warn">{t('חסר')}: {x.slice(5).split(',').map((m) => DOC[m] ?? m).join(', ')}</Link>
@@ -60,7 +61,7 @@ export function MyHome({ home, t }: { home: Home; t: (s: string) => string }) {
               </div>
             )}
             {p.canRegister.length > 0 && (
-              <div className="mh-row"><small className="muted">{t('אפשר להירשם')}</small>
+              <div className="mh-row"><small className="muted">{t(home.isChild ? 'אפשר להציע להורה' : 'אפשר להירשם')}</small>
                 {p.canRegister.slice(0, 3).map((r) => <Link key={r.categoryId} href={`/tournaments/${r.tournamentId}`} className="pill lime">{r.tournament} · {r.category}</Link>)}
               </div>
             )}
