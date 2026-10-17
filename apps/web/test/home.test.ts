@@ -52,3 +52,28 @@ describe('personal home', () => {
     expect(c.work?.club?.players).toBe(1);
   });
 });
+
+describe('next match', () => {
+  it('ignores matches left scheduled in competitions that are long over, and shows a real upcoming one', async () => {
+    const { mkPlayer: mkP } = await import('./helpers');
+    const { actor } = await mkUser('PLAYER', 'nextmatch@t.il');
+    const me = await mkP('שחקן', { accountId: actor.id });
+    const { ensureDefaultRuleSet } = await import('@/services/rules');
+    const rule = await ensureDefaultRuleSet(db);
+    const mkT = async (name: string, status: 'FINISHED' | 'IN_PROGRESS', start: string, end: string) => (await db.insert(schema.tournaments).values({ name, startDate: new Date(start), endDate: new Date(end), status, feeAgorot: 0, ruleSetId: rule.id }).returning())[0]!;
+    const setup = async (t: Awaited<ReturnType<typeof mkT>>, startAt: Date | null) => {
+      const c = (await db.insert(schema.categories).values({ tournamentId: t.id, name: 'בנים 12', gender: 'MALE', format: 'KNOCKOUT' }).returning())[0]!;
+      const a = (await db.insert(schema.entries).values({ categoryId: c.id, playerId: me.id, status: 'CONFIRMED' }).returning())[0]!;
+      const o = await mkP('יריב');
+      const b = (await db.insert(schema.entries).values({ categoryId: c.id, playerId: o.id, status: 'CONFIRMED' }).returning())[0]!;
+      await db.insert(schema.matches).values({ categoryId: c.id, stage: 'KO', round: 1, index: 0, aEntryId: a.id, bEntryId: b.id, status: 'SCHEDULED', sets: [], scheduledStart: startAt } as never);
+    };
+    await setup(await mkT('ישנה', 'FINISHED', '2026-02-26', '2026-02-28'), new Date('2026-02-28T08:00:00Z')); // stale
+    const stale = await myHome(db, actor);
+    expect(stale.people[0]?.nextMatch).toBeNull();
+    const soon = new Date(Date.now() + 3 * 864e5);
+    await setup(await mkT('קרובה', 'IN_PROGRESS', new Date(Date.now() - 864e5).toISOString().slice(0, 10), new Date(Date.now() + 9 * 864e5).toISOString().slice(0, 10)), soon);
+    const fresh = await myHome(db, actor);
+    expect(fresh.people[0]?.nextMatch?.tournament).toBe('קרובה');
+  });
+});

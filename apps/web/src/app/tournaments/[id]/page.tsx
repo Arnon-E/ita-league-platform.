@@ -67,7 +67,7 @@ export default async function TournamentPage({ params, searchParams }: { params:
         <div style={{ minWidth: 0 }}><span className={`pill ${cls}`}>{tt(st)}</span><h1 style={{ marginTop: 6 }}>{t.name}</h1><span className="muted">{fmtDate(t.startDate)} – {fmtDate(t.endDate)}</span></div>
         <FollowButton kind="TOURNAMENT" target={t.id} back={`/tournaments/${t.id}`} />
       </div>
-      {focus && <MyPlayerCard d={d} focus={focus} mine={mine} showAll={useFocus} />}
+      {focus && focus.entries.length > 0 && <MyPlayerCard d={d} focus={focus} mine={mine} showAll={useFocus} />}
       <nav className="tabs">{tabs.map(([k, l]) => <Link key={k} href={`/tournaments/${id}?tab=${k}${sp.for ? `&for=${sp.for}` : ''}${explicitFilter ? '' : ''}`} className={tab === k ? 'on' : ''}>{tt(l)}</Link>)}</nav>
       <Flash err={err} ok={ok} />
       {manage && !rulesVerified && <div className="err" style={{ background: 'var(--warnbg)', color: 'var(--warn)' }}>ערכת החוקים של התחרות טרם אומתה מול תקנוני האיגוד. ההגרלה והנקודות עשויות לא להתאים לתקנון.</div>}
@@ -111,7 +111,9 @@ async function MyPlayerCard({ d, focus, mine, showAll }: { d: Detail; focus: Non
   const { p, entries } = focus;
   const myEntryIds = new Set(entries.map((x) => x.e.id));
   const mineMs = d.ms.filter((m) => (m.aEntryId && myEntryIds.has(m.aEntryId)) || (m.bEntryId && myEntryIds.has(m.bEntryId)));
-  const next = mineMs.filter((m) => m.status === 'SCHEDULED' && m.aEntryId && m.bEntryId).sort((a, b) => (a.scheduledStart?.getTime() ?? Infinity) - (b.scheduledStart?.getTime() ?? Infinity))[0];
+  const nowMs = Date.now();
+  const live = d.t.status !== 'FINISHED' && d.t.status !== 'CANCELLED';
+  const next = mineMs.filter((m) => live && m.status === 'SCHEDULED' && m.aEntryId && m.bEntryId && (!m.scheduledStart || m.scheduledStart.getTime() >= nowMs - 864e5)).sort((a, b) => (a.scheduledStart?.getTime() ?? Infinity) - (b.scheduledStart?.getTime() ?? Infinity))[0];
   const played = mineMs.filter((m) => m.status !== 'SCHEDULED' && m.status !== 'VOID' && m.winnerEntryId)
     .sort((a, b) => (b.scheduledStart?.getTime() ?? 0) - (a.scheduledStart?.getTime() ?? 0)).slice(0, 3);
   const opp = (m: (typeof d.ms)[number]) => d.names.get((m.aEntryId && myEntryIds.has(m.aEntryId) ? m.bEntryId : m.aEntryId) ?? '') ?? '';

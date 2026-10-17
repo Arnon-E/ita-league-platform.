@@ -258,6 +258,32 @@ function Players() {
   );
 }
 
+/** Where my player stands in this competition: category, next match and latest results; the registration details fold away. */
+function MyPlayerBlock({ d, me, parts, people, onSwitch, showInfo, onToggleInfo }: { d: NonNullable<Awaited<ReturnType<typeof api.tournament>>>; me: api.HomePerson; parts: api.Participant[]; people: api.HomePerson[]; onSwitch: (id: string) => void; showInfo: boolean; onToggleInfo: () => void }) {
+  const catNames = [...new Set(parts.map((x) => d.categories.find((c) => c.id === x.categoryId)?.name).filter(Boolean))].join(' · ');
+  const mineMs = d.matches.filter((m) => parts.some((x) => x.categoryId === m.categoryId) && ((m.a.name ?? '').includes(me.name) || (m.b.name ?? '').includes(me.name)));
+  const iAmA = (m: api.Match) => (m.a.name ?? '').includes(me.name);
+  const live = d.tournament.status !== 'FINISHED' && d.tournament.status !== 'CANCELLED';
+  const next = mineMs.filter((m) => live && m.status === 'SCHEDULED' && m.a.id && m.b.id && (!m.start || +new Date(m.start) >= Date.now() - 864e5)).sort((x, y) => +new Date(x.start ?? '9999') - +new Date(y.start ?? '9999'))[0];
+  const played = mineMs.filter((m) => m.status !== 'SCHEDULED' && m.status !== 'VOID' && m.winnerEntryId).sort((x, y) => +new Date(y.start ?? 0) - +new Date(x.start ?? 0)).slice(0, 3);
+  const showScore = (m: api.Match) => `\u2066${(m.sets ?? []).map((z) => (iAmA(m) ? `${z.a}-${z.b}` : `${z.b}-${z.a}`)).join('  ')}\u2069`;
+  return (
+    <View style={s.card}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+        <Avatar uri={parts[0]?.photo ?? null} name={me.name} />
+        <View style={{ flex: 1 }}><Text style={s.cardT}>{me.name}</Text><Text style={s.muted}>{`רשום: ${catNames}`}</Text></View>
+      </View>
+      {people.length > 1 && <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0, flexShrink: 0 }} contentContainerStyle={{ gap: 8 }}>{people.map((x) => <Pressable key={x.id} style={[s.chip, x.id === me.id && s.chipOn]} onPress={() => onSwitch(x.id)}><Text style={x.id === me.id ? s.chipOnT : s.b}>{x.name.split(' ')[0]}</Text></Pressable>)}</ScrollView>}
+      {next && <Text style={s.muted}><Text style={s.b}>המשחק הבא: </Text>{`${(iAmA(next) ? next.b.name : next.a.name) ?? 'יתברר'}${next.start ? ` · ${new Date(next.start).toLocaleString('he-IL', { weekday: 'short', day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' })}` : ''}${next.court ? ` · מגרש ${next.court}` : ''}`}</Text>}
+      {played.map((m) => {
+        const won = !!m.winnerEntryId && m.winnerEntryId === (iAmA(m) ? m.a.id : m.b.id);
+        return <View key={m.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}><View style={{ paddingHorizontal: 10, paddingVertical: 3, borderRadius: 999, backgroundColor: won ? T.okbg : T.badbg }}><Text style={{ color: won ? T.ok : T.bad, fontWeight: '700', fontSize: 12.5 }}>{won ? 'ניצחון' : 'הפסד'}</Text></View><Text style={[s.b, { flex: 1 }]} numberOfLines={1}>{(iAmA(m) ? m.b.name : m.a.name) ?? ''}</Text><Text style={s.muted}>{showScore(m)}</Text></View>;
+      })}
+      <Pressable style={s.link} onPress={onToggleInfo}><Text style={s.linkT}>{showInfo ? '▲ הסתרת פרטי הרשמה' : '▼ פרטי התחרות והרשמה'}</Text></Pressable>
+    </View>
+  );
+}
+
 /** A player's Loglig photo, or their initial when there is none or the file is missing. */
 function Avatar({ uri, name }: { uri: string | null; name: string }) {
   const [bad, setBad] = useState(false);
@@ -275,17 +301,25 @@ function Tournament({ id, onBack, onGoAccount }: { id: string; onBack: () => voi
   useEffect(() => { load(); }, [id]);
   // a signed-in player or parent lands on their own category: gender, age group and category are chosen for them (they can change it)
   const [auto, setAuto] = useState(false);
+  const [people, setPeople] = useState<api.HomePerson[]>([]); const [meId, setMeId] = useState(''); const [showInfo, setShowInfo] = useState(false);
+  // choose gender, age group and category for one of my players: the one they are entered in, else the youngest age group that fits
+  const applyFor = (p: api.HomePerson) => {
+    if (!d) return;
+    setMeId(p.id);
+    const ageOf = (n: string) => Number((n.match(/(\d{2})/) ?? [])[1] ?? 0);
+    const entered = (d.participants ?? []).find((q) => q.id === p.id);
+    const fit = (entered ? d.categories.find((k) => k.id === entered.categoryId) : undefined)
+      ?? d.categories.filter((k) => (k.gender === 'OPEN' || k.gender === p.gender) && ageOf(k.name) >= p.age).sort((a, b) => ageOf(a.name) - ageOf(b.name))[0];
+    if (!fit || (fit.gender !== 'MALE' && fit.gender !== 'FEMALE')) { setFg(''); setFage(''); setFcat(''); return; }
+    setFg(fit.gender); setFage(ageOf(fit.name) ? String(ageOf(fit.name)) : ''); setFcat(fit.id);
+  };
   useEffect(() => {
     if (!d || auto || !api.isAuthed()) return;
     setAuto(true);
     api.myHome().then((h) => {
-      const p = h.people.find((x) => x.nextTournament?.id === id) ?? h.people[0];
-      if (!p) return;
-      const ageOf = (n: string) => Number((n.match(/(\d{2})/) ?? [])[1] ?? 0);
-      const mine = p.nextTournament?.id === id ? d.categories.find((k) => k.name === p.nextTournament!.category) : undefined;
-      const fit = mine ?? d.categories.filter((k) => (k.gender === 'OPEN' || k.gender === p.gender) && ageOf(k.name) >= p.age).sort((a, b) => ageOf(a.name) - ageOf(b.name))[0];
-      if (!fit || (fit.gender !== 'MALE' && fit.gender !== 'FEMALE')) return;
-      setFg(fit.gender); setFage(ageOf(fit.name) ? String(ageOf(fit.name)) : ''); setFcat(fit.id);
+      setPeople(h.people);
+      const p = h.people.find((x) => (d.participants ?? []).some((q) => q.id === x.id)) ?? h.people[0];
+      if (p) applyFor(p);
     }).catch(() => {});
   }, [d, id]);
   useEffect(() => {
@@ -307,14 +341,20 @@ function Tournament({ id, onBack, onGoAccount }: { id: string; onBack: () => voi
         <FlatList horizontal data={photos} keyExtractor={(p) => p.id} style={{ flexGrow: 0, flexShrink: 0 }} showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}
           renderItem={({ item }) => <View><Image source={{ uri: api.photoUrl(item.id) }} style={s.photo} />{!!item.caption && <Text style={s.muted}>{item.caption}</Text>}</View>} />
       )}
-      {d && d.tournament.status === 'REGISTRATION_OPEN' && (d.tournament.registerUrl
+      {(() => {
+        const me = people.find((x) => x.id === meId);
+        const myParts = me ? (d?.participants ?? []).filter((x) => x.id === me.id) : [];
+        if (!d || !me || !myParts.length) return null;
+        return <MyPlayerBlock d={d} me={me} parts={myParts} people={people} onSwitch={(pid) => { const q = people.find((x) => x.id === pid); if (q) applyFor(q); }} showInfo={showInfo} onToggleInfo={() => setShowInfo(!showInfo)} />;
+      })()}
+      {d && d.tournament.status === 'REGISTRATION_OPEN' && (!people.find((x) => x.id === meId) || !(d.participants ?? []).some((x) => x.id === meId) || showInfo) && (d.tournament.registerUrl
         ? <View style={s.card}>
             <Text style={s.cardT}>הרשמה לתחרות</Text>
             <Text style={s.muted}>{`ההרשמה מתבצעת באתר Loglig ונפתחת בדפדפן.${d.tournament.registrationCloses ? ` נסגרת ב-${new Date(d.tournament.registrationCloses).toLocaleDateString('he-IL')}.` : ''}`}</Text>
             <Pressable style={s.btn} onPress={() => Linking.openURL(d.tournament.registerUrl!)}><Text style={s.btnT}>להרשמה</Text></Pressable>
           </View>
         : <RegisterBox tournamentName={d.tournament.name} categories={d.categories} onGoAccount={onGoAccount} />)}
-      {d && !d.matches.length && <Text style={s.muted}>לוח המשחקים והתוצאות יופיעו כאן אחרי ההגרלה.</Text>}
+      {d && !d.matches.length && !(d.participants ?? []).some((x) => x.id === meId) && <Text style={s.muted}>לוח המשחקים והתוצאות יופיעו כאן אחרי ההגרלה.</Text>}
       {(d?.categories.length ?? 0) > 1 && (() => {
         const cats = d!.categories;
         const ageOf = (n: string) => (n.match(/(\d{2})/) ?? [])[1] ?? '';

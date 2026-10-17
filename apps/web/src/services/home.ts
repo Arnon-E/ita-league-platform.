@@ -100,7 +100,12 @@ async function myPeople(db: Db, actor: Actor) {
     };
     const played = (d?.matches ?? []).filter((m) => m.status !== 'SCHEDULED' && m.status !== 'VOID' && m.winnerEntryId)
       .sort((a, b) => (b.scheduledStart?.getTime() ?? 0) - (a.scheduledStart?.getTime() ?? 0));
-    const upcoming = (d?.matches ?? []).filter((m) => m.status === 'SCHEDULED' && m.aEntryId && m.bEntryId)
+    // "next" means still ahead: a match left SCHEDULED in a competition that is long over (or a date far in the past) is stale data, not a next match
+    const upcoming = (d?.matches ?? []).filter((m) => {
+      const tn = catOf.get(m.categoryId)?.t;
+      return m.status === 'SCHEDULED' && m.aEntryId && m.bEntryId && !!tn && tn.status !== 'FINISHED' && tn.status !== 'CANCELLED' && tn.endDate >= new Date(now.getTime() - 864e5)
+        && (!m.scheduledStart || m.scheduledStart.getTime() >= now.getTime() - 864e5);
+    })
       .sort((a, b) => (a.scheduledStart?.getTime() ?? Infinity) - (b.scheduledStart?.getTime() ?? Infinity));
     const docs = await checkDocuments(db, p.id, now);
     const entered = ownEntries.filter((x) => x.e.playerId === p.id && x.e.status !== 'WITHDRAWN' && x.e.status !== 'REJECTED');
