@@ -9,8 +9,11 @@
     "ios": "expo start --ios"
   },
   "dependencies": {
+    "@expo-google-fonts/heebo": "^0.4.2",
+    "@expo-google-fonts/rubik": "^0.4.2",
     "expo": "~52.0.0",
     "expo-constants": "~17.0.0",
+    "expo-font": "~13.0.4",
     "expo-image-picker": "~16.0.0",
     "expo-notifications": "~0.29.0",
     "expo-secure-store": "~14.0.0",

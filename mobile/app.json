@@ -1,5 +1,24 @@
-{ "expo": { "name": "ITA", "slug": "ita-league", "version": "0.1.0", "orientation": "default", "userInterfaceStyle": "automatic",
-  "ios": { "supportsTablet": true, "bundleIdentifier": "il.org.tennis.league" },
-  "android": { "package": "il.org.tennis.league" },
-  "plugins": ["expo-secure-store", "expo-notifications"],
-  "extra": { "apiUrl": "https://ita-league-platform-jpgi.vercel.app" } } }
+{
+  "expo": {
+    "name": "ITA",
+    "slug": "ita-league",
+    "version": "0.1.0",
+    "orientation": "default",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "il.org.tennis.league"
+    },
+    "android": {
+      "package": "il.org.tennis.league"
+    },
+    "plugins": [
+      "expo-secure-store",
+      "expo-notifications",
+      "expo-font"
+    ],
+    "extra": {
+      "apiUrl": "https://ita-league-platform-jpgi.vercel.app"
+    }
+  }
+}

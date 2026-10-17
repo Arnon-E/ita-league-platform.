@@ -1,4 +1,6 @@
 import { Appearance } from 'react-native';
+import { Heebo_400Regular, Heebo_500Medium, Heebo_600SemiBold, Heebo_700Bold, Heebo_800ExtraBold } from '@expo-google-fonts/heebo';
+import { Rubik_400Regular, Rubik_500Medium, Rubik_600SemiBold, Rubik_700Bold, Rubik_800ExtraBold } from '@expo-google-fonts/rubik';
 import Svg, { Circle, Path } from 'react-native-svg';
 
 /** "Volt Night" palette, mirrored from apps/web globals.css (light + dark). Picked once at launch from the phone's theme. */
@@ -17,6 +19,8 @@ const dark: typeof light = {
   okbg: '#0E3220', ok: '#5BD58F', warnbg: '#3A2A0F', warn: '#F5B452', badbg: '#3B1713', bad: '#FF8A7E',
   glass: 'rgba(23,30,27,0.97)', glassLine: 'rgba(255,255,255,0.09)', dark: true,
 };
+
+export const FONTS = { Heebo_400Regular, Heebo_500Medium, Heebo_600SemiBold, Heebo_700Bold, Heebo_800ExtraBold, Rubik_400Regular, Rubik_500Medium, Rubik_600SemiBold, Rubik_700Bold, Rubik_800ExtraBold };
 
 export const T = Appearance.getColorScheme() === 'dark' ? dark : light;
 
@@ -65,11 +69,20 @@ export function CourtLines() {
   );
 }
 
-// Plain <Text> elements (no style colour) should follow the theme, otherwise they stay black on the dark ground.
-import { Text, TextInput } from 'react-native';
+// Plain <Text> elements (no style colour) should follow the theme, otherwise they stay black on the dark ground. They also get the
+// website's fonts: Heebo for text, Rubik from 20px up (the site's display font stack ends in Rubik for Hebrew), picked by weight
+// because Android ignores fontWeight for custom fonts.
+import { StyleSheet, Text, TextInput } from 'react-native';
 import { cloneElement } from 'react';
-const patch = (C: any) => {
+const weightName = (w: number) => (w >= 800 ? '800ExtraBold' : w >= 700 ? '700Bold' : w >= 600 ? '600SemiBold' : w >= 500 ? '500Medium' : '400Regular');
+const patch = (C: any, input = false) => {
   const orig = C.render;
-  C.render = function (...a: any[]) { const el = orig.apply(this, a); return cloneElement(el, { style: [{ color: T.text }, el.props.style] }); };
+  C.render = function (...a: any[]) {
+    const el = orig.apply(this, a);
+    const flat = (StyleSheet.flatten(el.props.style) ?? {}) as { fontWeight?: string | number; fontSize?: number; fontFamily?: string };
+    const w = flat.fontWeight === 'bold' ? 700 : Number(flat.fontWeight) || 400;
+    const family = flat.fontFamily ?? `${!input && (flat.fontSize ?? 14) >= 20 ? 'Rubik' : 'Heebo'}_${weightName(w)}`;
+    return cloneElement(el, { style: [{ color: T.text }, el.props.style, { fontFamily: family, fontWeight: 'normal' }] });
+  };
 };
-patch(Text); patch(TextInput);
+patch(Text); patch(TextInput, true);

@@ -8,7 +8,8 @@ import { Platform } from 'react-native';
 import * as api from './src/api';
 import { More } from './src/More';
 import { MyHome } from './src/MyHome';
-import { T, Icon, BallMark, CourtLines } from './src/theme';
+import { useFonts } from 'expo-font';
+import { T, Icon, BallMark, CourtLines, FONTS } from './src/theme';
 
 async function registerPush() {
   try {
@@ -29,10 +30,13 @@ const TABS: [Tab, string, 'home' | 'live' | 'rank' | 'players' | 'more' | 'me'][
 
 export default function App() {
   const [ready, setReady] = useState(false);
+  const [fontsReady] = useFonts(FONTS);
   const [authed, setAuthed] = useState(false);
   useEffect(() => { api.loadToken().then((t) => { setAuthed(!!t); setReady(true); }); }, []);
-  if (!ready) return <ActivityIndicator color={T.blue} style={{ flex: 1, backgroundColor: T.bg }} />;
-  return <SafeAreaView style={s.screen}><StatusBar barStyle={T.dark ? 'light-content' : 'dark-content'} backgroundColor={T.bg} /><Home authed={authed} setAuthed={setAuthed} /></SafeAreaView>;
+  if (!ready || !fontsReady) return <ActivityIndicator color={T.blue} style={{ flex: 1, backgroundColor: T.bg }} />;
+  // Hebrew reads right to left. Where the OS did not switch the app to RTL (Expo Go cannot), the whole tree is laid out RTL here;
+  // in a real build forceRTL does it and this stays off, so nothing is flipped twice.
+  return <SafeAreaView style={[s.screen, !I18nManager.isRTL && ({ direction: 'rtl' } as object)]}><StatusBar barStyle={T.dark ? 'light-content' : 'dark-content'} backgroundColor={T.bg} /><Home authed={authed} setAuthed={setAuthed} /></SafeAreaView>;
 }
 
 function Login({ onDone }: { onDone: (signedUp: boolean) => void }) {
@@ -88,16 +92,15 @@ function Home({ authed, setAuthed }: { authed: boolean; setAuthed: (v: boolean) 
   useEffect(() => { api.setAuthLostHandler(() => setAuthed(false)); return () => api.setAuthLostHandler(null); }, [setAuthed]);
   return (
     <View style={{ flex: 1 }}>
-      {authed && !!api.currentUserName() && (
-        <Pressable style={s.who} onPress={() => { setOpen(null); setWho(null); setTab('me'); }} accessibilityLabel="פרטים אישיים">
-          <View style={s.whoAv}><Text style={s.whoAvT}>{api.currentUserName()!.trim().charAt(0).toUpperCase()}</Text></View>
-          <View style={{ flex: 1 }}><Text style={s.b} numberOfLines={1}>{api.currentUserName()}</Text><Text style={s.muted}>פרטים אישיים והמעקב שלי</Text></View>
-          <Icon name="back" size={18} color={T.muted} />
-        </Pressable>
-      )}
+      <View style={s.topbar}>
+        <Pressable style={s.brandRow} onPress={() => { setOpen(null); setWho(null); setTab('t'); }} accessibilityLabel="ITA"><BallMark size={30} /><Text style={s.brand}>ITA</Text></Pressable>
+        {authed && !!api.currentUserName()
+          ? <Pressable style={s.topAv} onPress={() => { setOpen(null); setWho(null); setTab('me'); }} accessibilityLabel="פרטים אישיים"><Text style={s.topAvT}>{api.currentUserName()!.trim().charAt(0).toUpperCase()}</Text></Pressable>
+          : <Pressable style={s.topLogin} onPress={() => { setOpen(null); setWho(null); setTab('me'); }}><Text style={s.topLoginT}>כניסה</Text></Pressable>}
+      </View>
       <View style={{ flex: 1 }}>
         {open ? <Tournament id={open} onBack={() => setOpen(null)} onGoAccount={() => { setOpen(null); setTab('me'); }} />
-          : tab === 't' ? <TournamentList onOpen={setOpen} authed={authed} onGoAccount={() => setTab('me')} />
+          : tab === 't' ? <TournamentList onOpen={setOpen} authed={authed} onGoAccount={() => setTab('me')} onTab={(k) => setTab(k)} />
           : tab === 'live' ? <Live />
           : tab === 'rank' ? <Rankings />
           : tab === 'players' ? <Players />
@@ -126,7 +129,49 @@ function Status({ err, busy, empty }: { err: string; busy: boolean; empty?: stri
 
 const STATUS_HE: Record<string, string> = { DRAFT: 'טיוטה', REGISTRATION_OPEN: 'הרשמה פתוחה', REGISTRATION_CLOSED: 'הרשמה סגורה', DRAWN: 'הוגרלה', IN_PROGRESS: 'מתקיימת', FINISHED: 'הסתיימה', CANCELLED: 'בוטלה' };
 
-function TournamentList({ onOpen, authed, onGoAccount }: { onOpen: (id: string) => void; authed: boolean; onGoAccount: () => void }) {
+/** The registration that closes next, as on the website's home: name, dates, a countdown and the button. Only competitions that can apply to the user. */
+function Featured({ data, onOpen }: { data: { id: string; name: string; status: string; level: string; startDate: string; endDate: string; registrationCloses: string | null; relevant?: boolean }[] | null; onOpen: (id: string) => void }) {
+  const next = [...(data ?? [])].filter((x) => x.status === 'REGISTRATION_OPEN' && x.relevant !== false).sort((a, b) => +new Date(a.registrationCloses ?? a.startDate) - +new Date(b.registrationCloses ?? b.startDate))[0];
+  if (!next) return null;
+  const left = Math.max(0, +new Date(next.registrationCloses ?? next.startDate) - Date.now());
+  const dm = (iso: string) => new Date(iso).toLocaleDateString('he-IL', { day: 'numeric', month: 'short' });
+  return (
+    <View style={s.feat}>
+      <View style={s.featHead}><View style={s.featDot} /><Text style={s.featSmall}>ההרשמה פתוחה</Text></View>
+      <Text style={s.featT}>{next.name}</Text>
+      <Text style={s.featMeta}>{`${dm(next.startDate)} – ${dm(next.endDate)}`}</Text>
+      <View style={s.featCount}>
+        <View style={s.featBox}><Text style={s.featN}>{Math.floor(left / 86400000)}</Text><Text style={s.featL}>ימים</Text></View>
+        <View style={s.featBox}><Text style={s.featN}>{Math.floor((left % 86400000) / 3600000)}</Text><Text style={s.featL}>שעות</Text></View>
+      </View>
+      <Pressable style={s.featBtn} onPress={() => onOpen(next.id)}><Text style={s.featBtnT}>להרשמה</Text></Pressable>
+    </View>
+  );
+}
+
+/** The website's four quick tiles: open registrations, matches, ranking and clubs. */
+function Tiles({ data, onTab, onOpenStatus }: { data: { status: string; relevant?: boolean }[] | null; onTab: (t: Tab) => void; onOpenStatus: () => void }) {
+  const stats = useLoad(api.stats); const feed = useLoad(api.live); const clubs = useLoad(api.clubs);
+  const open = (data ?? []).filter((x) => x.status === 'REGISTRATION_OPEN' && x.relevant !== false).length;
+  const liveNow = feed.data?.live.length ?? 0;
+  const tile = (n: string | number, title: string, sub: string, press: () => void, primary = false) => (
+    <Pressable style={({ pressed }) => [s.tile, primary && s.tileOn, pressed && s.pressed]} onPress={press}>
+      <Text style={[s.tileN, primary && { color: T.volt }]}>{n}</Text>
+      <Text style={[s.tileT, primary && { color: '#fff' }]}>{title}</Text>
+      <Text style={[s.muted, primary && { color: '#AEBBB4' }]} numberOfLines={1}>{sub}</Text>
+    </Pressable>
+  );
+  return (
+    <View style={s.tiles}>
+      {tile(open, 'להירשם לתחרות', open ? 'פתוחות עכשיו' : 'אין הרשמה פתוחה', onOpenStatus, true)}
+      {tile(liveNow, 'משחקים ותוצאות', liveNow ? 'משחקים חיים עכשיו' : 'לוחות ותוצאות', () => onTab('live'))}
+      {tile(stats.data?.totals.players.toLocaleString('he-IL') ?? '–', 'דירוג', 'שחקנים רשומים', () => onTab('rank'))}
+      {tile(clubs.data?.length ?? '–', 'מועדונים', 'מועדונים עם שחקנים', () => onTab('more'))}
+    </View>
+  );
+}
+
+function TournamentList({ onOpen, authed, onGoAccount, onTab }: { onOpen: (id: string) => void; authed: boolean; onGoAccount: () => void; onTab: (t: Tab) => void }) {
   const { data, err, busy, reload } = useLoad(api.tournaments);
   const [level, setLevel] = useState('');
   const [sec, setSec] = useState('');
@@ -144,7 +189,9 @@ function TournamentList({ onOpen, authed, onGoAccount }: { onOpen: (id: string) 
       && (st === 'all' || (st === 'up' ? !isDone(x) : st === 'open' ? x.status === 'REGISTRATION_OPEN' : st === 'live' ? x.status === 'IN_PROGRESS' : isDone(x))));
   return (
       <FlatList style={s.pad} contentContainerStyle={{ paddingBottom: 100, gap: 10 }} ListHeaderComponent={<View style={{ gap: 10 }}>
-      <View style={s.hero}><CourtLines /><View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}><BallMark size={26} /><Text style={s.heroBrand}>ITA</Text></View><Text style={s.heroT}>איגוד הטניס בישראל</Text><Text style={s.heroS}>תחרויות, לוחות משחקים ותוצאות חיות</Text></View>
+      <View style={s.hero}><CourtLines /><Text style={s.heroT}>איגוד הטניס בישראל</Text><Text style={s.heroS}>תחרויות, לוחות משחקים ותוצאות חיות</Text></View>
+      <Featured data={data} onOpen={onOpen} />
+      <Tiles data={data} onTab={onTab} onOpenStatus={() => setSt('open')} />
       <MyHome authed={authed} onOpen={onOpen} onGoAccount={onGoAccount} />
       <Text style={s.h2}>תחרויות</Text>
       <TextInput style={s.input} placeholder="חיפוש לפי שם תחרות" placeholderTextColor={T.muted} value={q} onChangeText={setQ} />
@@ -689,6 +736,18 @@ const s = StyleSheet.create({
   scroll: { padding: 16, gap: 10, paddingBottom: 110 },
   screen: { flex: 1, backgroundColor: T.bg, paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight ?? 24 : 0 }, pad: { padding: 16, gap: 10, flex: 1, paddingBottom: 0 },
   h1: { fontSize: 32, fontWeight: '800', color: T.text, letterSpacing: -0.8, lineHeight: 36 }, h2: { fontSize: 22, fontWeight: '700', color: T.text, letterSpacing: -0.4, marginTop: 8 },
+  topbar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginHorizontal: 12, marginTop: 6, marginBottom: 4, paddingVertical: 6, paddingHorizontal: 12, borderRadius: 999, backgroundColor: T.surface, borderWidth: 1, borderColor: T.glassLine },
+  brandRow: { flexDirection: 'row', alignItems: 'center', gap: 8 }, brand: { fontSize: 20, fontWeight: '800', letterSpacing: -0.4, color: T.text },
+  topAv: { width: 40, height: 40, borderRadius: 20, backgroundColor: T.volt, alignItems: 'center', justifyContent: 'center' }, topAvT: { color: T.ink, fontWeight: '800', fontSize: 17 },
+  topLogin: { paddingHorizontal: 18, height: 40, borderRadius: 20, backgroundColor: T.btn, alignItems: 'center', justifyContent: 'center' }, topLoginT: { color: T.btnText, fontWeight: '700' },
+  feat: { backgroundColor: T.volt, borderRadius: 28, padding: 22, gap: 8 }, featHead: { flexDirection: 'row', alignItems: 'center', gap: 8 }, featDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: T.ink },
+  featSmall: { color: T.ink, fontWeight: '700', fontSize: 13 }, featT: { color: T.ink, fontSize: 28, fontWeight: '800', letterSpacing: -0.8, lineHeight: 32 }, featMeta: { color: '#3A4A12', fontSize: 15 },
+  featCount: { flexDirection: 'row', gap: 10, marginVertical: 4 }, featBox: { flex: 1, backgroundColor: T.ink, borderRadius: 20, paddingVertical: 12, alignItems: 'center' },
+  featN: { color: T.volt, fontSize: 32, fontWeight: '800' }, featL: { color: '#fff', fontSize: 13 },
+  featBtn: { backgroundColor: T.ink, borderRadius: 999, minHeight: 50, alignItems: 'center', justifyContent: 'center' }, featBtnT: { color: T.volt, fontWeight: '800', fontSize: 16 },
+  tiles: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  tile: { width: '48%', flexGrow: 1, minHeight: 112, backgroundColor: T.surface, borderWidth: 1, borderColor: T.line, borderRadius: 22, padding: 16, justifyContent: 'flex-end', gap: 2 },
+  tileOn: { backgroundColor: T.ink, borderColor: T.ink }, tileN: { fontSize: 34, fontWeight: '800', letterSpacing: -1, color: T.text }, tileT: { fontSize: 16, fontWeight: '700', color: T.text },
   hero: { backgroundColor: T.ink, borderRadius: 28, padding: 24, gap: 6, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)', marginBottom: 4 },
   heroBrand: { color: '#fff', fontWeight: '800', fontSize: 20, letterSpacing: -0.4 },
   heroT: { color: '#fff', fontSize: 32, fontWeight: '800', letterSpacing: -1.2, lineHeight: 36, marginTop: 8 }, heroS: { color: '#AEBBB4', fontSize: 15, lineHeight: 22 },
