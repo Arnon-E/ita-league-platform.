@@ -6,6 +6,7 @@ import { Linking } from 'react-native';
 import { Platform } from 'react-native';
 import * as api from './src/api';
 import { More } from './src/More';
+import { MyHome } from './src/MyHome';
 import { T, Icon, BallMark, CourtLines } from './src/theme';
 
 async function registerPush() {
@@ -65,7 +66,7 @@ function Home({ authed, setAuthed }: { authed: boolean; setAuthed: (v: boolean) 
     <View style={{ flex: 1 }}>
       <View style={{ flex: 1 }}>
         {open ? <Tournament id={open} onBack={() => setOpen(null)} onGoAccount={() => { setOpen(null); setTab('me'); }} />
-          : tab === 't' ? <TournamentList onOpen={setOpen} />
+          : tab === 't' ? <TournamentList onOpen={setOpen} authed={authed} onGoAccount={() => setTab('me')} />
           : tab === 'live' ? <Live />
           : tab === 'rank' ? <Rankings />
           : tab === 'players' ? <Players />
@@ -94,7 +95,7 @@ function Status({ err, busy, empty }: { err: string; busy: boolean; empty?: stri
 
 const STATUS_HE: Record<string, string> = { DRAFT: 'טיוטה', REGISTRATION_OPEN: 'הרשמה פתוחה', REGISTRATION_CLOSED: 'הרשמה סגורה', DRAWN: 'הוגרלה', IN_PROGRESS: 'מתקיימת', FINISHED: 'הסתיימה', CANCELLED: 'בוטלה' };
 
-function TournamentList({ onOpen }: { onOpen: (id: string) => void }) {
+function TournamentList({ onOpen, authed, onGoAccount }: { onOpen: (id: string) => void; authed: boolean; onGoAccount: () => void }) {
   const { data, err, busy, reload } = useLoad(api.tournaments);
   const [level, setLevel] = useState('');
   const [sec, setSec] = useState('');
@@ -110,8 +111,9 @@ function TournamentList({ onOpen }: { onOpen: (id: string) => void }) {
     .filter((x) => (!q.trim() || x.name.includes(q.trim())) && (!level || x.level === level) && (!sec || x.section === sec)
       && (st === 'all' || (st === 'up' ? !isDone(x) : st === 'open' ? x.status === 'REGISTRATION_OPEN' : st === 'live' ? x.status === 'IN_PROGRESS' : isDone(x))));
   return (
-    <View style={s.pad}>
+      <FlatList style={s.pad} contentContainerStyle={{ paddingBottom: 100, gap: 10 }} ListHeaderComponent={<View style={{ gap: 10 }}>
       <View style={s.hero}><CourtLines /><View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}><BallMark size={26} /><Text style={s.heroBrand}>ITA</Text></View><Text style={s.heroT}>איגוד הטניס בישראל</Text><Text style={s.heroS}>תחרויות, לוחות משחקים ותוצאות חיות</Text></View>
+      <MyHome authed={authed} onOpen={onOpen} onGoAccount={onGoAccount} />
       <Text style={s.h2}>תחרויות</Text>
       <TextInput style={s.input} placeholder="חיפוש לפי שם תחרות" placeholderTextColor={T.muted} value={q} onChangeText={setQ} />
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0, flexShrink: 0 }} contentContainerStyle={{ gap: 8 }}>
@@ -127,14 +129,13 @@ function TournamentList({ onOpen }: { onOpen: (id: string) => void }) {
         </ScrollView>
       </>}
       <Status err={err} busy={busy} empty={!!data && !shown.length && 'אין תחרויות לפי הסינון'} />
-      <FlatList contentContainerStyle={{ paddingBottom: 100 }} data={shown} keyExtractor={(t) => t.id} onRefresh={reload} refreshing={false} renderItem={({ item }) => (
+      </View>} data={shown} keyExtractor={(t) => t.id} onRefresh={reload} refreshing={false} renderItem={({ item }) => (
         <Pressable style={({ pressed }) => [s.card, pressed && s.pressed]} onPress={() => onOpen(item.id)}>
           <View style={[s.chip2, item.status === 'REGISTRATION_OPEN' ? s.chipOk : item.status === 'IN_PROGRESS' ? s.chipLive : null]}><Text style={s.chip2T}>{STATUS_HE[item.status] ?? item.status}</Text></View>
           <Text style={s.cardT}>{item.name}</Text>
           <Text style={s.muted}>{`${dm(item.startDate)} – ${dm(item.endDate)}`}{item.status === 'REGISTRATION_OPEN' && item.registrationCloses ? ` · הרשמה עד ${dm(item.registrationCloses)}` : ''}</Text>
         </Pressable>
       )} />
-    </View>
   );
 }
 

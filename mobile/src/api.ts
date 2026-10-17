@@ -94,3 +94,18 @@ export const league = (id: string) => call<LeagueDetail>(`/public/leagues/${id}`
 export const regulations = () => call<{ id: string; title: string; url: string; category: string }[]>('/public/regulations');
 export const clubs = () => call<{ id: string; name: string; city: string | null; players: number }[]>('/public/clubs');
 export const stats = () => call<{ totals: { tournaments: number; players: number; matches: number }; top: { id: string; name: string; club: string | null; played: number; wins: number }[]; clubs: { id: string; name: string; players: number }[] }>('/public/stats');
+
+export type HomeMatch = { id: string; tournament: string; category: string; status: string; opponent: string | null; start: string | null; court: string | null; won: boolean | null; sets: { a: number; b: number }[] };
+export type HomePerson = {
+  id: string; name: string; relation: 'SELF' | 'CHILD'; age: number; club: string | null; rank: number | null; points: number; wins: number; losses: number; form: boolean[];
+  nextMatch: HomeMatch | null; recent: HomeMatch[]; nextTournament: { id: string; name: string; start: string; category: string; status: string; payment: string } | null;
+  docsOk: boolean; missingDocs: string[]; todo: string[];
+  canRegister: { tournamentId: string; tournament: string; categoryId: string; category: string; closes: string | null }[];
+};
+export type HomeWork = {
+  kind: 'ADMIN' | 'TOURNAMENT_MANAGER' | 'REFEREE' | 'CLUB';
+  admin: { pendingDocs: number; pendingClaims: number; openRegistration: number; inProgress: number } | null;
+  tournaments: { id: string; name: string; status: string; start: string; end: string; waiting: number; upcoming: number }[];
+  club: { id: string; name: string; players: number; upcomingEntries: number; top: { id: string; name: string; rank: number; points: number }[] } | null;
+};
+export const myHome = () => call<{ role: 'NONE' | 'PLAYER' | 'PARENT' | 'BOTH'; people: HomePerson[]; work: HomeWork | null }>('/me/home');

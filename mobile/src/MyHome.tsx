@@ -1,0 +1,107 @@
+import { useEffect, useState } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import * as api from './api';
+import { T } from './theme';
+
+const DOC: Record<string, string> = { ID_PHOTO: 'תמונת ת״ז', PARENT_CONSENT: 'אישור הורים', MEDICAL_CERTIFICATE: 'אישור רפואי', OTHER: 'אחר' };
+const when = (iso: string | null) => (iso ? new Date(iso).toLocaleString('he-IL', { weekday: 'short', day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' }) : '');
+const score = (sets: { a: number; b: number }[]) => `⁦${sets.map((x) => `${x.a}-${x.b}`).join('  ')}⁩`;
+
+/** Personal home for a signed-in player and/or parent: one card per player profile on the account. Renders nothing for guests or accounts without a profile. */
+export function MyHome({ authed, onOpen, onGoAccount }: { authed: boolean; onOpen: (tournamentId: string) => void; onGoAccount: () => void }) {
+  const [h, setH] = useState<Awaited<ReturnType<typeof api.myHome>> | null>(null);
+  useEffect(() => { if (authed) api.myHome().then(setH).catch(() => setH(null)); else setH(null); }, [authed]);
+  if (!h || (h.role === 'NONE' && !h.work)) return null;
+  const w = h.work;
+  return (
+    <View style={{ gap: 10 }}>
+      {w && (
+        <View style={{ gap: 10 }}>
+          <Text style={m.h2}>{w.kind === 'ADMIN' ? 'מה מחכה לטיפול' : w.kind === 'CLUB' ? 'המועדון שלי' : 'התחרויות שלי'}</Text>
+          {w.admin && <View style={m.stats}>{([['מסמכים לאישור', w.admin.pendingDocs], ['בקשות שיוך', w.admin.pendingClaims], ['הרשמה פתוחה', w.admin.openRegistration], ['מתקיימות', w.admin.inProgress]] as const).map(([l, n]) => <View key={l} style={m.stat}><Text style={m.statN}>{n}</Text><Text style={m.muted}>{l}</Text></View>)}</View>}
+          {w.tournaments.map((x) => (
+            <Pressable key={x.id} style={m.card} onPress={() => onOpen(x.id)}>
+              <Text style={m.name}>{x.name}</Text>
+              <Text style={m.muted}>{new Date(x.start).toLocaleDateString('he-IL')} – {new Date(x.end).toLocaleDateString('he-IL')}</Text>
+              <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
+                <View style={[m.pill, { backgroundColor: x.waiting ? T.warnbg : T.okbg }]}><Text style={{ color: x.waiting ? T.warn : T.ok, fontWeight: '700', fontSize: 12.5 }}>{x.waiting ? `${x.waiting} משחקים ממתינים לתוצאה` : 'אין משחקים ממתינים'}</Text></View>
+                <View style={[m.pill, { backgroundColor: T.surface2 }]}><Text style={m.muted}>{x.upcoming} משחקים פתוחים</Text></View>
+              </View>
+            </Pressable>
+          ))}
+          {!w.admin && !w.club && !w.tournaments.length && <Text style={m.muted}>לא שובצת כרגע לתחרות פעילה.</Text>}
+          {w.club && (
+            <View style={m.card}>
+              <Text style={m.name}>{w.club.name}</Text>
+              <View style={m.stats}>
+                <View style={m.stat}><Text style={m.statN}>{w.club.players}</Text><Text style={m.muted}>שחקנים</Text></View>
+                <View style={m.stat}><Text style={m.statN}>{w.club.upcomingEntries}</Text><Text style={m.muted}>הרשמות ב-90 ימים</Text></View>
+              </View>
+              {w.club.top.map((p) => <View key={p.id} style={m.res}><Text style={m.b}>#{p.rank}</Text><Text style={[m.b, { flex: 1 }]} numberOfLines={1}>{p.name}</Text><Text style={m.muted}>{p.points}</Text></View>)}
+            </View>
+          )}
+        </View>
+      )}
+      {h.people.length > 0 && <Text style={m.h2}>{h.role === 'PLAYER' ? 'הבית שלי' : h.role === 'PARENT' ? 'הילדים שלי' : 'אני והילדים'}</Text>}
+      {h.people.map((p) => (
+        <View key={p.id} style={m.card}>
+          <View style={m.head}>
+            <View style={m.av}><Text style={m.avT}>{p.name.split(' ').map((w) => w[0]).slice(0, 2).join('')}</Text></View>
+            <View style={{ flex: 1 }}>
+              <Text style={m.name}>{p.name}</Text>
+              <Text style={m.muted}>{p.relation === 'CHILD' ? 'ילד/ה · ' : ''}גיל {p.age}{p.club ? ` · ${p.club}` : ''}</Text>
+            </View>
+          </View>
+          <View style={m.stats}>
+            <View style={m.stat}><Text style={m.statN}>{p.rank ? `#${p.rank}` : '—'}</Text><Text style={m.muted}>דירוג</Text></View>
+            <View style={m.stat}><Text style={m.statN}>{p.points}</Text><Text style={m.muted}>נקודות</Text></View>
+            <View style={m.stat}><Text style={m.statN}>{`⁦${p.wins}/${p.losses}⁩`}</Text><Text style={m.muted}>נצ׳/הפ׳</Text></View>
+            {p.form.length > 0 && <View style={m.form}>{p.form.map((w, i) => <View key={i} style={[m.dot, { backgroundColor: w ? T.okbg : T.badbg }]}><Text style={{ color: w ? T.ok : T.bad, fontWeight: '800', fontSize: 12 }}>{w ? 'נ' : 'ה'}</Text></View>)}</View>}
+          </View>
+          {p.todo.map((x, i) => (
+            <Pressable key={i} onPress={onGoAccount} style={m.warn}><Text style={m.warnT}>{x.startsWith('DOCS:') ? `חסר: ${x.slice(5).split(',').map((d) => DOC[d] ?? d).join(', ')}` : `ממתין לתשלום: ${x.slice(4)}`}</Text></Pressable>
+          ))}
+          {p.nextMatch && <View style={m.sec}><Text style={m.label}>המשחק הבא</Text><Text style={m.b}>{p.nextMatch.opponent ?? 'יתברר'}</Text><Text style={m.muted}>{p.nextMatch.tournament}{p.nextMatch.start ? ` · ${when(p.nextMatch.start)}` : ''}{p.nextMatch.court ? ` · מגרש ${p.nextMatch.court}` : ''}</Text></View>}
+          {p.nextTournament && (
+            <Pressable style={m.sec} onPress={() => onOpen(p.nextTournament!.id)}>
+              <Text style={m.label}>התחרות הבאה</Text><Text style={m.b}>{p.nextTournament.name}</Text>
+              <Text style={m.muted}>{new Date(p.nextTournament.start).toLocaleDateString('he-IL')} · {p.nextTournament.category}</Text>
+            </Pressable>
+          )}
+          {p.recent.length > 0 && (
+            <View style={m.sec}><Text style={m.label}>תוצאות אחרונות</Text>
+              {p.recent.map((r) => (
+                <View key={r.id} style={m.res}>
+                  <View style={[m.pill, { backgroundColor: r.won ? T.okbg : T.badbg }]}><Text style={{ color: r.won ? T.ok : T.bad, fontWeight: '700', fontSize: 12.5 }}>{r.won ? 'ניצחון' : 'הפסד'}</Text></View>
+                  <Text style={[m.b, { flex: 1 }]} numberOfLines={1}>{r.opponent}</Text><Text style={m.muted}>{score(r.sets)}</Text>
+                </View>
+              ))}
+            </View>
+          )}
+          {p.canRegister.length > 0 && (
+            <View style={m.sec}><Text style={m.label}>אפשר להירשם</Text>
+              <View style={{ gap: 6 }}>{p.canRegister.slice(0, 3).map((r) => (
+                <Pressable key={r.categoryId} style={m.reg} onPress={() => onOpen(r.tournamentId)}><Text style={m.regT} numberOfLines={1}>{r.tournament} · {r.category}</Text></Pressable>
+              ))}</View>
+            </View>
+          )}
+        </View>
+      ))}
+    </View>
+  );
+}
+
+const m = StyleSheet.create({
+  h2: { fontSize: 22, fontWeight: '700', color: T.text, letterSpacing: -0.4, marginTop: 8 },
+  card: { backgroundColor: T.surface, borderWidth: 1, borderColor: T.line, borderRadius: 22, padding: 18, gap: 12 },
+  head: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  av: { width: 48, height: 48, borderRadius: 24, backgroundColor: T.volt, alignItems: 'center', justifyContent: 'center' }, avT: { color: T.ink, fontWeight: '800', fontSize: 18 },
+  name: { fontSize: 18, fontWeight: '700', color: T.text }, muted: { color: T.muted, fontSize: 13 }, b: { color: T.text, fontWeight: '700', fontSize: 16 },
+  stats: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
+  stat: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 16, backgroundColor: T.surface2, borderWidth: 1, borderColor: T.line, minWidth: 74 }, statN: { color: T.text, fontWeight: '700', fontSize: 20 },
+  form: { flexDirection: 'row', gap: 4, marginStart: 'auto' }, dot: { width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
+  warn: { alignSelf: 'flex-start', backgroundColor: T.warnbg, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 5 }, warnT: { color: T.warn, fontWeight: '600', fontSize: 13 },
+  sec: { gap: 2, paddingTop: 10, borderTopWidth: 1, borderColor: T.line }, label: { color: T.muted, fontSize: 12.5 },
+  res: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 3 }, pill: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 999 },
+  reg: { alignSelf: 'flex-start', backgroundColor: T.volt, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 8, maxWidth: '100%' }, regT: { color: T.ink, fontWeight: '700', fontSize: 14 },
+});

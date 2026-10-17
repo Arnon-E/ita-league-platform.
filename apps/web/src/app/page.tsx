@@ -10,8 +10,8 @@ import { fmtDate, LEVEL, STATUS } from '@/components/labels';
 import { tr } from '@/lib/i18n';
 import { InfiniteCards } from '@/components/InfiniteCards';
 import { Court } from '@/components/Brand';
-import { inArray } from 'drizzle-orm';
-import { checkDocuments, ownedPlayerIds } from '@/services/entries';
+import { myHome } from '@/services/home';
+import { MyHome } from '@/components/MyHome';
 
 const AGES = [10, 12, 14, 16, 18];
 const SEC: Record<string, string> = { YOUTH: 'נוער', ADULTS: 'בוגרים', MASTERS: 'מאסטרס', OTHER: 'אחר' };
@@ -37,25 +37,8 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ l
     list.push({ gender: c.gender, age: a ? Number(a[1]) : null });
     catsOf.set(c.tid, list);
   }
-  // Signed-in players and parents: what needs their attention, from the data the system already has.
-  const mine = actor ? await ownedPlayerIds(db, actor).catch(() => [] as string[]) : [];
-  const todo: { who: string; text: string; href: string }[] = [];
-  if (mine.length) {
-    const ps = await db.select().from(schema.players).where(inArray(schema.players.id, mine));
-    for (const p of ps) {
-      const chk = await checkDocuments(db, p.id, new Date());
-      if (!chk.ok) todo.push({ who: `${p.firstName} ${p.lastName}`, text: `${t('חסרים מסמכים')}: ${chk.missing.length}`, href: '/me' });
-    }
-    const unpaid = await db.select({ e: schema.entries, c: schema.categories, tn: schema.tournaments }).from(schema.entries)
-      .innerJoin(schema.categories, eq(schema.categories.id, schema.entries.categoryId))
-      .innerJoin(schema.tournaments, eq(schema.tournaments.id, schema.categories.tournamentId))
-      .where(inArray(schema.entries.playerId, mine));
-    for (const u of unpaid) {
-      if (u.e.paymentStatus === 'UNPAID' && u.tn.feeAgorot > 0 && u.tn.endDate > new Date() && u.e.status !== 'WITHDRAWN' && u.e.status !== 'REJECTED') {
-        todo.push({ who: u.tn.name, text: `${t('ממתין לתשלום')} ₪${(u.tn.feeAgorot / 100).toFixed(0)}`, href: '/me' });
-      }
-    }
-  }
+  // Signed-in players and parents get a personal home: their standing, next match, results and what needs doing.
+  const home = actor ? await myHome(db, actor).catch(() => null) : null;
   const needle = q.trim().toLowerCase();
   // Default view is what a visitor can act on: open, in progress and upcoming. Searching or picking a season looks at everything.
   const mode = st || (needle || season ? 'all' : 'up');
@@ -121,12 +104,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ l
         <Link href="/rankings"><span className="n">{c.players.toLocaleString('he-IL')}</span><b>{t('דירוג')}</b><small>{t('שחקנים רשומים')}</small></Link>
         <Link href="/clubs"><span className="n">{c.clubs.toLocaleString('he-IL')}</span><b>{t('מועדונים')}</b><small>{t('מועדונים עם שחקנים')}</small></Link>
       </nav>
-      {todo.length > 0 && (
-        <section className="card todo" aria-label={t('מחכה לך')}>
-          <strong>{t('מחכה לך')}</strong>
-          {todo.map((x, i) => <Link key={i} href={x.href}><span>{x.who}</span><span className="muted">{x.text}</span></Link>)}
-        </section>
-      )}
+      {home && <MyHome home={home} t={t} />}
       <div className="row" style={{ justifyContent: 'space-between' }}>
         <h2 id="list" style={{ margin: 0 }}>{t('תחרויות')}</h2>
         {actor && can(actor, 'tournament.create') && <Link className="btn" href="/tournaments/new">{t('תחרות חדשה')}</Link>}

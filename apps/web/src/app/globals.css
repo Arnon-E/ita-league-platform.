@@ -400,3 +400,15 @@ main.auth{min-height:100dvh}
   .comp.open{background:var(--okbg);border-color:var(--ok)}
   input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px var(--line2)}
 }
+
+/* personal home: one card per player profile on the signed-in person's account */
+.myhome{margin:4px 0 8px}
+.mh{display:flex;flex-direction:column;gap:12px}
+.mh-stats{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.mh-stats>a,.mh-stats>span:not(.pform){display:flex;flex-direction:column;padding:8px 14px;border-radius:16px;background:var(--surface2);border:1px solid var(--line);min-width:74px}
+.mh-stats b{font-family:var(--display);font-size:20px;font-weight:700;letter-spacing:-.02em}.mh-stats small{color:var(--muted);font-size:12px}
+.mh-stats .pform{margin-inline-start:auto}
+.mh-todo{display:flex;gap:6px;flex-wrap:wrap}
+.mh-row{display:flex;flex-direction:column;gap:2px;padding-top:10px;border-top:1px solid var(--line)}
+.mh-row .pill{align-self:flex-start;margin-top:4px}
+.mh-res{display:flex;align-items:center;gap:8px;padding:3px 0;flex-wrap:wrap}
