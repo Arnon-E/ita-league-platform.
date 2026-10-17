@@ -446,12 +446,13 @@ function MyArea({ onLogout, preset, onLogoutAll, onOpenTournament }: { onLogout:
       ))}
       <Following onOpenTournament={onOpenTournament} />
       <Text style={s.h2}>ההרשמות שלי</Text>
-      {!!d && !d.entries.length && <Text style={s.muted}>אין עדיין הרשמות לתחרויות.</Text>}
-      {d?.entries.map((e) => (
+      {!!d && !d.entries.some((e) => e.status !== 'WITHDRAWN' && e.status !== 'REJECTED') && <Text style={s.muted}>אין הרשמות פעילות.</Text>}
+      {d?.entries.filter((e) => e.status !== 'WITHDRAWN' && e.status !== 'REJECTED').map((e) => (
         <View key={e.id} style={s.card}><Text style={s.b}>{e.tournament} · {e.category}</Text><Text>{ENTRY_HE[e.status] ?? e.status} · {PAY_HE[e.payment] ?? e.payment}</Text>
           {e.payment === 'UNPAID' && !child && <Pressable style={s.link} onPress={() => pay(e.id)}><Text style={s.linkT}>לתשלום</Text></Pressable>}
           {!child && e.status !== 'WITHDRAWN' && e.status !== 'REJECTED' && e.payment === 'UNPAID' && <Pressable style={s.link} onPress={() => Alert.alert('ביטול הרשמה', `לבטל את ההרשמה של ${e.player} ל${e.tournament} (${e.category})?`, [{ text: 'לא', style: 'cancel' }, { text: 'ביטול הרשמה', style: 'destructive', onPress: () => api.cancelEntry(e.id).then(() => { setMsg('ההרשמה בוטלה'); load(); }).catch((x) => setErr(x.message)) }])}><Text style={[s.linkT, { color: T.bad }]}>ביטול הרשמה</Text></Pressable>}</View>
       ))}
+      {!!d && d.entries.some((e) => e.status === 'WITHDRAWN' || e.status === 'REJECTED') && <Text style={s.muted}>{`הרשמות שבוטלו: ${d.entries.filter((e) => e.status === 'WITHDRAWN' || e.status === 'REJECTED').length}`}</Text>}
       <Text style={s.h2}>התראות</Text>
       {!!d && !d.notifications.length && <Text style={s.muted}>אין התראות חדשות.</Text>}
       {d?.notifications.map((n) => <View key={n.id} style={s.card}><Text style={s.b}>{n.title}</Text><Text>{n.body}</Text></View>)}

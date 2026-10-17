@@ -19,3 +19,6 @@ export const fmtTime = (d: Date | null) => d ? d.toLocaleString('he-IL', { weekd
 
 /** Set scores always read left to right (6-4 3-2), even inside right-to-left pages. */
 export const fmtScore = (sets: { a: number; b: number }[], sep = ' ') => `\u2066${sets.map((x) => `${x.a}-${x.b}`).join(sep)}\u2069`;
+
+export const ENTRY_STATUS: Record<string, [string, string]> = { PENDING: ['ממתין לאישור', 'warn'], CONFIRMED: ['מאושר', 'ok'], WAITLIST: ['ברשימת המתנה', 'warn'], WITHDRAWN: ['בוטל', ''], REJECTED: ['נדחה', 'bad'] };
+export const PAY_STATUS: Record<string, [string, string]> = { UNPAID: ['לא שולם', 'warn'], PAID: ['שולם', 'ok'], REFUNDED: ['הוחזר', ''], PARTIALLY_REFUNDED: ['הוחזר חלקית', ''] };
