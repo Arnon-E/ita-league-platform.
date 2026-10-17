@@ -36,7 +36,7 @@ export async function applyPasswordReset(db: Db, token: string, password: string
     if (payload.p !== 'reset' || !payload.sub) return 'invalid';
     const [u] = await db.select().from(schema.users).where(eq(schema.users.id, payload.sub));
     if (!u || !u.active || fingerprint(u.passwordHash) !== payload.k) return 'invalid';
-    await db.update(schema.users).set({ passwordHash: await hashPassword(password), failedLogins: 0, lockedUntil: null }).where(eq(schema.users.id, u.id));
+    await db.update(schema.users).set({ passwordHash: await hashPassword(password), failedLogins: 0, lockedUntil: null, sessionsValidAfter: new Date() }).where(eq(schema.users.id, u.id));
     return 'ok';
   } catch {
     return 'invalid';

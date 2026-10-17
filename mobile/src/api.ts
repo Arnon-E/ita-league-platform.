@@ -5,9 +5,15 @@ const BASE = (Constants.expoConfig?.extra as { apiUrl: string }).apiUrl;
 let token: string | null = null;
 
 let role: string | null = null;
-export async function loadToken() { token = await SecureStore.getItemAsync('ita_token'); role = await SecureStore.getItemAsync('ita_role'); return token; }
-export async function logout() { token = null; role = null; await SecureStore.deleteItemAsync('ita_token'); await SecureStore.deleteItemAsync('ita_role'); }
+let userName: string | null = null;
+export async function loadToken() { token = await SecureStore.getItemAsync('ita_token'); role = await SecureStore.getItemAsync('ita_role'); userName = await SecureStore.getItemAsync('ita_name'); return token; }
+export async function logout() { token = null; role = null; userName = null; await SecureStore.deleteItemAsync('ita_token'); await SecureStore.deleteItemAsync('ita_role'); await SecureStore.deleteItemAsync('ita_name'); }
+/** Name of the signed-in user, shown in the app header. */
+export const currentUserName = () => userName;
+export async function rememberUserName(name: string) { userName = name; await SecureStore.setItemAsync('ita_name', name); }
 export const isAuthed = () => !!token;
+/** Ends every session of this account on every device (including this one), then clears the local one. */
+export async function logoutAll() { await call('/auth/logout-all', { method: 'POST' }); await logout(); }
 /** Called when the server says our session is no longer valid (expired after 12h), so the UI can go back to the login screen. */
 let onAuthLost: (() => void) | null = null;
 export const setAuthLostHandler = (fn: (() => void) | null) => { onAuthLost = fn; };
@@ -32,13 +38,13 @@ async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
 /** remember: keep the session on the phone (30 days) so the app opens signed in. Off: it lives in memory only and ends with the app. */
 export async function login(email: string, password: string, remember = true) {
   const r = await call<{ token: string; user: { name: string; role: string } }>('/auth/login', { method: 'POST', body: JSON.stringify({ email, password, remember }) });
-  token = r.token; role = r.user.role; if (remember) { await SecureStore.setItemAsync('ita_token', r.token); await SecureStore.setItemAsync('ita_role', r.user.role); } else { await SecureStore.deleteItemAsync('ita_token'); await SecureStore.deleteItemAsync('ita_role'); }
+  token = r.token; role = r.user.role; userName = r.user.name; if (remember) await SecureStore.setItemAsync('ita_name', r.user.name); if (remember) { await SecureStore.setItemAsync('ita_token', r.token); await SecureStore.setItemAsync('ita_role', r.user.role); } else { await SecureStore.deleteItemAsync('ita_token'); await SecureStore.deleteItemAsync('ita_role'); }
   return r.user;
 }
 
 export async function register(name: string, email: string, phone: string, password: string, remember = true) {
   const r = await call<{ token: string; user: { name: string; role: string } }>('/auth/register', { method: 'POST', body: JSON.stringify({ name, email, phone, password, remember }) });
-  token = r.token; role = r.user.role; if (remember) { await SecureStore.setItemAsync('ita_token', r.token); await SecureStore.setItemAsync('ita_role', r.user.role); } else { await SecureStore.deleteItemAsync('ita_token'); await SecureStore.deleteItemAsync('ita_role'); }
+  token = r.token; role = r.user.role; userName = r.user.name; if (remember) { await SecureStore.setItemAsync('ita_token', r.token); await SecureStore.setItemAsync('ita_role', r.user.role); await SecureStore.setItemAsync('ita_name', r.user.name); } else { await SecureStore.deleteItemAsync('ita_token'); await SecureStore.deleteItemAsync('ita_role'); }
   return r.user;
 }
 export const addPlayer = (p: { first: string; last: string; birth: string; gender: 'MALE' | 'FEMALE'; forChild: boolean }) => call<{ id: string }>('/players', { method: 'POST', body: JSON.stringify(p) });
@@ -47,7 +53,7 @@ export type Match = { id: string; categoryId: string; stage: string; round: numb
 export const tournaments = () => call<{ id: string; name: string; status: string; level: string; section: string; startDate: string; endDate: string; registrationCloses: string | null }[]>('/tournaments');
 export type Cat = { id: string; name: string; gender: 'MALE' | 'FEMALE' | 'OPEN'; minBirthYear: number | null; maxBirthYear: number | null };
 export const tournament = (id: string) => call<{ tournament: { name: string; status: string; startDate: string; endDate: string; registrationCloses: string | null; registerUrl: string | null }; categories: Cat[]; matches: Match[] }>(`/tournaments/${id}`);
-export const me = () => call<{ isChild: boolean; players: { id: string; name: string; gender: 'MALE' | 'FEMALE'; birthYear: number; own: boolean; childLogin: string | null; documents: { ok: boolean; missing: string[] } }[]; entries: { id: string; playerId: string; player: string; tournament: string; category: string; status: string; payment: string }[]; notifications: { id: string; title: string; body: string }[] }>('/me');
+export const me = () => call<{ name: string; isChild: boolean; players: { id: string; name: string; gender: 'MALE' | 'FEMALE'; birthYear: number; own: boolean; childLogin: string | null; documents: { ok: boolean; missing: string[] } }[]; entries: { id: string; playerId: string; player: string; tournament: string; category: string; status: string; payment: string }[]; notifications: { id: string; title: string; body: string }[] }>('/me');
 export const sendResult = (matchId: string, body: unknown) => call(`/matches/${matchId}/result`, { method: 'POST', body: JSON.stringify(body) });
 export const registerDevice = (pushToken: string, platform: 'ios' | 'android') => call('/devices', { method: 'POST', body: JSON.stringify({ token: pushToken, platform }) });
 
@@ -112,3 +118,10 @@ export type HomeWork = {
 export const myHome = () => call<{ role: 'NONE' | 'PLAYER' | 'PARENT' | 'BOTH'; isChild: boolean; people: HomePerson[]; work: HomeWork | null }>('/me/home');
 export const setChildLogin = (playerId: string, username: string, password: string) => call<{ username: string }>('/children/login', { method: 'POST', body: JSON.stringify({ playerId, username, password }) });
 export const suggestEntry = (categoryId: string) => call<{ ok: true }>('/entries/suggest', { method: 'POST', body: JSON.stringify({ categoryId }) });
+
+export type FollowOverview = {
+  players: { id: string; name: string; club: string | null; rank: number | null; points: number; recent: { won: boolean; vs: string; score: string; competition: string }[]; next: { vs: string; competition: string; when: string | null; court: string | null } | null }[];
+  clubs: { id: string; name: string }[];
+  tournaments: { id: string; name: string; status: string; startDate: string; endDate: string }[];
+};
+export const followOverview = () => call<FollowOverview>('/follows/overview');

@@ -11,7 +11,9 @@ export const GET = (req: Request) => handle(req, async (actor) => {
   const ents = ids.length ? await db.select({ e: schema.entries, c: schema.categories, t: schema.tournaments }).from(schema.entries)
     .innerJoin(schema.categories, eq(schema.categories.id, schema.entries.categoryId)).innerJoin(schema.tournaments, eq(schema.tournaments.id, schema.categories.tournamentId))
     .where(inArray(schema.entries.playerId, ids)) : [];
+  const [self] = await db.select({ name: schema.users.name }).from(schema.users).where(eq(schema.users.id, actor.id));
   return {
+    name: self?.name ?? '',
     isChild: await isChildActor(db, actor),
     players: await Promise.all(ps.map(async (p) => ({ id: p.id, name: `${p.firstName} ${p.lastName}`, gender: p.gender, birthYear: p.birthDate.getUTCFullYear(), own: p.accountId === actor.id, childLogin: p.accountId === actor.id ? null : await childLoginName(db, p.id), documents: await checkDocuments(db, p.id, new Date()) }))),
     entries: ents.map(({ e, c, t }) => ({ id: e.id, playerId: e.playerId, player: (() => { const p = ps.find((x) => x.id === e.playerId); return p ? `${p.firstName} ${p.lastName}` : ''; })(), tournament: t.name, category: c.name, status: e.status, payment: e.paymentStatus })),

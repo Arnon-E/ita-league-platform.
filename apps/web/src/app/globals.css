@@ -412,3 +412,14 @@ main.auth{min-height:100dvh}
 .mh-row{display:flex;flex-direction:column;gap:2px;padding-top:10px;border-top:1px solid var(--line)}
 .mh-row .pill{align-self:flex-start;margin-top:4px}
 .mh-res{display:flex;align-items:center;gap:8px;padding:3px 0;flex-wrap:wrap}
+
+/* signed-in person: always visible in the top bar (not behind the hamburger), opens their personal pages */
+details.acct.bar>div{min-width:230px}
+details.acct .whoami{display:flex;flex-direction:column;gap:1px;padding:10px 14px 8px;border-bottom:1px solid var(--line);margin-bottom:4px;word-break:break-all}
+details.acct .out.soft{color:var(--muted)}details.acct .out.soft:hover{background:var(--surface2)}
+@media(max-width:720px){
+  header.top details.acct.bar{order:3}
+  header.top details.acct.bar summary{padding:3px}
+  header.top details.acct.bar .uname{display:none}
+  header.top details.acct.bar .av{width:40px;height:40px;font-size:17px}
+}

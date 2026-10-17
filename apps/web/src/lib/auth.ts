@@ -2,7 +2,7 @@ import bcrypt from 'bcryptjs';
 import { SignJWT, jwtVerify } from 'jose';
 import { eq } from 'drizzle-orm';
 import type { Db } from '@/db';
-import { schema } from '@/db';
+import { db as appDb, schema } from '@/db';
 
 const { users } = schema;
 export type Role = (typeof users.$inferSelect)['role'];
@@ -45,6 +45,10 @@ export async function verifySession(token: string | undefined): Promise<Actor | 
   try {
     const { payload } = await jwtVerify(token, secret());
     if (!payload.sub) return null;
+    // "Sign out everywhere" and password changes invalidate every session issued before them.
+    const [u] = await appDb.select({ after: users.sessionsValidAfter, active: users.active }).from(users).where(eq(users.id, payload.sub));
+    if (!u || !u.active) return null;
+    if (u.after && (payload.iat ?? 0) < Math.floor(u.after.getTime() / 1000)) return null;
     return { id: payload.sub, role: payload.role as Role, impersonatedBy: payload.imp as string | undefined };
   } catch {
     return null;
@@ -54,6 +58,11 @@ export async function verifySession(token: string | undefined): Promise<Actor | 
 /** "Keep me signed in": the session lasts this long instead of 12 hours, so the phone does not ask for a password every day. */
 export const REMEMBER_TTL = '30d';
 export const REMEMBER_SECONDS = 30 * 24 * 3600;
+
+/** Ends every session of the user, on every device. They sign in again where they want to keep using it. */
+export async function revokeSessions(db: Db, userId: string) {
+  await db.update(users).set({ sessionsValidAfter: new Date() }).where(eq(users.id, userId));
+}
 
 export type LoginResult = { ok: true; actor: Actor; token: string } | { ok: false; reason: 'invalid' | 'locked' | 'inactive' };
 

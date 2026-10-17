@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, FlatList, Image, ScrollView, I18nManager, Pressable, SafeAreaView, StatusBar, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, Image, ScrollView, I18nManager, Pressable, SafeAreaView, StatusBar, StyleSheet, Text, TextInput, View } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
 import * as ImagePicker from 'expo-image-picker';
@@ -81,10 +81,20 @@ function Home({ authed, setAuthed }: { authed: boolean; setAuthed: (v: boolean) 
   const [tab, setTab] = useState<Tab>('t');
   const [open, setOpen] = useState<string | null>(null);
   const [who, setWho] = useState<'ask' | 'self' | 'child' | null>(null);
+  const [, bump] = useState(0);
+  // sessions started before the name was stored: fetch it once so the header can show who is signed in
+  useEffect(() => { if (authed && !api.currentUserName()) api.me().then((m) => api.rememberUserName(m.name)).then(() => bump((n) => n + 1)).catch(() => {}); }, [authed]);
   useEffect(() => { if (authed) registerPush(); }, [authed]);
   useEffect(() => { api.setAuthLostHandler(() => setAuthed(false)); return () => api.setAuthLostHandler(null); }, [setAuthed]);
   return (
     <View style={{ flex: 1 }}>
+      {authed && !!api.currentUserName() && (
+        <Pressable style={s.who} onPress={() => { setOpen(null); setWho(null); setTab('me'); }} accessibilityLabel="פרטים אישיים">
+          <View style={s.whoAv}><Text style={s.whoAvT}>{api.currentUserName()!.trim().charAt(0).toUpperCase()}</Text></View>
+          <View style={{ flex: 1 }}><Text style={s.b} numberOfLines={1}>{api.currentUserName()}</Text><Text style={s.muted}>פרטים אישיים והמעקב שלי</Text></View>
+          <Icon name="back" size={18} color={T.muted} />
+        </Pressable>
+      )}
       <View style={{ flex: 1 }}>
         {open ? <Tournament id={open} onBack={() => setOpen(null)} onGoAccount={() => { setOpen(null); setTab('me'); }} />
           : tab === 't' ? <TournamentList onOpen={setOpen} authed={authed} onGoAccount={() => setTab('me')} />
@@ -92,7 +102,7 @@ function Home({ authed, setAuthed }: { authed: boolean; setAuthed: (v: boolean) 
           : tab === 'rank' ? <Rankings />
           : tab === 'players' ? <Players />
           : tab === 'more' ? <More />
-          : authed ? (who === 'ask' ? <Welcome onPick={(w) => { if (w === 'follow') { setWho(null); setTab('rank'); } else setWho(w); }} onSkip={() => { setWho(null); setTab('t'); }} /> : <MyArea preset={who} onLogout={() => api.logout().then(() => { setWho(null); setAuthed(false); })} />) : <Login onDone={(signedUp) => { setAuthed(true); if (signedUp) setWho('ask'); }} />}
+          : authed ? (who === 'ask' ? <Welcome onPick={(w) => { if (w === 'follow') { setWho(null); setTab('rank'); } else setWho(w); }} onSkip={() => { setWho(null); setTab('t'); }} /> : <MyArea onOpenTournament={(id) => setOpen(id)} preset={who} onLogoutAll={() => { setWho(null); setAuthed(false); }} onLogout={() => api.logout().then(() => { setWho(null); setAuthed(false); })} />) : <Login onDone={(signedUp) => { setAuthed(true); if (signedUp) setWho('ask'); }} />}
       </View>
       <View style={s.tabbar}>
         {TABS.map(([k, l, ic]) => { const on = tab === k && !open; return <Pressable key={k} style={[s.tab, on && s.tabActive]} onPress={() => { setOpen(null); setTab(k); }}><Icon name={ic} size={21} color={on ? T.btnText : T.muted} /><Text style={[s.tabT, on && s.tabOn]}>{l}</Text></Pressable>; })}
@@ -398,7 +408,7 @@ function RegisterBox({ tournamentName, categories, onGoAccount }: { tournamentNa
   );
 }
 
-function MyArea({ onLogout, preset }: { onLogout: () => void; preset?: 'self' | 'child' | null }) {
+function MyArea({ onLogout, preset, onLogoutAll, onOpenTournament }: { onLogout: () => void; preset?: 'self' | 'child' | null; onLogoutAll: () => void; onOpenTournament: (id: string) => void }) {
   const [d, setD] = useState<Awaited<ReturnType<typeof api.me>> | null>(null);
   const [open, setOpen] = useState<Awaited<ReturnType<typeof api.openCategories>>>([]);
   const [msg, setMsg] = useState(''); const [err, setErr] = useState('');
@@ -433,6 +443,7 @@ function MyArea({ onLogout, preset }: { onLogout: () => void; preset?: 'self' | 
           {open.length > 0 && open.filter((o) => fits(o, p)).length === 0 && <Text style={s.muted}>אין כרגע תחרות פתוחה שמתאימה לשחקן הזה. {open.map((o) => `${o.tournament} · ${o.category} (${why(o, p)})`).join('; ')}</Text>}
         </View>
       ))}
+      <Following onOpenTournament={onOpenTournament} />
       <Text style={s.h2}>ההרשמות שלי</Text>
       {!!d && !d.entries.length && <Text style={s.muted}>אין עדיין הרשמות לתחרויות.</Text>}
       {d?.entries.map((e) => (
@@ -442,7 +453,30 @@ function MyArea({ onLogout, preset }: { onLogout: () => void; preset?: 'self' | 
       <Text style={s.h2}>התראות</Text>
       {!!d && !d.notifications.length && <Text style={s.muted}>אין התראות חדשות.</Text>}
       {d?.notifications.map((n) => <View key={n.id} style={s.card}><Text style={s.b}>{n.title}</Text><Text>{n.body}</Text></View>)}
+      <Pressable style={[s.btn, s.btnGhost, { marginTop: 16 }]} onPress={() => Alert.alert('התנתקות מכל המכשירים', 'החשבון ינותק בכל הטלפונים והדפדפנים, כולל זה. להמשיך?', [{ text: 'ביטול', style: 'cancel' }, { text: 'התנתקות', style: 'destructive', onPress: () => api.logoutAll().then(onLogoutAll).catch((e) => setErr(e.message)) }])}><Text style={[s.btnT, { color: T.text }]}>התנתקות מכל המכשירים</Text></Pressable>
     </ScrollView>
+  );
+}
+
+/** Who the signed-in user follows: players (rank, last results, next match), tournaments and clubs. */
+function Following({ onOpenTournament }: { onOpenTournament: (id: string) => void }) {
+  const [o, setO] = useState<api.FollowOverview | null>(null);
+  useEffect(() => { api.followOverview().then(setO).catch(() => setO(null)); }, []);
+  if (!o || (!o.players.length && !o.tournaments.length && !o.clubs.length)) return null;
+  return (
+    <View style={{ gap: 8 }}>
+      <Text style={s.h2}>המעקב שלי</Text>
+      {o.players.map((p) => (
+        <View key={p.id} style={s.card}>
+          <Text style={s.cardT}>{p.name}</Text>
+          <Text style={s.muted}>{p.rank ? `דירוג #${p.rank} · ${p.points} נקודות` : 'ללא דירוג'}{p.club ? ` · ${p.club}` : ''}</Text>
+          {p.next && <Text style={s.b}>הבא: {p.next.vs}<Text style={s.muted}>{` · ${p.next.competition}`}</Text></Text>}
+          {p.recent.length > 0 && <Text style={s.muted}>{p.recent.slice(0, 3).map((r) => `${r.won ? 'ניצחון' : 'הפסד'} ${r.score}`).join(' · ')}</Text>}
+        </View>
+      ))}
+      {o.tournaments.map((x) => <Pressable key={x.id} style={s.card} onPress={() => onOpenTournament(x.id)}><Text style={s.cardT}>{x.name}</Text><Text style={s.muted}>{new Date(x.startDate).toLocaleDateString('he-IL')} – {new Date(x.endDate).toLocaleDateString('he-IL')}</Text></Pressable>)}
+      {o.clubs.map((c) => <View key={c.id} style={s.card}><Text style={s.cardT}>{c.name}</Text></View>)}
+    </View>
   );
 }
 
@@ -557,6 +591,8 @@ const s = StyleSheet.create({
   err: { backgroundColor: T.badbg, color: T.bad, padding: 12, borderRadius: 14, overflow: 'hidden' },
   stp: { width: 48, height: 48, borderRadius: 24, borderWidth: 1, borderColor: T.line2, alignItems: 'center', justifyContent: 'center', backgroundColor: T.surface }, stpT: { fontSize: 24, fontWeight: '700', color: T.text },
   muted: { color: T.muted, fontSize: 14 },
+  who: { flexDirection: 'row', alignItems: 'center', gap: 12, marginHorizontal: 16, marginTop: 4, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999, backgroundColor: T.surface, borderWidth: 1, borderColor: T.line },
+  whoAv: { width: 36, height: 36, borderRadius: 18, backgroundColor: T.volt, alignItems: 'center', justifyContent: 'center' }, whoAvT: { color: T.ink, fontWeight: '800', fontSize: 16 },
   tabbar: { position: 'absolute', bottom: 10, left: 10, right: 10, flexDirection: 'row', backgroundColor: T.glass, borderWidth: 1, borderColor: T.glassLine, borderRadius: 999, padding: 5, elevation: 10, shadowColor: '#0C1210', shadowOpacity: 0.3, shadowRadius: 16, shadowOffset: { width: 0, height: 8 } },
   tab: { flex: 1, minHeight: 54, alignItems: 'center', justifyContent: 'center', gap: 1, borderRadius: 999 }, tabActive: { backgroundColor: T.btn },
   tabT: { color: T.muted, fontWeight: '500', fontSize: 11 }, tabOn: { color: T.btnText, fontWeight: '700' },

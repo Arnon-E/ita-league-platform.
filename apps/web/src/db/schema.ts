@@ -35,6 +35,8 @@ export const users = pgTable('users', {
   active: boolean('active').notNull().default(true),
   failedLogins: integer('failed_logins').notNull().default(0),
   lockedUntil: timestamp('locked_until', { withTimezone: true }),
+  /** "Sign out everywhere": sessions issued before this moment are no longer valid. */
+  sessionsValidAfter: timestamp('sessions_valid_after', { withTimezone: true }),
   createdAt: createdAt(),
 });
 

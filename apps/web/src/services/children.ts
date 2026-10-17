@@ -42,7 +42,7 @@ export async function setChildLogin(db: Db, actor: Actor, playerId: string, user
     const [cur] = await db.select().from(users).where(eq(users.id, p.accountId));
     if (!cur || !isChildEmail(cur.email)) throw new Error('לפרופיל הזה כבר יש חשבון');
     if (cur.email !== childEmail(name) && (await taken())) throw new Error('שם המשתמש תפוס');
-    await db.update(users).set({ email: childEmail(name), passwordHash, failedLogins: 0, lockedUntil: null }).where(eq(users.id, cur.id));
+    await db.update(users).set({ email: childEmail(name), passwordHash, failedLogins: 0, lockedUntil: null, sessionsValidAfter: new Date() }).where(eq(users.id, cur.id));
     await audit(db, actor, 'child.login.reset', 'player', playerId, {});
     return { username: name };
   }

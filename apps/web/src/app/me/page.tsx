@@ -105,6 +105,10 @@ export default async function Me({ searchParams }: { searchParams: Promise<{ err
         <button className="btn">שיוך שחקן קיים</button>
       </form>
       </>)}
+      <form action="/logout?all=1" method="post" style={{ marginTop: 24 }}>
+        <button className="btn ghost small">התנתקות מכל המכשירים</button>
+        <span className="muted"> {' '}מנתק את החשבון בכל הטלפונים והדפדפנים, למשל אם אבד מכשיר</span>
+      </form>
       <h2>התראות</h2>
       <div className="card grid">{notes.length ? notes.slice().reverse().slice(0, 20).map((n) => <div key={n.id}><strong>{n.title}</strong> <span className="muted">{n.body}</span></div>) : <span className="muted">אין התראות.</span>}</div>
     </Shell>
