@@ -41,11 +41,19 @@ describe('adding a child who already exists from the federation data', () => {
     await resolveClaim(db, fed, pending[0]!.c.id, 'REJECTED', { note: 'לא ההורה' });
     expect((await db.select().from(schema.guardians).where(eq(schema.guardians.playerId, known.id))).length).toBe(0);
 
+    // a hand-made duplicate of the same child does not block linking to the federation's profile
+    const { actor: p3 } = await mkUser('PLAYER', 'p3@t.il');
+    const dupOwner = await db.insert(schema.players).values({ firstName: 'דניאל', lastName: 'כהן', birthDate: new Date('2014-04-04'), gender: 'MALE', accountId: null }).returning();
+    await db.insert(schema.guardians).values({ playerId: dupOwner[0]!.id, userId: p3.id, relation: 'parent' });
+    const again = await addPlayerProfile(db, parent, { firstName: 'דניאל', lastName: 'כהן', birthDate: new Date('2014-04-04'), gender: 'MALE', forChild: true });
+    expect(again.linkedExisting).toBe(true);
+    expect(again.id).toBe(known.id);
+
     // a different name or birth year still creates a new profile
     const fresh = await addPlayerProfile(db, parent, { firstName: 'אחר', lastName: 'לוי', birthDate: new Date('2014-04-04'), gender: 'MALE', forChild: true });
     expect(fresh.linkedExisting).toBe(false);
     const swappedYear = await addPlayerProfile(db, parent, { firstName: 'דניאל', lastName: 'כהן', birthDate: new Date('2013-04-04'), gender: 'MALE', forChild: true });
     expect(swappedYear.linkedExisting).toBe(false);
-    expect((await db.select().from(schema.players).where(and(eq(schema.players.firstName, 'דניאל')))).length).toBe(2);
+    expect((await db.select().from(schema.players).where(and(eq(schema.players.firstName, 'דניאל')))).length).toBe(3); // federation profile, the hand-made duplicate and the 2013 one
   });
 });

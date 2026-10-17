@@ -49,7 +49,9 @@ export async function addPlayerProfile(db: Db, actor: Actor, input: {
   const pool = await db.select().from(players).where(and(
     eq(players.gender, input.gender), gte(players.birthDate, new Date(Date.UTC(y, 0, 1))), lt(players.birthDate, new Date(Date.UTC(y + 1, 0, 1))),
   ));
-  const same = pool.filter((x) => sameName({ first: x.firstName, last: x.lastName }, { first: input.firstName, last: input.lastName }));
+  const sameAny = pool.filter((x) => sameName({ first: x.firstName, last: x.lastName }, { first: input.firstName, last: input.lastName }));
+  // profiles that came from the federation's data win over ones a parent created by hand (an earlier duplicate must not block the link)
+  const same = sameAny.some((x) => x.logligId) ? sameAny.filter((x) => x.logligId) : sameAny;
   const free: typeof same = [];
   for (const x of same) {
     const kids = (await db.select({ id: guardians.id }).from(guardians).where(eq(guardians.playerId, x.id))).length;
