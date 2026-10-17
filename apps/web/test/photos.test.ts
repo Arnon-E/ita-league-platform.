@@ -34,3 +34,24 @@ describe('player photos from Loglig', () => {
     expect(photoUrl(b?.photo)).toBeNull();
   });
 });
+
+describe('photos from the rosters of finished competitions', () => {
+  it('fills photo and user id for players we already know, creates nothing, and skips ambiguous names', async () => {
+    const { importRosterPhotos, validateRosterImport } = await import('@/services/loglig-rosters');
+    const mk = async (first: string, last: string, year: number) => (await db.insert(schema.players).values({ firstName: first, lastName: last, gender: 'FEMALE', birthDate: new Date(Date.UTC(year, 6, 1)), logligId: `x:${first}${last}${year}` }).returning())[0]!;
+    const known = await mk('מיה', 'לוי', 2014);
+    await mk('נועה', 'כהן', 2014); await mk('נועה', 'כהן', 2013); // two girls with the same name in the age group: ambiguous
+    const before = (await db.select().from(schema.players)).length;
+    const r = await importRosterPhotos(db, validateRosterImport({
+      kind: 'rosters',
+      competitions: [{ id: 1, title: 'תחרות שהסתיימה', start: '2026-01-01', categories: [{ teamId: 5, title: 'תחרות שהסתיימה - בנות 12', players: [
+        { userId: 777, name: 'מיה לוי', image: 'PlayerImage_777.jpg' }, { userId: 888, name: 'נועה כהן', image: 'PlayerImage_888.jpg' }, { userId: 999, name: 'לא מוכרת', image: 'PlayerImage_999.jpg' }, { userId: 555, name: 'בלי תמונה', image: null },
+      ] }] }],
+    }), new Date('2026-10-17'));
+    expect(r).toMatchObject({ matched: 1, updated: 1, ambiguous: 1, unknown: 1 });
+    const [m] = await db.select().from(schema.players).where(eq(schema.players.id, known.id));
+    expect(m?.photo).toBe('PlayerImage_777.jpg');
+    expect(m?.logligUserId).toBe('777');
+    expect((await db.select().from(schema.players)).length).toBe(before); // nobody created
+  });
+});

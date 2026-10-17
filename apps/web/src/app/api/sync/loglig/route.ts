@@ -6,7 +6,7 @@ import { importRegulations, validateRegulationsImport } from '@/services/regulat
 import { importLeague, validateLeagueImport } from '@/services/loglig-leagues';
 import { createTestUser, removeTestUsers } from '@/services/test-users';
 import { importRankings, validateRankingImport } from '@/services/loglig-rankings';
-import { importRosters, validateRosterImport } from '@/services/loglig-rosters';
+import { importRosterPhotos, importRosters, validateRosterImport } from '@/services/loglig-rosters';
 import { importPhotos, photosNeeded, validatePhotos } from '@/services/loglig-photos';
 
 export const maxDuration = 60;
@@ -34,6 +34,7 @@ export async function POST(req: Request) {
     if (body?.kind === 'regulations') return Response.json(await importRegulations(db, validateRegulationsImport(body)));
     if (body?.kind === 'photos-needed') return Response.json(await photosNeeded(db, Number(body.limit)));
     if (body?.kind === 'photos') return Response.json(await importPhotos(db, validatePhotos(body)));
+    if (body?.kind === 'roster-photos') return Response.json(await importRosterPhotos(db, validateRosterImport({ ...body, kind: 'rosters' })));
     if (body?.kind === 'rosters') return Response.json(await importRosters(db, validateRosterImport(body)));
     if (body?.kind === 'league') return Response.json(await importLeague(db, validateLeagueImport(body)));
     return Response.json(await importRankings(db, validateRankingImport(body)));

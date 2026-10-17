@@ -102,3 +102,41 @@ export async function importRosters(db: Db, input: RosterImport) {
   return stats;
 }
 
+
+/**
+ * Rosters of competitions that already finished are only partly complete on Loglig (some withdrew, some are listed under another
+ * stage), so they are not used to create entries. They are still the best source of a Loglig user id and photo for players who are
+ * not in the ranking: each roster player is matched to someone we already know (user id, ranking key, or the same name and gender
+ * within the category's age group) and only the user id and photo are filled in. Nobody and nothing is created.
+ */
+export async function importRosterPhotos(db: Db, input: RosterImport, now = new Date()) {
+  const stats = { seen: 0, matched: 0, updated: 0, ambiguous: 0, unknown: 0 };
+  const year = now.getUTCFullYear();
+  for (const comp of input.competitions) {
+    for (const rc of comp.categories) {
+      const want = parseCategoryTitle(rc.title);
+      for (const rp of rc.players) {
+        stats.seen++;
+        if (!rp.image) continue;
+        const uid = String(rp.userId);
+        let [p] = await db.select().from(players).where(eq(players.logligUserId, uid));
+        if (!p) [p] = await db.select().from(players).where(eq(players.logligId, `ll:${rp.userId}`));
+        if (!p) {
+          const { first, last } = splitName(rp.name);
+          const named = (await db.select().from(players).where(and(eq(players.gender, want.gender === 'OPEN' ? 'MALE' : want.gender), sql`lower(${players.firstName} || ' ' || ${players.lastName}) = ${`${first} ${last}`.toLowerCase()}`)))
+            .filter((x) => !x.logligUserId);
+          const fits = want.age ? named.filter((x) => { const age = year - x.birthDate.getUTCFullYear(); return age <= want.age! + 1 && age >= want.age! - 3; }) : named;
+          if (fits.length > 1) { stats.ambiguous++; continue; }
+          p = fits[0];
+        }
+        if (!p) { stats.unknown++; continue; }
+        stats.matched++;
+        if (p.photo && p.photo !== '') continue;
+        const [taken] = await db.select({ id: players.id }).from(players).where(and(eq(players.logligUserId, uid), sql`${players.id} <> ${p.id}`));
+        await db.update(players).set({ photo: rp.image, ...(p.logligUserId || taken ? {} : { logligUserId: uid }) }).where(eq(players.id, p.id));
+        stats.updated++;
+      }
+    }
+  }
+  return stats;
+}
