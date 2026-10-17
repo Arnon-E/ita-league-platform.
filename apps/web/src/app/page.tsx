@@ -125,7 +125,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ l
       </div>
       {mine.length > 0 && (
         <p className="muted" style={{ margin: '10px 0 0' }}>
-          {relevantOnly && !(needle || level || sec || season || g || age) ? `${t('מוצגות תחרויות שמתאימות לשחקנים שלך. חיפוש או סינון מציגים את כולן.')} ` : ''}
+          {relevantOnly && !(needle || level || sec || season || g || age) ? `${t(home?.role === 'PLAYER' ? 'מוצגות תחרויות שמתאימות לך.' : home?.role === 'PARENT' ? 'מוצגות תחרויות שמתאימות לילדים שלך.' : 'מוצגות תחרויות שמתאימות לך ולילדים שלך.')} ${t('חיפוש או סינון מציגים את כולן.')} ` : ''}
           <Link href={relevantOnly ? '/?rel=all' : '/'}><u>{relevantOnly ? t('הצגת כל התחרויות') : t('רק תחרויות שמתאימות לי')}</u></Link>
         </p>
       )}
@@ -155,7 +155,10 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ l
         />
       ) : (
         <div className="card muted" style={{ marginTop: 14 }}>
-          {filtered ? t('לא נמצאו תחרויות לפי הסינון.') : mode === 'up' ? t('אין כרגע תחרויות קרובות. אפשר לעבור לארכיון או להציג הכול.') : t('אין עדיין תחרויות. צרו תחרות חדשה כדי להתחיל.')}
+          {filtered ? t('לא נמצאו תחרויות לפי הסינון.')
+            : relevantOnly ? <>{t('אין כרגע תחרויות שמתאימות לך.')} <Link href="/?rel=all"><u>{t('הצגת כל התחרויות')}</u></Link></>
+            : mode === 'up' ? t('אין כרגע תחרויות קרובות. אפשר לעבור לארכיון או להציג הכול.')
+            : actor && can(actor, 'tournament.create') ? t('אין עדיין תחרויות. צרו תחרות חדשה כדי להתחיל.') : t('אין תחרויות להצגה.')}
         </div>
       )}
     </Shell>
