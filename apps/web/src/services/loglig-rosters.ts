@@ -70,6 +70,7 @@ export async function importRosters(db: Db, input: RosterImport) {
       for (const rp of rc.players) {
         const { first, last } = splitName(rp.name);
         let [p] = await db.select().from(players).where(eq(players.logligUserId, String(rp.userId)));
+        if (!p) [p] = await db.select().from(players).where(eq(players.logligId, `ll:${rp.userId}`)); // ranked players are keyed by Loglig user id
         if (!p) {
           const named = (await db.select().from(players).where(and(eq(players.gender, want.gender === 'OPEN' ? 'MALE' : want.gender), sql`lower(${players.firstName} || ' ' || ${players.lastName}) = ${`${first} ${last}`.toLowerCase()}`)))
             .filter((x) => !x.logligUserId);
