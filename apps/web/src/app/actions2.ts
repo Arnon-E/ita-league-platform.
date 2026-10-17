@@ -4,7 +4,7 @@ import { setChildLogin, suggestEntry } from '@/services/children';
 import { flushNotifications } from '@/lib/senders';
 import { redirect } from 'next/navigation';
 import { db } from '@/db';
-import { login, SESSION_COOKIE } from '@/lib/auth';
+import { login, REMEMBER_SECONDS, SESSION_COOKIE } from '@/lib/auth';
 import { guarded, requireActor } from '@/lib/session';
 import { addPlayerProfile, signUp } from '@/services/accounts';
 import { ClaimPending } from '@/services/claims';
@@ -18,8 +18,8 @@ export async function signUpAction(fd: FormData) {
   let err = '';
   try {
     await signUp(db, { email: s(fd, 'email'), password: s(fd, 'password'), name: s(fd, 'name'), phone: s(fd, 'phone') });
-    const r = await login(db, s(fd, 'email'), s(fd, 'password'));
-    if (r.ok) (await cookies()).set(SESSION_COOKIE, r.token, { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production', path: '/', maxAge: 12 * 3600 });
+    const r = await login(db, s(fd, 'email'), s(fd, 'password'), new Date(), true);
+    if (r.ok) (await cookies()).set(SESSION_COOKIE, r.token, { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production', path: '/', maxAge: REMEMBER_SECONDS });
   } catch (e) { err = e instanceof Error ? e.message : 'שגיאה'; }
   const next = s(fd, 'next');
   const safe = next.startsWith('/') && !next.startsWith('//') ? next : '/welcome';

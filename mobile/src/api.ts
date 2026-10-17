@@ -29,15 +29,16 @@ async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
   return body as T;
 }
 
-export async function login(email: string, password: string) {
-  const r = await call<{ token: string; user: { name: string; role: string } }>('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) });
-  token = r.token; role = r.user.role; await SecureStore.setItemAsync('ita_token', r.token); await SecureStore.setItemAsync('ita_role', r.user.role);
+/** remember: keep the session on the phone (30 days) so the app opens signed in. Off: it lives in memory only and ends with the app. */
+export async function login(email: string, password: string, remember = true) {
+  const r = await call<{ token: string; user: { name: string; role: string } }>('/auth/login', { method: 'POST', body: JSON.stringify({ email, password, remember }) });
+  token = r.token; role = r.user.role; if (remember) { await SecureStore.setItemAsync('ita_token', r.token); await SecureStore.setItemAsync('ita_role', r.user.role); } else { await SecureStore.deleteItemAsync('ita_token'); await SecureStore.deleteItemAsync('ita_role'); }
   return r.user;
 }
 
-export async function register(name: string, email: string, phone: string, password: string) {
-  const r = await call<{ token: string; user: { name: string; role: string } }>('/auth/register', { method: 'POST', body: JSON.stringify({ name, email, phone, password }) });
-  token = r.token; role = r.user.role; await SecureStore.setItemAsync('ita_token', r.token); await SecureStore.setItemAsync('ita_role', r.user.role);
+export async function register(name: string, email: string, phone: string, password: string, remember = true) {
+  const r = await call<{ token: string; user: { name: string; role: string } }>('/auth/register', { method: 'POST', body: JSON.stringify({ name, email, phone, password, remember }) });
+  token = r.token; role = r.user.role; if (remember) { await SecureStore.setItemAsync('ita_token', r.token); await SecureStore.setItemAsync('ita_role', r.user.role); } else { await SecureStore.deleteItemAsync('ita_token'); await SecureStore.deleteItemAsync('ita_role'); }
   return r.user;
 }
 export const addPlayer = (p: { first: string; last: string; birth: string; gender: 'MALE' | 'FEMALE'; forChild: boolean }) => call<{ id: string }>('/players', { method: 'POST', body: JSON.stringify(p) });

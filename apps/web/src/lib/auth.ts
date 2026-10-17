@@ -51,10 +51,14 @@ export async function verifySession(token: string | undefined): Promise<Actor | 
   }
 }
 
+/** "Keep me signed in": the session lasts this long instead of 12 hours, so the phone does not ask for a password every day. */
+export const REMEMBER_TTL = '30d';
+export const REMEMBER_SECONDS = 30 * 24 * 3600;
+
 export type LoginResult = { ok: true; actor: Actor; token: string } | { ok: false; reason: 'invalid' | 'locked' | 'inactive' };
 
 /** Email + password login with lockout after repeated failures. */
-export async function login(db: Db, email: string, password: string, now = new Date()): Promise<LoginResult> {
+export async function login(db: Db, email: string, password: string, now = new Date(), remember = false): Promise<LoginResult> {
   // A child signs in with just the user name their parent chose; it is stored as name@kid.ita.invalid.
   const id = email.trim().toLowerCase();
   const [u] = await db.select().from(users).where(eq(users.email, id.includes('@') ? id : `${id}@kid.ita.invalid`));
@@ -71,5 +75,5 @@ export async function login(db: Db, email: string, password: string, now = new D
   }
   await db.update(users).set({ failedLogins: 0, lockedUntil: null }).where(eq(users.id, u.id));
   const actor: Actor = { id: u.id, role: u.role };
-  return { ok: true, actor, token: await signSession(actor) };
+  return { ok: true, actor, token: await signSession(actor, remember ? REMEMBER_TTL : '12h') };
 }

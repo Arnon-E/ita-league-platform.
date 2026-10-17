@@ -38,12 +38,12 @@ export default function App() {
 function Login({ onDone }: { onDone: (signedUp: boolean) => void }) {
   const [mode, setMode] = useState<'login' | 'signup'>('login');
   const [name, setName] = useState(''); const [phone, setPhone] = useState('');
-  const [email, setEmail] = useState(''); const [pw, setPw] = useState(''); const [err, setErr] = useState(''); const [busy, setBusy] = useState(false);
+  const [email, setEmail] = useState(''); const [pw, setPw] = useState(''); const [remember, setRemember] = useState(true); const [err, setErr] = useState(''); const [busy, setBusy] = useState(false);
   const fail = (e: Error) => { setBusy(false); setErr(e.message === 'invalid' ? 'אימייל או סיסמה שגויים' : e.message === 'locked' ? 'החשבון ננעל זמנית' : e.message); };
   const submit = () => {
     if (!email.trim() || !pw || (mode === 'signup' && !name.trim())) { setErr('יש למלא את כל השדות החובה'); return; }
     setErr(''); setBusy(true);
-    (mode === 'login' ? api.login(email.trim(), pw) : api.register(name.trim(), email.trim(), phone.trim(), pw)).then(() => { setBusy(false); onDone(mode === 'signup'); }).catch(fail);
+    (mode === 'login' ? api.login(email.trim(), pw, remember) : api.register(name.trim(), email.trim(), phone.trim(), pw, remember)).then(() => { setBusy(false); onDone(mode === 'signup'); }).catch(fail);
   };
   return (
     <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled">
@@ -54,6 +54,7 @@ function Login({ onDone }: { onDone: (signedUp: boolean) => void }) {
       <TextInput style={s.input} placeholder={mode === 'login' ? 'אימייל או שם משתמש' : 'אימייל'} placeholderTextColor={T.muted} autoCapitalize="none" autoCorrect={false} keyboardType={mode === 'login' ? 'default' : 'email-address'} value={email} onChangeText={setEmail} />
       {mode === 'signup' && <TextInput style={s.input} placeholder="טלפון (לא חובה)" placeholderTextColor={T.muted} keyboardType="phone-pad" value={phone} onChangeText={setPhone} />}
       <TextInput style={s.input} placeholder={mode === 'signup' ? 'סיסמה (10 תווים, אותיות וספרות)' : 'סיסמה'} placeholderTextColor={T.muted} secureTextEntry value={pw} onChangeText={setPw} />
+      <Pressable style={[s.chip, { alignSelf: 'flex-start' }, remember && s.chipOn]} onPress={() => setRemember(!remember)}><Text style={remember ? s.chipOnT : s.b}>{remember ? '✓ ' : ''}השאר אותי מחובר</Text></Pressable>
       <Pressable style={[s.btn, busy && { opacity: 0.6 }]} disabled={busy} onPress={submit}><Text style={s.btnT}>{mode === 'login' ? 'כניסה' : 'יצירת חשבון'}</Text></Pressable>
       <Pressable style={s.link} onPress={() => { setErr(''); setMode(mode === 'login' ? 'signup' : 'login'); }}><Text style={s.linkT}>{mode === 'login' ? 'אין חשבון? הרשמה' : 'כבר רשומים? כניסה'}</Text></Pressable>
     </ScrollView>
