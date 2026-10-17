@@ -108,7 +108,7 @@ export const stats = () => call<{ totals: { tournaments: number; players: number
 
 export type HomeMatch = { id: string; tournament: string; category: string; status: string; opponent: string | null; start: string | null; court: string | null; won: boolean | null; sets: { a: number; b: number }[] };
 export type HomePerson = {
-  id: string; name: string; relation: 'SELF' | 'CHILD'; childLogin: string | null; age: number; club: string | null; rank: number | null; points: number; wins: number; losses: number; form: boolean[];
+  id: string; name: string; relation: 'SELF' | 'CHILD'; gender: 'MALE' | 'FEMALE' | 'OPEN'; childLogin: string | null; age: number; club: string | null; rank: number | null; points: number; wins: number; losses: number; form: boolean[];
   nextMatch: HomeMatch | null; recent: HomeMatch[]; nextTournament: { id: string; name: string; start: string; category: string; status: string; payment: string } | null;
   docsOk: boolean; missingDocs: string[]; todo: string[];
   canRegister: { tournamentId: string; tournament: string; categoryId: string; category: string; closes: string | null }[];

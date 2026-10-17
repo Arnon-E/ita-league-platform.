@@ -15,6 +15,8 @@ import { groupStandings } from '@/services/results';
 import { listCourtLabels } from '@/services/tournaments';
 import { formatOf } from '@/services/draws';
 import { loadRuleSet } from '@/services/rules';
+import { myPlayerRows } from '@/services/home';
+import { ineligibleReason, relevantFor } from '@/services/eligibility';
 import { FORMAT, fmtDate, fmtTime, GENDER, LEVEL, MSTATUS, NEXT, STATUS, fmtScore } from '@/components/labels';
 import { refundAction } from '@/app/actions3';
 import { suggestedRefund } from '@/services/payments';
@@ -25,11 +27,12 @@ import {
 type Detail = NonNullable<Awaited<ReturnType<typeof tournamentDetail>>>;
 const TABS: [string, string][] = [['overview', 'סקירה'], ['entries', 'משתתפים'], ['draw', 'הגרלה וטבלאות'], ['results', 'משחקים ותוצאות'], ['schedule', 'לוח משחקים'], ['gallery', 'גלריה']];
 
-export default async function TournamentPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ tab?: string; err?: string; ok?: string; cat?: string; g?: string; age?: string }> }) {
+export default async function TournamentPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ tab?: string; err?: string; ok?: string; cat?: string; g?: string; age?: string; for?: string; all?: string }> }) {
   const tt = await tr();
   const { id } = await params;
-  const { tab = 'overview', err, ok, cat = '', g = '', age = '' } = await searchParams;
-  const flt = { g: g === 'MALE' || g === 'FEMALE' ? g : '', age: /^\d{2}$/.test(age) ? age : '' };
+  const sp = await searchParams;
+  const { err, ok, g = '', age = '' } = sp;
+  const explicitFilter = sp.g !== undefined || sp.age !== undefined || sp.cat !== undefined || sp.all === '1';
   const d = await tournamentDetail(db, id);
   if (!d) notFound();
   const { t } = d;
@@ -48,6 +51,15 @@ export default async function TournamentPage({ params, searchParams }: { params:
     schedule: d.ms.some((m) => m.scheduledStart && m.aEntryId && m.bEntryId),
     gallery: photoCount > 0,
   };
+  // A signed-in player or parent lands on their own player's category: the filters, the category and the tab are chosen for them.
+  const mine = !manage && actor ? await myPlayerRows(db, actor).catch(() => []) : [];
+  const focus = focusFor(d, mine, sp.for ?? '');
+  const useFocus = !!focus && !explicitFilter;
+  const flt = useFocus && focus!.cat
+    ? { g: focus!.cat.gender === 'MALE' || focus!.cat.gender === 'FEMALE' ? focus!.cat.gender : '', age: ageOf(focus!.cat.name) }
+    : { g: g === 'MALE' || g === 'FEMALE' ? g : '', age: /^\d{2}$/.test(age) ? age : '' };
+  const cat = sp.cat ?? (useFocus ? focus!.entries[0]?.e.categoryId ?? '' : '');
+  const tab = sp.tab ?? (useFocus && focus!.entries.length ? (hasContent.draw ? 'draw' : hasContent.results ? 'results' : 'overview') : 'overview');
   const tabs = TABS.filter(([k]) => manage || k === tab || hasContent[k]);
   return (
     <Shell nav="home">
@@ -55,13 +67,14 @@ export default async function TournamentPage({ params, searchParams }: { params:
         <div style={{ minWidth: 0 }}><span className={`pill ${cls}`}>{tt(st)}</span><h1 style={{ marginTop: 6 }}>{t.name}</h1><span className="muted">{fmtDate(t.startDate)} – {fmtDate(t.endDate)}</span></div>
         <FollowButton kind="TOURNAMENT" target={t.id} back={`/tournaments/${t.id}`} />
       </div>
-      <nav className="tabs">{tabs.map(([k, l]) => <Link key={k} href={`/tournaments/${id}?tab=${k}`} className={tab === k ? 'on' : ''}>{tt(l)}</Link>)}</nav>
+      {focus && <MyPlayerCard d={d} focus={focus} mine={mine} showAll={useFocus} />}
+      <nav className="tabs">{tabs.map(([k, l]) => <Link key={k} href={`/tournaments/${id}?tab=${k}${sp.for ? `&for=${sp.for}` : ''}${explicitFilter ? '' : ''}`} className={tab === k ? 'on' : ''}>{tt(l)}</Link>)}</nav>
       <Flash err={err} ok={ok} />
       {manage && !rulesVerified && <div className="err" style={{ background: 'var(--warnbg)', color: 'var(--warn)' }}>ערכת החוקים של התחרות טרם אומתה מול תקנוני האיגוד. ההגרלה והנקודות עשויות לא להתאים לתקנון.</div>}
-      {tab === 'overview' && <CatFilter d={d} tab="overview" cat="" flt={flt} withCats={false} />}
-      {tab === 'overview' && <Overview d={narrow(d, flt)} manage={manage} />}
+      {tab === 'overview' && (useFocus ? <details className="filters"><summary>{tt('שינוי קטגוריה')}</summary><CatFilter d={d} tab="overview" cat="" flt={flt} withCats={false} /></details> : <CatFilter d={d} tab="overview" cat="" flt={flt} withCats={false} />)}
+      {tab === 'overview' && <Overview d={narrow(d, flt)} manage={manage} compact={!!focus} registered={!!focus && focus.entries.length > 0} />}
       {tab === 'entries' && <Entries d={d} manage={manage} />}
-      {(tab === 'draw' || tab === 'results' || tab === 'schedule') && <CatFilter d={d} tab={tab} cat={cat} flt={flt} withCats />}
+      {(tab === 'draw' || tab === 'results' || tab === 'schedule') && (useFocus ? <details className="filters"><summary>{tt('שינוי קטגוריה')}</summary><CatFilter d={d} tab={tab} cat={cat} flt={flt} withCats /></details> : <CatFilter d={d} tab={tab} cat={cat} flt={flt} withCats />)}
       {tab === 'draw' && <DrawTab d={pick(narrow(d, flt), cat)} manage={manage} />}
       {tab === 'results' && <Results d={pick(narrow(d, flt), cat)} scorer={scorer} />}
       {tab === 'schedule' && <Schedule d={pick(narrow(d, flt), cat)} manage={manage} />}
@@ -79,6 +92,63 @@ const pick = (d: Detail, cat: string): Detail => {
 
 type Flt = { g: string; age: string };
 const ageOf = (name: string) => (name.match(/(\d{2})/) ?? [])[1] ?? '';
+
+type Mine = Awaited<ReturnType<typeof myPlayerRows>>;
+/** Which of the viewer's players this page is about, and their category: the one they are entered in, else the youngest age group that fits. */
+function focusFor(d: Detail, mine: Mine, forId: string) {
+  const entriesOf = (p: Mine[number]) => d.ents.filter((x) => x.e.playerId === p.id && x.e.status !== 'WITHDRAWN' && x.e.status !== 'REJECTED');
+  const p = mine.find((x) => x.id === forId) ?? mine.find((x) => entriesOf(x).length > 0) ?? mine.find((x) => relevantFor(x, d.t, d.cats));
+  if (!p) return null;
+  const entries = entriesOf(p);
+  const cat = d.cats.find((c) => c.id === entries[0]?.e.categoryId)
+    ?? d.cats.filter((c) => !ineligibleReason(p, c, d.t)).sort((a, b) => Number(ageOf(a.name) || 99) - Number(ageOf(b.name) || 99))[0];
+  return { p, cat, entries };
+}
+
+/** The player this page is opened for: where they stand in this competition, their next match and latest results. */
+async function MyPlayerCard({ d, focus, mine, showAll }: { d: Detail; focus: NonNullable<ReturnType<typeof focusFor>>; mine: Mine; showAll: boolean }) {
+  const tt = await tr();
+  const { p, entries } = focus;
+  const myEntryIds = new Set(entries.map((x) => x.e.id));
+  const mineMs = d.ms.filter((m) => (m.aEntryId && myEntryIds.has(m.aEntryId)) || (m.bEntryId && myEntryIds.has(m.bEntryId)));
+  const next = mineMs.filter((m) => m.status === 'SCHEDULED' && m.aEntryId && m.bEntryId).sort((a, b) => (a.scheduledStart?.getTime() ?? Infinity) - (b.scheduledStart?.getTime() ?? Infinity))[0];
+  const played = mineMs.filter((m) => m.status !== 'SCHEDULED' && m.status !== 'VOID' && m.winnerEntryId)
+    .sort((a, b) => (b.scheduledStart?.getTime() ?? 0) - (a.scheduledStart?.getTime() ?? 0)).slice(0, 3);
+  const opp = (m: (typeof d.ms)[number]) => d.names.get((m.aEntryId && myEntryIds.has(m.aEntryId) ? m.bEntryId : m.aEntryId) ?? '') ?? '';
+  const iAmA = (m: (typeof d.ms)[number]) => !!m.aEntryId && myEntryIds.has(m.aEntryId);
+  const catNames = entries.map((x) => d.cats.find((c) => c.id === x.e.categoryId)?.name).filter(Boolean).join(' · ');
+  const open = d.t.status === 'REGISTRATION_OPEN';
+  return (
+    <section className="card grid" style={{ gap: 10, marginBottom: 12 }}>
+      <div className="row" style={{ flexWrap: 'nowrap', justifyContent: 'space-between' }}>
+        <div className="row" style={{ flexWrap: 'nowrap' }}>
+          {photoUrl(p.photo) ? <img className="pavatar-img" style={{ width: 52, height: 52 }} src={photoUrl(p.photo)!} alt="" referrerPolicy="no-referrer" /> : <span className="pavatar" aria-hidden style={{ width: 52, height: 52, fontSize: 18 }}>{p.firstName.charAt(0)}</span>}
+          <div style={{ minWidth: 0 }}>
+            <Link href={`/players/${p.id}`}><strong style={{ fontSize: 18 }}>{p.firstName} {p.lastName}</strong></Link>
+            <div className="muted">{entries.length ? `${tt('רשום')}: ${catNames}` : open ? tt('עדיין לא רשום לתחרות הזו') : tt('לא משתתף בתחרות הזו')}</div>
+          </div>
+        </div>
+        {!entries.length && open && <Link className="btn small" href="/me">{tt('להרשמה')}</Link>}
+      </div>
+      {mine.length > 1 && (
+        <div className="row">{mine.map((x) => <Link key={x.id} href={`/tournaments/${d.t.id}?for=${x.id}`} className={`pill ${x.id === p.id ? 'lime' : ''}`}>{x.firstName}</Link>)}</div>
+      )}
+      {next && (
+        <div className="muted"><strong style={{ color: 'var(--text)' }}>{tt('המשחק הבא')}:</strong> {opp(next) || tt('יתברר')}{next.scheduledStart ? ` · ${fmtTime(next.scheduledStart)}` : ''}{next.courtLabel ? ` · ${tt('מגרש')} ${next.courtLabel}` : ''}</div>
+      )}
+      {played.length > 0 && (
+        <div className="grid" style={{ gap: 4 }}>
+          {played.map((m) => {
+            const won = !!m.winnerEntryId && myEntryIds.has(m.winnerEntryId);
+            const sets = ((m.sets ?? []) as { a: number; b: number }[]).map((x) => (iAmA(m) ? x : { a: x.b, b: x.a }));
+            return <Link key={m.id} href={`/matches/${m.id}`} className="row"><span className={`pill ${won ? 'ok' : 'bad'}`}>{won ? tt('ניצחון') : tt('הפסד')}</span><span>{opp(m)}</span><span className="muted" dir="ltr">{fmtScore(sets)}</span></Link>;
+          })}
+        </div>
+      )}
+      {showAll && <Link className="muted" href={`/tournaments/${d.t.id}?all=1&tab=overview`}><u>{tt('הצגת כל הקטגוריות והמשתתפים')}</u></Link>}
+    </section>
+  );
+}
 
 /** Keeps only the categories matching the chosen gender and age (and their matches). */
 const narrow = (d: Detail, f: Flt): Detail => {
@@ -139,7 +209,7 @@ async function CatFilter({ d, tab, cat, flt, withCats }: { d: Detail; tab: strin
 const STEPS = ['הרשמה', 'הגרלה', 'משחקים', 'סיום'];
 const STEP_OF: Record<string, number> = { DRAFT: 0, REGISTRATION_OPEN: 0, REGISTRATION_CLOSED: 1, DRAWN: 2, IN_PROGRESS: 2, FINISHED: 3 };
 
-async function Overview({ d, manage }: { d: Detail; manage: boolean }) {
+async function Overview({ d, manage, compact = false, registered = false }: { d: Detail; manage: boolean; compact?: boolean; registered?: boolean }) {
   const tt = await tr();
   const { t, cats, ents } = d;
   const venue = t.venueId ? (await db.select().from(schema.venues).where(eq(schema.venues.id, t.venueId)))[0] : undefined;
@@ -164,7 +234,13 @@ async function Overview({ d, manage }: { d: Detail; manage: boolean }) {
           <form action={statusAction}><input type="hidden" name="id" value={t.id} /><input type="hidden" name="to" value="CANCELLED" /><button className="btn ghost">ביטול תחרות</button></form>
         )}
         <span className="muted">דמי השתתפות: ₪{(t.feeAgorot / 100).toFixed(0)}</span>
-      </div> : (t.registerUrl || t.registrationCloses || t.sourceUrl || t.feeAgorot > 0 || t.status === 'REGISTRATION_OPEN') && (
+      </div> : null}
+      {!manage && compact && (
+        <>
+          {t.status === 'REGISTRATION_OPEN' && !registered && <div className="row">{t.registerUrl ? <a className="btn" href={t.registerUrl} target="_blank" rel="noopener noreferrer">{tt('להרשמה')}</a> : <Link className="btn" href="/me">{tt('להרשמה')}</Link>}</div>}
+          <details className="filters"><summary>{tt('פרטי התחרות, מועדי הרשמה ודמי השתתפות')}</summary>
+            <div className="grid" style={{ gap: 10, marginTop: 8 }}>
+      {(t.registerUrl || t.registrationCloses || t.sourceUrl || t.feeAgorot > 0 || t.status === 'REGISTRATION_OPEN') && (
         <div className="card grid" style={{ gap: 10 }}>
           {t.status === 'REGISTRATION_OPEN' && (
             <div className="row">
@@ -192,6 +268,44 @@ async function Overview({ d, manage }: { d: Detail; manage: boolean }) {
             </ol>
           )}
           {closesIn !== null && closesIn >= 0 && <p className="muted" style={{ margin: 0 }}>{closesIn === 0 ? tt('ההרשמה נסגרת היום') : `${tt('נותרו')} ${closesIn} ${tt('ימים להרשמה')}`}</p>}
+        </>
+      )}
+            </div>
+          </details>
+        </>
+      )}
+      {!manage && !compact && (
+        <>
+      {(t.registerUrl || t.registrationCloses || t.sourceUrl || t.feeAgorot > 0 || t.status === 'REGISTRATION_OPEN') && (
+        <div className="card grid" style={{ gap: 10 }}>
+          {t.status === 'REGISTRATION_OPEN' && (
+            <div className="row">
+              {t.registerUrl
+                ? <a className="btn" href={t.registerUrl} target="_blank" rel="noopener noreferrer">{tt('להרשמה')}</a>
+                : <Link className="btn" href="/me">{tt('להרשמה')}</Link>}
+              {t.registerUrl && <span className="muted">{tt('ההרשמה מתבצעת באתר Loglig, באתר נפרד שנפתח בלשונית חדשה.')}</span>}
+            </div>
+          )}
+          <div className="row" style={{ gap: 18 }}>
+            {t.registrationCloses && <span><strong>{tt('ההרשמה נסגרת')}:</strong> {t.registrationCloses.toLocaleString('he-IL', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Jerusalem' })}</span>}
+            {t.feeAgorot > 0 && <span><strong>{tt('דמי השתתפות')}:</strong> ₪{(t.feeAgorot / 100).toFixed(0)}</span>}
+            {t.sourceUrl && <a className="muted" href={t.sourceUrl} target="_blank" rel="noopener noreferrer"><u>{tt('עמוד התחרות באתר האיגוד')}</u></a>}
+          </div>
+        </div>
+      )}
+      {!manage && (
+        <>
+          <dl className="facts card">
+            {facts.map(([k, v]) => <div key={k}><dt>{tt(k)}</dt><dd>{v}</dd></div>)}
+          </dl>
+          {step !== undefined && t.status !== 'CANCELLED' && (
+            <ol className="steps" aria-label={tt('שלבי התחרות')}>
+              {STEPS.map((s, i) => <li key={s} className={i < step ? 'done' : i === step ? 'now' : ''}>{tt(s)}</li>)}
+            </ol>
+          )}
+          {closesIn !== null && closesIn >= 0 && <p className="muted" style={{ margin: 0 }}>{closesIn === 0 ? tt('ההרשמה נסגרת היום') : `${tt('נותרו')} ${closesIn} ${tt('ימים להרשמה')}`}</p>}
+        </>
+      )}
         </>
       )}
       <h2>{tt('קטגוריות')} <span className="muted" style={{ fontWeight: 400 }}>· {cats.length}</span></h2>
@@ -223,7 +337,7 @@ async function Overview({ d, manage }: { d: Detail; manage: boolean }) {
           </div>
         ))}
       </div>
-      <ClubTable d={d} />
+      {manage && <ClubTable d={d} />}
       {manage && <><h2>הוספת קטגוריה</h2>
       <form action={categoryAction} className="card row">
         <input type="hidden" name="id" value={t.id} />

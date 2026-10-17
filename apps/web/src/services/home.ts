@@ -134,3 +134,11 @@ export async function myPlayersForRelevance(db: Db, actor: Actor | null) {
   if (!ids.length) return [];
   return db.select({ gender: players.gender, birthDate: players.birthDate }).from(players).where(inArray(players.id, ids));
 }
+
+/** The signed-in person's player profiles (themselves and their children) with what a page needs to pick the right category and show a card. */
+export async function myPlayerRows(db: Db, actor: Actor) {
+  const ids = await ownedPlayerIds(db, actor);
+  if (!ids.length) return [];
+  return db.select({ id: players.id, firstName: players.firstName, lastName: players.lastName, gender: players.gender, birthDate: players.birthDate, photo: players.photo })
+    .from(players).where(inArray(players.id, ids));
+}

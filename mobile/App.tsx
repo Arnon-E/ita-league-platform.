@@ -273,6 +273,21 @@ function Tournament({ id, onBack, onGoAccount }: { id: string; onBack: () => voi
   const [following, setFollowing] = useState(false); const [fErr, setFErr] = useState('');
   const [fg, setFg] = useState(''); const [fage, setFage] = useState(''); const [fcat, setFcat] = useState('');
   useEffect(() => { load(); }, [id]);
+  // a signed-in player or parent lands on their own category: gender, age group and category are chosen for them (they can change it)
+  const [auto, setAuto] = useState(false);
+  useEffect(() => {
+    if (!d || auto || !api.isAuthed()) return;
+    setAuto(true);
+    api.myHome().then((h) => {
+      const p = h.people.find((x) => x.nextTournament?.id === id) ?? h.people[0];
+      if (!p) return;
+      const ageOf = (n: string) => Number((n.match(/(\d{2})/) ?? [])[1] ?? 0);
+      const mine = p.nextTournament?.id === id ? d.categories.find((k) => k.name === p.nextTournament!.category) : undefined;
+      const fit = mine ?? d.categories.filter((k) => (k.gender === 'OPEN' || k.gender === p.gender) && ageOf(k.name) >= p.age).sort((a, b) => ageOf(a.name) - ageOf(b.name))[0];
+      if (!fit || (fit.gender !== 'MALE' && fit.gender !== 'FEMALE')) return;
+      setFg(fit.gender); setFage(ageOf(fit.name) ? String(ageOf(fit.name)) : ''); setFcat(fit.id);
+    }).catch(() => {});
+  }, [d, id]);
   useEffect(() => {
     api.gallery(id).then(setPhotos).catch(() => {});
     if (api.isAuthed()) api.follows().then((f) => setFollowing(f.some((x) => x.kind === 'TOURNAMENT' && x.target === id))).catch(() => {});
