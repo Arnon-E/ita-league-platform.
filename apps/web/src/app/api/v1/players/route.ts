@@ -16,7 +16,7 @@ export const POST = (req: Request) => handle(req, async (actor) => {
       firstName: String(b.first), lastName: String(b.last), birthDate: birth, gender: b.gender,
       ...(b.nationalId ? { nationalId: String(b.nationalId) } : {}), forChild: !!b.forChild,
     });
-    return { id: p.id };
+    return { id: p.id, linkedExisting: p.linkedExisting };
   } catch (e) {
     if (e instanceof ClaimPending) return { pending: true, requestId: e.requestId };
     throw e;

@@ -4,7 +4,7 @@ import { db, schema } from '@/db';
 import { login } from '@/lib/auth';
 import { mkPlayer, mkUser, resetDb } from './helpers';
 import { addCategory, createTournament, setStatus } from '@/services/tournaments';
-import { registerEntry } from '@/services/entries';
+import { cancelMyEntry, registerEntry } from '@/services/entries';
 import { setChildLogin } from '@/services/children';
 import { removeProfile, updateProfile } from '@/services/profiles';
 
@@ -39,6 +39,7 @@ describe('editing and removing a child', () => {
     await expect(updateProfile(db, parent, kid.id, { firstName: 'דנה', lastName: 'כהן', birthDate: new Date('2013-01-01'), gender: 'FEMALE' })).rejects.toThrow('הרשמות פעילות');
     await updateProfile(db, parent, kid.id, { firstName: 'דניאלה', lastName: 'כהן', birthDate: born, gender: 'FEMALE' }); // name only: fine
 
+    await db.update(schema.entries).set({ status: 'CONFIRMED' }).where(eq(schema.entries.playerId, kid.id)); // a confirmed entry is history
     // with history: detached, registrations withdrawn, login closed, record stays
     const res = await removeProfile(db, parent, kid.id);
     expect(res.deleted).toBe(false);
@@ -57,5 +58,14 @@ describe('editing and removing a child', () => {
     const kid3 = await mkPlayer('שחר', { birth: born });
     await db.insert(schema.guardians).values({ playerId: kid3.id, userId: parent.id, relation: 'parent' });
     await setChildLogin(db, parent, kid3.id, 'dana.k', 'Passw0rd!!x'); // name reusable
+
+    // a profile whose only registration was cancelled never mattered to anyone: it is deleted, not kept as a stray duplicate
+    const kid4 = await mkPlayer('מיכל', { gender: 'FEMALE', birth: born });
+    await db.insert(schema.guardians).values({ playerId: kid4.id, userId: parent.id, relation: 'parent' });
+    const c3 = await addCategory(db, fed, t.id, { name: 'U12', gender: 'FEMALE' });
+    const e4 = await registerEntry(db, parent, c3.id, kid4.id);
+    await cancelMyEntry(db, parent, e4.id);
+    expect((await removeProfile(db, parent, kid4.id)).deleted).toBe(true);
+    expect((await db.select().from(schema.entries).where(eq(schema.entries.playerId, kid4.id))).length).toBe(0);
   });
 });

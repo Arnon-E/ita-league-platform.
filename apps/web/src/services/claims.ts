@@ -16,6 +16,9 @@ export class ClaimPending extends Error {
   constructor(public requestId: string) { super('לא נמצאה התאמה מלאה. הבקשה נשלחה לאישור האיגוד'); }
 }
 
+/** Reason text of a request created by an automatic link (name + birth year match), so an admin can confirm or undo it. */
+export const AUTO_LINK_REASON = 'חיבור אוטומטי לפי שם ושנת לידה. לאימות';
+
 export const isMinor = (birth: Date, now = new Date()) => now.getUTCFullYear() - birth.getUTCFullYear() - (now < new Date(Date.UTC(now.getUTCFullYear(), birth.getUTCMonth(), birth.getUTCDate())) ? 1 : 0) < 18;
 
 const day = (d: Date) => d.toISOString().slice(0, 10);
@@ -134,6 +137,11 @@ export async function resolveClaim(db: Db, actor: Actor, claimId: string, decisi
   if (c.status !== 'PENDING') throw new Error('הבקשה כבר טופלה');
   if (decision === 'REJECTED') {
     if (!opts.note?.trim()) throw new Error('נדרשת סיבת דחייה');
+    // an automatic link is already in effect: rejecting it undoes the link
+    if (c.reason === AUTO_LINK_REASON && c.playerId) {
+      if (c.forChild) await db.delete(guardians).where(and(eq(guardians.playerId, c.playerId), eq(guardians.userId, c.userId)));
+      else await db.update(players).set({ accountId: null }).where(and(eq(players.id, c.playerId), eq(players.accountId, c.userId)));
+    }
   } else {
     const pid = opts.playerId || c.playerId;
     if (!pid) throw new Error('בחרו שחקן לשיוך');

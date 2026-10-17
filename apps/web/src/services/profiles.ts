@@ -1,4 +1,4 @@
-import { and, eq, inArray, ne } from 'drizzle-orm';
+import { and, eq, inArray, ne, or } from 'drizzle-orm';
 import type { Db } from '@/db';
 import { schema } from '@/db';
 import type { Actor } from '@/lib/auth';
@@ -49,7 +49,14 @@ export async function updateProfile(db: Db, actor: Actor, playerId: string, inpu
  */
 export async function removeProfile(db: Db, actor: Actor, playerId: string) {
   const p = await mineOrThrow(db, actor, playerId);
-  const hasHistory = (await db.select({ id: entries.id }).from(entries).where(eq(entries.playerId, playerId))).length > 0
+  // History = a confirmed entry, a match played or scheduled, ranking points, or a profile that comes from the federation's data.
+  // Registrations that were only pending, waitlisted or cancelled never mattered to anyone else and go away with the profile.
+  const mine = await db.select().from(entries).where(eq(entries.playerId, playerId));
+  const myIds = mine.map((e) => e.id);
+  const inMatch = myIds.length
+    ? (await db.select({ id: schema.matches.id }).from(schema.matches).where(or(inArray(schema.matches.aEntryId, myIds), inArray(schema.matches.bEntryId, myIds), inArray(schema.matches.winnerEntryId, myIds)))).length > 0
+    : false;
+  const hasHistory = mine.some((e) => e.status === 'CONFIRMED') || inMatch
     || (await db.select({ id: pointsAwards.id }).from(pointsAwards).where(eq(pointsAwards.playerId, playerId))).length > 0
     || !!p.logligId;
 
@@ -59,6 +66,10 @@ export async function removeProfile(db: Db, actor: Actor, playerId: string) {
     if (u && isChildEmail(u.email)) await db.update(users).set({ active: false, email: `closed-${u.id}@kid.ita.invalid`, sessionsValidAfter: new Date() }).where(eq(users.id, u.id));
   }
   if (!hasHistory) {
+    if (myIds.length) {
+      await db.delete(schema.groupMembers).where(inArray(schema.groupMembers.entryId, myIds));
+      await db.delete(entries).where(inArray(entries.id, myIds));
+    }
     await db.delete(follows).where(and(eq(follows.kind, 'PLAYER'), eq(follows.targetId, playerId)));
     await db.delete(players).where(eq(players.id, playerId)); // documents and guardian links go with it
     await audit(db, actor, 'player.delete', 'player', playerId, {});

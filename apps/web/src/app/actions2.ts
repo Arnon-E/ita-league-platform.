@@ -31,14 +31,14 @@ export async function addPlayerAction(fd: FormData) {
   const a = await requireActor();
   await guarded('/me', async () => {
     try {
-      await addPlayerProfile(db, a, {
+      const p = await addPlayerProfile(db, a, {
         firstName: s(fd, 'first'), lastName: s(fd, 'last'), birthDate: new Date(s(fd, 'birth')), gender: s(fd, 'gender') as 'MALE', nationalId: s(fd, 'nid') || undefined, forChild: fd.get('child') === '1',
       });
+      return p.linkedExisting ? 'נמצא שחקן קיים באיגוד עם אותו שם ושנת לידה, והוא חובר לחשבון שלך עם הדירוג וההיסטוריה. האיגוד יאשר את החיבור' : 'הפרופיל נוצר';
     } catch (e) {
-      if (e instanceof ClaimPending) return 'נמצא שחקן עם ת״ז זו אך הפרטים לא תואמים. הבקשה נשלחה לאישור האיגוד';
+      if (e instanceof ClaimPending) return 'נמצא שחקן קיים באיגוד שאי אפשר לחבר אוטומטית. הבקשה נשלחה לאישור האיגוד';
       throw e;
     }
-    return 'הפרופיל נוצר או שויך לחשבון';
   });
 }
 

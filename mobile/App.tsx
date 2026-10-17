@@ -545,7 +545,7 @@ function AddPlayer({ onAdded, onError, preset }: { onAdded: (msg: string) => voi
   const save = () => {
     onError('');
     api.addPlayer({ first: first.trim(), last: last.trim(), birth: birth.trim(), gender, forChild: child })
-      .then(() => { setOpenForm(false); setFirst(''); setLast(''); setBirth(''); onAdded('הפרופיל נוצר'); }).catch((e) => onError(e.message));
+      .then((r) => { setOpenForm(false); setFirst(''); setLast(''); setBirth(''); onAdded(r.pending ? 'נמצא שחקן קיים שאי אפשר לחבר אוטומטית. הבקשה נשלחה לאישור האיגוד' : r.linkedExisting ? 'נמצא שחקן קיים באיגוד, והוא חובר לחשבון שלך עם הדירוג וההיסטוריה' : 'הפרופיל נוצר'); }).catch((e) => onError(e.message));
   };
   return (
     <View style={s.card}>
