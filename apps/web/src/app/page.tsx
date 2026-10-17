@@ -71,13 +71,15 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ l
     return a.startDate.getTime() - b.startDate.getTime();
   });
   const filtered = !!(level || season || needle || g || age || sec);
-  const nextOpen = ts.filter((x) => x.status === 'REGISTRATION_OPEN').sort((a, b) => (a.registrationCloses?.getTime() ?? a.startDate.getTime()) - (b.registrationCloses?.getTime() ?? b.startDate.getTime()))[0];
+  // the featured registration, the counters and the tab counts follow the same relevance as the list
+  const visibleTs = relevantOnly ? ts.filter((x) => relevantIds.has(x.id)) : ts;
+  const nextOpen = visibleTs.filter((x) => x.status === 'REGISTRATION_OPEN').sort((a, b) => (a.registrationCloses?.getTime() ?? a.startDate.getTime()) - (b.registrationCloses?.getTime() ?? b.startDate.getTime()))[0];
   const closes = nextOpen ? (nextOpen.registrationCloses ?? nextOpen.startDate) : null;
   const left = closes ? Math.max(0, closes.getTime() - Date.now()) : 0;
-  const counts2 = { up: ts.filter((x) => stGroup(x) !== 'done').length, done: ts.filter((x) => stGroup(x) === 'done').length };
+  const counts2 = { up: visibleTs.filter((x) => stGroup(x) !== 'done').length, done: visibleTs.filter((x) => stGroup(x) === 'done').length };
   const dayMonth = (d: Date) => d.toLocaleDateString('he-IL', { day: 'numeric', month: 'short', timeZone: 'Asia/Jerusalem' });
   const href = (o: { st?: string }) => `/?${new URLSearchParams({ level, season, q, g, age, sec, st: o.st ?? st }).toString()}`;
-  const openCount = ts.filter((x) => x.status === 'REGISTRATION_OPEN').length;
+  const openCount = visibleTs.filter((x) => x.status === 'REGISTRATION_OPEN').length;
   const c = (counts as unknown as { players: number; clubs: number; live: number }[])[0]!;
   return (
     <Shell nav="home">
