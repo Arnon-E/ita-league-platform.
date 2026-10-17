@@ -10,7 +10,7 @@ export default async function Register({ searchParams }: { searchParams: Promise
   return (
     <AuthFrame en={en}>
       <h1>{t('הרשמה')}</h1>
-      <p className="muted">{t('יצירת חשבון שחקן, הורה או אוהד. אפשר לעקוב אחרי שחקנים ולקבל התראות.')}</p>
+      <p className="muted">{t('יצירת חשבון אחד לשחקנים, להורים ולאוהדים. בשלב הבא תבחרו מי משחק.')}</p>
       <Flash err={err} />
       <form action={signUpAction} className="card grid">
         <input type="hidden" name="next" value={next} />

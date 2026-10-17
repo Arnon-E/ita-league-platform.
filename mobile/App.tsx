@@ -33,19 +33,19 @@ export default function App() {
   return <SafeAreaView style={s.screen}><StatusBar barStyle={T.dark ? 'light-content' : 'dark-content'} backgroundColor={T.bg} /><Home authed={authed} setAuthed={setAuthed} /></SafeAreaView>;
 }
 
-function Login({ onDone }: { onDone: () => void }) {
+function Login({ onDone }: { onDone: (signedUp: boolean) => void }) {
   const [mode, setMode] = useState<'login' | 'signup'>('login');
   const [name, setName] = useState(''); const [phone, setPhone] = useState('');
   const [email, setEmail] = useState(''); const [pw, setPw] = useState(''); const [err, setErr] = useState(''); const [busy, setBusy] = useState(false);
   const fail = (e: Error) => { setBusy(false); setErr(e.message === 'invalid' ? 'אימייל או סיסמה שגויים' : e.message === 'locked' ? 'החשבון ננעל זמנית' : e.message); };
   const submit = () => {
     setErr(''); setBusy(true);
-    (mode === 'login' ? api.login(email.trim(), pw) : api.register(name.trim(), email.trim(), phone.trim(), pw)).then(() => { setBusy(false); onDone(); }).catch(fail);
+    (mode === 'login' ? api.login(email.trim(), pw) : api.register(name.trim(), email.trim(), phone.trim(), pw)).then(() => { setBusy(false); onDone(mode === 'signup'); }).catch(fail);
   };
   return (
     <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled">
       <Text style={s.h1}>{mode === 'login' ? 'כניסה' : 'הרשמה'}</Text>
-      {mode === 'signup' && <Text style={s.muted}>יצירת חשבון שחקן או הורה. אחרי ההרשמה מוסיפים שחקן ונרשמים לתחרות.</Text>}
+      {mode === 'signup' && <Text style={s.muted}>יצירת חשבון אחד לשחקנים, להורים ולאוהדים. בשלב הבא תבחרו מי משחק.</Text>}
       {!!err && <Text style={s.err}>{err}</Text>}
       {mode === 'signup' && <TextInput style={s.input} placeholder="שם מלא" placeholderTextColor={T.muted} value={name} onChangeText={setName} />}
       <TextInput style={s.input} placeholder="אימייל" placeholderTextColor={T.muted} autoCapitalize="none" keyboardType="email-address" value={email} onChangeText={setEmail} />
@@ -57,9 +57,26 @@ function Login({ onDone }: { onDone: () => void }) {
   );
 }
 
+function Welcome({ onPick, onSkip }: { onPick: (w: 'self' | 'child' | 'follow') => void; onSkip: () => void }) {
+  const opts: ['self' | 'child' | 'follow', string, string][] = [
+    ['self', 'אני משחק/ת', 'פרופיל שחקן על שמי: דירוג, משחקים והרשמה לתחרויות'],
+    ['child', 'הילד/ה שלי משחק/ת', 'פרופיל לילד/ה, אפשר להוסיף כמה שרוצים. אני מנהל/ת את ההרשמות והמסמכים'],
+    ['follow', 'אני רק עוקב/ת', 'לעקוב אחרי שחקנים ותחרויות ולקבל התראות, בלי פרופיל'],
+  ];
+  return (
+    <ScrollView contentContainerStyle={s.scroll}>
+      <Text style={s.h1}>ברוכים הבאים</Text>
+      <Text style={s.muted}>מי משחק? כך נתאים לכם את מסך הבית.</Text>
+      {opts.map(([k, t, sub]) => <Pressable key={k} style={({ pressed }) => [s.card, pressed && s.pressed]} onPress={() => onPick(k)}><Text style={s.cardT}>{t}</Text><Text style={s.muted}>{sub}</Text></Pressable>)}
+      <Pressable style={s.link} onPress={onSkip}><Text style={s.linkT}>דילוג, אחליט אחר כך</Text></Pressable>
+    </ScrollView>
+  );
+}
+
 function Home({ authed, setAuthed }: { authed: boolean; setAuthed: (v: boolean) => void }) {
   const [tab, setTab] = useState<Tab>('t');
   const [open, setOpen] = useState<string | null>(null);
+  const [who, setWho] = useState<'ask' | 'self' | 'child' | null>(null);
   useEffect(() => { if (authed) registerPush(); }, [authed]);
   useEffect(() => { api.setAuthLostHandler(() => setAuthed(false)); return () => api.setAuthLostHandler(null); }, [setAuthed]);
   return (
@@ -71,7 +88,7 @@ function Home({ authed, setAuthed }: { authed: boolean; setAuthed: (v: boolean) 
           : tab === 'rank' ? <Rankings />
           : tab === 'players' ? <Players />
           : tab === 'more' ? <More />
-          : authed ? <MyArea onLogout={() => api.logout().then(() => setAuthed(false))} /> : <Login onDone={() => setAuthed(true)} />}
+          : authed ? (who === 'ask' ? <Welcome onPick={(w) => { if (w === 'follow') { setWho(null); setTab('rank'); } else setWho(w); }} onSkip={() => { setWho(null); setTab('t'); }} /> : <MyArea preset={who} onLogout={() => api.logout().then(() => { setWho(null); setAuthed(false); })} />) : <Login onDone={(signedUp) => { setAuthed(true); if (signedUp) setWho('ask'); }} />}
       </View>
       <View style={s.tabbar}>
         {TABS.map(([k, l, ic]) => { const on = tab === k && !open; return <Pressable key={k} style={[s.tab, on && s.tabActive]} onPress={() => { setOpen(null); setTab(k); }}><Icon name={ic} size={21} color={on ? T.btnText : T.muted} /><Text style={[s.tabT, on && s.tabOn]}>{l}</Text></Pressable>; })}
@@ -376,7 +393,7 @@ function RegisterBox({ tournamentName, categories, onGoAccount }: { tournamentNa
   );
 }
 
-function MyArea({ onLogout }: { onLogout: () => void }) {
+function MyArea({ onLogout, preset }: { onLogout: () => void; preset?: 'self' | 'child' | null }) {
   const [d, setD] = useState<Awaited<ReturnType<typeof api.me>> | null>(null);
   const [open, setOpen] = useState<Awaited<ReturnType<typeof api.openCategories>>>([]);
   const [msg, setMsg] = useState(''); const [err, setErr] = useState('');
@@ -398,7 +415,7 @@ function MyArea({ onLogout }: { onLogout: () => void }) {
       <View style={s.row}><Text style={s.h1}>האזור שלי</Text><Pressable onPress={onLogout}><Text style={s.b}>יציאה</Text></Pressable></View>
       {!!err && <Text style={s.err}>{err}</Text>}{!!msg && <Text style={s.ok}>{msg}</Text>}
       {api.canScore() && <View style={s.card}><Text style={s.cardT}>הזנת תוצאות</Text><Text style={s.muted}>היכנסו ללשונית תחרויות, בחרו תחרות ולחצו על משחק כדי להזין תוצאה או לעדכן תוצאה חיה.</Text></View>}
-      <AddPlayer onAdded={(m) => { setMsg(m); load(); }} onError={setErr} />
+      <AddPlayer preset={preset} onAdded={(m) => { setMsg(m); load(); }} onError={setErr} />
       {d?.players.map((p) => (
         <View key={p.id} style={s.card}>
           <Text style={s.b}>{p.name}</Text>
@@ -431,10 +448,10 @@ const why = (o: Limits, p: MePlayer) =>
   o.gender !== 'OPEN' && o.gender !== p.gender ? (o.gender === 'MALE' ? 'לבנים/גברים בלבד' : 'לבנות/נשים בלבד')
     : o.minBirthYear && p.birthYear < o.minBirthYear ? `שנת לידה ${o.minBirthYear} ואילך` : `שנת לידה עד ${o.maxBirthYear}`;
 
-function AddPlayer({ onAdded, onError }: { onAdded: (msg: string) => void; onError: (e: string) => void }) {
-  const [openForm, setOpenForm] = useState(false);
+function AddPlayer({ onAdded, onError, preset }: { onAdded: (msg: string) => void; onError: (e: string) => void; preset?: 'self' | 'child' | null }) {
+  const [openForm, setOpenForm] = useState(!!preset);
   const [first, setFirst] = useState(''); const [last, setLast] = useState(''); const [birth, setBirth] = useState('');
-  const [gender, setGender] = useState<'MALE' | 'FEMALE'>('MALE'); const [child, setChild] = useState(false);
+  const [gender, setGender] = useState<'MALE' | 'FEMALE'>('MALE'); const [child, setChild] = useState(preset === 'child');
   if (!openForm) return <Pressable style={s.btn} onPress={() => setOpenForm(true)}><Text style={s.btnT}>+ הוספת שחקן</Text></Pressable>;
   const save = () => {
     onError('');

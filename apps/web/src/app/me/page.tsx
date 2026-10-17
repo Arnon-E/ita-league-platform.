@@ -12,8 +12,8 @@ import { claimPlayerAction } from '@/app/actions9';
 const DOC: Record<string, string> = { ID_PHOTO: 'תמונת ת״ז', PARENT_CONSENT: 'אישור הורים', MEDICAL_CERTIFICATE: 'אישור רפואי', OTHER: 'אחר' };
 const DS: Record<string, string> = { PENDING: 'ממתין לאישור', APPROVED: 'אושר', REJECTED: 'נדחה', EXPIRED: 'פג תוקף' };
 
-export default async function Me({ searchParams }: { searchParams: Promise<{ err?: string; ok?: string }> }) {
-  const { err, ok } = await searchParams;
+export default async function Me({ searchParams }: { searchParams: Promise<{ err?: string; ok?: string; who?: string }> }) {
+  const { err, ok, who } = await searchParams;
   const actor = await requireActor();
   const ids = await ownedPlayerIds(db, actor);
   const ps = ids.length ? await db.select().from(schema.players).where(inArray(schema.players.id, ids)) : [];
@@ -35,7 +35,7 @@ export default async function Me({ searchParams }: { searchParams: Promise<{ err
           <strong style={{ fontSize: 18 }}>ברוכים הבאים</strong>
           <span className="muted">כאן מנהלים הרשמות לתחרויות. מה תרצו לעשות?</span>
           <div className="row">
-            <a className="btn" href="#add-player">להירשם לתחרות: הוספת שחקן או ילד</a>
+            <a className="btn" href="/welcome">להירשם לתחרות: הוספת שחקן או ילד</a>
             <a className="btn ghost" href="/following">לעקוב אחרי שחקנים ולקבל תוצאות</a>
             <a className="btn ghost" href="/">לצפות בתחרויות</a>
           </div>
@@ -75,7 +75,7 @@ export default async function Me({ searchParams }: { searchParams: Promise<{ err
         <label>תאריך לידה<input name="birth" type="date" required /></label>
         <label>מין<select name="gender"><option value="MALE">זכר</option><option value="FEMALE">נקבה</option></select></label>
         <label>ת״ז (נשמר כמזהה מוצפן בלבד)<input name="nid" inputMode="numeric" /></label>
-        <label style={{ flexDirection: 'row', alignItems: 'center' }}><input type="checkbox" name="child" value="1" style={{ minHeight: 0 }} /> זה ילד/ה שלי</label>
+        <label style={{ flexDirection: 'row', alignItems: 'center' }}><input type="checkbox" name="child" value="1" defaultChecked={who === 'child'} style={{ minHeight: 0 }} /> זה ילד/ה שלי</label>
         <button className="btn">הוספה</button>
       </form>
       <h2 id="claim-player">אני כבר רשום באיגוד</h2>
