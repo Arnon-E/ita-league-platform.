@@ -4,6 +4,7 @@ import type { Actor } from '@/lib/auth';
 import { checkDocuments } from '@/services/entries';
 import { childLoginName, isChildActor } from '@/services/children';
 import { playerProfile } from '@/services/public';
+import { ineligibleReason } from '@/services/eligibility';
 import { rankingFor } from '@/services/rankings';
 import { ensureDefaultRuleSet, loadRuleSet } from '@/services/rules';
 
@@ -118,7 +119,7 @@ async function myPeople(db: Db, actor: Actor) {
       nextTournament: nextTournament ? { id: nextTournament.t.id, name: nextTournament.t.name, start: nextTournament.t.startDate, category: nextTournament.c.name, status: nextTournament.e.status, payment: nextTournament.e.paymentStatus } : null,
       docsOk: docs.ok, missingDocs: docs.missing, todo,
       canRegister: open
-        .filter(({ c }) => (c.gender === 'OPEN' || c.gender === p.gender) && !(c.minBirthYear && by < c.minBirthYear) && !(c.maxBirthYear && by > c.maxBirthYear) && !entered.some((x) => x.c.id === c.id))
+        .filter(({ c, t }) => !ineligibleReason(p, c, t) && !entered.some((x) => x.c.id === c.id))
         .map(({ c, t }) => ({ tournamentId: t.id, tournament: t.name, categoryId: c.id, category: c.name, closes: t.registrationCloses })),
     };
   }));

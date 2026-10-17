@@ -1,4 +1,5 @@
 import { assertNotChild } from './children';
+import { ineligibleReason } from './eligibility';
 import { and, asc, eq, inArray } from 'drizzle-orm';
 import type { Db } from '@/db';
 import { schema } from '@/db';
@@ -51,9 +52,9 @@ export async function registerEntry(db: Db, actor: Actor, categoryId: string, pl
   if (!isStaff && ((t.registrationOpens && now < t.registrationOpens) || (t.registrationCloses && now > t.registrationCloses))) throw new Error('ההרשמה לתחרות סגורה');
   const [p] = await db.select().from(players).where(eq(players.id, playerId));
   if (!p) throw new Error('Player not found');
-  if (c.gender !== 'OPEN' && c.gender !== p.gender) throw new Error('הקטגוריה אינה מתאימה למין השחקן');
-  const by = p.birthDate.getUTCFullYear();
-  if ((c.minBirthYear && by < c.minBirthYear) || (c.maxBirthYear && by > c.maxBirthYear)) throw new Error('שנת הלידה אינה מתאימה לקטגוריה');
+  // gender, birth-year limits and the section's minimum age (masters 18+, adults 13/14+); staff may place someone below the floor
+  const why = ineligibleReason(p, c, t, { ignoreSectionFloor: isStaff });
+  if (why) throw new Error(why);
   const [e] = await db.insert(entries).values({ categoryId, playerId }).onConflictDoNothing().returning();
   if (!e) throw new Error('השחקן כבר רשום לקטגוריה');
   await audit(db, actor, 'entry.register', 'entry', e.id, { categoryId, playerId });

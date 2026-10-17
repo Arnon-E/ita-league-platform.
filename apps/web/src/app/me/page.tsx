@@ -8,6 +8,7 @@ import { signedUrl } from '@/lib/storage';
 import { payAction } from '@/app/actions3';
 import { addPlayerAction, childLoginAction, removeProfileAction, updateProfileAction, selfRegisterAction, suggestEntryAction, uploadDocAction } from '@/app/actions2';
 import { childLoginName, isChildActor } from '@/services/children';
+import { ineligibleReason } from '@/services/eligibility';
 import { claimPlayerAction } from '@/app/actions9';
 
 const DOC: Record<string, string> = { ID_PHOTO: 'תמונת ת״ז', PARENT_CONSENT: 'אישור הורים', MEDICAL_CERTIFICATE: 'אישור רפואי', OTHER: 'אחר' };
@@ -65,7 +66,7 @@ export default async function Me({ searchParams }: { searchParams: Promise<{ err
           {open.length > 0 && (
             <form action={isChild ? suggestEntryAction : selfRegisterAction} className="row">
               <input type="hidden" name="player" value={p.id} />
-              <select name="category">{open.filter((o) => o.c.gender === 'OPEN' || o.c.gender === p.gender).map((o) => <option key={o.c.id} value={o.c.id}>{o.t.name} · {o.c.name}</option>)}</select>
+              <select name="category">{open.filter((o) => !ineligibleReason(p, o.c, o.t)).map((o) => <option key={o.c.id} value={o.c.id}>{o.t.name} · {o.c.name}</option>)}</select>
               <button className="btn small ghost">{isChild ? 'הצעה להורה להירשם' : 'הרשמה לתחרות'}</button>
             </form>
           )}

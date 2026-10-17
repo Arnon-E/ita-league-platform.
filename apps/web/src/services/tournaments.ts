@@ -19,6 +19,8 @@ export interface CreateTournamentInput {
   feeAgorot?: number; registrationOpens?: Date; registrationCloses?: Date;
   setsToWin?: number; decider?: 'set' | 'superTb'; ruleSetId?: string; pointsTableKey?: string;
   level?: 'NATIONAL' | 'REGIONAL' | 'INTERNATIONAL' | 'CIRCUIT';
+  /** Competition section; adults and masters have a minimum age (see eligibility.ts). */
+  section?: 'YOUTH' | 'ADULTS' | 'MASTERS' | 'OTHER';
 }
 
 export async function createTournament(db: Db, actor: Actor, input: CreateTournamentInput) {

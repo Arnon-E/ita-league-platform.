@@ -21,6 +21,7 @@ export default async function NewTournament({ searchParams }: { searchParams: Pr
         <label>שם התחרות<input name="name" required /></label>
         <div className="row"><label>התחלה<input name="start" type="date" required /></label><label>סיום<input name="end" type="date" required /></label></div>
         <label>רמת התחרות<select name="level">{Object.entries(LEVEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></label>
+        <label>סוג התחרות<select name="section"><option value="YOUTH">נוער</option><option value="ADULTS">בוגרים (מגיל 13 בנות, 14 בנים)</option><option value="MASTERS">מאסטרס / סניורים (מגיל 18)</option><option value="OTHER">אחר</option></select></label>
         <label>פורמט<select name="format">{Object.entries(FORMAT).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></label>
         <label>טבלת ניקוד<select name="points"><option value="DEFAULT">ברירת מחדל</option>{tables.map((k) => <option key={k} value={k}>{k}</option>)}</select></label>
         <label>דמי השתתפות (₪)<input name="fee" type="number" min="0" step="1" defaultValue="0" /></label>

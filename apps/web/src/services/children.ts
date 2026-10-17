@@ -4,6 +4,7 @@ import { schema } from '@/db';
 import { hashPassword, validatePassword, type Actor } from '@/lib/auth';
 import { audit } from './audit';
 import { notifyUser } from './notifications';
+import { ineligibleReason } from './eligibility';
 
 const { users, players, guardians } = schema;
 
@@ -68,8 +69,8 @@ export async function suggestEntry(db: Db, actor: Actor, categoryId: string) {
   const [row] = await db.select({ c: schema.categories, t: schema.tournaments }).from(schema.categories)
     .innerJoin(schema.tournaments, eq(schema.tournaments.id, schema.categories.tournamentId)).where(eq(schema.categories.id, categoryId));
   if (!row) throw new Error('הקטגוריה לא נמצאה');
-  const by = p.birthDate.getUTCFullYear();
-  if ((row.c.gender !== 'OPEN' && row.c.gender !== p.gender) || (row.c.minBirthYear && by < row.c.minBirthYear) || (row.c.maxBirthYear && by > row.c.maxBirthYear)) throw new Error('הקטגוריה אינה מתאימה');
+  const why = ineligibleReason(p, row.c, row.t);
+  if (why) throw new Error(why);
   const parents = await db.select({ userId: guardians.userId }).from(guardians).where(eq(guardians.playerId, p.id));
   if (!parents.length) throw new Error('אין הורה מקושר');
   for (const g of parents) await notifyUser(db, g.userId, 'ENTRY_SUGGESTION', `${p.firstName} רוצה להירשם`, `${p.firstName} ${p.lastName} מבקש/ת להירשם ל${row.t.name} (${row.c.name}). אפשר לאשר דרך האזור שלי.`);
