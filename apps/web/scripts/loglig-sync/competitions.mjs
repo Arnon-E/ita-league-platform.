@@ -11,7 +11,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { ageOf, genderOf, israelToUtc, koRound, parseCategoryPage, parseCompetitionPage } from './parse.mjs';
+import { ageOf, buildCategory, genderOf, israelToUtc, koRound, parseCategoryPage, parseCompetitionPage } from './parse.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const OUT = path.resolve(here, '../../.loglig-dump');
@@ -93,27 +93,6 @@ function sameCompetition(a, b) {
 }
 
 /** A parsed category page -> normalized category (knockout rounds numbered from the first round, groups as round 1). */
-function buildCategory(page, label, source) {
-  const name = label && !page.category.includes(label) ? `${page.category} · ${label}` : page.category;
-  const matchesIn = page.matches.filter((m) => !m.a.name.includes('/') && !m.b.name.includes('/')); // doubles pairs are not players
-  if (!matchesIn.length) return null;
-  const hasGroups = matchesIn.some((m) => /^בית\s*\d/.test(m.stage));
-  // knockout depth: final = 0; classification matches (place > 1) sit in the round of their size
-  const ko = matchesIn.filter((m) => !/^בית\s*\d/.test(m.stage)).map((m) => koRound(m.slot)).filter(Boolean);
-  const maxDepth = ko.length ? Math.max(...ko.map((k) => k.depthFromFinal)) : 0;
-  const matches = matchesIn.map((m, i) => {
-    const group = (m.stage.match(/^בית\s*(\d+)/) ?? [])[1];
-    const k = group ? null : koRound(m.slot);
-    return {
-      stage: group ? 'GROUP' : 'KO', group: group ? `בית ${group}` : undefined,
-      round: group ? 1 : k ? maxDepth - k.depthFromFinal + 1 : 1, place: k?.place ?? 1, size: k?.size ?? 0, order: i,
-      start: israelToUtc(m.start), kind: m.kind, venue: m.venue, done: m.done,
-      a: m.a, b: m.b, sets: m.sets, retired: m.retired, walkover: m.walkover,
-    };
-  });
-  return { name, source: String(source), gender: genderOf(page.category), age: ageOf(page.category), format: hasGroups ? 'GROUPS_KNOCKOUT' : 'KNOCKOUT', matches };
-}
-
 // 2) one competition -> normalized document (draws and results when published, otherwise the planned categories)
 async function readCompetition({ url, list }) {
   const c = parseCompetitionPage(await get(url), url);

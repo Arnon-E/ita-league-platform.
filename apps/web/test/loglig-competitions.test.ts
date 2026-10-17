@@ -143,4 +143,26 @@ describe('loglig competition mirror', () => {
     const cats = await db.select().from(schema.categories).where(eq(schema.categories.tournamentId, tn!.id));
     expect(cats.map((c) => c.name)).toEqual(['בנים 12']);
   });
+
+  it('a results-only refresh updates matches but leaves the tournament details alone, and skips unknown tournaments', async () => {
+    const base = {
+      kind: 'competition', name: 'אליפות חיה', start: '2026-10-16', end: '2026-10-26', feeShekel: 180, level: 'NATIONAL', registerUrl: 'https://loglig.com/Activity/Form/1', registrationCloses: '2026-10-12T20:45:00.000Z',
+      venues: [{ club: 'מועדון חי', address: 'חיפה' }],
+      categories: [{ name: 'בנים 12', source: '7', gender: 'MALE', age: 12, format: 'KNOCKOUT', matches: [m({ a: p('אורי א'), b: p('נועם ב'), done: false, kind: 'NB', start: '2026-10-30T07:00:00.000Z' })] }],
+    };
+    await importCompetition(db, validateCompetitionImport(base), new Date('2026-10-17'));
+    const live = { ...base, resultsOnly: true, feeShekel: 0, registerUrl: '', registrationCloses: null, venues: [], categories: [{ ...base.categories[0]!, matches: [m({ a: p('אורי א'), b: p('נועם ב'), sets: [{ a: 6, b: 2 }, { a: 6, b: 3 }], start: '2026-10-30T07:00:00.000Z' })] }] };
+    const r = await importCompetition(db, validateCompetitionImport(live), new Date('2026-10-31'));
+    expect(r.skipped).toBe(false);
+    const [tn] = await db.select().from(schema.tournaments).where(eq(schema.tournaments.name, 'אליפות חיה'));
+    expect(tn?.feeAgorot).toBe(18000);                                  // untouched
+    expect(tn?.registerUrl).toBe('https://loglig.com/Activity/Form/1'); // untouched
+    expect(tn?.venueId).not.toBeNull();                                 // untouched
+    const ms = await db.select().from(schema.matches);
+    expect(ms.filter((x) => x.status === 'COMPLETED').length).toBeGreaterThanOrEqual(1); // the result came in
+
+    const unknown = await importCompetition(db, validateCompetitionImport({ ...live, name: 'לא קיימת' }), new Date('2026-10-31'));
+    expect(unknown.skipped).toBe(true);
+    expect((await db.select().from(schema.tournaments).where(eq(schema.tournaments.name, 'לא קיימת'))).length).toBe(0);
+  });
 });

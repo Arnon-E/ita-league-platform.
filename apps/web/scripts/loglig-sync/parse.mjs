@@ -183,3 +183,25 @@ export function israelToUtc(local) {
   const offset = asIsrael - guess.getTime();
   return new Date(guess.getTime() - offset).toISOString();
 }
+
+/** A parsed category page -> the document the site imports (matches with stage, round, times and the score from player a's side). */
+export function buildCategory(page, label, source) {
+  const name = label && !page.category.includes(label) ? `${page.category} · ${label}` : page.category;
+  const matchesIn = page.matches.filter((m) => !m.a.name.includes('/') && !m.b.name.includes('/')); // doubles pairs are not players
+  if (!matchesIn.length) return null;
+  const hasGroups = matchesIn.some((m) => /^בית\s*\d/.test(m.stage));
+  // knockout depth: final = 0; classification matches (place > 1) sit in the round of their size
+  const ko = matchesIn.filter((m) => !/^בית\s*\d/.test(m.stage)).map((m) => koRound(m.slot)).filter(Boolean);
+  const maxDepth = ko.length ? Math.max(...ko.map((k) => k.depthFromFinal)) : 0;
+  const matches = matchesIn.map((m, i) => {
+    const group = (m.stage.match(/^בית\s*(\d+)/) ?? [])[1];
+    const k = group ? null : koRound(m.slot);
+    return {
+      stage: group ? 'GROUP' : 'KO', group: group ? `בית ${group}` : undefined,
+      round: group ? 1 : k ? maxDepth - k.depthFromFinal + 1 : 1, place: k?.place ?? 1, size: k?.size ?? 0, order: i,
+      start: israelToUtc(m.start), kind: m.kind, venue: m.venue, done: m.done,
+      a: m.a, b: m.b, sets: m.sets, retired: m.retired, walkover: m.walkover,
+    };
+  });
+  return { name, source: String(source), gender: genderOf(page.category), age: ageOf(page.category), format: hasGroups ? 'GROUPS_KNOCKOUT' : 'KNOCKOUT', matches };
+}

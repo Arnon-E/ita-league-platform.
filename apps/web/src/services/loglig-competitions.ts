@@ -18,6 +18,8 @@ export interface CategoryIn { name: string; source: string; gender: Gender; age:
 export interface CompetitionIn {
   kind: 'competition'; name: string; start: string; end: string; feeShekel: number; level: 'NATIONAL' | 'REGIONAL' | 'INTERNATIONAL' | 'CIRCUIT';
   section?: 'YOUTH' | 'ADULTS' | 'MASTERS' | 'OTHER'; sourceUrl?: string; registerUrl?: string; registrationCloses?: string | null; venues: { club: string; address: string }[]; categories: CategoryIn[];
+  /** Live refresh: only matches and results are updated, for a tournament that already exists; its fee, venue, links and deadline stay as they are. */
+  resultsOnly?: boolean;
 }
 
 const MAX_MATCHES = 4000;
@@ -64,6 +66,7 @@ export function validateCompetitionImport(x: unknown): CompetitionIn {
     registrationCloses: typeof b.registrationCloses === 'string' && !Number.isNaN(Date.parse(b.registrationCloses)) ? new Date(b.registrationCloses).toISOString() : null,
     venues: (Array.isArray(b.venues) ? b.venues : []).slice(0, 20).map((v) => ({ club: clean(v?.club, 120), address: clean(v?.address, 200) })).filter((v) => v.club),
     categories: cats,
+    ...(b.resultsOnly ? { resultsOnly: true } : {}),
   };
 }
 
@@ -85,7 +88,7 @@ export async function importCompetition(db: Db, input: CompetitionIn, now = new 
   const drawn = input.categories.some((c) => c.matches.length);
   const closes = input.registrationCloses ? new Date(input.registrationCloses) : null;
   const status = end < now ? 'FINISHED' : !drawn ? (closes && closes > now ? 'REGISTRATION_OPEN' : 'REGISTRATION_CLOSED') : start <= now ? 'IN_PROGRESS' : 'DRAWN';
-  const stats = { tournament: input.name, categories: 0, players: 0, newPlayers: 0, matches: 0, unresolved: 0 };
+  const stats = { tournament: input.name, categories: 0, players: 0, newPlayers: 0, matches: 0, unresolved: 0, skipped: false };
 
   await (db as unknown as { transaction: <T>(f: (tx: Db) => Promise<T>) => Promise<T> }).transaction(async (tx) => {
     // venue (first listed club) and tournament
@@ -101,7 +104,9 @@ export async function importCompetition(db: Db, input: CompetitionIn, now = new 
       sourceUrl: input.sourceUrl || null, registerUrl: input.registerUrl || null, registrationCloses: closes,
     };
     let tid: string;
-    if (existing) { tid = existing.id; await tx.update(schema.tournaments).set(fields).where(eq(schema.tournaments.id, tid)); }
+    if (input.resultsOnly && !existing) { stats.skipped = true; return; }
+    if (existing && input.resultsOnly) { tid = existing.id; if (drawn) await tx.update(schema.tournaments).set({ status: status as 'FINISHED' }).where(eq(schema.tournaments.id, tid)); }
+    else if (existing) { tid = existing.id; await tx.update(schema.tournaments).set(fields).where(eq(schema.tournaments.id, tid)); }
     else {
       tid = (await tx.insert(schema.tournaments).values({
         name: input.name, startDate: start, ruleSetId: rule.id, format: input.categories.some((c) => c.format === 'GROUPS_KNOCKOUT') ? 'GROUPS_KNOCKOUT' : 'KNOCKOUT', ...fields,
