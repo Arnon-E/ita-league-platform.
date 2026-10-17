@@ -258,6 +258,13 @@ function Players() {
   );
 }
 
+/** A player's Loglig photo, or their initial when there is none or the file is missing. */
+function Avatar({ uri, name }: { uri: string | null; name: string }) {
+  const [bad, setBad] = useState(false);
+  if (uri && !bad) return <Image source={{ uri }} style={s.avatar} onError={() => setBad(true)} />;
+  return <View style={[s.avatar, { alignItems: 'center', justifyContent: 'center', backgroundColor: T.volt }]}><Text style={{ color: T.ink, fontWeight: '800', fontSize: 20 }}>{name.trim().charAt(0)}</Text></View>;
+}
+
 function Tournament({ id, onBack, onGoAccount }: { id: string; onBack: () => void; onGoAccount: () => void }) {
   const [d, setD] = useState<Awaited<ReturnType<typeof api.tournament>> | null>(null);
   const [score, setScore] = useState<api.Match | null>(null);
@@ -332,7 +339,7 @@ function Tournament({ id, onBack, onGoAccount }: { id: string; onBack: () => voi
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
               {shown.map((x) => (
                 <View key={x.categoryId + x.id} style={{ width: '30%', alignItems: 'center', gap: 4 }}>
-                  {x.photo ? <Image source={{ uri: x.photo }} style={s.avatar} /> : <View style={[s.avatar, { alignItems: 'center', justifyContent: 'center', backgroundColor: T.volt }]}><Text style={{ color: T.ink, fontWeight: '800', fontSize: 20 }}>{x.name.trim().charAt(0)}</Text></View>}
+                  <Avatar uri={x.photo} name={x.name} />
                   <Text style={[s.b, { fontSize: 13, textAlign: 'center' }]} numberOfLines={2}>{x.name}</Text>
                   {!fcat && cats.length > 1 && <Text style={[s.muted, { fontSize: 11 }]} numberOfLines={1}>{cats.find((k) => k.id === x.categoryId)?.name}</Text>}
                 </View>
