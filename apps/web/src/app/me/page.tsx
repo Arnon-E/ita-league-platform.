@@ -6,7 +6,7 @@ import { ownedPlayerIds, checkDocuments } from '@/services/entries';
 import { inbox } from '@/services/notifications';
 import { signedUrl } from '@/lib/storage';
 import { payAction } from '@/app/actions3';
-import { addPlayerAction, childLoginAction, selfRegisterAction, suggestEntryAction, uploadDocAction } from '@/app/actions2';
+import { addPlayerAction, childLoginAction, removeProfileAction, updateProfileAction, selfRegisterAction, suggestEntryAction, uploadDocAction } from '@/app/actions2';
 import { childLoginName, isChildActor } from '@/services/children';
 import { claimPlayerAction } from '@/app/actions9';
 
@@ -68,6 +68,25 @@ export default async function Me({ searchParams }: { searchParams: Promise<{ err
               <select name="category">{open.filter((o) => o.c.gender === 'OPEN' || o.c.gender === p.gender).map((o) => <option key={o.c.id} value={o.c.id}>{o.t.name} · {o.c.name}</option>)}</select>
               <button className="btn small ghost">{isChild ? 'הצעה להורה להירשם' : 'הרשמה לתחרות'}</button>
             </form>
+          )}
+          {!isChild && (
+            <details className="filters" style={{ marginTop: 0 }}>
+              <summary>עריכת פרטים</summary>
+              <form action={updateProfileAction} className="row" style={{ marginTop: 8 }}>
+                <input type="hidden" name="player" value={p.id} />
+                <label>שם פרטי<input name="first" defaultValue={p.firstName} required /></label>
+                <label>שם משפחה<input name="last" defaultValue={p.lastName} required /></label>
+                <label>תאריך לידה<input name="birth" type="date" defaultValue={p.birthDate.toISOString().slice(0, 10)} required /></label>
+                <label>מין<select name="gender" defaultValue={p.gender}><option value="MALE">זכר</option><option value="FEMALE">נקבה</option></select></label>
+                <button className="btn small">שמירה</button>
+              </form>
+              <form action={removeProfileAction} className="row" style={{ marginTop: 8 }}>
+                <input type="hidden" name="player" value={p.id} />
+                <label style={{ flexDirection: 'row', alignItems: 'center', fontWeight: 500 }}><input type="checkbox" required style={{ minHeight: 0 }} /> אני מאשר/ת להסיר את {p.firstName} מהחשבון</label>
+                <button className="btn small ghost" style={{ color: 'var(--bad)' }}>מחיקת פרופיל</button>
+                <span className="muted">פרופיל בלי הרשמות ותוצאות נמחק לגמרי. אם יש היסטוריה, הוא מוסר מהחשבון ונשאר ברשומות האיגוד.</span>
+              </form>
+            </details>
           )}
           {!isChild && p.accountId !== actor.id && (
             <form action={childLoginAction} className="row" style={{ borderTop: '1px solid var(--line)', paddingTop: 10 }}>

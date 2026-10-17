@@ -438,6 +438,7 @@ function MyArea({ onLogout, preset, onLogoutAll, onOpenTournament }: { onLogout:
           <Text style={s.b}>{p.name}</Text>
           <Text>{p.documents.ok ? 'כל המסמכים תקינים' : `חסר: ${p.documents.missing.map((m) => DOCS.find((x) => x[0] === m)?.[1] ?? m).join(', ')}`}</Text>
           {!child && DOCS.map(([k, l]) => <Pressable key={k} style={s.link} onPress={() => upload(p.id, k)}><Text style={s.linkT}>העלאת {l}</Text></Pressable>)}
+          {!child && <EditProfile player={p} onDone={(m) => { setMsg(m); load(); }} onError={setErr} />}
           {!child && !p.own && <ChildLogin player={p} onDone={(m) => { setMsg(m); load(); }} onError={setErr} />}
           {open.filter((o) => fits(o, p)).map((o) => <Pressable key={o.categoryId} style={s.link} onPress={() => register(o.categoryId, p.id)}><Text style={s.linkT}>{child ? 'הצעה להורה' : 'הרשמה'}: {o.tournament} · {o.category}</Text></Pressable>)}
           {open.length > 0 && open.filter((o) => fits(o, p)).length === 0 && <Text style={s.muted}>אין כרגע תחרות פתוחה שמתאימה לשחקן הזה. {open.map((o) => `${o.tournament} · ${o.category} (${why(o, p)})`).join('; ')}</Text>}
@@ -476,6 +477,32 @@ function Following({ onOpenTournament }: { onOpenTournament: (id: string) => voi
       ))}
       {o.tournaments.map((x) => <Pressable key={x.id} style={s.card} onPress={() => onOpenTournament(x.id)}><Text style={s.cardT}>{x.name}</Text><Text style={s.muted}>{new Date(x.startDate).toLocaleDateString('he-IL')} – {new Date(x.endDate).toLocaleDateString('he-IL')}</Text></Pressable>)}
       {o.clubs.map((c) => <View key={c.id} style={s.card}><Text style={s.cardT}>{c.name}</Text></View>)}
+    </View>
+  );
+}
+
+/** Fix a profile's details, or remove it from the account. Mirrors the server rules (history is kept, an empty profile is deleted). */
+function EditProfile({ player, onDone, onError }: { player: { id: string; first: string; last: string; birth: string; gender: 'MALE' | 'FEMALE'; synced: boolean; name: string }; onDone: (msg: string) => void; onError: (e: string) => void }) {
+  const [openForm, setOpenForm] = useState(false);
+  const [first, setFirst] = useState(player.first); const [last, setLast] = useState(player.last); const [birth, setBirth] = useState(player.birth);
+  const [gender, setGender] = useState(player.gender);
+  if (!openForm) return <Pressable style={s.link} onPress={() => setOpenForm(true)}><Text style={s.linkT}>עריכת פרטים או מחיקה</Text></Pressable>;
+  const save = () => { onError(''); api.updatePlayer(player.id, { first: first.trim(), last: last.trim(), birth: birth.trim(), gender }).then(() => { setOpenForm(false); onDone('הפרטים עודכנו'); }).catch((e) => onError(e.message)); };
+  const remove = () => Alert.alert('מחיקת פרופיל', `להסיר את ${player.name} מהחשבון? פרופיל בלי הרשמות ותוצאות נמחק לגמרי. אם יש היסטוריה, הוא מוסר מהחשבון ונשאר ברשומות האיגוד.`, [
+    { text: 'ביטול', style: 'cancel' },
+    { text: 'מחיקה', style: 'destructive', onPress: () => api.removePlayer(player.id).then((r) => { setOpenForm(false); onDone(r.deleted ? 'הפרופיל נמחק' : 'הפרופיל הוסר מהחשבון'); }).catch((e) => onError(e.message)) },
+  ]);
+  return (
+    <View style={{ gap: 8 }}>
+      {player.synced ? <Text style={s.muted}>הפרופיל מסונכרן ממערכת האיגוד, לשינוי פרטים יש לפנות לאיגוד.</Text> : <>
+        <TextInput style={s.input} placeholder="שם פרטי" placeholderTextColor={T.muted} value={first} onChangeText={setFirst} />
+        <TextInput style={s.input} placeholder="שם משפחה" placeholderTextColor={T.muted} value={last} onChangeText={setLast} />
+        <TextInput style={s.input} placeholder="תאריך לידה (YYYY-MM-DD)" placeholderTextColor={T.muted} keyboardType="numbers-and-punctuation" value={birth} onChangeText={setBirth} />
+        <View style={s.row}>{([['MALE', 'בן / גבר'], ['FEMALE', 'בת / אישה']] as const).map(([k, l]) => <Pressable key={k} style={[s.chip, gender === k && s.chipOn]} onPress={() => setGender(k)}><Text style={gender === k ? s.chipOnT : s.b}>{l}</Text></Pressable>)}</View>
+        <Pressable style={s.btn} onPress={save}><Text style={s.btnT}>שמירה</Text></Pressable>
+      </>}
+      <Pressable style={[s.btn, s.btnGhost]} onPress={remove}><Text style={[s.btnT, { color: T.bad }]}>מחיקת פרופיל</Text></Pressable>
+      <Pressable style={s.link} onPress={() => setOpenForm(false)}><Text style={s.linkT}>סגירה</Text></Pressable>
     </View>
   );
 }

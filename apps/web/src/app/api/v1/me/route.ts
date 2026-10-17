@@ -15,7 +15,7 @@ export const GET = (req: Request) => handle(req, async (actor) => {
   return {
     name: self?.name ?? '',
     isChild: await isChildActor(db, actor),
-    players: await Promise.all(ps.map(async (p) => ({ id: p.id, name: `${p.firstName} ${p.lastName}`, gender: p.gender, birthYear: p.birthDate.getUTCFullYear(), own: p.accountId === actor.id, childLogin: p.accountId === actor.id ? null : await childLoginName(db, p.id), documents: await checkDocuments(db, p.id, new Date()) }))),
+    players: await Promise.all(ps.map(async (p) => ({ id: p.id, name: `${p.firstName} ${p.lastName}`, first: p.firstName, last: p.lastName, birth: p.birthDate.toISOString().slice(0, 10), synced: !!p.logligId, gender: p.gender, birthYear: p.birthDate.getUTCFullYear(), own: p.accountId === actor.id, childLogin: p.accountId === actor.id ? null : await childLoginName(db, p.id), documents: await checkDocuments(db, p.id, new Date()) }))),
     entries: ents.map(({ e, c, t }) => ({ id: e.id, playerId: e.playerId, player: (() => { const p = ps.find((x) => x.id === e.playerId); return p ? `${p.firstName} ${p.lastName}` : ''; })(), tournament: t.name, category: c.name, status: e.status, payment: e.paymentStatus })),
     notifications: (await inbox(db, actor.id)).slice(-30).reverse().map((n) => ({ id: n.id, title: n.title, body: n.body, at: n.createdAt })),
   };

@@ -1,6 +1,7 @@
 'use server';
 import { cookies } from 'next/headers';
 import { setChildLogin, suggestEntry } from '@/services/children';
+import { removeProfile, updateProfile } from '@/services/profiles';
 import { flushNotifications } from '@/lib/senders';
 import { redirect } from 'next/navigation';
 import { db } from '@/db';
@@ -55,6 +56,22 @@ export async function uploadDocAction(fd: FormData) {
 export async function selfRegisterAction(fd: FormData) {
   const a = await requireActor();
   await guarded('/me', async () => { await registerEntry(db, a, s(fd, 'category'), s(fd, 'player')); return 'נרשמתם לקטגוריה'; });
+}
+
+export async function updateProfileAction(fd: FormData) {
+  const a = await requireActor();
+  await guarded('/me', async () => {
+    await updateProfile(db, a, s(fd, 'player'), { firstName: s(fd, 'first'), lastName: s(fd, 'last'), birthDate: new Date(s(fd, 'birth')), gender: s(fd, 'gender') as 'MALE' });
+    return 'הפרטים עודכנו';
+  });
+}
+
+export async function removeProfileAction(fd: FormData) {
+  const a = await requireActor();
+  await guarded('/me', async () => {
+    const r = await removeProfile(db, a, s(fd, 'player'));
+    return r.deleted ? 'הפרופיל נמחק' : 'הפרופיל הוסר מהחשבון. תוצאות העבר נשארות ברשומות האיגוד';
+  });
 }
 
 export async function childLoginAction(fd: FormData) {
