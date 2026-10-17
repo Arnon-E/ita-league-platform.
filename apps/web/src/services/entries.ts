@@ -117,6 +117,7 @@ export async function cancelMyEntry(db: Db, actor: Actor, entryId: string) {
   if (!e) throw new Error('ההרשמה לא נמצאה');
   if (!(await ownedPlayerIds(db, actor)).includes(e.playerId)) throw new Error('אין הרשאה להרשמה הזו');
   if (e.status === 'WITHDRAWN' || e.status === 'REJECTED') throw new Error('ההרשמה כבר בוטלה');
+  if (e.source === 'loglig') throw new Error('ההרשמה נעשתה ב-Loglig. לביטול יש לפנות ל-Loglig או לאיגוד');
   if (e.paymentStatus !== 'UNPAID') throw new Error('ההרשמה שולמה. לביטול והחזר כספי פנו לאיגוד');
   return withdrawEntry(db, actor, entryId);
 }

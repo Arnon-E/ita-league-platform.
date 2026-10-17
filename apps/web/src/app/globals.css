@@ -423,3 +423,9 @@ details.acct .out.soft{color:var(--muted)}details.acct .out.soft:hover{backgroun
   header.top details.acct.bar .uname{display:none}
   header.top details.acct.bar .av{width:40px;height:40px;font-size:17px}
 }
+
+/* participants of a category, with their Loglig photos */
+.plist{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:8px}
+.plist li{display:flex;align-items:center;gap:10px}
+.plist img{border-radius:50%;object-fit:cover;border:2px solid var(--volt);flex:none}
+.pavatar-img{width:68px;height:68px;border-radius:50%;object-fit:cover;border:3px solid var(--volt);flex:none}

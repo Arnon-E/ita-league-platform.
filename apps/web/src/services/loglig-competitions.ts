@@ -113,7 +113,7 @@ export async function importCompetition(db: Db, input: CompetitionIn, now = new 
       // placeholder categories from an earlier run (before the draw existed) that nobody entered and that have no matches
       await tx.execute(sql`
         delete from categories c where c.tournament_id = ${tid}
-          and not exists (select 1 from entries e where e.category_id = c.id) and not exists (select 1 from matches m where m.category_id = c.id)
+          and not exists (select 1 from entries e where e.category_id = c.id and coalesce(e.source, '') <> 'loglig') and not exists (select 1 from matches m where m.category_id = c.id)
           and c.name not in (select jsonb_array_elements_text(${JSON.stringify(input.categories.map((c) => c.name))}::jsonb))`);
     }
 

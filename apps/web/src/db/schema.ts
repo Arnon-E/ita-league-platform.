@@ -52,6 +52,9 @@ export const players = pgTable('players', {
   /** Hash of the national ID for duplicate detection. The number itself is never stored. */
   idHash: text('id_hash').unique(),
   logligId: text('loglig_id').unique(),
+  /** Loglig's own user id and profile photo file (public, shown with the federation's approval). */
+  logligUserId: text('loglig_user_id').unique(),
+  photo: text('photo'),
   createdAt: createdAt(),
 }, (t) => [index('players_name_idx').on(t.lastName, t.firstName)]);
 
@@ -197,6 +200,8 @@ export const entries = pgTable('entries', {
   status: entryStatusEnum('status').notNull().default('PENDING'),
   paymentStatus: paymentStatusEnum('payment_status').notNull().default('UNPAID'),
   rankAtDraw: integer('rank_at_draw'),
+  /** 'loglig' when the registration is mirrored from Loglig: payment and cancellation happen there, not in this app. */
+  source: text('source'),
   createdAt: createdAt(),
 }, (t) => [uniqueIndex('entry_uq').on(t.categoryId, t.playerId)]);
 

@@ -107,7 +107,7 @@ async function myPeople(db: Db, actor: Actor) {
     const nextTournament = entered.filter((x) => x.t.endDate >= now).sort((a, b) => a.t.startDate.getTime() - b.t.startDate.getTime())[0];
     const todo: string[] = [];
     if (!docs.ok) todo.push(`DOCS:${docs.missing.join(',')}`);
-    for (const x of entered) if (x.e.paymentStatus === 'UNPAID' && x.t.feeAgorot > 0 && x.t.endDate > now) todo.push(`PAY:${x.t.name}`);
+    for (const x of entered) if (x.e.source !== 'loglig' && x.e.paymentStatus === 'UNPAID' && x.t.feeAgorot > 0 && x.t.endDate > now) todo.push(`PAY:${x.t.name}`);
     return {
       id: p.id, name: `${p.firstName} ${p.lastName}`, relation, gender: p.gender, birthYear: by,
       childLogin: relation === 'CHILD' ? await childLoginName(db, p.id) : null,

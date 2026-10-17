@@ -28,6 +28,9 @@ try {
   await sql`alter table tournaments add column if not exists section text not null default 'YOUTH'`;
   await sql`alter table clubs add column if not exists info jsonb`;
   await sql`alter table users add column if not exists sessions_valid_after timestamptz`;
+  await sql`alter table players add column if not exists loglig_user_id text unique`;
+  await sql`alter table players add column if not exists photo text`;
+  await sql`alter table entries add column if not exists source text`;
   await sql`create table if not exists site_info (key text primary key, data jsonb not null, updated_at timestamptz not null default now())`;
   await sql`create table if not exists regulations (
     id text primary key, title text not null, url text not null, category text not null default 'אחר', sort integer not null default 100, updated_at timestamptz not null default now())`;

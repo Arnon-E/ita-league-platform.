@@ -1,3 +1,4 @@
+import { photoUrl } from '@/lib/photos';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { db, schema } from '@/db';
@@ -200,6 +201,20 @@ async function Overview({ d, manage }: { d: Detail; manage: boolean }) {
           <div key={c.id} className="card grid" style={{ gap: 4 }}>
             <strong>{c.name}</strong>
             <span className="muted">{tt(GENDER[c.gender] ?? '')} · {tt(FORMAT[formatOf(c, t)] ?? '')}{c.capacity ? ` · ${tt('עד')} ${c.capacity}` : ''}</span>
+            {ents.some((x) => x.e.categoryId === c.id && x.e.status === 'CONFIRMED') && (
+              <details className="filters" style={{ marginTop: 6 }}>
+                <summary>{tt('משתתפים')} ({ents.filter((x) => x.e.categoryId === c.id && x.e.status === 'CONFIRMED').length})</summary>
+                <ul className="plist">
+                  {ents.filter((x) => x.e.categoryId === c.id && x.e.status === 'CONFIRMED').sort((a, b) => a.p.lastName.localeCompare(b.p.lastName, 'he')).map((x) => (
+                    <li key={x.e.id}>
+                      {photoUrl(x.p.photo) ? <img src={photoUrl(x.p.photo)!} alt="" width={40} height={40} loading="lazy" referrerPolicy="no-referrer" /> : <span className="pavatar" aria-hidden style={{ width: 40, height: 40, fontSize: 15 }}>{x.p.firstName.charAt(0)}</span>}
+                      <Link href={`/players/${x.p.id}`}><strong>{x.p.firstName} {x.p.lastName}</strong></Link>
+                      {x.club && <span className="muted">{x.club}</span>}
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            )}
             {ents.length > 0 && <span className="muted">{(() => {
               const ok = ents.filter((x) => x.e.categoryId === c.id && x.e.status === 'CONFIRMED').length;
               const wait = ents.filter((x) => x.e.categoryId === c.id && x.e.status === 'PENDING').length;

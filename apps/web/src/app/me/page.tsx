@@ -118,8 +118,9 @@ export default async function Me({ searchParams }: { searchParams: Promise<{ err
                   <div className="row">
                     <span className={`pill ${ENTRY_STATUS[e.status]?.[1] ?? ''}`}>{ENTRY_STATUS[e.status]?.[0] ?? e.status}</span>
                     <span className={`pill ${PAY_STATUS[e.paymentStatus]?.[1] ?? ''}`}>{PAY_STATUS[e.paymentStatus]?.[0] ?? e.paymentStatus}</span>
-                    {!isChild && e.paymentStatus === 'UNPAID' && t.feeAgorot > 0 && <form action={payAction}><input type="hidden" name="entry" value={e.id} /><button className="btn small">תשלום ₪{(t.feeAgorot / 100).toFixed(0)}</button></form>}
-                    {!isChild && e.paymentStatus === 'UNPAID' && <form action={cancelEntryAction}><input type="hidden" name="entry" value={e.id} /><button className="btn small ghost" style={{ color: 'var(--bad)' }}>ביטול הרשמה</button></form>}
+                    {e.source === 'loglig' && <span className="pill">{'נרשם ב-Loglig'}</span>}
+                    {!isChild && e.source !== 'loglig' && e.paymentStatus === 'UNPAID' && t.feeAgorot > 0 && <form action={payAction}><input type="hidden" name="entry" value={e.id} /><button className="btn small">תשלום ₪{(t.feeAgorot / 100).toFixed(0)}</button></form>}
+                    {!isChild && e.source !== 'loglig' && e.paymentStatus === 'UNPAID' && <form action={cancelEntryAction}><input type="hidden" name="entry" value={e.id} /><button className="btn small ghost" style={{ color: 'var(--bad)' }}>ביטול הרשמה</button></form>}
                   </div>
                 </div>
               )) : <span className="muted">אין הרשמות פעילות.</span>}

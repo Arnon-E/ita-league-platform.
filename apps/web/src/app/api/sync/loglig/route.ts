@@ -6,6 +6,7 @@ import { importRegulations, validateRegulationsImport } from '@/services/regulat
 import { importLeague, validateLeagueImport } from '@/services/loglig-leagues';
 import { createTestUser, removeTestUsers } from '@/services/test-users';
 import { importRankings, validateRankingImport } from '@/services/loglig-rankings';
+import { importRosters, validateRosterImport } from '@/services/loglig-rosters';
 
 export const maxDuration = 60;
 
@@ -30,6 +31,7 @@ export async function POST(req: Request) {
     if (body?.kind === 'clubs') return Response.json(await importClubs(db, validateClubsImport(body)));
     if (body?.kind === 'site-info') return Response.json(await importSiteInfo(db, validateSiteInfoImport(body)));
     if (body?.kind === 'regulations') return Response.json(await importRegulations(db, validateRegulationsImport(body)));
+    if (body?.kind === 'rosters') return Response.json(await importRosters(db, validateRosterImport(body)));
     if (body?.kind === 'league') return Response.json(await importLeague(db, validateLeagueImport(body)));
     return Response.json(await importRankings(db, validateRankingImport(body)));
   } catch (e) {

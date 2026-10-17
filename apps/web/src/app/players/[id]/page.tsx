@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { photoUrl } from '@/lib/photos';
 import { db } from '@/db';
 import { Shell } from '@/components/Shell';
 import { FollowButton } from '@/components/FollowButton';
@@ -35,7 +36,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
   const initials = `${p.firstName.slice(0, 1)}${p.lastName.slice(0, 1)}`;
   return (
     <Shell nav="players">
-      <div className="row" style={{ justifyContent: 'space-between' }}><span className="row" style={{ flexWrap: 'nowrap' }}><span className="pavatar" aria-hidden>{initials}</span><h1>{p.firstName} {p.lastName}</h1></span><FollowButton kind="PLAYER" target={p.id} back={`/players/${p.id}`} /></div>
+      <div className="row" style={{ justifyContent: 'space-between' }}><span className="row" style={{ flexWrap: 'nowrap' }}>{photoUrl(p.photo) ? <img className="pavatar-img" src={photoUrl(p.photo)!} alt="" referrerPolicy="no-referrer" /> : <span className="pavatar" aria-hidden>{initials}</span>}<h1>{p.firstName} {p.lastName}</h1></span><FollowButton kind="PLAYER" target={p.id} back={`/players/${p.id}`} /></div>
       <p className="muted">{club ? <>מועדון: {p.clubId ? <Link href={`/clubs/${p.clubId}`}><u>{club}</u></Link> : club} · </> : ''}{GENDER[p.gender]} · גיל {age}</p>
       <div className="grid cols" style={{ marginTop: 12 }}>
         <div className="card"><div className="muted">דירוג</div><strong style={{ fontSize: 28 }}>{mine ? `#${mine.rank}` : '—'}</strong></div>

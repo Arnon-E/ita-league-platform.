@@ -276,7 +276,7 @@ function Tournament({ id, onBack, onGoAccount }: { id: string; onBack: () => voi
   };
   if (score) return <Score m={score} onDone={() => { setScore(null); load(); }} />;
   return (
-    <View style={s.pad}>
+      <FlatList style={s.pad} contentContainerStyle={{ paddingBottom: 100, gap: 10 }} ListHeaderComponent={<View style={{ gap: 10 }}>
       <Pressable onPress={onBack}><Text style={s.b}>→ חזרה</Text></Pressable>
       <Text style={s.h1}>{d?.tournament.name}</Text>
       <Pressable style={[s.chip, following && s.chipOn, { alignSelf: 'flex-start' }]} onPress={toggle}><Text style={following ? s.chipOnT : s.b}>{following ? '★ במעקב' : '☆ מעקב'}</Text></Pressable>
@@ -317,7 +317,31 @@ function Tournament({ id, onBack, onGoAccount }: { id: string; onBack: () => voi
           </View>
         );
       })()}
-      <FlatList contentContainerStyle={{ paddingBottom: 100 }}
+      {(() => {
+        const cats = d?.categories ?? [];
+        const ageOf = (n: string) => (n.match(/(\d{2})/) ?? [])[1] ?? '';
+        const shown = (d?.participants ?? []).filter((x) => {
+          if (fcat) return x.categoryId === fcat;
+          const c = cats.find((k) => k.id === x.categoryId);
+          return !!c && (!fg || c.gender === fg) && (!fage || ageOf(c.name) === fage);
+        });
+        if (!shown.length) return null;
+        return (
+          <View style={{ gap: 8 }}>
+            <Text style={s.h2}>{`משתתפים (${shown.length})`}</Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+              {shown.map((x) => (
+                <View key={x.categoryId + x.id} style={{ width: '30%', alignItems: 'center', gap: 4 }}>
+                  {x.photo ? <Image source={{ uri: x.photo }} style={s.avatar} /> : <View style={[s.avatar, { alignItems: 'center', justifyContent: 'center', backgroundColor: T.volt }]}><Text style={{ color: T.ink, fontWeight: '800', fontSize: 20 }}>{x.name.trim().charAt(0)}</Text></View>}
+                  <Text style={[s.b, { fontSize: 13, textAlign: 'center' }]} numberOfLines={2}>{x.name}</Text>
+                  {!fcat && cats.length > 1 && <Text style={[s.muted, { fontSize: 11 }]} numberOfLines={1}>{cats.find((k) => k.id === x.categoryId)?.name}</Text>}
+                </View>
+              ))}
+            </View>
+          </View>
+        );
+      })()}
+      </View>}
         data={(d?.matches ?? []).filter((m) => {
           if (fcat) return m.categoryId === fcat;
           if (!fg && !fage) return true;
@@ -345,7 +369,6 @@ function Tournament({ id, onBack, onGoAccount }: { id: string; onBack: () => voi
             </Pressable>
           );
         }} />
-    </View>
   );
 }
 
@@ -611,6 +634,7 @@ const s = StyleSheet.create({
   chip2: { alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 999, backgroundColor: T.surface2, borderWidth: 1, borderColor: T.line }, chip2T: { fontSize: 12.5, fontWeight: '600', color: T.text },
   chipOk: { backgroundColor: T.okbg, borderColor: 'transparent' }, chipLive: { backgroundColor: T.volt, borderColor: 'transparent' },
   photo: { width: 220, height: 150, borderRadius: 20, backgroundColor: T.line },
+  avatar: { width: 64, height: 64, borderRadius: 32, backgroundColor: T.line, borderWidth: 2, borderColor: T.volt },
   b: { fontWeight: '700', color: T.text },
   row: { flexDirection: 'row', alignItems: 'center', gap: 8, justifyContent: 'space-between' },
   card: { backgroundColor: T.surface, borderWidth: 1, borderColor: T.line, borderRadius: 22, padding: 18, marginBottom: 10, gap: 8 },
