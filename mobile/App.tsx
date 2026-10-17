@@ -39,6 +39,7 @@ function Login({ onDone }: { onDone: (signedUp: boolean) => void }) {
   const [email, setEmail] = useState(''); const [pw, setPw] = useState(''); const [err, setErr] = useState(''); const [busy, setBusy] = useState(false);
   const fail = (e: Error) => { setBusy(false); setErr(e.message === 'invalid' ? 'אימייל או סיסמה שגויים' : e.message === 'locked' ? 'החשבון ננעל זמנית' : e.message); };
   const submit = () => {
+    if (!email.trim() || !pw || (mode === 'signup' && !name.trim())) { setErr('יש למלא את כל השדות החובה'); return; }
     setErr(''); setBusy(true);
     (mode === 'login' ? api.login(email.trim(), pw) : api.register(name.trim(), email.trim(), phone.trim(), pw)).then(() => { setBusy(false); onDone(mode === 'signup'); }).catch(fail);
   };
