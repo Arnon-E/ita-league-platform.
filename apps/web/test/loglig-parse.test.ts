@@ -49,7 +49,8 @@ describe('loglig page parsing', () => {
     expect(p).toMatchObject({ competition: 'אליפות בדיקה 2026', category: 'בנים 12' });
     expect(p.matches.length).toBe(2);
     expect(p.matches[0]!).toMatchObject({ done: true, stage: 'בנים 12 פלייאוף', slot: '1 - 2', kind: 'St', a: { name: 'ירין מרקוביץ' } });
-    expect(p.matches[0]!.sets).toEqual([{ a: 6, b: 3 }, { a: 7, b: 5 }]);
+    // "6-3 7-5" is printed from the second player's side: b won 6-3 7-5
+    expect(p.matches[0]!.sets).toEqual([{ a: 3, b: 6 }, { a: 5, b: 7 }]);
     expect(p.matches[1]!).toMatchObject({ done: false, stage: 'בית 1', kind: 'NB' });
   });
 });

@@ -131,4 +131,16 @@ describe('loglig competition mirror', () => {
     expect(() => validateCompetitionImport({ kind: 'competition', name: '', categories: [] })).toThrow();
     expect(() => validateCompetitionImport({ kind: 'x' })).toThrow();
   });
+
+  it('drops categories of an older import that are no longer in the draw (the same matches under another label)', async () => {
+    const mk = (name: string) => ({
+      kind: 'competition', name: 'אליפות כפילות', start: '2026-09-18', end: '2026-09-20', feeShekel: 0, level: 'NATIONAL', venues: [],
+      categories: [{ name, source: '9', gender: 'MALE', age: 12, format: 'KNOCKOUT', matches: [m({ a: p('נועם אחד'), b: p('גל שניים'), sets: [{ a: 6, b: 1 }, { a: 6, b: 2 }] })] }],
+    });
+    await importCompetition(db, validateCompetitionImport(mk('בנים 12 · בית הגמר')), new Date('2026-10-10'));
+    await importCompetition(db, validateCompetitionImport(mk('בנים 12')), new Date('2026-10-10'));
+    const [tn] = await db.select().from(schema.tournaments).where(eq(schema.tournaments.name, 'אליפות כפילות'));
+    const cats = await db.select().from(schema.categories).where(eq(schema.categories.tournamentId, tn!.id));
+    expect(cats.map((c) => c.name)).toEqual(['בנים 12']);
+  });
 });

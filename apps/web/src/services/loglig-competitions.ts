@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { and, eq, inArray, sql } from 'drizzle-orm';
+import { and, eq, inArray, sql, notInArray } from 'drizzle-orm';
 import { resolveCompleted, BEST_OF_3_SUPER_TB } from '@ita/rules-engine';
 import { schema, type Db } from '@/db';
 import { ensureDefaultRuleSet } from '@/services/rules';
@@ -110,6 +110,11 @@ export async function importCompetition(db: Db, input: CompetitionIn, now = new 
     // categories being refreshed are rebuilt from scratch (entries, groups, matches and draw cascade)
     if (input.categories.length) {
       await tx.delete(schema.categories).where(and(eq(schema.categories.tournamentId, tid), inArray(schema.categories.name, input.categories.map((c) => c.name))));
+      // once the draws are published the competition is a mirror of Loglig: categories of an older import that are not in this one
+      // (the same draw once labelled "· בית הגמר", say) would only show every match twice
+      if (input.categories.some((c) => c.matches.length)) {
+        await tx.delete(schema.categories).where(and(eq(schema.categories.tournamentId, tid), notInArray(schema.categories.name, input.categories.map((c) => c.name))));
+      }
       // placeholder categories from an earlier run (before the draw existed) that nobody entered and that have no matches
       await tx.execute(sql`
         delete from categories c where c.tournament_id = ${tid}

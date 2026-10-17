@@ -152,7 +152,10 @@ export function parseCategoryPage(html) {
     if (c.length < 10) continue;
     const when = c[4].match(/^(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})$/);
     if (!when || !c[7] || !c[9]) continue;
-    const sc = parseScore(c[11] ?? '');
+    // Loglig prints the result from the point of view of the player on the LEFT of the row, i.e. the second one listed, so the first
+    // number of every set is player b's games (checked against knockout brackets: the winner under this reading is always the one who advances).
+    const parsed = parseScore(c[11] ?? '');
+    const sc = { ...parsed, sets: parsed.sets.map((s) => ({ ...s, a: s.b, b: s.a })) };
     matches.push({
       done: c[0] === 'נגמר', venue: c[1], stage: c[2], slot: c[3],
       start: `${when[3]}-${when[2]}-${when[1]}T${when[4]}:${when[5]}`, kind: c[5] === 'NB' ? 'NB' : c[5] === 'St' ? 'St' : '',
