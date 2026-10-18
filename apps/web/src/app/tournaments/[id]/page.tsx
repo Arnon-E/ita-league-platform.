@@ -362,7 +362,7 @@ async function Overview({ d, manage, compact = false, registered = false }: { d:
 
 async function ClubTable({ d }: { d: Detail }) {
   const tt = await tr();
-  const clubOf = new Map(d.ents.filter((x) => x.e.status === 'CONFIRMED').map((x) => [x.e.id, x.club ?? 'ללא מועדון']));
+  const clubOf = new Map(d.ents.filter((x) => x.e.status === 'CONFIRMED').map((x) => [x.e.id, x.club ?? tt('ללא מועדון')]));
   const rows = new Map<string, { players: number; played: number; wins: number }>();
   const row = (c: string) => rows.get(c) ?? rows.set(c, { players: 0, played: 0, wins: 0 }).get(c)!;
   for (const c of clubOf.values()) row(c).players++;

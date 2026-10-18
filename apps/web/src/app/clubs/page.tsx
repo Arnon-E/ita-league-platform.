@@ -30,7 +30,7 @@ export default async function Clubs({ searchParams }: { searchParams: Promise<{ 
           const phone = (c.info as { phone?: string } | null)?.phone;
           return (
             <Link key={c.id} href={`/clubs/${c.id}`} className="card grid" style={{ gap: 4 }}>
-              <strong style={{ fontSize: 17 }}>{c.name}</strong>
+              <strong style={{ fontSize: 17 }}>{t(c.name)}</strong>
               <span className="muted">{[c.city, n ? count(n, t('שחקן אחד'), t('שחקנים')) : t('אין שחקנים רשומים'), phone].filter(Boolean).join(' · ')}</span>
             </Link>
           );

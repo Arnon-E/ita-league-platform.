@@ -43,7 +43,8 @@ export default async function League({ params, searchParams }: { params: Promise
         if (!ms.length) return null;
         return (
           <section key={r.name} className="card" style={{ overflow: 'auto', marginBottom: 10 }}>
-            <strong>{r.name}</strong>
+            {/* round names come from the federation as "מחזור 3": in English they read "Round 3" */}
+            <strong>{t('מחזור') === 'מחזור' ? r.name : r.name.replace(/^מחזור(?=\s*\d)/, 'Round')}</strong>
             <table><tbody>
               {ms.map((m, i) => (
                 <tr key={i}>
