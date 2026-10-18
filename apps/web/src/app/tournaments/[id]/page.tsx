@@ -14,6 +14,7 @@ import { tournamentDetail, playersNotIn } from '@/services/queries';
 import { groupStandings } from '@/services/results';
 import { listCourtLabels } from '@/services/tournaments';
 import { formatOf } from '@/services/draws';
+import { bracketLayout, roundName } from '@/services/bracket';
 import { loadRuleSet } from '@/services/rules';
 import { myPlayerRows } from '@/services/home';
 import { ineligibleReason, relevantFor } from '@/services/eligibility';
@@ -75,7 +76,7 @@ export default async function TournamentPage({ params, searchParams }: { params:
       {tab === 'overview' && <Overview d={narrow(d, flt)} manage={manage} compact={!!focus} registered={!!focus && focus.entries.length > 0} />}
       {tab === 'entries' && <Entries d={d} manage={manage} />}
       {(tab === 'draw' || tab === 'results' || tab === 'schedule') && (useFocus ? <details className="filters"><summary>{tt('שינוי קטגוריה')}</summary><CatFilter d={d} tab={tab} cat={cat} flt={flt} withCats /></details> : <CatFilter d={d} tab={tab} cat={cat} flt={flt} withCats />)}
-      {tab === 'draw' && <DrawTab d={pick(narrow(d, flt), cat)} manage={manage} />}
+      {tab === 'draw' && <DrawTab d={pick(narrow(d, flt), cat)} manage={manage} hl={new Set((focus?.entries ?? []).map((x) => x.e.id))} />}
       {tab === 'results' && <Results d={pick(narrow(d, flt), cat)} scorer={scorer} />}
       {tab === 'schedule' && <Schedule d={pick(narrow(d, flt), cat)} manage={manage} />}
       {tab === 'gallery' && <Gallery tournamentId={t.id} manage={scorer} />}
@@ -147,6 +148,10 @@ async function MyPlayerCard({ d, focus, mine, showAll }: { d: Detail; focus: Non
           })}
         </div>
       )}
+      {(() => {
+        const koCat = entries.map((x) => x.e.categoryId).find((c) => d.ms.some((m) => m.categoryId === c && m.stage === 'KO'));
+        return koCat ? <Link className="btn small ghost" style={{ justifySelf: 'start' }} href={`/tournaments/${d.t.id}?tab=draw&cat=${koCat}${mine.length > 1 ? `&for=${p.id}` : ''}`}>{tt('עץ התחרות')}</Link> : null;
+      })()}
       {showAll && <Link className="muted" href={`/tournaments/${d.t.id}?all=1&tab=overview`}><u>{tt('הצגת כל הקטגוריות והמשתתפים')}</u></Link>}
     </section>
   );
@@ -464,30 +469,42 @@ async function Entries({ d, manage }: { d: Detail; manage: boolean }) {
   );
 }
 
-function Bracket({ d, categoryId, slotsKey }: { d: Detail; categoryId: string; slotsKey?: 'slots' | 'koSlots' }) {
-  const ms = d.ms.filter((m) => m.categoryId === categoryId && m.stage === 'KO');
-  if (!ms.length) return null;
-  const rounds = Math.max(...ms.map((m) => m.round));
-  const nm = (id: string | null) => (id ? d.names.get(id) ?? '?' : '—');
-  void slotsKey;
+/** The knockout draw as a tree, first round to final, with scores; the viewer's own player (hl) is marked along the way. */
+function Bracket({ d, categoryId, hl, tt }: { d: Detail; categoryId: string; hl: Set<string>; tt: (s: string) => string }) {
+  const tree = bracketLayout(d.ms.filter((m) => m.categoryId === categoryId && m.stage === 'KO'));
+  if (!tree) return null;
+  const { cols } = tree;
+  const side = (m: (typeof d.ms)[number], e: string | null, mine: (s: { a: number; b: number }) => number) => (
+    <div className={[e && m.winnerEntryId === e ? 'w' : '', e && hl.has(e) ? 'me' : ''].join(' ')}>
+      <span className="nm">{e ? d.names.get(e) ?? '?' : tt('טרם נקבע')}</span>
+      <span className="sc" dir="ltr">{m.status === 'WALKOVER' ? (e && m.winnerEntryId === e ? 'W/O' : '') : ((m.sets ?? []) as { a: number; b: number }[]).map((s, i) => <b key={i}>{mine(s)}</b>)}</span>
+    </div>
+  );
   return (
-    <div className="bracket">
-      {Array.from({ length: rounds }, (_, i) => i + 1).map((r) => (
-        <div key={r} className="round">
-          <strong className="muted">{['גמר', 'חצי גמר', 'רבע גמר'][rounds - r] ?? `סיבוב ${r}`}</strong>
-          {ms.filter((m) => m.round === r).map((m) => (
-            <Link key={m.id} href={`/matches/${m.id}`} className="m">
-              <div className={m.winnerEntryId && m.winnerEntryId === m.aEntryId ? 'w' : ''}><span>{nm(m.aEntryId)}</span></div>
-              <div className={m.winnerEntryId && m.winnerEntryId === m.bEntryId ? 'w' : ''}><span>{nm(m.bEntryId)}</span></div>
-            </Link>
-          ))}
-        </div>
-      ))}
+    <div className="card tree-card">
+      <div className="tree">
+        {cols.map((col, k) => {
+          const title = roundName(cols.length - 1 - k);
+          const box = (m: (typeof col)[number], key: number) => (
+            <div key={key} className="tcell">
+              {m ? <Link href={`/matches/${m.id}`} className="tm">{side(m, m.aEntryId, (s) => s.a)}{side(m, m.bEntryId, (s) => s.b)}</Link> : <div className={`tm empty ${k ? '' : 'bye'}`} />}
+            </div>
+          );
+          return (
+            <div key={k} className="tcol">
+              <h3>{title ? tt(title) : `${tt('סיבוב')} ${k + 1}`}</h3>
+              <div className="tcells">
+                {col.length === 1 ? box(col[0]!, 0) : Array.from({ length: col.length / 2 }, (_, j) => <div key={j} className="tpair">{box(col[2 * j]!, 0)}{box(col[2 * j + 1]!, 1)}</div>)}
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
 
-async function DrawTab({ d, manage }: { d: Detail; manage: boolean }) {
+async function DrawTab({ d, manage, hl }: { d: Detail; manage: boolean; hl: Set<string> }) {
   const tt = await tr();
   const { t, cats } = d;
   const canDraw = ['REGISTRATION_CLOSED', 'DRAWN'].includes(t.status);
@@ -504,6 +521,7 @@ async function DrawTab({ d, manage }: { d: Detail; manage: boolean }) {
         return (
           <section key={c.id} className="grid">
             <h2>{c.name} <span className="muted" style={{ fontWeight: 400 }}>· {tt(FORMAT[fmt] ?? '')}</span></h2>
+            <Bracket d={d} categoryId={c.id} hl={hl} tt={tt} />
             {manage && canDraw && !anyResult && (
               <form action={drawAction} className="card row">
                 <input type="hidden" name="id" value={t.id} /><input type="hidden" name="category" value={c.id} /><input type="hidden" name="op" value="run" />
@@ -543,7 +561,6 @@ async function DrawTab({ d, manage }: { d: Detail; manage: boolean }) {
                 <button className="btn">העלאה לשלב ההדחה</button>
               </form>
             )}
-            <Bracket d={d} categoryId={c.id} />
             {manage && dr && (
               <div className="row">
                 {!dr.publishedAt && <form action={drawAction}><input type="hidden" name="id" value={t.id} /><input type="hidden" name="category" value={c.id} /><input type="hidden" name="op" value="publish" /><button className="btn ghost">פרסום ההגרלה</button></form>}
@@ -569,7 +586,7 @@ async function Results({ d, scorer }: { d: Detail; scorer: boolean }) {
             <table><thead><tr><th>{tt('שלב')}</th><th>{tt('משחק')}</th><th>{tt('תוצאה')}</th><th>{tt('מגרש / שעה')}</th><th /></tr></thead><tbody>
               {d.ms.filter((m) => m.categoryId === c.id).map((m) => (
                 <tr key={m.id}>
-                  <td>{m.stage === 'GROUP' ? `${tt('בית')} · ${tt('מחזור')} ${m.round}` : `${tt('הדחה')} · ${tt('סיבוב')} ${m.round}`}</td>
+                  <td>{m.stage === 'GROUP' ? `${tt('שלב הבתים')} · ${tt('מחזור')} ${m.round}` : `${tt('הדחה')} · ${tt('סיבוב')} ${m.round}`}</td>
                   <td colSpan={2} style={{ minWidth: 260 }}>
                     <MatchScore aName={nm(m.aEntryId)} bName={nm(m.bEntryId)} sets={m.status === 'SCHEDULED' ? [] : (m.sets as { a: number; b: number }[])} status={m.status}
                       winner={m.winnerEntryId ? (m.winnerEntryId === m.aEntryId ? 'a' : m.winnerEntryId === m.bEntryId ? 'b' : null) : null}

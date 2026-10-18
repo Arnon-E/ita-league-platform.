@@ -116,7 +116,7 @@ table{border-collapse:separate;border-spacing:0;width:100%}
 th,td{padding:14px 18px;text-align:start;border-bottom:1px solid var(--line)}
 th{font-size:12.5px;font-weight:600;color:var(--muted);background:var(--surface2);position:sticky;top:0}
 tbody tr{transition:background-color .12s var(--ease)}tbody tr:hover{background:var(--surface2)}tbody tr:last-child td{border-bottom:0}
-.card:has(>table),.card:has(>.bracket){padding:0;overflow:hidden}
+.card:has(>table){padding:0;overflow:hidden}
 .card>table:only-child td:first-child,.card>table:only-child th:first-child{padding-inline-start:22px}
 
 /* tabs: a flat segmented control */
@@ -129,13 +129,31 @@ tbody tr{transition:background-color .12s var(--ease)}tbody tr:hover{background:
 .okmsg{background:var(--okbg);color:var(--ok);padding:12px 18px;border-radius:16px;margin:14px 0;font-weight:500}
 
 /* bracket */
-.bracket{display:flex;gap:30px;overflow:auto;padding:20px}
-.bracket .round{display:flex;flex-direction:column;justify-content:space-around;gap:12px;min-width:210px}
-.bracket .m{display:block;background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden;font-size:14px;transition:transform .15s var(--ease),border-color .15s var(--ease)}
-.bracket .m:hover{transform:translateY(-2px);border-color:var(--blue2)}
-.bracket .m div{padding:9px 12px;display:flex;justify-content:space-between;gap:8px}
-.bracket .m div+div{border-top:1px solid var(--line)}
-.bracket .m .w{font-weight:700;background:var(--okbg);color:var(--ok)}
+/* knockout tree: columns from the first round to the final; each pair of boxes is joined by a bracket line to the box it feeds.
+   Logical sides (inline-start/end) so the tree runs right to left in Hebrew and left to right in English. */
+.tree-card{padding:0;overflow:hidden}
+.tree{display:flex;gap:28px;overflow-x:auto;padding:18px 16px 22px;align-items:stretch;-webkit-overflow-scrolling:touch}
+.tcol{display:flex;flex-direction:column;flex:0 0 auto;width:212px}
+.tcol>h3{margin:0 0 6px;font-size:13px;font-weight:600;color:var(--muted);text-align:center;letter-spacing:0}
+.tcells{display:flex;flex-direction:column;flex:1}
+.tpair{display:flex;flex-direction:column;flex:1;position:relative}
+.tcell{flex:1;display:flex;align-items:center;position:relative;padding:5px 0;min-height:76px}
+.tpair::after{content:'';position:absolute;inset-inline-end:-15px;top:25%;bottom:25%;width:14px;border:1.5px solid var(--line2);border-inline-start:0;border-start-end-radius:8px;border-end-end-radius:8px;pointer-events:none}
+.tcol+.tcol .tcell::before{content:'';position:absolute;inset-inline-start:-14px;width:14px;top:50%;border-top:1.5px solid var(--line2);pointer-events:none}
+.tm{display:block;width:100%;background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden;font-size:13.5px;color:var(--text);transition:border-color .15s var(--ease),transform .15s var(--ease)}
+a.tm:hover{border-color:var(--blue2);transform:translateY(-1px)}
+.tm>div{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 10px;min-height:32px}
+.tm>div+div{border-top:1px solid var(--line)}
+.tm .nm{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tm .sc{display:flex;gap:6px;flex:0 0 auto;font-variant-numeric:tabular-nums;color:var(--muted)}
+.tm .sc b{font-weight:500;min-width:1ch;text-align:center}
+.tm .w{font-weight:700}
+.tm .w .sc{color:var(--ok)}
+.tm .w .sc b{font-weight:700}
+.tm .me{background:color-mix(in srgb,var(--lime) 28%,transparent)}
+.tm.empty{height:66px;border-style:dashed;background:transparent}
+.tm.bye{visibility:hidden}
+@media (max-width:600px){.tree{gap:22px;padding:14px 12px 18px}.tcol{width:164px}.tpair::after{inset-inline-end:-12px;width:11px}.tcol+.tcol .tcell::before{inset-inline-start:-11px;width:11px}.tcell{min-height:64px;padding:4px 0}.tm{font-size:12.5px;border-radius:12px}.tm>div{padding:5px 8px;min-height:28px;gap:6px}.tm .sc{gap:4px}.tm.empty{height:58px}}
 .stp{width:52px;height:52px;border-radius:16px;border:1px solid var(--line2);background:var(--surface);color:var(--text);font:inherit;font-size:26px;font-weight:600;cursor:pointer;transition:transform .1s var(--ease),background-color .15s var(--ease)}
 .stp:active{transform:scale(.92);background:var(--okbg)}
 
