@@ -197,6 +197,22 @@ describe('loglig competition mirror', () => {
     expect((await db.select().from(schema.players).where(eq(schema.players.lastName, 'ארזי'))).length).toBe(1); // players with matches stay
   });
 
+  it("cleanup gives players created from Loglig's 1753 date a real estimated birth year", async () => {
+    const rule = (await db.select().from(schema.ruleSets))[0]!;
+    const [t] = await db.insert(schema.tournaments).values({ name: 'סבב לידה', startDate: new Date('2023-07-03T00:00:00Z'), endDate: new Date('2023-07-05T00:00:00Z'), ruleSetId: rule.id, section: 'YOUTH' }).returning();
+    const [kids] = await db.insert(schema.categories).values({ tournamentId: t!.id, name: 'בנים 10', gender: 'MALE', minBirthYear: 2013 }).returning();
+    const [open] = await db.insert(schema.categories).values({ tournamentId: t!.id, name: 'A', gender: 'OPEN', minBirthYear: null }).returning();
+    const [kid] = await db.insert(schema.players).values({ firstName: 'ילד', lastName: 'עתיק', birthDate: new Date('1743-07-01'), gender: 'MALE', logligId: 'cp:MALE:ילד עתיק' }).returning();
+    const [other] = await db.insert(schema.players).values({ firstName: 'שחקן', lastName: 'עתיק', birthDate: new Date('1739-07-01'), gender: 'OPEN', logligId: 'cp:OPEN:שחקן עתיק' }).returning();
+    await db.insert(schema.entries).values([{ categoryId: kids!.id, playerId: kid!.id, status: 'CONFIRMED' }, { categoryId: open!.id, playerId: other!.id, status: 'CONFIRMED' }]);
+    const res = await dedupeMirror(db);
+    expect(res.births).toBe(2);
+    const year = async (id: string) => (await db.select().from(schema.players).where(eq(schema.players.id, id)))[0]!.birthDate.getUTCFullYear();
+    expect(await year(kid!.id)).toBe(2013); // the age category's bound
+    expect(await year(other!.id)).toBe(2009); // no age category: a youth competition in 2023, estimated 14
+    await removeTournament(db, 'סבב לידה');
+  });
+
   it('a results-only refresh updates matches but leaves the tournament details alone, and skips unknown tournaments', async () => {
     const base = {
       kind: 'competition', name: 'אליפות חיה', start: '2026-10-16', end: '2026-10-26', feeShekel: 180, level: 'NATIONAL', registerUrl: 'https://loglig.com/Activity/Form/1', registrationCloses: '2026-10-12T20:45:00.000Z',

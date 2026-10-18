@@ -349,7 +349,19 @@ export async function dedupeMirror(db: Db) {
     select p.id from players p where p.loglig_id like 'cp:%' and p.account_id is null
       and not exists (select 1 from entries e where e.player_id = p.id) and not exists (select 1 from guardians g where g.player_id = p.id)`)) as unknown as { id: string }[];
   const players = (await deletePlayersById(db, orphans.map((r) => r.id))).players;
-  return { tournaments, players };
+  // players an import created while a competition still had Loglig's empty date (1753) as its year: the same estimate a new player
+  // gets, from the competitions as they are now (the youngest age category played, else the first competition's year minus 14 / 30)
+  const fixed = (await db.execute(sql`
+    with est as (
+      select e.player_id,
+        max(c.min_birth_year) filter (where c.min_birth_year >= 1900) as by_cat,
+        min(extract(year from t.start_date)::int - case when t.section in ('ADULTS', 'MASTERS') then 30 else 14 end) filter (where t.start_date >= '2000-01-01') as by_year
+      from entries e join categories c on c.id = e.category_id join tournaments t on t.id = c.tournament_id
+      group by e.player_id)
+    update players p set birth_date = make_date(coalesce(est.by_cat, est.by_year), 7, 1)::timestamptz
+    from est where est.player_id = p.id and p.birth_date < '1900-01-01' and p.account_id is null and coalesce(est.by_cat, est.by_year) is not null
+    returning p.id`)) as unknown as unknown[];
+  return { tournaments, players, births: fixed.length };
 }
 
 async function removeTournamentIds(db: Db, ids: string[]) {
