@@ -12,6 +12,24 @@ Found by reading the ITA site (ita.co.il) and the public Loglig pages it embeds.
 | **Adult team league (Winner league)** men id 14352, women id 14355 | `LeagueTable/TennisLeagueDetails?id=<id>&seasonId=1755` (standings) and `LeagueTable/Schedules/<id>?seasonId=1755` (fixtures) | HTML: groups A/B, played/points/W/L/sets/games, cross-table of results | **Mirrored** as a read-only league document: `scripts/loglig-sync/leagues.mjs`, pages `/leagues` |
 | Yearly calendar | `ita.co.il/wp-content/uploads/<yyyy>/<mm>/גאנט-מעודכן-<date>.xlsx` | Excel | not yet |
 | Registration forms | `loglig.com/Activity/Form/<id>?seasonId=1755` (login/registration happens on Loglig) | form | link out |
+| **Competitions as the Loglig app lists them** | `https://loglig.com:8443/api/Union/Competitions{Youth,Adult,Senior,Daily}/38?seasonId=<season>`; seasons from `api/Leauges/AthleticsSeasons/38` | JSON: title and categories (`TeamId` = the category's draw page id) | **Mirrored**: `competitions.mjs` (also competitions ita.co.il does not link), `live-results.mjs` |
+| **Registered players per category** | `https://loglig.com:8443/api/NewUnion/GetTeamRoster/<competitionId>/<categoryTeamId>` | JSON: user id, name, photo file | **Mirrored**: `rosters.mjs`, `roster-photos.mjs` |
+| Clubs, events, forms, sponsors, federation info | the same public app API (`app-data.mjs`) | JSON | **Mirrored** |
+| Regulations and procedures | links on ita.co.il | PDF / Word / Excel | **Linked**: `regulations.mjs` (documents stay on the federation's site) |
+
+## Data rules (what the import corrects)
+- **Score orientation.** A draw page prints the score from the side of the player listed second in the row. The import swaps it so
+  sets are stored from player a's side; checked against the knockout trees (the recorded winner is always the one who appears in
+  the next round).
+- **One event, two titles.** ita.co.il and the Loglig app name the same competition differently ("אליפות ארצית קיץ 3 2026 ע"ש
+  זייתוני" / "ארצית קיץ 3 2026 ע"ש זייתוני"). The import matches an existing tournament by title containment on overlapping dates and
+  keeps its name; `dedupe.mjs` removes older doubles.
+- **Categories.** "נערים", "ילדים" are boys and "נערות", "ילדות" girls (not open categories), so their players are not created a second
+  time; open categories reuse a known player of either gender. Doubles pairs ("A / B") and "Bye" are not players.
+- **Empty dates.** Loglig shows an unset date as 01/01/1753; it is never used as a competition or match date (a match gets its
+  competition's start), and players estimated from such a year are re-estimated.
+- **Players** are matched by name (and birth year when the ranking has it) to the ranking mirror (`rk:` keys), the rosters (`lu:`)
+  and earlier imports (`cp:`); only an unknown name creates a player, with an estimated birth year.
 
 ## Notes
 - A Loglig **player account** (role "שחקנים") sees only its own record (profile, registrations, documents, achievements). It cannot list other players or competitions; a club-manager or federation account would be needed for that.
@@ -19,5 +37,5 @@ Found by reading the ITA site (ita.co.il) and the public Loglig pages it embeds.
 - Be gentle: a few requests per minute, nothing that writes. Check Loglig's terms for automated access.
 
 ## Running it
-- One-time full upload: `apps/web/upload-loglig-to-live.bat` (also removes the sample test competition).
-- Daily refresh: `apps/web/install-daily-sync.bat` registers `run-daily-sync.bat` in Windows Task Scheduler (06:30; log in `apps/web/.loglig-dump/daily-sync.log`). It skips competitions that ended more than 21 days ago.
+See `apps/web/scripts/loglig-sync/README.md`: the scripts, the daily refresh (06:30), the live refresh of competitions that are on
+(every 10 minutes) and the full re-import.
