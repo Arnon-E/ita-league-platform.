@@ -4,7 +4,7 @@
    Class names are the contract with the pages. */
 :root{
   color-scheme:light dark;
-  --ink:#0A1F44;--navy:#0A1F44;--volt:#C1DF67;--lime:#C1DF67;--clay:#FF6A3D;
+  --ink:#0A1F44;--navy:#0A1F44;--volt:#C6ED45;--lime:#C6ED45;--clay:#FF6A3D;
   --blue:#2447F5;--blue2:#4A67FF;
   --bg:#EEF0EA;--surface:#FFFFFF;--surface2:#F5F6F1;--line:#E0E3DA;--line2:#C9CEC3;
   --text:#0E1512;--muted:#59655E;
@@ -19,7 +19,7 @@
 @media(prefers-color-scheme:dark){:root{
   --bg:#070A09;--surface:#111715;--surface2:#171E1B;--line:#222B27;--line2:#33403A;--text:#EDF1EE;--muted:#8E9B94;--navy:#EDF1EE;
   --blue:#8CA3FF;--blue2:#A9BAFF;
-  --btn:#C1DF67;--btn-text:#0C1210;--btn-hover:#CFE884;
+  --btn:#C6ED45;--btn-text:#0C1210;--btn-hover:#D1F06B;
   --okbg:#0E3220;--ok:#5BD58F;--warnbg:#3A2A0F;--warn:#F5B452;--badbg:#3B1713;--bad:#FF8A7E;
   --shadow:0 1px 2px rgba(0,0,0,.35);--shadow-lg:0 2px 4px rgba(0,0,0,.45),0 24px 48px -12px rgba(0,0,0,.7);
   --glass:rgba(17,23,21,.72);--glass-line:rgba(255,255,255,.09)
@@ -72,7 +72,7 @@ a.card:active{transform:translateY(0) scale(.99)}
 
 /* hero: a dark court tile; court geometry in lines, a soft volt glow */
 .hero{border-radius:32px;padding:48px 44px;margin-bottom:12px;color:#fff;position:relative;overflow:hidden;isolation:isolate;
-  background:radial-gradient(520px 320px at 8% 0%,rgba(193,223,103,.16),transparent 70%),radial-gradient(600px 400px at 100% 100%,rgba(36,71,245,.35),transparent 70%),var(--ink);border:1px solid rgba(255,255,255,.07)}
+  background:radial-gradient(520px 320px at 8% 0%,rgba(198,237,69,.16),transparent 70%),radial-gradient(600px 400px at 100% 100%,rgba(36,71,245,.35),transparent 70%),var(--ink);border:1px solid rgba(255,255,255,.07)}
 .hero h1{font-size:clamp(38px,5.6vw,68px);font-weight:800;line-height:1;letter-spacing:-.045em;color:#fff;margin:0}
 .hero p{margin:16px 0 0;color:#AEBBB4;max-width:480px;font-size:17px;line-height:1.55}
 .hero>*:not(.court){position:relative;z-index:1}
@@ -97,7 +97,7 @@ a.pill:hover{border-color:var(--line2)}
 .btn:disabled{opacity:.4;cursor:not-allowed}
 .btn.ghost{background:transparent;color:var(--text);box-shadow:inset 0 0 0 1px var(--line2)}
 .btn.ghost:hover{background:var(--surface);box-shadow:inset 0 0 0 1px var(--text)}
-.btn.lime{background:var(--volt);color:var(--ink)}.btn.lime:hover{background:#CFE884}
+.btn.lime{background:var(--volt);color:var(--ink)}.btn.lime:hover{background:#D1F06B}
 .btn.ink{background:var(--ink);color:var(--volt)}.btn.ink:hover{background:#1E2A25}
 .btn.small{min-height:38px;padding:0 16px;font-size:14px}
 
@@ -201,7 +201,7 @@ a.sbcard{display:block;padding:14px 16px;margin-bottom:8px}
 /* home: hero + registration countdown, then a bento of the four ways in */
 .home-hero{display:grid;grid-template-columns:1.35fr 1fr;gap:40px;align-items:stretch}
 .hsearch{display:flex;gap:6px;margin-top:30px;max-width:520px;background:#fff;border-radius:999px;padding:6px;transition:box-shadow .2s var(--ease)}
-.hsearch:focus-within{box-shadow:0 0 0 4px rgba(193,223,103,.5)}
+.hsearch:focus-within{box-shadow:0 0 0 4px rgba(198,237,69,.5)}
 .hsearch input{flex:1;min-width:0;border:0;background:transparent;color:#0E1512;min-height:44px;padding-inline:18px}
 .hsearch input::placeholder{color:#59655E}
 .hsearch input:focus{box-shadow:none}
@@ -331,7 +331,7 @@ td a:not(.btn):hover,p a:not(.btn):hover,.muted a:not(.btn):hover{color:var(--bl
 /* sign-in pages */
 main.auth{max-width:1180px;display:grid;grid-template-columns:1.1fr 1fr;gap:12px;min-height:100vh;padding:12px;animation:none}
 .authside{position:relative;overflow:hidden;isolation:isolate;display:flex;flex-direction:column;justify-content:space-between;gap:40px;padding:40px;border-radius:32px;color:#fff;
-  background:radial-gradient(520px 320px at 8% 0%,rgba(193,223,103,.16),transparent 70%),radial-gradient(600px 420px at 100% 100%,rgba(36,71,245,.35),transparent 70%),var(--ink)}
+  background:radial-gradient(520px 320px at 8% 0%,rgba(198,237,69,.16),transparent 70%),radial-gradient(600px 420px at 100% 100%,rgba(36,71,245,.35),transparent 70%),var(--ink)}
 .authside>*:not(.court){position:relative;z-index:1}
 .authside .court{inset-block:auto 16%;inset-inline:6%;width:88%;opacity:.5;-webkit-mask-image:none;mask-image:none}
 .authside .brand{display:inline-flex;align-items:center;gap:10px;font-family:var(--display);font-weight:800;font-size:24px;letter-spacing:-.02em;color:#fff;width:fit-content}

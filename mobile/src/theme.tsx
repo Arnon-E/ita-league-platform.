@@ -6,7 +6,7 @@ import { isRtl } from './i18n';
 
 /** "Volt Night" palette, mirrored from apps/web globals.css (light + dark). Picked once at launch from the phone's theme. */
 const light = {
-  ink: '#0A1F44', volt: '#C1DF67', blue: '#2447F5', blue2: '#4A67FF',
+  ink: '#0A1F44', volt: '#C6ED45', blue: '#2447F5', blue2: '#4A67FF',
   bg: '#EEF0EA', surface: '#FFFFFF', surface2: '#F5F6F1', line: '#E0E3DA', line2: '#C9CEC3',
   text: '#0E1512', muted: '#59655E', btn: '#13306E', btnText: '#FFFFFF',
   ok: '#0B7A43', okbg: '#DCF3E4', warn: '#8F4E00', warnbg: '#FCEFD3', bad: '#B3261E', badbg: '#FCE6E3',
@@ -16,7 +16,7 @@ const dark: typeof light = {
   ...light,
   blue: '#8CA3FF', blue2: '#A9BAFF',
   bg: '#070A09', surface: '#111715', surface2: '#171E1B', line: '#222B27', line2: '#33403A',
-  text: '#EDF1EE', muted: '#8E9B94', btn: '#C1DF67', btnText: '#0C1210',
+  text: '#EDF1EE', muted: '#8E9B94', btn: '#C6ED45', btnText: '#0C1210',
   okbg: '#0E3220', ok: '#5BD58F', warnbg: '#3A2A0F', warn: '#F5B452', badbg: '#3B1713', bad: '#FF8A7E',
   glass: 'rgba(23,30,27,0.97)', glassLine: 'rgba(255,255,255,0.09)', dark: true,
 };
@@ -67,7 +67,7 @@ export function CourtLines() {
   return (
     <Svg width={300} height={170} viewBox="0 0 260 140" style={{ position: 'absolute', left: -40, top: -6, opacity: 0.28 }}>
       <Path d="M10 10h240v120H10zM10 28h240M10 112h240M70 28v84M190 28v84M70 70h120" stroke="#fff" strokeWidth="1.2" fill="none" />
-      <Path d="M130 4v132" stroke="#C1DF67" strokeWidth="2.5" />
+      <Path d="M130 4v132" stroke="#C6ED45" strokeWidth="2.5" />
     </Svg>
   );
 }

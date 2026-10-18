@@ -33,8 +33,8 @@ still to do (the Starter plan's limit on Figma calls from Claude stopped the bui
 | `surface` / `surface2` | #FFFFFF / #F5F6F1 | #111715 / #171E1B | cards, inputs / secondary fills |
 | `line` / `line2` | #E0E3DA / #C9CEC3 | #222B27 / #33403A | borders, dividers / stronger borders, bracket lines |
 | `text` / `muted` | #0E1512 / #59655E | #EDF1EE / #8E9B94 | text |
-| `btn` / `btn-text` | #13306E / #FFFFFF | #C1DF67 / #0C1210 | primary button, selected chip, active dock tab |
-| `volt` / `ink` | #C1DF67 / #0A1F44 | same | accent (call to action, my player, open registration) / dark hero and featured cards |
+| `btn` / `btn-text` | #13306E / #FFFFFF | #C6ED45 / #0C1210 | primary button, selected chip, active dock tab |
+| `volt` / `ink` | #C6ED45 / #0A1F44 | same | accent (call to action, my player, open registration) / dark hero and featured cards |
 | `blue` / `blue2` | #2447F5 / #4A67FF | #8CA3FF / #A9BAFF | links, focus ring |
 | `ok`, `warn`, `bad` (+ `-bg`) | #0B7A43, #8F4E00, #B3261E | #5BD58F, #F5B452, #FF8A7E | win / pending / loss and their tinted pills |
 
