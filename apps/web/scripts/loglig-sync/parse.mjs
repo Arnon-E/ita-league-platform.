@@ -186,8 +186,16 @@ export function israelToUtc(local) {
 
 /** A parsed category page -> the document the site imports (matches with stage, round, times and the score from player a's side). */
 export function buildCategory(page, label, source) {
+  return build(page, label, source, page.matches.filter((m) => !m.a.name.includes('/') && !m.b.name.includes('/'))); // pairs go to buildDoubles
+}
+
+/** The doubles of a category page ("בנים 12 זוגות"): matches whose two sides are pairs, "A / B". Same shape as buildCategory. */
+export function buildDoubles(page, label, source) {
+  return build(page, label, source, page.matches.filter((m) => m.a.name.includes('/') && m.b.name.includes('/')));
+}
+
+function build(page, label, source, matchesIn) {
   const name = label && !page.category.includes(label) ? `${page.category} · ${label}` : page.category;
-  const matchesIn = page.matches.filter((m) => !m.a.name.includes('/') && !m.b.name.includes('/')); // doubles pairs are not players
   if (!matchesIn.length) return null;
   const hasGroups = matchesIn.some((m) => /^בית\s*\d/.test(m.stage));
   // knockout depth: final = 0; classification matches (place > 1) sit in the round of their size

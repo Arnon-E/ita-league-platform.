@@ -42,6 +42,15 @@ try {
     first_name text not null, last_name text not null, birth_date timestamptz not null, id_hash text, for_child boolean not null default false,
     reason text, status text not null default 'PENDING', reviewed_by_id text, review_note text, reviewed_at timestamptz, created_at timestamptz not null default now())`;
   await sql`create index if not exists claim_requests_status_idx on claim_requests (status)`;
+  await sql`create table if not exists doubles_matches (
+    id text primary key, tournament_id text not null references tournaments(id) on delete cascade, category text not null, stage text not null,
+    round integer not null, a1 text references players(id) on delete set null, a2 text references players(id) on delete set null,
+    b1 text references players(id) on delete set null, b2 text references players(id) on delete set null, a_name text not null, b_name text not null,
+    status text not null, sets jsonb not null default '[]', winner text, schedule_kind text, scheduled_start timestamptz, court text)`;
+  for (const c of ['tournament_id', 'a1', 'a2', 'b1', 'b2']) await sql.unsafe(`create index if not exists doubles_${c === 'tournament_id' ? 'tournament' : c}_idx on doubles_matches (${c})`);
+  await sql`create table if not exists result_overrides (
+    id text primary key, tournament text not null, player_a text not null, player_b text not null, winner text not null, note text,
+    created_at timestamptz not null default now())`;
 
   const email = process.env.ADMIN_EMAIL?.trim().toLowerCase();
   const password = process.env.ADMIN_PASSWORD;

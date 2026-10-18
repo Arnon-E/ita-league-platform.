@@ -430,6 +430,24 @@ main.auth{min-height:100dvh}
 .mh-row{display:flex;flex-direction:column;gap:2px;padding-top:10px;border-top:1px solid var(--line)}
 .mh-row .pill{align-self:flex-start;margin-top:4px}
 .mh-res{display:flex;align-items:center;gap:8px;padding:3px 0;flex-wrap:wrap}
+/* latest results as cards (like the Loglig app): competition + time, both sides, a score per set, the winner's dot */
+.rcards{display:grid;gap:8px;margin-top:6px}
+.rcard{display:block;border:1px solid var(--line);border-radius:16px;background:var(--surface);overflow:hidden;color:var(--text)}
+a.rcard:hover{border-color:var(--blue2)}
+.rc-head{display:flex;justify-content:space-between;gap:8px;padding:6px 12px;background:var(--surface2);border-bottom:1px solid var(--line);font-size:12.5px}
+.rc-t{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
+.rc-when{flex:none;color:var(--muted);font-variant-numeric:tabular-nums}
+.rc-side{display:flex;align-items:center;gap:10px;padding:8px 12px}
+.rc-side+.rc-side{border-top:1px solid var(--line)}
+.rc-dot{flex:none;width:9px;height:9px;border-radius:50%}
+.rc-side.w .rc-dot{background:var(--ok)}
+.rc-names{flex:1;min-width:0;display:flex;flex-direction:column;color:var(--muted)}
+.rc-names span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rc-side.w .rc-names{color:var(--text);font-weight:600}
+.rc-side.me .rc-names{color:var(--text)}
+.rc-sets{flex:none;display:flex;gap:12px;font-variant-numeric:tabular-nums;color:var(--muted)}
+.rc-sets b{font-weight:500;min-width:1.2ch;text-align:center}
+.rc-side.w .rc-sets b{color:var(--text);font-weight:700}
 
 /* signed-in person: always visible in the top bar (not behind the hamburger), opens their personal pages */
 details.acct.bar>div{min-width:230px}

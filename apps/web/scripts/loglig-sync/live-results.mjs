@@ -8,7 +8,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { buildCategory, parseCategoryPage } from './parse.mjs';
+import { buildCategory, buildDoubles, parseCategoryPage } from './parse.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const API = 'https://loglig.com:8443/api';
@@ -51,20 +51,22 @@ let sent = 0;
 for (const c of lists) {
   const t = byName.get(norm(c.CompetitionTitle));
   if (!t) continue;
-  const categories = [];
+  const categories = [], doubles = [];
   for (const k of c.categoriLIstItem ?? []) {
     try {
       const page = parseCategoryPage(await getText(`https://loglig.com:2053/LeagueTable/SchedulesForTennisCompetition/${k.TeamId}?seasonId=${SEASON}`));
       if (!page.matches.length) continue;
       if (page.competition && norm(page.competition) !== norm(c.CompetitionTitle) && !norm(page.competition).includes(norm(c.CompetitionTitle)) && !norm(c.CompetitionTitle).includes(norm(page.competition))) continue;
+      const dbl = buildDoubles(page, '', k.TeamId);
+      if (dbl && !doubles.some((x) => x.name === dbl.name)) doubles.push(dbl);
       const cat = buildCategory(page, '', k.TeamId);
       if (cat && !categories.some((x) => x.name === cat.name)) categories.push(cat);
     } catch { /* a category without a published page yet */ }
   }
   const matches = categories.reduce((n, k) => n + k.matches.length, 0);
   console.log(`${t.name}: ${categories.length} categories with draws, ${matches} matches`);
-  if (!categories.length) continue;
-  const doc = { kind: 'competition', resultsOnly: true, name: t.name, start: String(t.startDate).slice(0, 10), end: String(t.endDate).slice(0, 10), feeShekel: 0, level: 'NATIONAL', venues: [], categories };
+  if (!categories.length && !doubles.length) continue;
+  const doc = { kind: 'competition', resultsOnly: true, name: t.name, start: String(t.startDate).slice(0, 10), end: String(t.endDate).slice(0, 10), feeShekel: 0, level: 'NATIONAL', venues: [], categories, doubles };
   if (!push) continue;
   const res = await fetch(`${site}/api/sync/loglig`, { method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${env.CRON_SECRET}` }, body: JSON.stringify(doc) });
   console.log(res.status, (await res.text()).slice(0, 200));

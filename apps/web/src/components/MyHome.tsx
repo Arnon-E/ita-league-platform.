@@ -1,9 +1,34 @@
 import Link from 'next/link';
 import type { myHome } from '@/services/home';
-import { fmtDate, fmtScore, fmtTime } from '@/components/labels';
+import { fmtDate, fmtTime } from '@/components/labels';
 
 type Home = Awaited<ReturnType<typeof myHome>>;
 const DOC: Record<string, string> = { ID_PHOTO: 'תמונת ת״ז', PARENT_CONSENT: 'אישור הורים', MEDICAL_CERTIFICATE: 'אישור רפואי', OTHER: 'אחר' };
+
+type Result = Home['people'][number]['results'][number];
+const hhmm = (d: Date) => d.toLocaleTimeString('he-IL', { timeZone: 'Asia/Jerusalem', hour: '2-digit', minute: '2-digit' });
+
+/** One result as the Loglig app shows it: competition and time, both sides (a pair in doubles), a score per set, the winner marked. */
+function ResultCard({ r, t }: { r: Result; t: (s: string) => string }) {
+  const start = r.start ? new Date(r.start) : null;
+  const side = (s: 'a' | 'b') => (
+    <div className={`rc-side${r.winner === s ? ' w' : ''}${r.mine === s ? ' me' : ''}`}>
+      <span className="rc-dot" aria-label={r.winner === s ? t('ניצחון') : undefined} />
+      <span className="rc-names">{r[s].map((n) => <span key={n}>{n}</span>)}</span>
+      <span className="rc-sets" dir="ltr">{r.sets.map((x, i) => <b key={i}>{s === 'a' ? x.a : x.b}</b>)}</span>
+    </div>
+  );
+  const body = (
+    <>
+      <div className="rc-head">
+        <span className="rc-t">{r.tournament}<span className="muted"> · {r.category}</span></span>
+        {start && <span className="rc-when" dir="ltr">{r.kind ? `${r.kind} ` : ''}{fmtDate(start)} {hhmm(start)}</span>}
+      </div>
+      {side('a')}{side('b')}
+    </>
+  );
+  return r.doubles ? <div className="rcard">{body}</div> : <Link href={`/matches/${r.id}`} className="rcard">{body}</Link>;
+}
 
 /** Personal home for a signed-in player and/or parent: one card per player profile, with what that person cares about. */
 export function MyHome({ home, t }: { home: Home; t: (s: string) => string }) {
@@ -50,14 +75,9 @@ export function MyHome({ home, t }: { home: Home; t: (s: string) => string }) {
                 <span className="muted">{fmtDate(new Date(p.nextTournament.start))} · {p.nextTournament.category}</span>
               </div>
             )}
-            {p.recent.length > 0 && (
+            {p.results.length > 0 && (
               <div className="mh-row"><small className="muted">{t('תוצאות אחרונות')}</small>
-                {p.recent.map((m) => (
-                  <Link key={m.id} href={`/matches/${m.id}`} className="mh-res">
-                    <span className={`pill ${m.won ? 'ok' : 'bad'}`}>{m.won ? t('ניצחון') : t('הפסד')}</span>
-                    <span>{m.opponent}</span><span className="muted" dir="ltr">{fmtScore(m.sets)}</span>
-                  </Link>
-                ))}
+                <div className="rcards">{p.results.map((r) => <ResultCard key={r.id} r={r} t={t} />)}</div>
               </div>
             )}
             {p.canRegister.length > 0 && (

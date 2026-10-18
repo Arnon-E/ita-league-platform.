@@ -146,6 +146,44 @@ export const siteInfo = pgTable('site_info', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
+/**
+ * Doubles matches mirrored from a competition's doubles draws ("בנים 12 זוגות"). Kept apart from the singles model (entries, draws,
+ * rankings): each side is a pair of players, so a player's results can include their doubles. Rebuilt on every import of the competition.
+ */
+export const doublesMatches = pgTable('doubles_matches', {
+  id: id(),
+  tournamentId: text('tournament_id').notNull().references(() => tournaments.id, { onDelete: 'cascade' }),
+  category: text('category').notNull(),
+  stage: text('stage').notNull(), // GROUP | KO
+  round: integer('round').notNull(),
+  a1: text('a1').references(() => players.id, { onDelete: 'set null' }),
+  a2: text('a2').references(() => players.id, { onDelete: 'set null' }),
+  b1: text('b1').references(() => players.id, { onDelete: 'set null' }),
+  b2: text('b2').references(() => players.id, { onDelete: 'set null' }),
+  aName: text('a_name').notNull(),
+  bName: text('b_name').notNull(),
+  status: text('status').notNull(), // SCHEDULED | COMPLETED | RETIRED | WALKOVER | VOID
+  sets: jsonb('sets').notNull().default([]),
+  winner: text('winner'), // 'a' | 'b'
+  scheduleKind: text('schedule_kind'), // St | NB
+  scheduledStart: timestamp('scheduled_start', { withTimezone: true }),
+  court: text('court'),
+}, (t) => [index('doubles_tournament_idx').on(t.tournamentId), index('doubles_a1_idx').on(t.a1), index('doubles_a2_idx').on(t.a2), index('doubles_b1_idx').on(t.b1), index('doubles_b2_idx').on(t.b2)]);
+
+/**
+ * A result corrected by hand where the federation's page cannot tell it (a match retired at a tied score, "6-6 Ret"). Matched by
+ * competition and the two players' names, and re-applied on every import so the sync never undoes it.
+ */
+export const resultOverrides = pgTable('result_overrides', {
+  id: id(),
+  tournament: text('tournament').notNull(),
+  playerA: text('player_a').notNull(),
+  playerB: text('player_b').notNull(),
+  winner: text('winner').notNull(),
+  note: text('note'),
+  createdAt: createdAt(),
+});
+
 /** Public regulations, procedures and forms (links to the federation's own documents). */
 export const regulations = pgTable('regulations', {
   id: text('id').primaryKey(),

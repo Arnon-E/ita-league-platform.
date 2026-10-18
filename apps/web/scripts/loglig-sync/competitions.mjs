@@ -12,7 +12,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { ageOf, buildCategory, genderOf, israelToUtc, koRound, parseCategoryPage, parseCompetitionPage } from './parse.mjs';
+import { ageOf, buildCategory, buildDoubles, genderOf, israelToUtc, koRound, parseCategoryPage, parseCompetitionPage } from './parse.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const OUT = path.resolve(here, '../../.loglig-dump');
@@ -103,8 +103,8 @@ async function readCompetition({ url, list }) {
   if (only.length && !only.some((o) => c.name.includes(o))) return { skipped: 'not in --only', name: c.name, url };
   if (!c.start || !c.end) return { skipped: 'no dates', name: c.name, url };
   if (daysAgo(c.end) > recentDays) return { skipped: 'finished long ago', name: c.name, url };
-  const cats = [];
-  if (!c.isDoubles) {
+  const cats = [], doubles = [];
+  {
     for (const ref of c.categories) {
       const page = parseCategoryPage(await get(`https://loglig.com:2053/LeagueTable/SchedulesForTennisCompetition/${ref.id}?seasonId=${ref.seasonId}`));
       if (!page.matches.length) continue;
@@ -113,13 +113,15 @@ async function readCompetition({ url, list }) {
       const label = ref.section === 'qualifying' ? 'מוקדמות' : ref.section === 'finals' ? 'בית הגמר' : '';
       const cat = buildCategory(page, label, ref.id);
       if (cat) cats.push(cat);
+      const dbl = buildDoubles(page, label, ref.id);
+      if (dbl) doubles.push(dbl);
     }
   }
   if (!cats.length) for (const p of c.planned) cats.push({ name: p.name, source: '', gender: p.gender, age: p.age, format: 'KNOCKOUT', matches: [] });
   return {
     kind: 'competition', name: c.name, start: c.start, end: c.end, feeShekel: c.feeShekel, level: levelOf(list, c.name), section: LISTS[list]?.section ?? 'YOUTH', sourceUrl: url,
     registerUrl: c.registerUrl, registrationCloses: c.registrationCloses ? israelToUtc(c.registrationCloses) : null,
-    doubles: c.isDoubles, venues: c.venues, categories: cats,
+    isDoubles: c.isDoubles, venues: c.venues, categories: cats, doubles,
   };
 }
 
@@ -181,7 +183,7 @@ async function mergeAppCompetitions(docs) {
     try {
       const doc = docs.find((d) => sameCompetition(d.name, a.title));
       if (doc && daysAgo(doc.end) > recentDays) continue;
-      const cats = [];
+      const cats = [], dbls = [];
       for (const c of a.categories) {
         let page = null;
         for (const season of [a.season, CURRENT_SEASON, 1671].filter((x, i, arr) => arr.indexOf(x) === i)) {
@@ -192,6 +194,8 @@ async function mergeAppCompetitions(docs) {
         }
         if (!page) continue;
         if (page.competition && !sameCompetition(page.competition, a.title) && !(doc && sameCompetition(page.competition, doc.name))) continue;
+        const dbl = buildDoubles(page, '', c.TeamId);
+        if (dbl && !dbls.some((x) => x.source === dbl.source)) dbls.push(dbl);
         const cat = buildCategory(page, '', c.TeamId);
         if (cat && !cats.some((x) => x.name === cat.name)) cats.push(cat);
       }
@@ -205,18 +209,24 @@ async function mergeAppCompetitions(docs) {
           if (i < 0) i = doc.categories.findIndex((x) => x.name === cat.name);
           if (i < 0) { doc.categories.push(cat); changed = true; } else if (cat.matches.length >= doc.categories[i].matches.length) { doc.categories[i] = cat; changed = true; }
         }
+        // the doubles the same way, one per draw page
+        doc.doubles = doc.doubles ?? [];
+        for (const dbl of dbls) {
+          const i = doc.doubles.findIndex((x) => x.source === dbl.source || x.name === dbl.name);
+          if (i < 0) { doc.doubles.push(dbl); changed = true; } else if (dbl.matches.length >= doc.doubles[i].matches.length) { doc.doubles[i] = dbl; changed = true; }
+        }
         // a name now used twice (two draw pages): keep the larger
         doc.categories = doc.categories.filter((x, k, all) => !all.some((y, j) => j !== k && y.name === x.name && (y.matches.length > x.matches.length || (y.matches.length === x.matches.length && j < k))));
         if (changed) { doc.categories = doc.categories.filter((x) => x.matches.length || !doc.categories.some((y) => y.matches.length)); enriched++; }
         continue;
       }
       // Loglig's empty date (01/01/1753) is not a date; an app-only competition that ended long ago is history, same as on the ita.co.il path
-      const all = cats.flatMap((c) => c.matches.map((m) => m.start)).filter((d) => d >= '2000').sort();
+      const all = [...cats, ...dbls].flatMap((c) => c.matches.map((m) => m.start)).filter((d) => d >= '2000').sort();
       if (!all.length) { console.log(`- app only, no dates yet: ${a.title}`); continue; }
       if (daysAgo(all[all.length - 1].slice(0, 10)) > recentDays) continue;
       docs.push({
         kind: 'competition', name: a.title, start: all[0].slice(0, 10), end: all[all.length - 1].slice(0, 10), feeShekel: 0, level: appLevel(a.title), section: a.section,
-        sourceUrl: '', registerUrl: '', registrationCloses: null, doubles: false, venues: [], categories: cats,
+        sourceUrl: '', registerUrl: '', registrationCloses: null, isDoubles: false, venues: [], categories: cats, doubles: dbls,
       });
       added++;
       console.log(`- + from the app: ${a.title}  ${cats.length} categories  ${cats.reduce((n, c) => n + c.matches.length, 0)} matches`);

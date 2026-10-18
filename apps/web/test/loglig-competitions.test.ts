@@ -1,8 +1,9 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { eq, sql } from 'drizzle-orm';
 import { db, schema } from '@/db';
-import { resetDb } from './helpers';
-import { dedupeMirror, importCompetition, removeTournament, validateCompetitionImport } from '@/services/loglig-competitions';
+import { mkUser, resetDb } from './helpers';
+import { addResultOverride, dedupeMirror, importCompetition, removeTournament, validateCompetitionImport } from '@/services/loglig-competitions';
+import { myHome } from '@/services/home';
 import { importRankings } from '@/services/loglig-rankings';
 import { groupStandings } from '@/services/results';
 
@@ -190,6 +191,41 @@ describe('loglig competition mirror', () => {
     const ms = await db.select().from(schema.matches).where(eq(schema.matches.categoryId, c!.id));
     expect(ms.filter((x) => x.status === 'VOID').length).toBe(1);
     expect(ms.filter((x) => x.status === 'VOID')[0]!.winnerEntryId).toBeNull();
+  });
+
+  it('imports doubles with each half of a pair as a player, applies a hand-corrected result on every import, and the home shows both newest first', async () => {
+    await importRankings(db, { gender: 'MALE', rows: [{ rank: 1, name: 'דן זוגי', birthYear: 2014, club: 'מועדון א', national: 50, international: 0, total: 50 }] });
+    const doc = {
+      kind: 'competition', name: 'אליפות זוגות 2026', start: '2026-09-29', end: '2026-10-03', feeShekel: 0, level: 'NATIONAL', venues: [],
+      categories: [{ name: 'בנים 12', source: '11', gender: 'MALE', age: 12, format: 'KNOCKOUT', matches: [
+        m({ round: 1, place: 1, start: '2026-09-30T06:00:00.000Z', a: p('דן זוגי'), b: p('אבי יריב'), sets: [{ a: 6, b: 1 }, { a: 6, b: 2 }] }),
+        // a "not before" match: its time is the NB time
+        m({ round: 2, place: 1, kind: 'NB', start: '2026-10-02T09:30:00.000Z', a: p('גל אלוף'), b: p('דן זוגי'), sets: [{ a: 6, b: 4 }, { a: 6, b: 4 }] }),
+        // third place, "6-6 Ret": the page cannot tell who retired
+        m({ round: 2, place: 3, start: '2026-10-03T07:00:00.000Z', a: p('ליאם שלישי'), b: p('דן זוגי'), sets: [{ a: 6, b: 6 }], retired: true }),
+      ] }],
+      doubles: [{ name: 'בנים 12 זוגות', source: '12', gender: 'MALE', age: 12, matches: [
+        m({ round: 1, place: 1, start: '2026-10-02T12:30:00.000Z', a: p('גל אלוף / רון חבר'), b: p('דן זוגי / בן שותף'), sets: [{ a: 6, b: 2 }, { a: 3, b: 6 }, { a: 10, b: 7, superTb: true }] }),
+      ] }],
+    };
+    const first = await importCompetition(db, validateCompetitionImport(doc), new Date('2026-10-10'));
+    expect(first).toMatchObject({ doubles: 1, unresolved: 1 });
+    const [dan] = await db.select().from(schema.players).where(eq(schema.players.lastName, 'זוגי'));
+    const [dm] = await db.select().from(schema.doublesMatches);
+    expect([dm!.b1, dm!.winner, dm!.status]).toEqual([dan!.id, 'a', 'COMPLETED']); // the ranked player is reused for his half of the pair
+
+    await addResultOverride(db, { tournament: 'אליפות זוגות 2026', playerA: 'ליאם שלישי', playerB: 'דן זוגי', winner: 'דן זוגי', note: 'פרש ב-6-6' });
+    expect((await importCompetition(db, validateCompetitionImport(doc), new Date('2026-10-10'))).unresolved).toBe(0);
+    expect((await db.select().from(schema.doublesMatches)).length).toBe(1); // rebuilt, not duplicated
+
+    const { actor: parent } = await mkUser('PLAYER', 'zugot@t.il');
+    await db.insert(schema.guardians).values({ playerId: dan!.id, userId: parent.id });
+    const home = await myHome(db, parent);
+    const res = home.people[0]!.results;
+    // newest first: the corrected third-place win (3.10), the doubles (2.10 12:30), the NB loss (2.10 09:30), the first round (30.9)
+    expect(res.map((r) => [r.doubles, r.winner === r.mine])).toEqual([[false, true], [true, false], [false, false], [false, true]]);
+    expect(res[1]!.b).toEqual(['דן זוגי', 'בן שותף']);
+    expect(() => addResultOverride(db, { tournament: 'x', playerA: 'a', playerB: 'b', winner: 'c' })).rejects.toThrow();
   });
 
   it('boys/girls categories named נערים / נערות / ילדים reuse the ranked player instead of creating an OPEN twin', async () => {

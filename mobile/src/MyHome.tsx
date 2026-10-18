@@ -8,6 +8,30 @@ const DOC: Record<string, string> = { ID_PHOTO: 'תמונת ת״ז', PARENT_CONS
 const when = (iso: string | null) => (iso ? new Date(iso).toLocaleString(locale(), { weekday: 'short', day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' }) : '');
 const score = (sets: { a: number; b: number }[]) => `⁦${sets.map((x) => `${x.a}-${x.b}`).join('  ')}⁩`;
 
+/** One result as the Loglig app shows it: competition and time, both sides (a pair in doubles), a score per set, the winner's dot. */
+function ResultCard({ r }: { r: api.HomeResult }) {
+  const start = r.start ? new Date(r.start) : null;
+  const side = (s: 'a' | 'b') => {
+    const won = r.winner === s;
+    return (
+      <View style={[m.rcSide, s === 'b' && m.rcLine]}>
+        <View style={[m.rcDot, won && { backgroundColor: T.ok }]} />
+        <View style={{ flex: 1 }}>{r[s].map((n) => <Text key={n} numberOfLines={1} style={[m.rcName, (won || r.mine === s) && { color: T.text }, won && { fontWeight: '700' }]}>{n}</Text>)}</View>
+        <View style={m.rcSets}>{r.sets.map((x, i) => <Text key={i} style={[m.rcSet, won && { color: T.text, fontWeight: '800' }]}>{s === 'a' ? x.a : x.b}</Text>)}</View>
+      </View>
+    );
+  };
+  return (
+    <View style={m.rcard}>
+      <View style={m.rcHead}>
+        <Text style={m.rcT} numberOfLines={1}>{r.tournament} · {r.category}</Text>
+        {start && <Text style={m.rcWhen}>{r.kind ? `${r.kind} ` : ''}{start.toLocaleString(locale(), { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' })}</Text>}
+      </View>
+      {side('a')}{side('b')}
+    </View>
+  );
+}
+
 /** Personal home for a signed-in player and/or parent: one card per player profile on the account. Renders nothing for guests or accounts without a profile. */
 export function MyHome({ authed, onOpen, onGoAccount }: { authed: boolean; onOpen: (tournamentId: string) => void; onGoAccount: () => void }) {
   const [h, setH] = useState<Awaited<ReturnType<typeof api.myHome>> | null>(null);
@@ -69,14 +93,9 @@ export function MyHome({ authed, onOpen, onGoAccount }: { authed: boolean; onOpe
               <Text style={m.muted}>{new Date(p.nextTournament.start).toLocaleDateString(locale())} · {p.nextTournament.category}</Text>
             </Pressable>
           )}
-          {p.recent.length > 0 && (
+          {(p.results ?? []).length > 0 && (
             <View style={m.sec}><Text style={m.label}>{tr('תוצאות אחרונות')}</Text>
-              {p.recent.map((r) => (
-                <View key={r.id} style={m.res}>
-                  <View style={[m.pill, { backgroundColor: r.won ? T.okbg : T.badbg }]}><Text style={{ color: r.won ? T.ok : T.bad, fontWeight: '700', fontSize: 12.5 }}>{tr(r.won ? 'ניצחון' : 'הפסד')}</Text></View>
-                  <Text style={[m.b, { flex: 1 }]} numberOfLines={1}>{r.opponent}</Text><Text style={m.muted}>{score(r.sets)}</Text>
-                </View>
-              ))}
+              <View style={{ gap: 8, marginTop: 4 }}>{(p.results ?? []).map((r) => <ResultCard key={r.id} r={r} />)}</View>
             </View>
           )}
           {p.canRegister.length > 0 && (
@@ -104,5 +123,11 @@ const m = StyleSheet.create({
   warn: { alignSelf: 'flex-start', backgroundColor: T.warnbg, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 5 }, warnT: { color: T.warn, fontWeight: '600', fontSize: 13 },
   sec: { gap: 2, paddingTop: 10, borderTopWidth: 1, borderColor: T.line }, label: { color: T.muted, fontSize: 12.5 },
   res: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 3 }, pill: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 999 },
+  rcard: { borderWidth: 1, borderColor: T.line, borderRadius: 16, backgroundColor: T.surface, overflow: 'hidden' },
+  rcHead: { flexDirection: 'row', justifyContent: 'space-between', gap: 8, paddingHorizontal: 12, paddingVertical: 6, backgroundColor: T.surface2, borderBottomWidth: 1, borderColor: T.line },
+  rcT: { flex: 1, fontSize: 12.5, fontWeight: '600', color: T.text }, rcWhen: { fontSize: 12.5, color: T.muted, fontVariant: ['tabular-nums'] },
+  rcSide: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 12, paddingVertical: 8 }, rcLine: { borderTopWidth: 1, borderColor: T.line },
+  rcDot: { width: 9, height: 9, borderRadius: 5 }, rcName: { fontSize: 14.5, color: T.muted },
+  rcSets: { flexDirection: 'row', gap: 12, direction: 'ltr' }, rcSet: { minWidth: 12, textAlign: 'center', fontSize: 14.5, color: T.muted, fontVariant: ['tabular-nums'] },
   reg: { alignSelf: 'flex-start', backgroundColor: T.volt, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 8, maxWidth: '100%' }, regT: { color: T.ink, fontWeight: '700', fontSize: 14 },
 });

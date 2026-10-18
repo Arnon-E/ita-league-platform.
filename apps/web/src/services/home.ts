@@ -98,8 +98,28 @@ async function myPeople(db: Db, actor: Actor) {
         sets: ((m.sets ?? []) as { a: number; b: number }[]).map((s) => (iAmA ? { a: s.a, b: s.b } : { a: s.b, b: s.a })),
       };
     };
+    // a match's time: its exact start, or its "not before" time (NB matches have no exact start)
+    const at = (m: { scheduledStart: Date | null; notBefore?: Date | null }) => (m.scheduledStart ?? m.notBefore ?? null)?.getTime() ?? 0;
     const played = (d?.matches ?? []).filter((m) => m.status !== 'SCHEDULED' && m.status !== 'VOID' && m.winnerEntryId)
-      .sort((a, b) => (b.scheduledStart?.getTime() ?? 0) - (a.scheduledStart?.getTime() ?? 0));
+      .sort((a, b) => at(b) - at(a));
+    // latest results as the Loglig app shows them: singles and doubles together, newest first, both sides with their players
+    const doubles = await db.execute(sql`
+      select d.*, t.name as tournament from doubles_matches d join tournaments t on t.id = d.tournament_id
+      where (d.a1 = ${p.id} or d.a2 = ${p.id} or d.b1 = ${p.id} or d.b2 = ${p.id}) and d.status not in ('SCHEDULED', 'VOID') and d.winner is not null
+      order by d.scheduled_start desc nulls last limit 8`) as unknown as { id: string; tournament: string; category: string; a_name: string; b_name: string; a1: string | null; a2: string | null; sets: { a: number; b: number; superTb?: boolean }[]; winner: 'a' | 'b'; status: string; schedule_kind: string | null; scheduled_start: string | Date | null }[];
+    const results = [
+      ...played.slice(0, 8).map((m) => ({
+        id: m.id, doubles: false, tournament: catOf.get(m.categoryId)?.t.name ?? '', category: catOf.get(m.categoryId)?.c.name ?? '',
+        start: m.scheduledStart ?? m.notBefore ?? null, kind: m.scheduleKind === 'NOT_BEFORE' ? 'NB' : m.scheduleKind === 'EXACT' ? 'St' : null, status: m.status,
+        a: [nameOf(m.aEntryId) ?? ''], b: [nameOf(m.bEntryId) ?? ''], sets: (m.sets ?? []) as { a: number; b: number; superTb?: boolean }[],
+        winner: (m.winnerEntryId === m.aEntryId ? 'a' : 'b') as 'a' | 'b', mine: (mineEntry(m.aEntryId) ? 'a' : 'b') as 'a' | 'b',
+      })),
+      ...doubles.map((x) => ({
+        id: x.id, doubles: true, tournament: x.tournament, category: x.category, start: x.scheduled_start ? new Date(x.scheduled_start) : null,
+        kind: x.schedule_kind, status: x.status, a: x.a_name.split('/').map((s) => s.trim()), b: x.b_name.split('/').map((s) => s.trim()), sets: x.sets ?? [],
+        winner: x.winner, mine: (x.a1 === p.id || x.a2 === p.id ? 'a' : 'b') as 'a' | 'b',
+      })),
+    ].sort((x, y) => (y.start?.getTime() ?? 0) - (x.start?.getTime() ?? 0)).slice(0, 6);
     // "next" means still ahead: a match left SCHEDULED in a competition that is long over (or a date far in the past) is stale data, not a next match
     const upcoming = (d?.matches ?? []).filter((m) => {
       const tn = catOf.get(m.categoryId)?.t;
@@ -121,6 +141,7 @@ async function myPeople(db: Db, actor: Actor) {
       form: played.slice(0, 5).map((m) => mineEntry(m.winnerEntryId)),
       nextMatch: upcoming[0] ? toRow(upcoming[0]) : null,
       recent: played.slice(0, 3).map(toRow),
+      results,
       nextTournament: nextTournament ? { id: nextTournament.t.id, name: nextTournament.t.name, start: nextTournament.t.startDate, category: nextTournament.c.name, status: nextTournament.e.status, payment: nextTournament.e.paymentStatus } : null,
       docsOk: docs.ok, missingDocs: docs.missing, todo,
       canRegister: open

@@ -109,9 +109,11 @@ export const clubs = () => call<{ id: string; name: string; city: string | null;
 export const stats = () => call<{ totals: { tournaments: number; players: number; matches: number }; top: { id: string; name: string; club: string | null; played: number; wins: number }[]; clubs: { id: string; name: string; players: number }[] }>('/public/stats');
 
 export type HomeMatch = { id: string; tournament: string; category: string; status: string; opponent: string | null; start: string | null; court: string | null; won: boolean | null; sets: { a: number; b: number }[] };
+/** A latest result, singles or doubles (a pair per side), as the Loglig app shows it. */
+export type HomeResult = { id: string; doubles: boolean; tournament: string; category: string; start: string | null; kind: string | null; status: string; a: string[]; b: string[]; sets: { a: number; b: number; superTb?: boolean }[]; winner: 'a' | 'b'; mine: 'a' | 'b' };
 export type HomePerson = {
   id: string; name: string; relation: 'SELF' | 'CHILD'; gender: 'MALE' | 'FEMALE' | 'OPEN'; childLogin: string | null; age: number; club: string | null; rank: number | null; points: number; wins: number; losses: number; form: boolean[];
-  nextMatch: HomeMatch | null; recent: HomeMatch[]; nextTournament: { id: string; name: string; start: string; category: string; status: string; payment: string } | null;
+  nextMatch: HomeMatch | null; recent: HomeMatch[]; results?: HomeResult[]; nextTournament: { id: string; name: string; start: string; category: string; status: string; payment: string } | null;
   docsOk: boolean; missingDocs: string[]; todo: string[];
   canRegister: { tournamentId: string; tournament: string; categoryId: string; category: string; closes: string | null }[];
 };

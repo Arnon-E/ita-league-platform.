@@ -15,11 +15,14 @@ export interface MatchIn {
   a: PersonIn; b: PersonIn; sets: SetIn[]; retired: boolean; walkover: boolean;
 }
 export interface CategoryIn { name: string; source: string; gender: Gender; age: number | null; format: 'KNOCKOUT' | 'GROUPS_KNOCKOUT'; matches: MatchIn[] }
+/** A doubles draw ("בנים 12 זוגות"): each side is a pair, "A / B". */
+export interface DoublesIn { name: string; source: string; gender: Gender; age: number | null; matches: MatchIn[] }
 export interface CompetitionIn {
   kind: 'competition'; name: string; start: string; end: string; feeShekel: number; level: 'NATIONAL' | 'REGIONAL' | 'INTERNATIONAL' | 'CIRCUIT';
   section?: 'YOUTH' | 'ADULTS' | 'MASTERS' | 'OTHER'; sourceUrl?: string; registerUrl?: string; registrationCloses?: string | null; venues: { club: string; address: string }[]; categories: CategoryIn[];
   /** Live refresh: only matches and results are updated, for a tournament that already exists; its fee, venue, links and deadline stay as they are. */
   resultsOnly?: boolean;
+  doubles?: DoublesIn[];
 }
 
 const MAX_MATCHES = 4000;
@@ -69,6 +72,26 @@ export function validateCompetitionImport(x: unknown): CompetitionIn {
       age: Number.isInteger(c.age) ? (c.age as number) : null, format: c.format === 'GROUPS_KNOCKOUT' ? 'GROUPS_KNOCKOUT' : 'KNOCKOUT', matches,
     });
   }
+  // doubles draws: both sides are pairs ("A / B"); placeholders and singles rows are left out
+  const doubles: DoublesIn[] = [];
+  for (const c of Array.isArray((b as { doubles?: unknown }).doubles) ? (b as { doubles: DoublesIn[] }).doubles : []) {
+    const cname = clean(c?.name, 120);
+    if (!cname || !Array.isArray(c.matches)) continue;
+    const ms: MatchIn[] = [];
+    for (const m of c.matches) {
+      const an = clean(m?.a?.name), bn = clean(m?.b?.name);
+      if (!an.includes('/') || !bn.includes('/') || PLACEHOLDER_NAME.test(an) || PLACEHOLDER_NAME.test(bn) || Number.isNaN(Date.parse(m.start))) continue;
+      ms.push({
+        stage: m.stage === 'GROUP' ? 'GROUP' : 'KO', round: Math.max(1, Math.min(12, Number(m.round) || 1)), place: Math.max(1, Number(m.place) || 1), order: Number(m.order) || 0,
+        start: Date.parse(m.start) >= REAL_FROM ? new Date(m.start).toISOString() : `${b.start}T00:00:00.000Z`, kind: m.kind === 'NB' ? 'NB' : m.kind === 'St' ? 'St' : '', venue: clean(m.venue, 120), done: !!m.done,
+        a: { name: an, club: clean(m.a.club, 120) }, b: { name: bn, club: clean(m.b.club, 120) },
+        sets: (Array.isArray(m.sets) ? m.sets : []).slice(0, 5).map((s) => ({ a: Number(s.a) || 0, b: Number(s.b) || 0, ...(s.superTb ? { superTb: true } : {}) })),
+        retired: !!m.retired, walkover: !!m.walkover,
+      });
+    }
+    total += ms.length;
+    doubles.push({ name: cname, source: clean(c.source, 40), gender: c.gender === 'FEMALE' ? 'FEMALE' : c.gender === 'MALE' ? 'MALE' : genderOfName(cname) ?? 'OPEN', age: Number.isInteger(c.age) ? (c.age as number) : null, matches: ms });
+  }
   if (total > MAX_MATCHES) throw new Error('too many matches');
   return {
     kind: 'competition', name, start: b.start as string, end: b.end as string,
@@ -79,6 +102,7 @@ export function validateCompetitionImport(x: unknown): CompetitionIn {
     registrationCloses: typeof b.registrationCloses === 'string' && !Number.isNaN(Date.parse(b.registrationCloses)) ? new Date(b.registrationCloses).toISOString() : null,
     venues: (Array.isArray(b.venues) ? b.venues : []).slice(0, 20).map((v) => ({ club: clean(v?.club, 120), address: clean(v?.address, 200) })).filter((v) => v.club),
     categories: cats,
+    ...(doubles.length ? { doubles } : {}),
     ...(b.resultsOnly ? { resultsOnly: true } : {}),
   };
 }
@@ -101,7 +125,7 @@ export async function importCompetition(db: Db, input: CompetitionIn, now = new 
   const drawn = input.categories.some((c) => c.matches.length);
   const closes = input.registrationCloses ? new Date(input.registrationCloses) : null;
   const status = end < now ? 'FINISHED' : !drawn ? (closes && closes > now ? 'REGISTRATION_OPEN' : 'REGISTRATION_CLOSED') : start <= now ? 'IN_PROGRESS' : 'DRAWN';
-  const stats = { tournament: input.name, categories: 0, players: 0, newPlayers: 0, matches: 0, unresolved: 0, skipped: false };
+  const stats = { tournament: input.name, categories: 0, players: 0, newPlayers: 0, matches: 0, doubles: 0, unresolved: 0, skipped: false };
 
   await (db as unknown as { transaction: <T>(f: (tx: Db) => Promise<T>) => Promise<T> }).transaction(async (tx) => {
     // venue (first listed club) and tournament
@@ -146,6 +170,10 @@ export async function importCompetition(db: Db, input: CompetitionIn, now = new 
           and c.name not in (select jsonb_array_elements_text(${JSON.stringify(input.categories.map((c) => c.name))}::jsonb))`);
     }
 
+    // results corrected by hand (where the federation's page cannot tell the winner): re-applied on every import
+    const overrides = (await tx.select().from(schema.resultOverrides)).filter((o) => o.tournament === input.name || sameEvent(o.tournament, input.name));
+    const overrideFor = (a: string, b: string) => overrides.find((o) => (o.playerA === a && o.playerB === b) || (o.playerA === b && o.playerB === a));
+
     // players already known from the ranking mirror: key rk:<G>:<birthYear>:<name> (and cp:<G>:<name> for ones created here)
     const known = await tx.select({
       id: schema.players.id, key: schema.players.logligId, first: schema.players.firstName, last: schema.players.lastName,
@@ -178,6 +206,20 @@ export async function importCompetition(db: Db, input: CompetitionIn, now = new 
           if (missing.has(key)) continue;
           const n = splitName(p.name);
           missing.set(key, { key, first: n.first, last: n.last, by: year - (c.age ?? (input.section === 'ADULTS' || input.section === 'MASTERS' ? 30 : 14)), gender: c.gender, club: p.club });
+        }
+      }
+    }
+    const halves = (pair: string) => pair.split('/').map((x) => x.replace(/\s+/g, ' ').trim()).filter(Boolean).slice(0, 2);
+    for (const c of input.doubles ?? []) {
+      for (const m of c.matches) {
+        for (const side of [m.a, m.b]) {
+          for (const name of halves(side.name)) {
+            if (pick(c.gender, name, c.age)) continue;
+            const key = `cp:${c.gender}:${name}`;
+            if (missing.has(key)) continue;
+            const n = splitName(name);
+            missing.set(key, { key, first: n.first, last: n.last, by: year - (c.age ?? (input.section === 'ADULTS' || input.section === 'MASTERS' ? 30 : 14)), gender: c.gender, club: side.club.split('/')[0]!.trim() });
+          }
         }
       }
     }
@@ -275,6 +317,14 @@ export async function importCompetition(db: Db, input: CompetitionIn, now = new 
           // shortened or irregular formats (one set, pro-set, unusual tiebreaks): kept as played, stored so the standings engine accepts it
           else if (winner) { state = 'RETIRED'; absent = winner === x.a ? x.b : x.a; }
           else { state = 'VOID'; stats.unresolved++; }
+          const o = overrideFor(m.a.name, m.b.name);
+          if (o && (o.winner === m.a.name || o.winner === m.b.name)) {
+            const w = o.winner === m.a.name ? x.a : x.b;
+            if (state === 'VOID') stats.unresolved--;
+            winner = w;
+            if (state === 'VOID' || (state === 'COMPLETED' && winner !== (wonSets(m.sets).a > wonSets(m.sets).b ? x.a : x.b))) { state = m.sets.length ? 'RETIRED' : 'WALKOVER'; absent = w === x.a ? x.b : x.a; }
+            else if (state === 'RETIRED' || state === 'WALKOVER') absent = w === x.a ? x.b : x.a;
+          }
         }
         return {
           id: x.id, stage: m.stage, round: m.round, index, group: m.group ? groupId.get(m.group) ?? null : null,
@@ -309,9 +359,59 @@ export async function importCompetition(db: Db, input: CompetitionIn, now = new 
       stats.categories++;
       stats.matches += rows.length;
     }
+    // doubles draws: rebuilt like the singles (the ones this import brings, and once draws are published, only those)
+    if (input.doubles?.length) {
+      const names = input.doubles.map((c) => c.name);
+      await tx.execute(sql`delete from doubles_matches where tournament_id = ${tid} and category in (select jsonb_array_elements_text(${JSON.stringify(names)}::jsonb))`);
+      if (input.doubles.some((c) => c.matches.length)) {
+        await tx.execute(sql`delete from doubles_matches where tournament_id = ${tid} and category not in (select jsonb_array_elements_text(${JSON.stringify(names)}::jsonb))`);
+      }
+      for (const c of input.doubles) {
+        const pid = (name: string) => pick(c.gender, name, c.age) ?? null;
+        const ko = c.matches.filter((m) => m.stage === 'KO');
+        const laterPair = (m: MatchIn, pair: string) => ko.some((y) => y !== m && y.round > m.round && y.place === 1 && m.place === 1 && (y.a.name === pair || y.b.name === pair));
+        const rows = c.matches.map((m) => {
+          const [a1, a2] = halves(m.a.name).map(pid), [b1, b2] = halves(m.b.name).map(pid);
+          let status = 'SCHEDULED', winner: 'a' | 'b' | null = null;
+          if (m.done) {
+            const w = wonSets(m.sets), g = games(m.sets);
+            if (m.sets.length && w.a !== w.b) winner = w.a > w.b ? 'a' : 'b';
+            else if (m.sets.length && g.a !== g.b) winner = g.a > g.b ? 'a' : 'b';
+            else if (laterPair(m, m.a.name) !== laterPair(m, m.b.name)) winner = laterPair(m, m.a.name) ? 'a' : 'b';
+            status = !winner ? 'VOID' : m.walkover || !m.sets.length ? 'WALKOVER' : m.retired || !regular(m.sets) ? 'RETIRED' : 'COMPLETED';
+          }
+          return {
+            id: randomUUID(), category: c.name, stage: m.stage, round: m.round, a1: a1 ?? null, a2: a2 ?? null, b1: b1 ?? null, b2: b2 ?? null,
+            aName: m.a.name, bName: m.b.name, status, sets: m.sets, winner, kind: m.kind || null, start: m.start, court: m.venue || null,
+          };
+        });
+        for (let i = 0; i < rows.length; i += 400) {
+          await tx.execute(sql`
+            insert into doubles_matches (id, tournament_id, category, stage, round, a1, a2, b1, b2, a_name, b_name, status, sets, winner, schedule_kind, scheduled_start, court)
+            select t.id, ${tid}, t.category, t.stage, t.round, t.a1, t.a2, t.b1, t.b2, t."aName", t."bName", t.status, t.sets, t.winner, t.kind, t.start::timestamptz, t.court
+            from jsonb_to_recordset(${JSON.stringify(rows.slice(i, i + 400))}::jsonb)
+              as t(id text, category text, stage text, round int, a1 text, a2 text, b1 text, b2 text, "aName" text, "bName" text, status text, sets jsonb, winner text, kind text, start text, court text)`);
+        }
+        stats.doubles += rows.length;
+      }
+    }
     stats.players = everyone.size;
   });
   return stats;
+}
+
+/**
+ * Records a result the federation's page cannot tell (who won a match retired at a tied score). Applied on the next import of
+ * that competition and on every later one. A correction for the same two players in the same competition replaces the old one.
+ */
+export async function addResultOverride(db: Db, x: unknown) {
+  const b = x as { tournament?: unknown; playerA?: unknown; playerB?: unknown; winner?: unknown; note?: unknown } | null;
+  const tournament = clean(b?.tournament), a = clean(b?.playerA), bb = clean(b?.playerB), winner = clean(b?.winner), note = clean(b?.note, 300);
+  if (!tournament || !a || !bb || a === bb || (winner !== a && winner !== bb)) throw new Error('bad override: the winner must be one of the two players');
+  await db.execute(sql`delete from result_overrides where tournament = ${tournament}
+    and ((player_a = ${a} and player_b = ${bb}) or (player_a = ${bb} and player_b = ${a}))`);
+  await db.insert(schema.resultOverrides).values({ tournament, playerA: a, playerB: bb, winner, note: note || null });
+  return { saved: true, tournament, winner };
 }
 
 /**
