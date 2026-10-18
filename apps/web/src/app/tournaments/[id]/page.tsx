@@ -549,7 +549,8 @@ async function DrawTab({ d, manage, hl }: { d: Detail; manage: boolean; hl: Set<
             )}
             {tables.map((g) => (
               <div key={g.groupId} className="card" style={{ overflow: 'auto' }}>
-                <strong>{g.name}</strong>
+                {/* group names come from the draw as "בית 1": in English they read "Group 1" */}
+                <strong>{tt('שלב הבתים') === 'שלב הבתים' ? g.name : g.name.replace(/^בית(?=\s*\d)/, 'Group')}</strong>
                 <table><thead><tr><th>#</th><th>{tt('שחקן')}</th><th>{tt('מש׳')}</th><th>{tt('נצ׳')}</th><th>{tt('הפ׳')}</th><th>{tt('סטים')}</th><th>{tt('גיימים')}</th></tr></thead><tbody>
                   {g.standings.map((s) => <tr key={s.id}><td>{s.rank}</td><td>{d.names.get(s.id)}</td><td>{s.played}</td><td>{s.wins}</td><td>{s.losses}</td><td>{s.setsFor}–{s.setsAgainst}</td><td>{s.gamesFor}–{s.gamesAgainst}</td></tr>)}
                 </tbody></table>

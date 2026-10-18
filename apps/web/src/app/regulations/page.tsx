@@ -24,7 +24,7 @@ export default async function Regulations({ searchParams }: { searchParams: Prom
       </form>
       {[...groups].map(([cat, items]) => (
         <section key={cat}>
-          <h2>{cat}</h2>
+          <h2>{t(cat)}</h2>
           <div className="grid cols">
             {items.map((r) => (
               <a key={r.id} className="card grid" style={{ gap: 6 }} href={r.url} target="_blank" rel="noopener noreferrer">

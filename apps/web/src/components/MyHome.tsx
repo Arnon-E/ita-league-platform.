@@ -29,7 +29,7 @@ export function MyHome({ home, t }: { home: Home; t: (s: string) => string }) {
               <Link href="/rankings"><b>{p.rank ? `#${p.rank}` : '—'}</b><small>{t('דירוג')}</small></Link>
               <span><b>{p.points}</b><small>{t('נקודות')}</small></span>
               <span><b dir="ltr">{p.wins}/{p.losses}</b><small>{t('נצ׳/הפ׳')}</small></span>
-              {p.form.length > 0 && <span className="pform" aria-label={t('משחקים אחרונים')}>{p.form.map((w, i) => <i key={i} className={w ? 'w' : 'l'}>{w ? 'נ' : 'ה'}</i>)}</span>}
+              {p.form.length > 0 && <span className="pform" aria-label={t('משחקים אחרונים')}>{p.form.map((w, i) => <i key={i} className={w ? 'w' : 'l'}>{t(w ? 'נ' : 'ה')}</i>)}</span>}
             </div>
             {!home.isChild && p.todo.length > 0 && (
               <div className="mh-todo">

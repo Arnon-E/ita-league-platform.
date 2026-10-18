@@ -1,10 +1,13 @@
 import './globals.css';
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
-import { getLang } from '@/lib/i18n';
+import { getLang, tr } from '@/lib/i18n';
 
 export const dynamic = 'force-dynamic';
-export const metadata: Metadata = { title: 'איגוד הטניס — ניהול ליגות', description: 'רישום, הגרלות, תוצאות ודירוג' };
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await tr();
+  return { title: t('איגוד הטניס — ניהול ליגות'), description: t('רישום, הגרלות, תוצאות ודירוג') };
+}
 
 export default async function Root({ children }: { children: ReactNode }) {
   const lang = await getLang();
