@@ -9,6 +9,7 @@ import * as api from './src/api';
 import { More } from './src/More';
 import { MyHome } from './src/MyHome';
 import { Bracket } from './src/Bracket';
+import { MatchCard, matchWhen } from './src/MatchCard';
 import { useFonts } from 'expo-font';
 import { T, Icon, BallMark, CourtLines, FONTS } from './src/theme';
 import { LANGS, isRtl, lang, loadLang, locale, nextLang, setLang, startAlign, tr } from './src/i18n';
@@ -258,27 +259,17 @@ function TournamentList({ onOpen, authed, onGoAccount, go }: { onOpen: (id: stri
 
 const fmtSets = (sets: { a: number; b: number }[]) => `\u2066${(sets ?? []).map((x) => `${x.a}-${x.b}`).join('  ')}\u2069`;
 
+/** A match in the feed: played and live ones on the shared match card; an upcoming one is a short line (who, court, time). */
 function FeedCard({ r }: { r: api.FeedRow }) {
+  const upcoming = r.status === 'SCHEDULED' && !(r.sets ?? []).length;
+  if (!upcoming) {
+    return <MatchCard a={r.a ?? tr('טרם נקבע')} b={r.b ?? tr('טרם נקבע')} sets={r.sets ?? []} status={r.status} winner={r.winner ?? null}
+      live={r.status === 'SCHEDULED'} caption={`${r.tournament} · ${r.category}`} when={matchWhen(r.start)} />;
+  }
   return (
     <View style={s.card}>
-      {r.status === 'SCHEDULED' && (r.sets ?? []).length > 0 && <View style={[s.chip2, s.chipLive]}><Text style={s.chip2T}>{tr('● חי')}</Text></View>}
-      {r.status === 'SCHEDULED' && !(r.sets ?? []).length ? <>
-        <Text style={s.cardT}>{r.a} – {r.b}</Text>
-        <Text>{`${r.court ? `${tr('מגרש {c}', { c: r.court })} · ` : ''}${r.start ? new Date(r.start).toLocaleString(locale(), { weekday: 'short', hour: '2-digit', minute: '2-digit' }) : ''}`}</Text>
-      </> : <View style={{ gap: 2 }}>
-        {(['a', 'b'] as const).map((side) => {
-          const won = r.winner === side;
-          return (
-            <View key={side} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <Text style={{ width: 18, color: T.ok, fontWeight: '800' }}>{won ? '✓' : ''}</Text>
-              <Text style={[s.b, { flex: 1 }, won && { fontWeight: '800' }, !won && r.winner && { opacity: 0.6 }]}>{side === 'a' ? r.a : r.b}</Text>
-              {(r.sets ?? []).map((x, i) => { const mine = side === 'a' ? x.a : x.b; const other = side === 'a' ? x.b : x.a; return <Text key={i} style={[{ width: 26, textAlign: 'center' }, mine > other && { fontWeight: '800' }]}>{mine}</Text>; })}
-            </View>
-          );
-        })}
-        {r.status === 'WALKOVER' && <Text style={s.muted}>{tr('ווק-אובר')}</Text>}
-        {r.status === 'RETIRED' && <Text style={s.muted}>{tr('פרישה')}</Text>}
-      </View>}
+      <Text style={s.cardT}>{r.a} – {r.b}</Text>
+      <Text>{`${r.court ? `${tr('מגרש {c}', { c: r.court })} · ` : ''}${r.start ? new Date(r.start).toLocaleString(locale(), { weekday: 'short', hour: '2-digit', minute: '2-digit' }) : ''}`}</Text>
       <Text style={s.muted}>{r.tournament} · {r.category}</Text>
     </View>
   );
@@ -576,21 +567,12 @@ function Tournament({ id, onBack, onGoAccount }: { id: string; onBack: () => voi
         renderItem={({ item: m }) => {
           const done = m.status !== 'SCHEDULED' && m.status !== 'VOID';
           const win = m.winnerEntryId ? (m.winnerEntryId === m.a.id ? 'a' : m.winnerEntryId === m.b.id ? 'b' : null) : null;
-          const row = (side: 'a' | 'b') => {
-            const won = done && win === side;
-            return (
-              <View key={side} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <Text style={{ width: 18, color: T.ok, fontWeight: '800' }}>{won ? '✓' : ''}</Text>
-                <Text style={[s.b, { flex: 1 }, won && { fontWeight: '800' }, done && win && !won && { opacity: 0.6 }]}>{(side === 'a' ? m.a.name : m.b.name) ?? tr('טרם נקבע')}</Text>
-                {done && (m.sets ?? []).map((x, i) => { const mine = side === 'a' ? x.a : x.b; const other = side === 'a' ? x.b : x.a; return <Text key={i} style={[{ width: 26, textAlign: 'center' }, mine > other && { fontWeight: '800' }]}>{mine}</Text>; })}
-              </View>
-            );
-          };
+          const cat = d?.categories.find((x) => x.id === m.categoryId)?.name;
+          const where = m.status === 'SCHEDULED' ? (m.court ? tr('מגרש {c}', { c: m.court }) : tr('טרם שובץ')) : '';
           return (
-            <Pressable style={s.card} disabled={!m.a.id || !m.b.id || !api.canScore()} onPress={() => setScore(m)}>
-              {row('a')}{row('b')}
-              <Text style={s.muted}>{m.status === 'SCHEDULED' ? (m.court ? tr('מגרש {c}', { c: m.court }) : tr('טרם שובץ')) : m.status === 'WALKOVER' ? tr('ווק-אובר') : m.status === 'RETIRED' ? tr('פרישה') : ''}</Text>
-            </Pressable>
+            <MatchCard a={m.a.name ?? tr('טרם נקבע')} b={m.b.name ?? tr('טרם נקבע')} sets={done ? m.sets ?? [] : []} status={m.status} winner={win}
+              caption={[fcat ? '' : cat, where].filter(Boolean).join(' · ') || undefined} when={matchWhen(m.start)}
+              onPress={m.a.id && m.b.id && api.canScore() ? () => setScore(m) : undefined} />
           );
         }} />
   );

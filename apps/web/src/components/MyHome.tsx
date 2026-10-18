@@ -1,33 +1,21 @@
 import Link from 'next/link';
 import type { myHome } from '@/services/home';
 import { fmtDate, fmtTime } from '@/components/labels';
+import { MatchScore, matchWhen } from '@/components/MatchScore';
 
 type Home = Awaited<ReturnType<typeof myHome>>;
 const DOC: Record<string, string> = { ID_PHOTO: 'תמונת ת״ז', PARENT_CONSENT: 'אישור הורים', MEDICAL_CERTIFICATE: 'אישור רפואי', OTHER: 'אחר' };
 
 type Result = Home['people'][number]['results'][number];
-const hhmm = (d: Date) => d.toLocaleTimeString('he-IL', { timeZone: 'Asia/Jerusalem', hour: '2-digit', minute: '2-digit' });
 
-/** One result as the Loglig app shows it: competition and time, both sides (a pair in doubles), a score per set, the winner marked. */
+/** A latest result on the shared match card (singles link to the match; doubles have no page of their own). */
 function ResultCard({ r, t }: { r: Result; t: (s: string) => string }) {
-  const start = r.start ? new Date(r.start) : null;
-  const side = (s: 'a' | 'b') => (
-    <div className={`rc-side${r.winner === s ? ' w' : ''}${r.mine === s ? ' me' : ''}`}>
-      <span className="rc-dot" aria-label={r.winner === s ? t('ניצחון') : undefined} />
-      <span className="rc-names">{r[s].map((n) => <span key={n}>{n}</span>)}</span>
-      <span className="rc-sets" dir="ltr">{r.sets.map((x, i) => <b key={i}>{s === 'a' ? x.a : x.b}</b>)}</span>
-    </div>
+  const card = (
+    <MatchScore aName={r.a} bName={r.b} sets={r.sets} status={r.status} winner={r.winner} mine={r.mine} href={r.doubles ? undefined : `/matches/${r.id}`}
+      caption={`${r.tournament} · ${r.category}`} when={matchWhen(r.start, r.kind)}
+      labels={{ walkover: t('ווק-אובר'), retired: t('פרישה'), void: t('בוטל'), live: t('חי'), won: t('ניצח') }} />
   );
-  const body = (
-    <>
-      <div className="rc-head">
-        <span className="rc-t">{r.tournament}<span className="muted"> · {r.category}</span></span>
-        {start && <span className="rc-when" dir="ltr">{r.kind ? `${r.kind} ` : ''}{fmtDate(start)} {hhmm(start)}</span>}
-      </div>
-      {side('a')}{side('b')}
-    </>
-  );
-  return r.doubles ? <div className="rcard">{body}</div> : <Link href={`/matches/${r.id}`} className="rcard">{body}</Link>;
+  return r.doubles ? <div className="card sbcard">{card}</div> : card;
 }
 
 /** Personal home for a signed-in player and/or parent: one card per player profile, with what that person cares about. */
@@ -77,7 +65,7 @@ export function MyHome({ home, t }: { home: Home; t: (s: string) => string }) {
             )}
             {p.results.length > 0 && (
               <div className="mh-row"><small className="muted">{t('תוצאות אחרונות')}</small>
-                <div className="rcards">{p.results.map((r) => <ResultCard key={r.id} r={r} t={t} />)}</div>
+                <div className="sbgrid mh-results">{p.results.map((r) => <ResultCard key={r.id} r={r} t={t} />)}</div>
               </div>
             )}
             {p.canRegister.length > 0 && (

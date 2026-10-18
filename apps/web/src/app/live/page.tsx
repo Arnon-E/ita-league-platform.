@@ -5,7 +5,7 @@ import { liveFeed } from '@/services/public';
 import { fmtTime, MSTATUS, fmtScore } from '@/components/labels';
 import { tr } from '@/lib/i18n';
 import { AutoRefresh } from '@/components/AutoRefresh';
-import { MatchScore } from '@/components/MatchScore';
+import { MatchScore, matchWhen } from '@/components/MatchScore';
 
 export default async function Live() {
   const t0 = await tr();
@@ -40,7 +40,7 @@ export default async function Live() {
         {results.map(({ m, c, t }) => (
           <MatchScore key={m.id} href={`/matches/${m.id}`} aName={nm(m.aEntryId)} bName={nm(m.bEntryId)} sets={m.sets as { a: number; b: number }[]}
             status={m.status} winner={m.winnerEntryId ? (m.winnerEntryId === m.aEntryId ? 'a' : m.winnerEntryId === m.bEntryId ? 'b' : null) : null}
-            caption={`${t.name} · ${c.name}`}
+            caption={`${t.name} · ${c.name}`} when={matchWhen(m.scheduledStart ?? m.notBefore, m.scheduleKind === 'NOT_BEFORE' ? 'NB' : m.scheduleKind === 'EXACT' ? 'St' : null)}
             labels={{ walkover: t0('ווק-אובר'), retired: t0('פרישה'), void: t0('בוטל'), live: t0('חי'), won: t0('ניצח') }} />
         ))}
       </div>
