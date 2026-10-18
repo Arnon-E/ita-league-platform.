@@ -6,6 +6,7 @@
 //   node scripts/loglig-sync/competitions.mjs --list national,regional,seniors --all --recent 30
 //                                                                   # several listings; --recent N = skip competitions that ended more than N days ago
 //   node scripts/loglig-sync/competitions.mjs --push --url http://localhost:3100   # send to a site (CRON_SECRET from env / .env.production.local)
+//   ... --only "סוכות 2026" --only "קיץ 1 2026"                                  # just these competitions (a repair)
 //
 // Read-only against ita.co.il and loglig.com: plain GETs, ~1 request/second.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -38,6 +39,8 @@ const limit = args.includes('--all') ? Infinity : Number(opt('--limit', 3));
 const listArg = opt('--list', 'national');
 const listNames = listArg === 'all' ? Object.keys(LISTS) : listArg.split(',');
 const recentDays = args.includes('--recent') ? Number(opt('--recent', 30)) : Infinity;
+// --only "name part" (repeatable): import just the competitions whose name contains one of them (a targeted repair)
+const only = args.flatMap((a, i) => (a === '--only' && args[i + 1] ? [args[i + 1]] : []));
 
 function loadEnv(file) {
   if (!existsSync(file)) return {};
@@ -84,10 +87,11 @@ const GENERIC = new Set(['תחרות', 'לאומית', 'אזורית', 'ארצי
 function sameCompetition(a, b) {
   const norm = (x) => x.replace(/["'״׳`]/g, '').replace(/[.,:\-–/]+/g, ' ').replace(/\s+/g, ' ').trim();
   const x = norm(a), y = norm(b);
-  if (x.includes(y) || y.includes(x)) return true;
   const toks = (t) => new Set(t.split(' ').filter(Boolean));
   const tx = toks(x), ty = toks(y);
   const nums = (t) => [...t].filter((w) => /^\d+$/.test(w)).sort().join(',');
+  // contained names are the same event only with the same numbers: "אליפות ישראל לנוער" is not "אליפות ישראל לנוער סוכות 2026"
+  if (x.includes(y) || y.includes(x)) return nums(tx) === nums(ty);
   if (nums(tx) && nums(ty) && nums(tx) !== nums(ty)) return false;
   return [...tx].filter((w) => ty.has(w) && w.length >= 3 && !GENERIC.has(w) && !/^\d+$/.test(w)).length >= 2;
 }
@@ -96,6 +100,7 @@ function sameCompetition(a, b) {
 // 2) one competition -> normalized document (draws and results when published, otherwise the planned categories)
 async function readCompetition({ url, list }) {
   const c = parseCompetitionPage(await get(url), url);
+  if (only.length && !only.some((o) => c.name.includes(o))) return { skipped: 'not in --only', name: c.name, url };
   if (!c.start || !c.end) return { skipped: 'no dates', name: c.name, url };
   if (daysAgo(c.end) > recentDays) return { skipped: 'finished long ago', name: c.name, url };
   const cats = [];
@@ -172,6 +177,7 @@ async function mergeAppCompetitions(docs) {
   console.log(`\nLoglig app: ${apps.length} competitions`);
   let added = 0, enriched = 0;
   for (const a of apps) {
+    if (only.length && !only.some((o) => a.title.includes(o)) && !docs.some((d) => sameCompetition(d.name, a.title))) continue;
     try {
       const doc = docs.find((d) => sameCompetition(d.name, a.title));
       if (doc && daysAgo(doc.end) > recentDays) continue;
@@ -191,7 +197,13 @@ async function mergeAppCompetitions(docs) {
       }
       if (doc) {
         doc.section = a.section;
-        if (cats.length) { doc.categories = cats; enriched++; }
+        // add the app's draws to the competition page's: per category, the version with more matches; never fewer than before
+        let changed = false;
+        for (const cat of cats) {
+          const i = doc.categories.findIndex((x) => x.name === cat.name);
+          if (i < 0) { doc.categories.push(cat); changed = true; } else if (cat.matches.length > doc.categories[i].matches.length) { doc.categories[i] = cat; changed = true; }
+        }
+        if (changed) { doc.categories = doc.categories.filter((x) => x.matches.length || !doc.categories.some((y) => y.matches.length)); enriched++; }
         continue;
       }
       // Loglig's empty date (01/01/1753) is not a date; an app-only competition that ended long ago is history, same as on the ita.co.il path

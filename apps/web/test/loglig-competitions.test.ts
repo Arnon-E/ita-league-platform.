@@ -160,6 +160,18 @@ describe('loglig competition mirror', () => {
     expect((await db.select().from(schema.tournaments).where(sql`${schema.tournaments.name} like '%קיץ 9 2026%'`)).length).toBe(2);
   });
 
+  it('a generic title without the year ("אליפות ישראל לנוער") is not taken for a championship of that name and year', async () => {
+    const mk = (name: string, cat: string) => validateCompetitionImport({
+      kind: 'competition', name, start: '2026-09-18', end: '2026-10-03', feeShekel: 0, level: 'NATIONAL', venues: [],
+      categories: [{ name: cat, source: '3', gender: 'MALE', age: 12, format: 'KNOCKOUT', matches: [m({ start: '2026-09-20T07:00:00.000Z', a: p('גיל אחד'), b: p('טל שניים'), sets: [{ a: 6, b: 1 }, { a: 6, b: 1 }] })] }],
+    });
+    await importCompetition(db, mk('אליפות ישראל לנוער סוכות 2026 ע"ש בדיקה', 'בנים 12'), new Date('2026-10-10'));
+    await importCompetition(db, mk('אליפות ישראל לנוער', 'בנים 10'), new Date('2026-10-10'));
+    const [champ] = await db.select().from(schema.tournaments).where(eq(schema.tournaments.name, 'אליפות ישראל לנוער סוכות 2026 ע"ש בדיקה'));
+    expect((await db.select().from(schema.categories).where(eq(schema.categories.tournamentId, champ!.id))).map((c) => c.name)).toEqual(['בנים 12']);
+    expect((await db.select().from(schema.tournaments).where(eq(schema.tournaments.name, 'אליפות ישראל לנוער'))).length).toBe(1);
+  });
+
   it('boys/girls categories named נערים / נערות / ילדים reuse the ranked player instead of creating an OPEN twin', async () => {
     await importRankings(db, { gender: 'MALE', rows: [{ rank: 1, name: 'עומר תאום', birthYear: 2010, club: 'מועדון א', national: 10, international: 0, total: 10 }] });
     await importRankings(db, { gender: 'FEMALE', rows: [{ rank: 1, name: 'רוני תאומה', birthYear: 2010, club: 'מועדון א', national: 10, international: 0, total: 10 }] });

@@ -35,7 +35,9 @@ const squeeze = (s: string) => s.replace(/מס[׳'’]?\.?\s/g, ' ').replace(/["
 export function sameEvent(a: string, b: string) {
   const x = squeeze(a), y = squeeze(b);
   const [short, long] = x.length <= y.length ? [x, y] : [y, x];
-  return short.length >= 8 && ` ${long} `.includes(` ${short} `);
+  // the same numbers (year, edition) on both: a generic "אליפות ישראל לנוער" is not this year's championship of that name
+  const nums = (s: string) => (s.match(/\d+/g) ?? []).sort().join(',');
+  return short.length >= 8 && nums(x) === nums(y) && ` ${long} `.includes(` ${short} `);
 }
 
 export function validateCompetitionImport(x: unknown): CompetitionIn {
