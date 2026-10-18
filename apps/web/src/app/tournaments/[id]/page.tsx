@@ -76,13 +76,26 @@ export default async function TournamentPage({ params, searchParams }: { params:
       {tab === 'overview' && <Overview d={narrow(d, flt)} manage={manage} compact={!!focus} registered={!!focus && focus.entries.length > 0} />}
       {tab === 'entries' && <Entries d={d} manage={manage} />}
       {(tab === 'draw' || tab === 'results' || tab === 'schedule') && (useFocus ? <details className="filters"><summary>{tt('שינוי קטגוריה')}</summary><CatFilter d={d} tab={tab} cat={cat} flt={flt} withCats /></details> : <CatFilter d={d} tab={tab} cat={cat} flt={flt} withCats />)}
-      {tab === 'draw' && <DrawTab d={pick(narrow(d, flt), cat)} manage={manage} hl={new Set((focus?.entries ?? []).map((x) => x.e.id))} />}
+      {tab === 'draw' && <DrawTab d={sp.cat ? pick(narrow(d, flt), cat) : ageGroup(narrow(d, flt), cat)} manage={manage} hl={new Set((focus?.entries ?? []).map((x) => x.e.id))} />}
       {tab === 'results' && <Results d={pick(narrow(d, flt), cat)} scorer={scorer} />}
       {tab === 'schedule' && <Schedule d={pick(narrow(d, flt), cat)} manage={manage} />}
       {tab === 'gallery' && <Gallery tournamentId={t.id} manage={scorer} />}
     </Shell>
   );
 }
+
+/**
+ * The draw of an age group when no single category was clicked: the chosen (or first) category and the others of the same gender
+ * and age, so choosing "boys, 14" shows the group stage, the playoff tree and the qualifying draw that make up that event.
+ */
+const ageGroup = (d: Detail, cat: string): Detail => {
+  const base = d.cats.find((x) => x.id === cat) ?? d.cats[0];
+  if (!base) return d;
+  const order = (c: Detail['cats'][number]) => (c.id === base.id ? 0 : /פלייאוף|גמר/.test(c.name) ? 1 : 2);
+  const cats = d.cats.filter((c) => c.gender === base.gender && ageOf(c.name) === ageOf(base.name)).sort((a, b) => order(a) - order(b));
+  const ids = new Set(cats.map((c) => c.id));
+  return { ...d, cats, ms: d.ms.filter((m) => ids.has(m.categoryId)) };
+};
 
 /** Big competitions have 15-30 categories: draw and results show one category at a time (the first by default). */
 const pick = (d: Detail, cat: string): Detail => {

@@ -427,7 +427,8 @@ function Tournament({ id, onBack, onGoAccount }: { id: string; onBack: () => voi
   // a signed-in player or parent lands on their own category: gender, age group and category are chosen for them (they can change it)
   const [auto, setAuto] = useState(false);
   const [people, setPeople] = useState<api.HomePerson[]>([]); const [meId, setMeId] = useState(''); const [showInfo, setShowInfo] = useState(false);
-  const [asList, setAsList] = useState(false); // one category with a knockout draw shows as a tree; the list is a tap away
+  const [asList, setAsList] = useState(false); // knockout draws show as trees; the list is a tap away
+  const [picked, setPicked] = useState(false); // a category chip was tapped (else the category came from the filters or my player)
   // choose gender, age group and category for one of my players: the one they are entered in, else the youngest age group that fits
   const applyFor = (p: api.HomePerson) => {
     if (!d) return;
@@ -436,6 +437,7 @@ function Tournament({ id, onBack, onGoAccount }: { id: string; onBack: () => voi
     const entered = (d.participants ?? []).find((q) => q.id === p.id);
     const fit = (entered ? d.categories.find((k) => k.id === entered.categoryId) : undefined)
       ?? d.categories.filter((k) => (k.gender === 'OPEN' || k.gender === p.gender) && ageOf(k.name) >= p.age).sort((a, b) => ageOf(a.name) - ageOf(b.name))[0];
+    setPicked(false);
     if (!fit || (fit.gender !== 'MALE' && fit.gender !== 'FEMALE')) { setFg(''); setFage(''); setFcat(''); return; }
     setFg(fit.gender); setFage(ageOf(fit.name) ? String(ageOf(fit.name)) : ''); setFcat(fit.id);
   };
@@ -456,6 +458,20 @@ function Tournament({ id, onBack, onGoAccount }: { id: string; onBack: () => voi
     if (!api.isAuthed()) { setFErr(tr('כדי לעקוב אחרי תחרות יש להתחבר בלשונית חשבון.')); return; }
     setFErr(''); api.toggleFollow('TOURNAMENT', id).then((r) => setFollowing(r.following)).catch((e) => setFErr(e.message));
   };
+  // Trees to show: a tapped category alone; otherwise the whole age group of the chosen category (or of the gender + age filters),
+  // since one event can be split into a group stage, a playoff tree and a qualifying draw.
+  const treeCats = (() => {
+    if (!d) return [];
+    const ageOfC = (n: string) => (n.match(/(\d{2})/) ?? [])[1] ?? '';
+    const hasKo = (id: string) => d.matches.some((m) => m.categoryId === id && m.stage === 'KO');
+    const shown = d.categories.filter((c) => (!fg || c.gender === fg) && (!fage || ageOfC(c.name) === fage));
+    const base = fcat ? d.categories.find((c) => c.id === fcat) : fg && fage ? shown[0] : undefined;
+    if (!base) return [];
+    if (picked && hasKo(base.id)) return [base];
+    const order = (c: api.Cat) => (c.id === base.id ? 0 : /פלייאוף|גמר/.test(c.name) ? 1 : 2);
+    return d.categories.filter((c) => c.gender === base.gender && ageOfC(c.name) === ageOfC(base.name) && hasKo(c.id)).sort((a, b) => order(a) - order(b));
+  })();
+  const treeIds = new Set(treeCats.map((c) => c.id));
   if (score) return <Score m={score} onDone={() => { setScore(null); load(); }} />;
   return (
       <FlatList style={s.pad} contentContainerStyle={{ paddingBottom: 100, gap: 10 }} ListHeaderComponent={<View style={{ gap: 10 }}>
@@ -492,15 +508,15 @@ function Tournament({ id, onBack, onGoAccount }: { id: string; onBack: () => voi
         return (
           <View style={{ gap: 8 }}>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0, flexShrink: 0 }} contentContainerStyle={{ gap: 8 }}>
-              {chip(!fg, tr('בנים ובנות'), () => { setFg(''); setFcat(''); }, 'g0')}
-              {chip(fg === 'MALE', tr('בנים'), () => { setFg('MALE'); setFcat(''); }, 'g1')}
-              {chip(fg === 'FEMALE', tr('בנות'), () => { setFg('FEMALE'); setFcat(''); }, 'g2')}
-              {chip(!fage, tr('כל הגילאים'), () => { setFage(''); setFcat(''); }, 'a0')}
-              {ages.map((a) => chip(fage === a, tr('גיל {n}', { n: a }), () => { setFage(a); setFcat(''); }, 'a' + a))}
+              {chip(!fg, tr('בנים ובנות'), () => { setFg(''); setFcat(''); setPicked(false); }, 'g0')}
+              {chip(fg === 'MALE', tr('בנים'), () => { setFg('MALE'); setFcat(''); setPicked(false); }, 'g1')}
+              {chip(fg === 'FEMALE', tr('בנות'), () => { setFg('FEMALE'); setFcat(''); setPicked(false); }, 'g2')}
+              {chip(!fage, tr('כל הגילאים'), () => { setFage(''); setFcat(''); setPicked(false); }, 'a0')}
+              {ages.map((a) => chip(fage === a, tr('גיל {n}', { n: a }), () => { setFage(a); setFcat(''); setPicked(false); }, 'a' + a))}
             </ScrollView>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0, flexShrink: 0 }} contentContainerStyle={{ gap: 8 }}>
-              {chip(!fcat, tr('כל הקטגוריות'), () => setFcat(''), 'c0')}
-              {shownCats.map((c) => chip(fcat === c.id, c.name, () => setFcat(c.id), c.id))}
+              {chip(!fcat, tr('כל הקטגוריות'), () => { setFcat(''); setPicked(false); }, 'c0')}
+              {shownCats.map((c) => chip(fcat === c.id, c.name, () => { setFcat(c.id); setPicked(true); }, c.id))}
             </ScrollView>
           </View>
         );
@@ -530,22 +546,27 @@ function Tournament({ id, onBack, onGoAccount }: { id: string; onBack: () => voi
         );
       })()}
       {(() => {
-        const ko = fcat ? (d?.matches ?? []).filter((m) => m.categoryId === fcat && m.stage === 'KO') : [];
-        if (!ko.length) return null;
+        if (!treeCats.length) return null;
+        const me = people.find((x) => x.id === meId)?.name;
         return (
           <View style={{ gap: 10 }}>
             <View style={s.row}>
               <Pressable style={[s.chip, !asList && s.chipOn]} onPress={() => setAsList(false)}><Text style={!asList ? s.chipOnT : s.b}>{tr('עץ התחרות')}</Text></Pressable>
               <Pressable style={[s.chip, asList && s.chipOn]} onPress={() => setAsList(true)}><Text style={asList ? s.chipOnT : s.b}>{tr('רשימת משחקים')}</Text></Pressable>
             </View>
-            {!asList && <Bracket matches={ko} me={people.find((x) => x.id === meId)?.name} onPress={api.canScore() ? (m) => { if (m.a.id && m.b.id) setScore(m); } : undefined} />}
+            {!asList && treeCats.map((c) => (
+              <View key={c.id} style={{ gap: 6 }}>
+                {treeCats.length > 1 && <Text style={s.b}>{c.name}</Text>}
+                <Bracket matches={(d?.matches ?? []).filter((m) => m.categoryId === c.id && m.stage === 'KO')} me={me} onPress={api.canScore() ? (m) => { if (m.a.id && m.b.id) setScore(m); } : undefined} />
+              </View>
+            ))}
           </View>
         );
       })()}
       </View>}
         data={(d?.matches ?? []).filter((m) => {
-          // the tree already shows this category's knockout matches: the list keeps its group stage
-          if (fcat && !asList && m.stage === 'KO' && (d?.matches ?? []).some((x) => x.categoryId === fcat && x.stage === 'KO')) return false;
+          // the trees already show these categories' knockout matches: the list keeps the group stages
+          if (!asList && m.stage === 'KO' && treeIds.has(m.categoryId)) return false;
           if (fcat) return m.categoryId === fcat;
           if (!fg && !fage) return true;
           const c = d?.categories.find((x) => x.id === m.categoryId);
