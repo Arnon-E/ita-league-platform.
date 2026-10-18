@@ -2,6 +2,7 @@ import { Appearance } from 'react-native';
 import { Heebo_400Regular, Heebo_500Medium, Heebo_600SemiBold, Heebo_700Bold, Heebo_800ExtraBold } from '@expo-google-fonts/heebo';
 import { Rubik_400Regular, Rubik_500Medium, Rubik_600SemiBold, Rubik_700Bold, Rubik_800ExtraBold } from '@expo-google-fonts/rubik';
 import Svg, { Circle, Path } from 'react-native-svg';
+import { isRtl } from './i18n';
 
 /** "Volt Night" palette, mirrored from apps/web globals.css (light + dark). Picked once at launch from the phone's theme. */
 const light = {
@@ -44,7 +45,8 @@ export const ICONS = {
 
 export function Icon({ name, color, size = 22 }: { name: keyof typeof ICONS; color: string; size?: number }) {
   return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={name === 'tick' ? 3 : 2} strokeLinecap="round" strokeLinejoin="round">
+    // "back" points to where a page came from: right in Hebrew, left in English
+    <Svg width={size} height={size} style={name === 'back' && !isRtl() ? { transform: [{ scaleX: -1 }] } : undefined} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={name === 'tick' ? 3 : 2} strokeLinecap="round" strokeLinejoin="round">
       <Path d={ICONS[name]} />
     </Svg>
   );

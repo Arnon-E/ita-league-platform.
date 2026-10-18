@@ -2,9 +2,10 @@ import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import * as api from './api';
 import { T } from './theme';
+import { locale, tr } from './i18n';
 
 const DOC: Record<string, string> = { ID_PHOTO: 'תמונת ת״ז', PARENT_CONSENT: 'אישור הורים', MEDICAL_CERTIFICATE: 'אישור רפואי', OTHER: 'אחר' };
-const when = (iso: string | null) => (iso ? new Date(iso).toLocaleString('he-IL', { weekday: 'short', day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' }) : '');
+const when = (iso: string | null) => (iso ? new Date(iso).toLocaleString(locale(), { weekday: 'short', day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' }) : '');
 const score = (sets: { a: number; b: number }[]) => `⁦${sets.map((x) => `${x.a}-${x.b}`).join('  ')}⁩`;
 
 /** Personal home for a signed-in player and/or parent: one card per player profile on the account. Renders nothing for guests or accounts without a profile. */
@@ -17,69 +18,69 @@ export function MyHome({ authed, onOpen, onGoAccount }: { authed: boolean; onOpe
     <View style={{ gap: 10 }}>
       {w && (
         <View style={{ gap: 10 }}>
-          <Text style={m.h2}>{w.kind === 'ADMIN' ? 'מה מחכה לטיפול' : w.kind === 'CLUB' ? 'המועדון שלי' : 'התחרויות שלי'}</Text>
-          {w.admin && <View style={m.stats}>{([['מסמכים לאישור', w.admin.pendingDocs], ['בקשות שיוך', w.admin.pendingClaims], ['הרשמה פתוחה', w.admin.openRegistration], ['מתקיימות', w.admin.inProgress]] as const).map(([l, n]) => <View key={l} style={m.stat}><Text style={m.statN}>{n}</Text><Text style={m.muted}>{l}</Text></View>)}</View>}
+          <Text style={m.h2}>{tr(w.kind === 'ADMIN' ? 'מה מחכה לטיפול' : w.kind === 'CLUB' ? 'המועדון שלי' : 'התחרויות שלי')}</Text>
+          {w.admin && <View style={m.stats}>{([['מסמכים לאישור', w.admin.pendingDocs], ['בקשות שיוך', w.admin.pendingClaims], ['הרשמה פתוחה', w.admin.openRegistration], ['מתקיימות', w.admin.inProgress]] as const).map(([l, n]) => <View key={l} style={m.stat}><Text style={m.statN}>{n}</Text><Text style={m.muted}>{tr(l)}</Text></View>)}</View>}
           {w.tournaments.map((x) => (
             <Pressable key={x.id} style={m.card} onPress={() => onOpen(x.id)}>
               <Text style={m.name}>{x.name}</Text>
-              <Text style={m.muted}>{new Date(x.start).toLocaleDateString('he-IL')} – {new Date(x.end).toLocaleDateString('he-IL')}</Text>
+              <Text style={m.muted}>{new Date(x.start).toLocaleDateString(locale())} – {new Date(x.end).toLocaleDateString(locale())}</Text>
               <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
-                <View style={[m.pill, { backgroundColor: x.waiting ? T.warnbg : T.okbg }]}><Text style={{ color: x.waiting ? T.warn : T.ok, fontWeight: '700', fontSize: 12.5 }}>{x.waiting ? `${x.waiting} משחקים ממתינים לתוצאה` : 'אין משחקים ממתינים'}</Text></View>
-                <View style={[m.pill, { backgroundColor: T.surface2 }]}><Text style={m.muted}>{x.upcoming} משחקים פתוחים</Text></View>
+                <View style={[m.pill, { backgroundColor: x.waiting ? T.warnbg : T.okbg }]}><Text style={{ color: x.waiting ? T.warn : T.ok, fontWeight: '700', fontSize: 12.5 }}>{x.waiting ? tr('{n} משחקים ממתינים לתוצאה', { n: x.waiting }) : tr('אין משחקים ממתינים')}</Text></View>
+                <View style={[m.pill, { backgroundColor: T.surface2 }]}><Text style={m.muted}>{tr('{n} משחקים פתוחים', { n: x.upcoming })}</Text></View>
               </View>
             </Pressable>
           ))}
-          {!w.admin && !w.club && !w.tournaments.length && <Text style={m.muted}>לא שובצת כרגע לתחרות פעילה.</Text>}
+          {!w.admin && !w.club && !w.tournaments.length && <Text style={m.muted}>{tr('לא שובצת כרגע לתחרות פעילה.')}</Text>}
           {w.club && (
             <View style={m.card}>
               <Text style={m.name}>{w.club.name}</Text>
               <View style={m.stats}>
-                <View style={m.stat}><Text style={m.statN}>{w.club.players}</Text><Text style={m.muted}>שחקנים</Text></View>
-                <View style={m.stat}><Text style={m.statN}>{w.club.upcomingEntries}</Text><Text style={m.muted}>הרשמות ב-90 ימים</Text></View>
+                <View style={m.stat}><Text style={m.statN}>{w.club.players}</Text><Text style={m.muted}>{tr('שחקנים')}</Text></View>
+                <View style={m.stat}><Text style={m.statN}>{w.club.upcomingEntries}</Text><Text style={m.muted}>{tr('הרשמות ב-90 ימים')}</Text></View>
               </View>
               {w.club.top.map((p) => <View key={p.id} style={m.res}><Text style={m.b}>#{p.rank}</Text><Text style={[m.b, { flex: 1 }]} numberOfLines={1}>{p.name}</Text><Text style={m.muted}>{p.points}</Text></View>)}
             </View>
           )}
         </View>
       )}
-      {h.people.length > 0 && <Text style={m.h2}>{h.role === 'PLAYER' ? 'הבית שלי' : h.role === 'PARENT' ? 'הילדים שלי' : 'אני והילדים'}</Text>}
+      {h.people.length > 0 && <Text style={m.h2}>{tr(h.role === 'PLAYER' ? 'הבית שלי' : h.role === 'PARENT' ? 'הילדים שלי' : 'אני והילדים')}</Text>}
       {h.people.map((p) => (
         <View key={p.id} style={m.card}>
           <View style={m.head}>
             <View style={m.av}><Text style={m.avT}>{p.name.split(' ').map((w) => w[0]).slice(0, 2).join('')}</Text></View>
             <View style={{ flex: 1 }}>
               <Text style={m.name}>{p.name}</Text>
-              <Text style={m.muted}>{p.relation === 'CHILD' ? 'ילד/ה · ' : ''}גיל {p.age}{p.club ? ` · ${p.club}` : ''}</Text>
+              <Text style={m.muted}>{p.relation === 'CHILD' ? `${tr('ילד/ה')} · ` : ''}{tr('גיל {n}', { n: p.age })}{p.club ? ` · ${p.club}` : ''}</Text>
             </View>
           </View>
           <View style={m.stats}>
-            <View style={m.stat}><Text style={m.statN}>{p.rank ? `#${p.rank}` : '—'}</Text><Text style={m.muted}>דירוג</Text></View>
-            <View style={m.stat}><Text style={m.statN}>{p.points}</Text><Text style={m.muted}>נקודות</Text></View>
-            <View style={m.stat}><Text style={m.statN}>{`⁦${p.wins}/${p.losses}⁩`}</Text><Text style={m.muted}>נצ׳/הפ׳</Text></View>
-            {p.form.length > 0 && <View style={m.form}>{p.form.map((w, i) => <View key={i} style={[m.dot, { backgroundColor: w ? T.okbg : T.badbg }]}><Text style={{ color: w ? T.ok : T.bad, fontWeight: '800', fontSize: 12 }}>{w ? 'נ' : 'ה'}</Text></View>)}</View>}
+            <View style={m.stat}><Text style={m.statN}>{p.rank ? `#${p.rank}` : '—'}</Text><Text style={m.muted}>{tr('דירוג')}</Text></View>
+            <View style={m.stat}><Text style={m.statN}>{p.points}</Text><Text style={m.muted}>{tr('נקודות')}</Text></View>
+            <View style={m.stat}><Text style={m.statN}>{`⁦${p.wins}/${p.losses}⁩`}</Text><Text style={m.muted}>{tr('נצ׳/הפ׳')}</Text></View>
+            {p.form.length > 0 && <View style={m.form}>{p.form.map((w, i) => <View key={i} style={[m.dot, { backgroundColor: w ? T.okbg : T.badbg }]}><Text style={{ color: w ? T.ok : T.bad, fontWeight: '800', fontSize: 12 }}>{tr(w ? 'נ' : 'ה')}</Text></View>)}</View>}
           </View>
           {!h.isChild && p.todo.map((x, i) => (
-            <Pressable key={i} onPress={onGoAccount} style={m.warn}><Text style={m.warnT}>{x.startsWith('DOCS:') ? `חסר: ${x.slice(5).split(',').map((d) => DOC[d] ?? d).join(', ')}` : `ממתין לתשלום: ${x.slice(4)}`}</Text></Pressable>
+            <Pressable key={i} onPress={onGoAccount} style={m.warn}><Text style={m.warnT}>{x.startsWith('DOCS:') ? tr('חסר: {list}', { list: x.slice(5).split(',').map((d) => tr(DOC[d] ?? d)).join(', ') }) : tr('ממתין לתשלום: {name}', { name: x.slice(4) })}</Text></Pressable>
           ))}
-          {p.nextMatch && <View style={m.sec}><Text style={m.label}>המשחק הבא</Text><Text style={m.b}>{p.nextMatch.opponent ?? 'יתברר'}</Text><Text style={m.muted}>{p.nextMatch.tournament}{p.nextMatch.start ? ` · ${when(p.nextMatch.start)}` : ''}{p.nextMatch.court ? ` · מגרש ${p.nextMatch.court}` : ''}</Text></View>}
+          {p.nextMatch && <View style={m.sec}><Text style={m.label}>{tr('המשחק הבא')}</Text><Text style={m.b}>{p.nextMatch.opponent ?? tr('יתברר')}</Text><Text style={m.muted}>{p.nextMatch.tournament}{p.nextMatch.start ? ` · ${when(p.nextMatch.start)}` : ''}{p.nextMatch.court ? ` · ${tr('מגרש {c}', { c: p.nextMatch.court })}` : ''}</Text></View>}
           {p.nextTournament && (
             <Pressable style={m.sec} onPress={() => onOpen(p.nextTournament!.id)}>
-              <Text style={m.label}>התחרות הבאה</Text><Text style={m.b}>{p.nextTournament.name}</Text>
-              <Text style={m.muted}>{new Date(p.nextTournament.start).toLocaleDateString('he-IL')} · {p.nextTournament.category}</Text>
+              <Text style={m.label}>{tr('התחרות הבאה')}</Text><Text style={m.b}>{p.nextTournament.name}</Text>
+              <Text style={m.muted}>{new Date(p.nextTournament.start).toLocaleDateString(locale())} · {p.nextTournament.category}</Text>
             </Pressable>
           )}
           {p.recent.length > 0 && (
-            <View style={m.sec}><Text style={m.label}>תוצאות אחרונות</Text>
+            <View style={m.sec}><Text style={m.label}>{tr('תוצאות אחרונות')}</Text>
               {p.recent.map((r) => (
                 <View key={r.id} style={m.res}>
-                  <View style={[m.pill, { backgroundColor: r.won ? T.okbg : T.badbg }]}><Text style={{ color: r.won ? T.ok : T.bad, fontWeight: '700', fontSize: 12.5 }}>{r.won ? 'ניצחון' : 'הפסד'}</Text></View>
+                  <View style={[m.pill, { backgroundColor: r.won ? T.okbg : T.badbg }]}><Text style={{ color: r.won ? T.ok : T.bad, fontWeight: '700', fontSize: 12.5 }}>{tr(r.won ? 'ניצחון' : 'הפסד')}</Text></View>
                   <Text style={[m.b, { flex: 1 }]} numberOfLines={1}>{r.opponent}</Text><Text style={m.muted}>{score(r.sets)}</Text>
                 </View>
               ))}
             </View>
           )}
           {p.canRegister.length > 0 && (
-            <View style={m.sec}><Text style={m.label}>אפשר להירשם</Text>
+            <View style={m.sec}><Text style={m.label}>{tr('אפשר להירשם')}</Text>
               <View style={{ gap: 6 }}>{p.canRegister.slice(0, 3).map((r) => (
                 <Pressable key={r.categoryId} style={m.reg} onPress={() => onOpen(r.tournamentId)}><Text style={m.regT} numberOfLines={1}>{r.tournament} · {r.category}</Text></Pressable>
               ))}</View>

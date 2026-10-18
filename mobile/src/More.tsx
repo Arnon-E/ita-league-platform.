@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Linking, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import * as api from './api';
 import { T, Icon } from './theme';
+import { locale, startAlign, tr } from './i18n';
 
 const C = { navy: T.text, blue: T.blue, line: T.line, muted: T.muted };
 
@@ -21,13 +22,13 @@ function Leagues({ onBack }: { onBack: () => void }) {
   if (open) return <LeagueView id={open} onBack={() => setOpen(null)} />;
   return (
     <View style={st.pad}>
-      <Head title="ליגות" onBack={onBack} />
+      <Head title={tr('ליגות')} onBack={onBack} />
       <Wait err={err} busy={busy} />
-      <FlatList contentContainerStyle={{ paddingBottom: 100 }} data={data ?? []} keyExtractor={(l) => l.id} ListEmptyComponent={!busy && !err ? <Text style={st.muted}>אין עדיין ליגות</Text> : null}
+      <FlatList contentContainerStyle={{ paddingBottom: 100 }} data={data ?? []} keyExtractor={(l) => l.id} ListEmptyComponent={!busy && !err ? <Text style={st.muted}>{tr('אין עדיין ליגות')}</Text> : null}
         renderItem={({ item }) => (
           <Pressable style={st.card} onPress={() => setOpen(item.id)}>
             <Text style={st.b}>{item.name}</Text>
-            <Text style={st.muted}>{item.teams} קבוצות · {item.played}/{item.total} משחקים שוחקו</Text>
+            <Text style={st.muted}>{tr('{teams} קבוצות · {played}/{total} משחקים שוחקו', { teams: item.teams, played: item.played, total: item.total })}</Text>
           </Pressable>
         )} />
     </View>
@@ -40,12 +41,12 @@ function LeagueView({ id, onBack }: { id: string; onBack: () => void }) {
   const [openTie, setOpenTie] = useState('');
   return (
     <ScrollView contentContainerStyle={st.pad}>
-      <Head title={data?.name ?? 'ליגה'} onBack={onBack} />
+      <Head title={data?.name ?? tr('ליגה')} onBack={onBack} />
       <Wait err={err} busy={busy} />
       {(data?.groups ?? []).map((g) => (
         <View key={g.name} style={st.card}>
           <Text style={st.b}>{g.name}</Text>
-          <View style={st.tr}><Text style={[st.th, { width: 22 }]}>#</Text><Text style={[st.th, { flex: 1 }]}>קבוצה</Text><Text style={st.th2}>מש׳</Text><Text style={st.th2}>נק׳</Text><Text style={st.th2}>נצ׳</Text><Text style={st.th2}>הפ׳</Text></View>
+          <View style={st.tr}><Text style={[st.th, { width: 22 }]}>#</Text><Text style={[st.th, { flex: 1 }]}>{tr('קבוצה')}</Text><Text style={st.th2}>{tr('מש׳')}</Text><Text style={st.th2}>{tr('נק׳')}</Text><Text style={st.th2}>{tr('נצ׳')}</Text><Text style={st.th2}>{tr('הפ׳')}</Text></View>
           {g.standings.map((s) => (
             <Pressable key={s.team} style={st.tr} onPress={() => setTeam(team === s.team ? '' : s.team)}>
               <Text style={{ width: 22 }}>{s.rank}</Text>
@@ -55,7 +56,7 @@ function LeagueView({ id, onBack }: { id: string; onBack: () => void }) {
           ))}
         </View>
       ))}
-      {data ? <Text style={st.muted}>{team ? `מסונן לפי: ${team} (לחיצה נוספת מנקה)` : 'לחצו על קבוצה כדי לראות רק את המשחקים שלה'}</Text> : null}
+      {data ? <Text style={st.muted}>{team ? tr('מסונן לפי: {team} (לחיצה נוספת מנקה)', { team }) : tr('לחצו על קבוצה כדי לראות רק את המשחקים שלה')}</Text> : null}
       {(data?.rounds ?? []).map((r) => {
         const ms = r.matches.filter((m) => !team || m.home.team === team || m.away.team === team);
         if (!ms.length) return null;
@@ -69,9 +70,9 @@ function LeagueView({ id, onBack }: { id: string; onBack: () => void }) {
                 <Pressable key={i} onPress={() => setOpenTie(openTie === `${r.name}${i}` ? '' : `${r.name}${i}`)} style={{ gap: 2, paddingVertical: 4, borderTopWidth: i ? 1 : 0, borderColor: C.line }}>
                   <View style={st.row}><Text style={[{ flex: 1 }, hw && { fontWeight: '800' }]}>{hw ? '✓ ' : ''}{m.home.team}</Text><Text style={[st.sc, hw && { fontWeight: '800' }]}>{m.done ? m.homeScore : ''}</Text></View>
                   <View style={st.row}><Text style={[{ flex: 1 }, aw && { fontWeight: '800' }]}>{aw ? '✓ ' : ''}{m.away.team}</Text><Text style={[st.sc, aw && { fontWeight: '800' }]}>{m.done ? m.awayScore : ''}</Text></View>
-                  <Text style={st.muted}>{m.start ? new Date(m.start).toLocaleString('he-IL', { weekday: 'short', day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}{m.venue ? ` · ${m.venue}` : ''}{m.rubbers?.length ? ' · לחצו לפירוט' : ''}</Text>
+                  <Text style={st.muted}>{m.start ? new Date(m.start).toLocaleString(locale(), { weekday: 'short', day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}{m.venue ? ` · ${m.venue}` : ''}{m.rubbers?.length ? ` · ${tr('לחצו לפירוט')}` : ''}</Text>
                   {openTie === `${r.name}${i}` && (m.rubbers ?? []).map((x) => (
-                    <View key={x.n} style={{ paddingLeft: 8, paddingVertical: 2 }}>
+                    <View key={x.n} style={{ paddingStart: 8, paddingVertical: 2 }}>
                       <Text style={x.winner === 'home' ? { fontWeight: '800' } : undefined}>{x.winner === 'home' ? '✓ ' : ''}{x.home.join(' / ')}</Text>
                       <Text style={{ color: C.muted }}>{x.sets.map((z) => `${z.h}-${z.g}`).join('  ')}</Text>
                       <Text style={x.winner === 'away' ? { fontWeight: '800' } : undefined}>{x.winner === 'away' ? '✓ ' : ''}{x.away.join(' / ')}</Text>
@@ -91,21 +92,21 @@ function AboutScreen({ onBack }: { onBack: () => void }) {
   const { data, err, busy } = useData(api.about);
   return (
     <ScrollView contentContainerStyle={st.pad}>
-      <Head title="אודות האיגוד" onBack={onBack} />
+      <Head title={tr('אודות האיגוד')} onBack={onBack} />
       <Wait err={err} busy={busy} />
       {data?.union.description ? <View style={st.card}><Text>{data.union.description}</Text></View> : null}
       {data?.union.about ? <View style={st.card}><Text>{data.union.about}</Text></View> : null}
-      {data?.union.regulation ? <><Text style={st.h2}>תקנון</Text><View style={st.card}><Text>{data.union.regulation}</Text></View></> : null}
-      {data?.union.statement ? <><Text style={st.h2}>הצהרת שחקן</Text><View style={st.card}><Text>{data.union.statement}</Text></View></> : null}
-      {!!data?.forms.length && <Text style={st.h2}>טפסי הרשמה</Text>}
+      {data?.union.regulation ? <><Text style={st.h2}>{tr('תקנון')}</Text><View style={st.card}><Text>{data.union.regulation}</Text></View></> : null}
+      {data?.union.statement ? <><Text style={st.h2}>{tr('הצהרת שחקן')}</Text><View style={st.card}><Text>{data.union.statement}</Text></View></> : null}
+      {!!data?.forms.length && <Text style={st.h2}>{tr('טפסי הרשמה')}</Text>}
       {(data?.forms ?? []).map((f) => (
         <Pressable key={f.id} style={st.card} onPress={() => Linking.openURL(f.url)}><Text style={st.b}>{f.name}</Text><Text style={st.muted}>{f.description}</Text></Pressable>
       ))}
-      {!!data?.events.length && <Text style={st.h2}>אירועים</Text>}
+      {!!data?.events.length && <Text style={st.h2}>{tr('אירועים')}</Text>}
       {(data?.events ?? []).map((e, i) => (
         <Pressable key={i} style={st.card} disabled={!e.url} onPress={() => Linking.openURL(e.url)}>
           <Text style={st.b}>{e.title}</Text>
-          <Text style={st.muted}>{e.start ? new Date(e.start).toLocaleDateString('he-IL') : ''}{e.place ? ` · ${e.place}` : ''}</Text>
+          <Text style={st.muted}>{e.start ? new Date(e.start).toLocaleDateString(locale()) : ''}{e.place ? ` · ${e.place}` : ''}</Text>
           {!!e.description && <Text>{e.description}</Text>}
         </Pressable>
       ))}
@@ -120,18 +121,18 @@ function Regulations({ onBack }: { onBack: () => void }) {
   const cats = [...new Set(rows.map((r) => r.category))];
   return (
     <ScrollView contentContainerStyle={st.pad}>
-      <Head title="תקנונים ונהלים" onBack={onBack} />
-      <TextInput style={st.input} placeholder="חיפוש מסמך" placeholderTextColor={T.muted} value={q} onChangeText={setQ} />
+      <Head title={tr('תקנונים ונהלים')} onBack={onBack} />
+      <TextInput style={[st.input, startAlign()]} placeholder={tr('חיפוש מסמך')} placeholderTextColor={T.muted} value={q} onChangeText={setQ} />
       <Wait err={err} busy={busy} />
       {cats.map((c) => (
         <View key={c}>
           <Text style={st.h2}>{c}</Text>
           {rows.filter((r) => r.category === c).map((r) => (
-            <Pressable key={r.id} style={st.card} onPress={() => Linking.openURL(r.url)}><Text style={st.b}>{r.title}</Text><Text style={st.muted}>פתיחה ↗</Text></Pressable>
+            <Pressable key={r.id} style={st.card} onPress={() => Linking.openURL(r.url)}><Text style={st.b}>{r.title}</Text><Text style={st.muted}>{tr('פתיחה ↗')}</Text></Pressable>
           ))}
         </View>
       ))}
-      {!busy && !err && !rows.length && <Text style={st.muted}>אין עדיין מסמכים</Text>}
+      {!busy && !err && !rows.length && <Text style={st.muted}>{tr('אין עדיין מסמכים')}</Text>}
     </ScrollView>
   );
 }
@@ -142,10 +143,10 @@ function Clubs({ onBack }: { onBack: () => void }) {
   const rows = (data ?? []).filter((c) => !q.trim() || c.name.includes(q.trim()));
   return (
     <View style={st.pad}>
-      <Head title="מועדונים" onBack={onBack} />
-      <TextInput style={st.input} placeholder="חיפוש מועדון" placeholderTextColor={T.muted} value={q} onChangeText={setQ} />
+      <Head title={tr('מועדונים')} onBack={onBack} />
+      <TextInput style={[st.input, startAlign()]} placeholder={tr('חיפוש מועדון')} placeholderTextColor={T.muted} value={q} onChangeText={setQ} />
       <Wait err={err} busy={busy} />
-      <FlatList contentContainerStyle={{ paddingBottom: 100 }} data={rows} keyExtractor={(c) => c.id} renderItem={({ item }) => <View style={st.card}><Text style={st.b}>{item.name}</Text><Text style={st.muted}>{item.city ? `${item.city} · ` : ''}{item.players} שחקנים</Text></View>} />
+      <FlatList contentContainerStyle={{ paddingBottom: 100 }} data={rows} keyExtractor={(c) => c.id} renderItem={({ item }) => <View style={st.card}><Text style={st.b}>{item.name}</Text><Text style={st.muted}>{item.city ? `${item.city} · ` : ''}{tr('{n} שחקנים', { n: item.players })}</Text></View>} />
     </View>
   );
 }
@@ -154,19 +155,19 @@ function Stats({ onBack }: { onBack: () => void }) {
   const { data, err, busy } = useData(api.stats);
   return (
     <ScrollView contentContainerStyle={st.pad}>
-      <Head title="סטטיסטיקות" onBack={onBack} />
+      <Head title={tr('סטטיסטיקות')} onBack={onBack} />
       <Wait err={err} busy={busy} />
       {data && <>
         <View style={st.row}>
           {([['תחרויות', data.totals.tournaments], ['שחקנים', data.totals.players], ['משחקים', data.totals.matches]] as const).map(([l, n]) => (
-            <View key={l} style={[st.card, { flex: 1, alignItems: 'center' }]}><Text style={{ fontSize: 24, fontWeight: '800', color: C.navy }}>{n}</Text><Text style={st.muted}>{l}</Text></View>
+            <View key={l} style={[st.card, { flex: 1, alignItems: 'center' }]}><Text style={{ fontSize: 24, fontWeight: '800', color: C.navy }}>{n}</Text><Text style={st.muted}>{tr(l)}</Text></View>
           ))}
         </View>
-        <Text style={st.h2}>מובילים בניצחונות</Text>
-        {data.top.map((p, i) => <View key={p.id} style={st.card}><Text style={st.b}>{i + 1}. {p.name}</Text><Text style={st.muted}>{p.club ?? ''} · {p.wins} ניצחונות מתוך {p.played} ({Math.round((100 * p.wins) / p.played)}%)</Text></View>)}
-        {!data.top.length && <Text style={st.muted}>אין עדיין משחקים שהסתיימו</Text>}
-        <Text style={st.h2}>מועדונים גדולים</Text>
-        {data.clubs.map((c) => <View key={c.id} style={st.card}><Text style={st.b}>{c.name}</Text><Text style={st.muted}>{c.players} שחקנים</Text></View>)}
+        <Text style={st.h2}>{tr('מובילים בניצחונות')}</Text>
+        {data.top.map((p, i) => <View key={p.id} style={st.card}><Text style={st.b}>{i + 1}. {p.name}</Text><Text style={st.muted}>{p.club ?? ''} · {tr('{wins} ניצחונות מתוך {played} ({pct}%)', { wins: p.wins, played: p.played, pct: Math.round((100 * p.wins) / p.played) })}</Text></View>)}
+        {!data.top.length && <Text style={st.muted}>{tr('אין עדיין משחקים שהסתיימו')}</Text>}
+        <Text style={st.h2}>{tr('מועדונים גדולים')}</Text>
+        {data.clubs.map((c) => <View key={c.id} style={st.card}><Text style={st.b}>{c.name}</Text><Text style={st.muted}>{tr('{n} שחקנים', { n: c.players })}</Text></View>)}
       </>}
     </ScrollView>
   );
@@ -191,10 +192,10 @@ export function More({ initial }: { initial?: string }) {
   if (page === 'stats') return <Stats onBack={back} />;
   return (
     <View style={st.pad}>
-      <Head title="עוד" />
+      <Head title={tr('עוד')} />
       {ITEMS.map(([k, ic, t, sub]) => (
         <Pressable key={k} style={[st.card, st.menu]} onPress={() => setPage(k)}>
-          <View style={st.ic}><Icon name={ic} size={22} color={T.ink} /></View><View style={{ flex: 1 }}><Text style={st.b}>{t}</Text><Text style={st.muted}>{sub}</Text></View>
+          <View style={st.ic}><Icon name={ic} size={22} color={T.ink} /></View><View style={{ flex: 1 }}><Text style={st.b}>{tr(t)}</Text><Text style={st.muted}>{tr(sub)}</Text></View>
         </Pressable>
       ))}
     </View>

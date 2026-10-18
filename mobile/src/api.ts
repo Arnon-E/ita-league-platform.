@@ -1,5 +1,6 @@
 import Constants from 'expo-constants';
 import * as SecureStore from 'expo-secure-store';
+import { tr } from './i18n';
 
 const BASE = (Constants.expoConfig?.extra as { apiUrl: string }).apiUrl;
 let token: string | null = null;
@@ -22,9 +23,9 @@ export const canScore = () => ['SUPER_ADMIN', 'FEDERATION_ADMIN', 'TOURNAMENT_MA
 
 /** Server errors are mostly Hebrew already; map the few machine codes to something a person can read. */
 function heMessage(err: string | undefined, status: number): string {
-  if (err === 'forbidden') return 'אין לך הרשאה לפעולה הזו. שופט יכול לעדכן רק משחקים בתחרות שאליה שובץ.';
-  if (err === 'unauthorized') return 'יש להתחבר מחדש.';
-  return err ?? `שגיאה (${status})`;
+  if (err === 'forbidden') return tr('אין לך הרשאה לפעולה הזו. שופט יכול לעדכן רק משחקים בתחרות שאליה שובץ.');
+  if (err === 'unauthorized') return tr('יש להתחבר מחדש.');
+  return err ?? tr('שגיאה ({status})', { status });
 }
 
 async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
