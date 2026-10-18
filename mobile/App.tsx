@@ -25,8 +25,13 @@ I18nManager.allowRTL(true);
 I18nManager.forceRTL(true);
 
 
-type Tab = 't' | 'live' | 'rank' | 'players' | 'more' | 'me';
-const TABS: [Tab, string, 'home' | 'live' | 'rank' | 'players' | 'more' | 'me'][] = [['t', 'בית', 'home'], ['live', 'משחקים', 'live'], ['rank', 'דירוג', 'rank'], ['players', 'שחקנים', 'players'], ['more', 'עוד', 'more'], ['me', 'חשבון', 'me']];
+type Tab = 't' | 'live' | 'rank' | 'players' | 'search' | 'more' | 'me';
+/** Opens a tab, one of the sections under "more" (clubs, leagues, ...), or the search with a term. */
+type Go = (t: Tab, extra?: string) => void;
+// the website's dock; everything else is in the menu (hamburger) and the account behind the avatar, as on the site
+const TABS: [Tab, string, 'home' | 'live' | 'rank' | 'players' | 'search'][] = [['t', 'בית', 'home'], ['live', 'משחקים', 'live'], ['rank', 'דירוג', 'rank'], ['players', 'שחקנים', 'players'], ['search', 'חיפוש', 'search']];
+// the website's menu, in its order
+const MENU: [Tab, string, string?][] = [['t', 'תחרויות'], ['live', 'משחקים'], ['rank', 'דירוג'], ['players', 'שחקנים'], ['more', 'מועדונים', 'clubs'], ['more', 'ליגות', 'leagues'], ['more', 'תקנונים', 'regs'], ['more', 'סטטיסטיקות', 'stats'], ['more', 'אודות', 'about'], ['search', 'חיפוש']];
 
 export default function App() {
   const [ready, setReady] = useState(false);
@@ -85,6 +90,9 @@ function Home({ authed, setAuthed }: { authed: boolean; setAuthed: (v: boolean) 
   const [tab, setTab] = useState<Tab>('t');
   const [open, setOpen] = useState<string | null>(null);
   const [who, setWho] = useState<'ask' | 'self' | 'child' | null>(null);
+  const [menu, setMenu] = useState(false);
+  const [extra, setExtra] = useState<{ v?: string; n: number }>({ n: 0 }); // a "more" section or a search term, applied afresh each time
+  const go: Go = (k, v) => { setOpen(null); setWho(null); setMenu(false); setExtra((x) => ({ v, n: x.n + 1 })); setTab(k); };
   const [, bump] = useState(0);
   // sessions started before the name was stored: fetch it once so the header can show who is signed in
   useEffect(() => { if (authed && !api.currentUserName()) api.me().then((m) => api.rememberUserName(m.name)).then(() => bump((n) => n + 1)).catch(() => {}); }, [authed]);
@@ -93,22 +101,34 @@ function Home({ authed, setAuthed }: { authed: boolean; setAuthed: (v: boolean) 
   return (
     <View style={{ flex: 1 }}>
       <View style={s.topbar}>
-        <Pressable style={s.brandRow} onPress={() => { setOpen(null); setWho(null); setTab('t'); }} accessibilityLabel="ITA"><BallMark size={30} /><Text style={s.brand}>ITA</Text></Pressable>
-        {authed && !!api.currentUserName()
-          ? <Pressable style={s.topAv} onPress={() => { setOpen(null); setWho(null); setTab('me'); }} accessibilityLabel="פרטים אישיים"><Text style={s.topAvT}>{api.currentUserName()!.trim().charAt(0).toUpperCase()}</Text></Pressable>
-          : <Pressable style={s.topLogin} onPress={() => { setOpen(null); setWho(null); setTab('me'); }}><Text style={s.topLoginT}>כניסה</Text></Pressable>}
+        <Pressable style={s.brandRow} onPress={() => go('t')} accessibilityLabel="ITA"><BallMark size={30} /><Text style={s.brand}>ITA</Text></Pressable>
+        <View style={s.topEnd}>
+          {authed && !!api.currentUserName()
+            ? <Pressable style={s.topAv} onPress={() => go('me')} accessibilityLabel="פרטים אישיים"><Text style={s.topAvT}>{api.currentUserName()!.trim().charAt(0).toUpperCase()}</Text></Pressable>
+            : <Pressable style={s.topLogin} onPress={() => go('me')}><Text style={s.topLoginT}>כניסה</Text></Pressable>}
+          <Pressable style={s.burger} onPress={() => setMenu(!menu)} accessibilityLabel="תפריט" accessibilityState={{ expanded: menu }}><Icon name={menu ? 'close' : 'more'} size={22} color={T.text} /></Pressable>
+        </View>
       </View>
       <View style={{ flex: 1 }}>
         {open ? <Tournament id={open} onBack={() => setOpen(null)} onGoAccount={() => { setOpen(null); setTab('me'); }} />
-          : tab === 't' ? <TournamentList onOpen={setOpen} authed={authed} onGoAccount={() => setTab('me')} onTab={(k) => setTab(k)} />
+          : tab === 't' ? <TournamentList onOpen={setOpen} authed={authed} onGoAccount={() => setTab('me')} go={go} />
           : tab === 'live' ? <Live />
           : tab === 'rank' ? <Rankings />
           : tab === 'players' ? <Players />
-          : tab === 'more' ? <More />
+          : tab === 'search' ? <Search key={extra.n} initial={extra.v ?? ''} onOpen={setOpen} />
+          : tab === 'more' ? <More key={extra.n} initial={extra.v} />
           : authed ? (who === 'ask' ? <Welcome onPick={(w) => { if (w === 'follow') { setWho(null); setTab('rank'); } else setWho(w); }} onSkip={() => { setWho(null); setTab('t'); }} /> : <MyArea onOpenTournament={(id) => setOpen(id)} preset={who} onLogoutAll={() => { setWho(null); setAuthed(false); }} onLogout={() => api.logout().then(() => { setWho(null); setAuthed(false); })} />) : <Login onDone={(signedUp) => { setAuthed(true); if (signedUp) setWho('ask'); }} />}
       </View>
+      {menu && <>
+        <Pressable style={s.scrim} onPress={() => setMenu(false)} accessibilityLabel="סגירת התפריט" />
+        <View style={s.menu}>
+          {MENU.map(([k, l, v]) => { const on = !open && tab === k && (k !== 'more' || extra.v === v); return <Pressable key={l} style={({ pressed }) => [s.menuRow, on && s.menuOn, pressed && s.pressed]} onPress={() => go(k, v)}><Text style={[s.menuT, on && s.menuOnT]}>{l}</Text></Pressable>; })}
+          <View style={s.menuSep} />
+          <Pressable style={({ pressed }) => [s.menuRow, pressed && s.pressed]} onPress={() => go('me')}><Text style={s.menuT}>{authed ? 'פרטים אישיים והרשמות' : 'כניסה / הצטרפות'}</Text></Pressable>
+        </View>
+      </>}
       <View style={s.tabbar}>
-        {TABS.map(([k, l, ic]) => { const on = tab === k && !open; return <Pressable key={k} style={[s.tab, on && s.tabActive]} onPress={() => { setOpen(null); setTab(k); }}><Icon name={ic} size={21} color={on ? T.btnText : T.muted} /><Text style={[s.tabT, on && s.tabOn]}>{l}</Text></Pressable>; })}
+        {TABS.map(([k, l, ic]) => { const on = tab === k && !open; return <Pressable key={k} style={[s.tab, on && s.tabActive]} onPress={() => go(k)}><Icon name={ic} size={21} color={on ? T.btnText : T.muted} /><Text style={[s.tabT, on && s.tabOn]}>{l}</Text></Pressable>; })}
       </View>
     </View>
   );
@@ -150,7 +170,7 @@ function Featured({ data, onOpen }: { data: { id: string; name: string; status: 
 }
 
 /** The website's four quick tiles: open registrations, matches, ranking and clubs. */
-function Tiles({ data, onTab, onOpenStatus }: { data: { status: string; relevant?: boolean }[] | null; onTab: (t: Tab) => void; onOpenStatus: () => void }) {
+function Tiles({ data, go, onOpenStatus }: { data: { status: string; relevant?: boolean }[] | null; go: Go; onOpenStatus: () => void }) {
   const stats = useLoad(api.stats); const feed = useLoad(api.live); const clubs = useLoad(api.clubs);
   const open = (data ?? []).filter((x) => x.status === 'REGISTRATION_OPEN' && x.relevant !== false).length;
   const liveNow = feed.data?.live.length ?? 0;
@@ -164,14 +184,15 @@ function Tiles({ data, onTab, onOpenStatus }: { data: { status: string; relevant
   return (
     <View style={s.tiles}>
       {tile(open, 'להירשם לתחרות', open ? 'פתוחות עכשיו' : 'אין הרשמה פתוחה', onOpenStatus, true)}
-      {tile(liveNow, 'משחקים ותוצאות', liveNow ? 'משחקים חיים עכשיו' : 'לוחות ותוצאות', () => onTab('live'))}
-      {tile(stats.data?.totals.players.toLocaleString('he-IL') ?? '–', 'דירוג', 'שחקנים רשומים', () => onTab('rank'))}
-      {tile(clubs.data?.length ?? '–', 'מועדונים', 'מועדונים עם שחקנים', () => onTab('more'))}
+      {tile(liveNow, 'משחקים ותוצאות', liveNow ? 'משחקים חיים עכשיו' : 'לוחות ותוצאות', () => go('live'))}
+      {tile(stats.data?.totals.players.toLocaleString('he-IL') ?? '–', 'דירוג', 'שחקנים רשומים', () => go('rank'))}
+      {tile(clubs.data?.length ?? '–', 'מועדונים', 'מועדונים עם שחקנים', () => go('more', 'clubs'))}
     </View>
   );
 }
 
-function TournamentList({ onOpen, authed, onGoAccount, onTab }: { onOpen: (id: string) => void; authed: boolean; onGoAccount: () => void; onTab: (t: Tab) => void }) {
+function TournamentList({ onOpen, authed, onGoAccount, go }: { onOpen: (id: string) => void; authed: boolean; onGoAccount: () => void; go: Go }) {
+  const [hq, setHq] = useState('');
   const { data, err, busy, reload } = useLoad(api.tournaments);
   const [level, setLevel] = useState('');
   const [sec, setSec] = useState('');
@@ -189,9 +210,16 @@ function TournamentList({ onOpen, authed, onGoAccount, onTab }: { onOpen: (id: s
       && (st === 'all' || (st === 'up' ? !isDone(x) : st === 'open' ? x.status === 'REGISTRATION_OPEN' : st === 'live' ? x.status === 'IN_PROGRESS' : isDone(x))));
   return (
       <FlatList style={s.pad} contentContainerStyle={{ paddingBottom: 100, gap: 10 }} ListHeaderComponent={<View style={{ gap: 10 }}>
-      <View style={s.hero}><CourtLines /><Text style={s.heroT}>איגוד הטניס בישראל</Text><Text style={s.heroS}>תחרויות, לוחות משחקים ותוצאות חיות</Text></View>
+      <View style={s.hero}><CourtLines /><Text style={s.heroT}>איגוד הטניס בישראל</Text><Text style={s.heroS}>תחרויות, לוחות משחקים ותוצאות חיות</Text>
+        {/* as in the website's hero: one box over players, clubs and competitions */}
+        <View style={s.hsearch}>
+          <Icon name="search" size={20} color={T.muted} />
+          <TextInput style={s.hsearchIn} placeholder="חיפוש שחקן, מועדון או תחרות" placeholderTextColor={T.muted} value={hq} onChangeText={setHq} returnKeyType="search" onSubmitEditing={() => go('search', hq.trim())} />
+          <Pressable style={s.hsearchBtn} onPress={() => go('search', hq.trim())}><Text style={s.hsearchBtnT}>חיפוש</Text></Pressable>
+        </View>
+      </View>
       <Featured data={data} onOpen={onOpen} />
-      <Tiles data={data} onTab={onTab} onOpenStatus={() => setSt('open')} />
+      <Tiles data={data} go={go} onOpenStatus={() => setSt('open')} />
       <MyHome authed={authed} onOpen={onOpen} onGoAccount={onGoAccount} />
       <Text style={s.h2}>תחרויות</Text>
       <TextInput style={s.input} placeholder="חיפוש לפי שם תחרות" placeholderTextColor={T.muted} value={q} onChangeText={setQ} />
@@ -302,6 +330,47 @@ function Players() {
       <Status err={err} busy={busy} empty={!!data && !data.length && 'לא נמצאו שחקנים'} />
       <FlatList contentContainerStyle={{ paddingBottom: 100 }} data={data} keyExtractor={(p) => p.id} onEndReached={more} onEndReachedThreshold={0.6} renderItem={({ item }) => <View style={s.card}><Text style={s.b}>{item.name}</Text><Text style={s.muted}>{item.club ?? ''}{item.birthYear ? ` · ${item.birthYear}` : ''}</Text></View>} />
     </View>
+  );
+}
+
+const DAY = 864e5;
+/** Ready-made searches for when nothing has been typed yet, as on the website's search page. */
+const SHORTCUTS: [string, string, string, (x: api.TournamentRow) => boolean, number][] = [
+  ['recent', 'תחרויות בשנה האחרונה', 'מהחדשה לישנה', (x) => +new Date(x.endDate) >= Date.now() - 365 * DAY && +new Date(x.startDate) <= Date.now() + 365 * DAY, -1],
+  ['open', 'הרשמה פתוחה וקרובות', 'מה אפשר לעשות עכשיו', (x) => x.status === 'REGISTRATION_OPEN' || (+new Date(x.startDate) >= Date.now() && ['REGISTRATION_CLOSED', 'DRAWN', 'IN_PROGRESS'].includes(x.status)), 1],
+  ['masters', 'מאסטרס ובוגרים', 'בשנה האחרונה, בלי קשר לגיל', (x) => ['MASTERS', 'ADULTS'].includes(x.section) && +new Date(x.endDate) >= Date.now() - 365 * DAY, -1],
+];
+
+/** One box over players, clubs and competitions (the website's search page). */
+function Search({ initial, onOpen }: { initial: string; onOpen: (id: string) => void }) {
+  const [q, setQ] = useState(initial);
+  const [show, setShow] = useState('');
+  const ts = useLoad(api.tournaments); const cl = useLoad(api.clubs);
+  const [ps, setPs] = useState<{ id: string; name: string; club: string | null; birthYear?: number }[]>([]);
+  const term = q.trim();
+  useEffect(() => {
+    if (!term) { setPs([]); return; }
+    let live = true;
+    const h = setTimeout(() => api.players(term, 0, 20).then((r) => live && setPs(r)).catch(() => {}), 250);
+    return () => { live = false; clearTimeout(h); };
+  }, [term]);
+  const sc = SHORTCUTS.find((x) => x[0] === show);
+  const tours = term ? (ts.data ?? []).filter((x) => x.name.includes(term)).slice(0, 20)
+    : sc ? (ts.data ?? []).filter(sc[3]).sort((a, b) => sc[4] * (+new Date(a.startDate) - +new Date(b.startDate))).slice(0, 60) : [];
+  const clubs = term ? (cl.data ?? []).filter((c) => c.name.includes(term)).slice(0, 20) : [];
+  const dm = (iso: string) => new Date(iso).toLocaleDateString('he-IL', { day: 'numeric', month: 'short', year: 'numeric' });
+  return (
+    <ScrollView contentContainerStyle={[s.pad, { paddingBottom: 110, gap: 10 }]} keyboardShouldPersistTaps="handled">
+      <Text style={s.h1}>חיפוש</Text>
+      <TextInput style={s.input} placeholder="שם שחקן, מועדון או תחרות" placeholderTextColor={T.muted} value={q} onChangeText={setQ} autoFocus={!initial} returnKeyType="search" />
+      {!term && <View style={{ gap: 8 }}>
+        {SHORTCUTS.map(([k, l, hint]) => <Pressable key={k} style={({ pressed }) => [s.card, show === k && s.cardOn, pressed && s.pressed]} onPress={() => setShow(show === k ? '' : k)}><Text style={s.b}>{l}</Text><Text style={s.muted}>{hint}</Text></Pressable>)}
+      </View>}
+      <Status err={ts.err} busy={ts.busy && (!!term || !!sc)} empty={!!term && !ts.busy && !cl.busy && !tours.length && !clubs.length && !ps.length && 'לא נמצא דבר'} />
+      {!!ps.length && <><Text style={s.h2}>שחקנים</Text>{ps.map((p) => <View key={p.id} style={s.card}><Text style={s.b}>{p.name}</Text><Text style={s.muted}>{p.club ?? ''}{p.birthYear ? ` · ${p.birthYear}` : ''}</Text></View>)}</>}
+      {!!clubs.length && <><Text style={s.h2}>מועדונים</Text>{clubs.map((c) => <View key={c.id} style={s.card}><Text style={s.b}>{c.name}</Text><Text style={s.muted}>{c.city ? `${c.city} · ` : ''}{c.players} שחקנים</Text></View>)}</>}
+      {!!tours.length && <><Text style={s.h2}>{term ? 'תחרויות' : sc?.[1]}</Text>{tours.map((x) => <Pressable key={x.id} style={({ pressed }) => [s.card, pressed && s.pressed]} onPress={() => onOpen(x.id)}><Text style={s.b}>{x.name}</Text><Text style={s.muted}>{`${STATUS_HE[x.status] ?? x.status} · ${dm(x.startDate)}`}</Text></Pressable>)}</>}
+    </ScrollView>
   );
 }
 
@@ -738,6 +807,17 @@ const s = StyleSheet.create({
   h1: { fontSize: 32, fontWeight: '800', color: T.text, letterSpacing: -0.8, lineHeight: 36 }, h2: { fontSize: 22, fontWeight: '700', color: T.text, letterSpacing: -0.4, marginTop: 8 },
   topbar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginHorizontal: 12, marginTop: 6, marginBottom: 4, paddingVertical: 6, paddingHorizontal: 12, borderRadius: 999, backgroundColor: T.surface, borderWidth: 1, borderColor: T.glassLine },
   brandRow: { flexDirection: 'row', alignItems: 'center', gap: 8 }, brand: { fontSize: 20, fontWeight: '800', letterSpacing: -0.4, color: T.text },
+  topEnd: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  burger: { width: 40, height: 40, borderRadius: 20, backgroundColor: T.bg, borderWidth: 1, borderColor: T.line, alignItems: 'center', justifyContent: 'center' },
+  scrim: { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(12,18,16,0.35)' },
+  menu: { position: 'absolute', top: 64, left: 12, right: 12, backgroundColor: T.surface, borderRadius: 24, borderWidth: 1, borderColor: T.line, paddingVertical: 8, elevation: 12, shadowColor: '#0C1210', shadowOpacity: 0.25, shadowRadius: 18, shadowOffset: { width: 0, height: 8 } },
+  menuRow: { paddingVertical: 13, paddingHorizontal: 20, marginHorizontal: 6, borderRadius: 14 }, menuOn: { backgroundColor: T.volt },
+  menuT: { fontSize: 17, fontWeight: '600', color: T.text }, menuOnT: { color: T.ink, fontWeight: '800' },
+  menuSep: { height: 1, backgroundColor: T.line, marginVertical: 6, marginHorizontal: 20 },
+  hsearch: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: T.surface, borderRadius: 999, paddingStart: 16, paddingEnd: 5, marginTop: 12, minHeight: 52 },
+  hsearchIn: { flex: 1, color: T.text, fontSize: 16, textAlign: 'right', paddingVertical: 8 },
+  hsearchBtn: { backgroundColor: T.volt, borderRadius: 999, paddingHorizontal: 18, height: 42, alignItems: 'center', justifyContent: 'center' }, hsearchBtnT: { color: T.ink, fontWeight: '800' },
+  cardOn: { borderColor: T.ink, borderWidth: 2 },
   topAv: { width: 40, height: 40, borderRadius: 20, backgroundColor: T.volt, alignItems: 'center', justifyContent: 'center' }, topAvT: { color: T.ink, fontWeight: '800', fontSize: 17 },
   topLogin: { paddingHorizontal: 18, height: 40, borderRadius: 20, backgroundColor: T.btn, alignItems: 'center', justifyContent: 'center' }, topLoginT: { color: T.btnText, fontWeight: '700' },
   feat: { backgroundColor: T.volt, borderRadius: 28, padding: 22, gap: 8 }, featHead: { flexDirection: 'row', alignItems: 'center', gap: 8 }, featDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: T.ink },

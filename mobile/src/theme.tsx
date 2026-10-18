@@ -33,6 +33,7 @@ export const ICONS = {
   me: 'M12 12a4 4 0 100-8 4 4 0 000 8zM4 21c.8-4 4-6 8-6s7.2 2 8 6',
   search: 'M11 18a7 7 0 100-14 7 7 0 000 14zM20 20l-4-4',
   back: 'M9 5l7 7-7 7',
+  close: 'M6 6l12 12M18 6L6 18',
   tick: 'M5 12.5l4.5 4.5L19 7.5',
   leagues: 'M8 4h8v5a4 4 0 01-8 0zM8 6H4v1a3 3 0 003 3M16 6h4v1a3 3 0 01-3 3M12 13v4M8 20h8',
   doc: 'M7 3h8l4 4v14H7zM15 3v4h4M10 12h6M10 16h6',

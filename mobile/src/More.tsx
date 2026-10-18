@@ -180,9 +180,9 @@ const ITEMS = [
   ['about', 'info', 'אודות האיגוד', 'מי אנחנו, טפסי הרשמה ואירועים'],
 ] as const;
 
-/** The "More" tab: the website's remaining sections (leagues, regulations, clubs, statistics). */
-export function More() {
-  const [page, setPage] = useState<string | null>(null);
+/** The website's remaining sections (leagues, regulations, clubs, statistics, about); the menu opens one of them directly. */
+export function More({ initial }: { initial?: string }) {
+  const [page, setPage] = useState<string | null>(initial ?? null);
   const back = () => setPage(null);
   if (page === 'leagues') return <Leagues onBack={back} />;
   if (page === 'regs') return <Regulations onBack={back} />;

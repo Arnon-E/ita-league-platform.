@@ -52,7 +52,8 @@ export const removePlayer = (id: string) => call<{ deleted: boolean }>(`/players
 export const addPlayer = (p: { first: string; last: string; birth: string; gender: 'MALE' | 'FEMALE'; forChild: boolean }) => call<{ id: string; linkedExisting?: boolean; pending?: boolean }>('/players', { method: 'POST', body: JSON.stringify(p) });
 
 export type Match = { id: string; categoryId: string; stage: string; round: number; status: string; a: { id: string | null; name: string | null }; b: { id: string | null; name: string | null }; court: string | null; start: string | null; sets: { a: number; b: number }[]; winnerEntryId?: string | null };
-export const tournaments = () => call<{ id: string; name: string; status: string; level: string; section: string; startDate: string; endDate: string; registrationCloses: string | null; relevant?: boolean }[]>('/tournaments');
+export type TournamentRow = { id: string; name: string; status: string; level: string; section: string; startDate: string; endDate: string; registrationCloses: string | null; relevant?: boolean };
+export const tournaments = () => call<TournamentRow[]>('/tournaments');
 export type Cat = { id: string; name: string; gender: 'MALE' | 'FEMALE' | 'OPEN'; minBirthYear: number | null; maxBirthYear: number | null };
 export type Participant = { categoryId: string; id: string; name: string; club: string | null; photo: string | null; fromLoglig: boolean };
 export const tournament = (id: string) => call<{ tournament: { name: string; status: string; startDate: string; endDate: string; registrationCloses: string | null; registerUrl: string | null }; categories: Cat[]; matches: Match[]; participants?: Participant[] }>(`/tournaments/${id}`);
