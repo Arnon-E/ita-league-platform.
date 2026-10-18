@@ -195,7 +195,7 @@ header.top .burger{display:none}
 .sb .set{text-align:center;min-width:2.2em;font-family:var(--display);font-variant-numeric:tabular-nums;direction:ltr;font-size:17px}
 .sb .set.sw{font-weight:800}
 .sb .sbf{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:8px 8px 0;font-size:13px}
-.sb .who{display:flex;align-items:center}.sb .names{display:flex;flex-direction:column;min-width:0}
+.sb .whoin{display:flex;align-items:center}.sb .names{display:flex;flex-direction:column;min-width:0}
 .sb tr.mine .who{color:var(--text)}.sb tr.mine.lost .who{font-weight:600}
 .sb .sbf .when{margin-inline-start:auto;font-variant-numeric:tabular-nums}
 a.sbcard{display:block;padding:14px 16px;margin-bottom:8px}
