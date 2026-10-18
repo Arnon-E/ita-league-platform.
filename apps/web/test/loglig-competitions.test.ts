@@ -172,6 +172,26 @@ describe('loglig competition mirror', () => {
     expect((await db.select().from(schema.tournaments).where(eq(schema.tournaments.name, 'אליפות ישראל לנוער'))).length).toBe(1);
   });
 
+  it('a placement match retired at a tied score is left undecided, never given to whoever played a later main-draw match', async () => {
+    const doc = validateCompetitionImport({
+      kind: 'competition', name: 'אליפות מקום שלישי 2026', start: '2026-10-01', end: '2026-10-03', feeShekel: 0, level: 'NATIONAL', venues: [],
+      categories: [{ name: 'בנים 12', source: '5', gender: 'MALE', age: 12, format: 'KNOCKOUT', matches: [
+        m({ round: 1, place: 1, a: p('אור ראשון'), b: p('ליאם שני'), sets: [{ a: 6, b: 1 }, { a: 6, b: 1 }] }),
+        m({ round: 1, place: 1, a: p('רון שלישי'), b: p('דני רביעי'), sets: [{ a: 6, b: 2 }, { a: 6, b: 2 }] }),
+        m({ round: 2, place: 1, a: p('אור ראשון'), b: p('רון שלישי'), sets: [{ a: 6, b: 4 }, { a: 6, b: 4 }] }),
+        // third place, stopped at 6-6 when one of them retired; neither plays again
+        m({ round: 2, place: 3, a: p('ליאם שני'), b: p('דני רביעי'), sets: [{ a: 6, b: 6 }], retired: true }),
+      ] }],
+    });
+    const r = await importCompetition(db, doc, new Date('2026-10-10'));
+    expect(r.unresolved).toBe(1);
+    const [t] = await db.select().from(schema.tournaments).where(eq(schema.tournaments.name, 'אליפות מקום שלישי 2026'));
+    const [c] = await db.select().from(schema.categories).where(eq(schema.categories.tournamentId, t!.id));
+    const ms = await db.select().from(schema.matches).where(eq(schema.matches.categoryId, c!.id));
+    expect(ms.filter((x) => x.status === 'VOID').length).toBe(1);
+    expect(ms.filter((x) => x.status === 'VOID')[0]!.winnerEntryId).toBeNull();
+  });
+
   it('boys/girls categories named נערים / נערות / ילדים reuse the ranked player instead of creating an OPEN twin', async () => {
     await importRankings(db, { gender: 'MALE', rows: [{ rank: 1, name: 'עומר תאום', birthYear: 2010, club: 'מועדון א', national: 10, international: 0, total: 10 }] });
     await importRankings(db, { gender: 'FEMALE', rows: [{ rank: 1, name: 'רוני תאומה', birthYear: 2010, club: 'מועדון א', national: 10, international: 0, total: 10 }] });

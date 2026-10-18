@@ -197,12 +197,16 @@ async function mergeAppCompetitions(docs) {
       }
       if (doc) {
         doc.section = a.section;
-        // add the app's draws to the competition page's: per category, the version with more matches; never fewer than before
+        // add the app's draws to the competition page's, one category per Loglig draw page (`source`; the two sites label the same
+        // draw differently, "בנים 12 · בית הגמר" / "בנים 12"): the version with more matches wins, the app's on a tie; never fewer than before
         let changed = false;
         for (const cat of cats) {
-          const i = doc.categories.findIndex((x) => x.name === cat.name);
-          if (i < 0) { doc.categories.push(cat); changed = true; } else if (cat.matches.length > doc.categories[i].matches.length) { doc.categories[i] = cat; changed = true; }
+          let i = doc.categories.findIndex((x) => x.source && x.source === cat.source);
+          if (i < 0) i = doc.categories.findIndex((x) => x.name === cat.name);
+          if (i < 0) { doc.categories.push(cat); changed = true; } else if (cat.matches.length >= doc.categories[i].matches.length) { doc.categories[i] = cat; changed = true; }
         }
+        // a name now used twice (two draw pages): keep the larger
+        doc.categories = doc.categories.filter((x, k, all) => !all.some((y, j) => j !== k && y.name === x.name && (y.matches.length > x.matches.length || (y.matches.length === x.matches.length && j < k))));
         if (changed) { doc.categories = doc.categories.filter((x) => x.matches.length || !doc.categories.some((y) => y.matches.length)); enriched++; }
         continue;
       }

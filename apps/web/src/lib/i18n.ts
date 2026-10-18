@@ -84,7 +84,7 @@ const EN: Record<string, string> = {
   'שלב': 'Stage',
   'מגרש / שעה': 'Court / time',
   'פרטים': 'Details',
-  'בית': 'Home', 'שלב הבתים': 'Group stage',
+  'בית': 'Home', 'שלב הבתים': 'Group stage', 'ללא הכרעה': 'Undecided',
   'מחזור': 'Round',
   'הדחה': 'Knockout',
   'סטטוס': 'Status',

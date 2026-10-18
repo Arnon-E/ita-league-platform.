@@ -68,7 +68,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
               <tr key={m.id}>
                 <td>{catOf.get(m.categoryId)?.t.name}</td>
                 <td><Link href={`/matches/${m.id}`}>{names.get(m.aEntryId!)} – {names.get(m.bEntryId!)}</Link>{m.scheduledStart && m.status === 'SCHEDULED' ? <span className="muted"> · {fmtTime(m.scheduledStart)}</span> : null}</td>
-                <td>{m.status === 'SCHEDULED' ? <span className="pill warn">{t(MSTATUS[m.status] ?? m.status)}</span> : <span className={`pill ${won ? 'ok' : 'bad'}`}>{t(won ? 'ניצחון' : 'הפסד')} {fmtScore(m.sets as { a: number; b: number }[])}</span>}</td>
+                <td>{m.status === 'SCHEDULED' ? <span className="pill warn">{t(MSTATUS[m.status] ?? m.status)}</span> : !m.winnerEntryId ? <span className="pill">{t('ללא הכרעה')} {fmtScore(m.sets as { a: number; b: number }[])}</span> : <span className={`pill ${won ? 'ok' : 'bad'}`}>{t(won ? 'ניצחון' : 'הפסד')} {fmtScore(m.sets as { a: number; b: number }[])}</span>}</td>
               </tr>
             );
           })}
