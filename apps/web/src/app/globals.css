@@ -1,14 +1,14 @@
 /* ITA — "Volt Night" design system (2026).
-   Cool paper / near-black ground, an electric volt accent, ink buttons, large radii and floating glass chrome.
+   Cool paper / near-black ground, an electric volt accent, navy ink (the blue of the ITA logo) for buttons and dark cards, large radii and floating glass chrome.
    Surfaces are flat and bordered; only things that float (nav island, dock, menus) get blur and shadow.
    Class names are the contract with the pages. */
 :root{
   color-scheme:light dark;
-  --ink:#0C1210;--navy:#0C1210;--volt:#D2FF2E;--lime:#D2FF2E;--clay:#FF6A3D;
+  --ink:#0A1F44;--navy:#0A1F44;--volt:#D2FF2E;--lime:#D2FF2E;--clay:#FF6A3D;
   --blue:#2447F5;--blue2:#4A67FF;
   --bg:#EEF0EA;--surface:#FFFFFF;--surface2:#F5F6F1;--line:#E0E3DA;--line2:#C9CEC3;
   --text:#0E1512;--muted:#59655E;
-  --btn:#0E1512;--btn-text:#FFFFFF;--btn-hover:#27322C;
+  --btn:#13306E;--btn-text:#FFFFFF;--btn-hover:#1C3F8A;
   --ok:#0B7A43;--okbg:#DCF3E4;--warn:#8F4E00;--warnbg:#FCEFD3;--bad:#B3261E;--badbg:#FCE6E3;
   --shadow:0 1px 2px rgba(12,18,16,.04);--shadow-lg:0 2px 4px rgba(12,18,16,.05),0 24px 48px -12px rgba(12,18,16,.22);
   --glass:rgba(255,255,255,.72);--glass-line:rgba(12,18,16,.08);
@@ -72,7 +72,7 @@ a.card:active{transform:translateY(0) scale(.99)}
 
 /* hero: a dark court tile; court geometry in lines, a soft volt glow */
 .hero{border-radius:32px;padding:48px 44px;margin-bottom:12px;color:#fff;position:relative;overflow:hidden;isolation:isolate;
-  background:radial-gradient(520px 320px at 8% 0%,rgba(210,255,46,.16),transparent 70%),radial-gradient(600px 400px at 100% 100%,rgba(36,71,245,.35),transparent 70%),#0C1210;border:1px solid rgba(255,255,255,.07)}
+  background:radial-gradient(520px 320px at 8% 0%,rgba(210,255,46,.16),transparent 70%),radial-gradient(600px 400px at 100% 100%,rgba(36,71,245,.35),transparent 70%),var(--ink);border:1px solid rgba(255,255,255,.07)}
 .hero h1{font-size:clamp(38px,5.6vw,68px);font-weight:800;line-height:1;letter-spacing:-.045em;color:#fff;margin:0}
 .hero p{margin:16px 0 0;color:#AEBBB4;max-width:480px;font-size:17px;line-height:1.55}
 .hero>*:not(.court){position:relative;z-index:1}
@@ -109,7 +109,7 @@ input::placeholder,textarea::placeholder{color:var(--muted);opacity:.85}
 input:focus,select:focus,textarea:focus{outline:none;border-color:var(--blue2);box-shadow:0 0 0 4px color-mix(in srgb,var(--blue2) 22%,transparent)}
 label{display:flex;flex-direction:column;gap:6px;font-weight:600;font-size:14px}
 a:focus-visible,button:focus-visible,summary:focus-visible{outline:none;box-shadow:var(--ring)}
-.hero a:focus-visible,.hero button:focus-visible{box-shadow:0 0 0 2px #0C1210,0 0 0 4px var(--volt)}
+.hero a:focus-visible,.hero button:focus-visible{box-shadow:0 0 0 2px var(--ink),0 0 0 4px var(--volt)}
 
 /* tables */
 table{border-collapse:separate;border-spacing:0;width:100%}
@@ -331,7 +331,7 @@ td a:not(.btn):hover,p a:not(.btn):hover,.muted a:not(.btn):hover{color:var(--bl
 /* sign-in pages */
 main.auth{max-width:1180px;display:grid;grid-template-columns:1.1fr 1fr;gap:12px;min-height:100vh;padding:12px;animation:none}
 .authside{position:relative;overflow:hidden;isolation:isolate;display:flex;flex-direction:column;justify-content:space-between;gap:40px;padding:40px;border-radius:32px;color:#fff;
-  background:radial-gradient(520px 320px at 8% 0%,rgba(210,255,46,.16),transparent 70%),radial-gradient(600px 420px at 100% 100%,rgba(36,71,245,.35),transparent 70%),#0C1210}
+  background:radial-gradient(520px 320px at 8% 0%,rgba(210,255,46,.16),transparent 70%),radial-gradient(600px 420px at 100% 100%,rgba(36,71,245,.35),transparent 70%),var(--ink)}
 .authside>*:not(.court){position:relative;z-index:1}
 .authside .court{inset-block:auto 16%;inset-inline:6%;width:88%;opacity:.5;-webkit-mask-image:none;mask-image:none}
 .authside .brand{display:inline-flex;align-items:center;gap:10px;font-family:var(--display);font-weight:800;font-size:24px;letter-spacing:-.02em;color:#fff;width:fit-content}

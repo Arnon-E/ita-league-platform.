@@ -6,9 +6,9 @@ import { isRtl } from './i18n';
 
 /** "Volt Night" palette, mirrored from apps/web globals.css (light + dark). Picked once at launch from the phone's theme. */
 const light = {
-  ink: '#0C1210', volt: '#D2FF2E', blue: '#2447F5', blue2: '#4A67FF',
+  ink: '#0A1F44', volt: '#D2FF2E', blue: '#2447F5', blue2: '#4A67FF',
   bg: '#EEF0EA', surface: '#FFFFFF', surface2: '#F5F6F1', line: '#E0E3DA', line2: '#C9CEC3',
-  text: '#0E1512', muted: '#59655E', btn: '#0E1512', btnText: '#FFFFFF',
+  text: '#0E1512', muted: '#59655E', btn: '#13306E', btnText: '#FFFFFF',
   ok: '#0B7A43', okbg: '#DCF3E4', warn: '#8F4E00', warnbg: '#FCEFD3', bad: '#B3261E', badbg: '#FCE6E3',
   glass: 'rgba(255,255,255,0.97)', glassLine: 'rgba(12,18,16,0.08)', dark: false,
 };
