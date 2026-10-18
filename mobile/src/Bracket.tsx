@@ -71,7 +71,7 @@ const b = StyleSheet.create({
   empty: { height: 58, borderStyle: 'dashed', backgroundColor: 'transparent' },
   row: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 8, minHeight: 29 },
   rowB: { borderTopWidth: 1, borderColor: T.line },
-  me: { backgroundColor: 'rgba(210,255,46,0.32)' },
+  me: { backgroundColor: 'rgba(193,223,103,0.32)' },
   name: { flex: 1, color: T.text, fontSize: 12.5 },
   won: { fontWeight: '800' },
   sets: { flexDirection: 'row', gap: 4, direction: 'ltr' },

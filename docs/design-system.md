@@ -1,6 +1,6 @@
 # Design system ("Volt Night")
 
-The website and the app share one visual language: a cool paper ground (near-black in dark mode), an electric volt accent, navy
+The website and the app share one visual language: a cool paper ground (near-black in dark mode), a soft lime accent (`volt`, toned down from #D2FF2E in 2026-10), navy
 ink (the blue of the ITA logo, chosen over black in 2026-10) for buttons and dark cards, large radii, flat bordered surfaces, and floating glass chrome for the things that float (top bar, dock, menus).
 
 Sources of truth in code:
@@ -21,8 +21,8 @@ The team is on Figma's Starter plan, which allows 3 pages per file and one mode 
 `Color` collection (the components are bound to it) and the dark values are a second collection, `Color · Dark`, with the same
 names. Every color variable carries the CSS variable it mirrors as its web code syntax (`var(--surface)`).
 
-The Figma variables still hold the old black `ink` / `btn` (#0C1210 / #0E1512); update them to navy (#0A1F44 / #13306E) when
-Figma is available again. Status (2026-10-18): foundations and the atom and data components are built; the navigation components and the screens are
+The Figma file is not maintained (paused on 2026-10-18): it predates the navy and soft-lime colors, and the code is the source of
+truth. Status when paused: foundations and the atom and data components are built; the navigation components and the screens are
 still to do (the Starter plan's limit on Figma calls from Claude stopped the build).
 
 ## Tokens
@@ -33,8 +33,8 @@ still to do (the Starter plan's limit on Figma calls from Claude stopped the bui
 | `surface` / `surface2` | #FFFFFF / #F5F6F1 | #111715 / #171E1B | cards, inputs / secondary fills |
 | `line` / `line2` | #E0E3DA / #C9CEC3 | #222B27 / #33403A | borders, dividers / stronger borders, bracket lines |
 | `text` / `muted` | #0E1512 / #59655E | #EDF1EE / #8E9B94 | text |
-| `btn` / `btn-text` | #13306E / #FFFFFF | #D2FF2E / #0C1210 | primary button, selected chip, active dock tab |
-| `volt` / `ink` | #D2FF2E / #0A1F44 | same | accent (call to action, my player, open registration) / dark hero and featured cards |
+| `btn` / `btn-text` | #13306E / #FFFFFF | #C1DF67 / #0C1210 | primary button, selected chip, active dock tab |
+| `volt` / `ink` | #C1DF67 / #0A1F44 | same | accent (call to action, my player, open registration) / dark hero and featured cards |
 | `blue` / `blue2` | #2447F5 / #4A67FF | #8CA3FF / #A9BAFF | links, focus ring |
 | `ok`, `warn`, `bad` (+ `-bg`) | #0B7A43, #8F4E00, #B3261E | #5BD58F, #F5B452, #FF8A7E | win / pending / loss and their tinted pills |
 
