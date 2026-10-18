@@ -8,6 +8,7 @@ import { Platform } from 'react-native';
 import * as api from './src/api';
 import { More } from './src/More';
 import { MyHome } from './src/MyHome';
+import { Bracket } from './src/Bracket';
 import { useFonts } from 'expo-font';
 import { T, Icon, BallMark, CourtLines, FONTS } from './src/theme';
 import { LANGS, isRtl, lang, loadLang, locale, nextLang, setLang, startAlign, tr } from './src/i18n';
@@ -426,6 +427,7 @@ function Tournament({ id, onBack, onGoAccount }: { id: string; onBack: () => voi
   // a signed-in player or parent lands on their own category: gender, age group and category are chosen for them (they can change it)
   const [auto, setAuto] = useState(false);
   const [people, setPeople] = useState<api.HomePerson[]>([]); const [meId, setMeId] = useState(''); const [showInfo, setShowInfo] = useState(false);
+  const [asList, setAsList] = useState(false); // one category with a knockout draw shows as a tree; the list is a tap away
   // choose gender, age group and category for one of my players: the one they are entered in, else the youngest age group that fits
   const applyFor = (p: api.HomePerson) => {
     if (!d) return;
@@ -527,8 +529,23 @@ function Tournament({ id, onBack, onGoAccount }: { id: string; onBack: () => voi
           </View>
         );
       })()}
+      {(() => {
+        const ko = fcat ? (d?.matches ?? []).filter((m) => m.categoryId === fcat && m.stage === 'KO') : [];
+        if (!ko.length) return null;
+        return (
+          <View style={{ gap: 10 }}>
+            <View style={s.row}>
+              <Pressable style={[s.chip, !asList && s.chipOn]} onPress={() => setAsList(false)}><Text style={!asList ? s.chipOnT : s.b}>{tr('עץ התחרות')}</Text></Pressable>
+              <Pressable style={[s.chip, asList && s.chipOn]} onPress={() => setAsList(true)}><Text style={asList ? s.chipOnT : s.b}>{tr('רשימת משחקים')}</Text></Pressable>
+            </View>
+            {!asList && <Bracket matches={ko} me={people.find((x) => x.id === meId)?.name} onPress={api.canScore() ? (m) => { if (m.a.id && m.b.id) setScore(m); } : undefined} />}
+          </View>
+        );
+      })()}
       </View>}
         data={(d?.matches ?? []).filter((m) => {
+          // the tree already shows this category's knockout matches: the list keeps its group stage
+          if (fcat && !asList && m.stage === 'KO' && (d?.matches ?? []).some((x) => x.categoryId === fcat && x.stage === 'KO')) return false;
           if (fcat) return m.categoryId === fcat;
           if (!fg && !fage) return true;
           const c = d?.categories.find((x) => x.id === m.categoryId);

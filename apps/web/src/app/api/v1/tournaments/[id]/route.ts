@@ -13,7 +13,7 @@ export const GET = (_req: Request, ctx: { params: Promise<{ id: string }> }) => 
     participants: d.ents.filter((x) => x.e.status === 'CONFIRMED').map((x) => ({ categoryId: x.e.categoryId, id: x.p.id, name: `${x.p.firstName} ${x.p.lastName}`, club: x.club, photo: photoUrl(x.p.photo), fromLoglig: x.e.source === 'loglig' })),
     categories: d.cats.map((c) => ({ id: c.id, name: c.name, gender: c.gender, minBirthYear: c.minBirthYear, maxBirthYear: effectiveMaxBirthYear(c, d.t) })),
     matches: d.ms.map((m) => ({
-      id: m.id, categoryId: m.categoryId, stage: m.stage, round: m.round, status: m.status,
+      id: m.id, categoryId: m.categoryId, stage: m.stage, round: m.round, index: m.index, status: m.status,
       a: { id: m.aEntryId, name: nm(m.aEntryId) }, b: { id: m.bEntryId, name: nm(m.bEntryId) },
       sets: m.sets, winnerEntryId: m.winnerEntryId, court: m.courtLabel, start: m.scheduledStart, notBefore: m.notBefore,
     })),

@@ -229,6 +229,15 @@ const en: Record<string, string> = {
   'הפרופיל נוצר': 'The profile was created',
   'זה ילד/ה שלי (הורה נרשם עבור ילד)': 'This is my child (a parent registering a child)',
 
+  // tournament bracket
+  'עץ התחרות': 'Bracket',
+  'רשימת משחקים': 'Match list',
+  'גמר': 'Final',
+  'חצי גמר': 'Semi-final',
+  'רבע גמר': 'Quarter-final',
+  'שמינית גמר': 'Round of 16',
+  'סיבוב {n}': 'Round {n}',
+
   // results
   'ביטול ←': 'Cancel',
   'הזנת תוצאה': 'Enter result',
