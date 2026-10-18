@@ -194,8 +194,10 @@ async function mergeAppCompetitions(docs) {
         if (cats.length) { doc.categories = cats; enriched++; }
         continue;
       }
-      const all = cats.flatMap((c) => c.matches.map((m) => m.start)).sort();
+      // Loglig's empty date (01/01/1753) is not a date; an app-only competition that ended long ago is history, same as on the ita.co.il path
+      const all = cats.flatMap((c) => c.matches.map((m) => m.start)).filter((d) => d >= '2000').sort();
       if (!all.length) { console.log(`- app only, no dates yet: ${a.title}`); continue; }
+      if (daysAgo(all[all.length - 1].slice(0, 10)) > recentDays) continue;
       docs.push({
         kind: 'competition', name: a.title, start: all[0].slice(0, 10), end: all[all.length - 1].slice(0, 10), feeShekel: 0, level: appLevel(a.title), section: a.section,
         sourceUrl: '', registerUrl: '', registrationCloses: null, doubles: false, venues: [], categories: cats,

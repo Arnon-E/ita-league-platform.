@@ -25,7 +25,18 @@ export interface CompetitionIn {
 const MAX_MATCHES = 4000;
 const clean = (s: unknown, n = 160) => (typeof s === 'string' ? s.replace(/\s+/g, ' ').trim().slice(0, n) : '');
 const webUrl = (u: unknown) => (typeof u === 'string' && /^https:\/\/[^\s]{4,500}$/.test(u) ? u : '');
-const isDate = (s: unknown) => typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s) && !Number.isNaN(Date.parse(s));
+// Loglig shows an unset date as 01/01/1753 (the SQL Server minimum): never a real competition or match date
+const REAL_FROM = Date.parse('2000-01-01');
+const isDate = (s: unknown) => typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s) && Date.parse(s) >= REAL_FROM;
+/** Category names the federation uses for boys/girls besides בנים/בנות ("נערים ב'", "ילדות"): never an open category. */
+const genderOfName = (name: string): Gender | null => (/בנות|נשים|נערות|ילדות/.test(name) ? 'FEMALE' : /בנים|גברים|נערים|ילדים/.test(name) ? 'MALE' : null);
+/** The same event under the titles of ita.co.il and of the Loglig app ("אליפות ארצית קיץ 3 2026 ע"ש זייתוני" / "ארצית קיץ 3 2026 ע"ש זייתוני"). */
+const squeeze = (s: string) => s.replace(/מס[׳'’]?\.?\s/g, ' ').replace(/["'`׳״.,:\-–/]/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase();
+export function sameEvent(a: string, b: string) {
+  const x = squeeze(a), y = squeeze(b);
+  const [short, long] = x.length <= y.length ? [x, y] : [y, x];
+  return short.length >= 8 && ` ${long} `.includes(` ${short} `);
+}
 
 export function validateCompetitionImport(x: unknown): CompetitionIn {
   const b = x as Partial<CompetitionIn> | null;
@@ -44,7 +55,7 @@ export function validateCompetitionImport(x: unknown): CompetitionIn {
       matches.push({
         stage: m.stage === 'GROUP' ? 'GROUP' : 'KO', ...(m.group ? { group: clean(m.group, 40) } : {}),
         round: Math.max(1, Math.min(12, Number(m.round) || 1)), place: Math.max(1, Number(m.place) || 1), order: Number(m.order) || 0,
-        start: new Date(m.start).toISOString(), kind: m.kind === 'NB' ? 'NB' : m.kind === 'St' ? 'St' : '', venue: clean(m.venue, 120), done: !!m.done,
+        start: Date.parse(m.start) >= REAL_FROM ? new Date(m.start).toISOString() : `${b.start}T00:00:00.000Z`, kind: m.kind === 'NB' ? 'NB' : m.kind === 'St' ? 'St' : '', venue: clean(m.venue, 120), done: !!m.done,
         a: { name: an, club: clean(m.a.club, 120) }, b: { name: bn, club: clean(m.b.club, 120) },
         sets: (Array.isArray(m.sets) ? m.sets : []).slice(0, 5).map((s) => ({ a: Number(s.a) || 0, b: Number(s.b) || 0, ...(s.superTb ? { superTb: true } : {}) })),
         retired: !!m.retired, walkover: !!m.walkover,
@@ -52,7 +63,7 @@ export function validateCompetitionImport(x: unknown): CompetitionIn {
     }
     total += matches.length;
     cats.push({
-      name: cname, source: clean(c.source, 40), gender: c.gender === 'FEMALE' ? 'FEMALE' : c.gender === 'MALE' ? 'MALE' : 'OPEN',
+      name: cname, source: clean(c.source, 40), gender: c.gender === 'FEMALE' ? 'FEMALE' : c.gender === 'MALE' ? 'MALE' : genderOfName(cname) ?? 'OPEN',
       age: Number.isInteger(c.age) ? (c.age as number) : null, format: c.format === 'GROUPS_KNOCKOUT' ? 'GROUPS_KNOCKOUT' : 'KNOCKOUT', matches,
     });
   }
@@ -98,7 +109,13 @@ export async function importCompetition(db: Db, input: CompetitionIn, now = new 
       const [found] = await tx.select().from(schema.venues).where(eq(schema.venues.name, v.club));
       venueId = found?.id ?? (await tx.insert(schema.venues).values({ name: v.club, city: v.address || null }).returning())[0]!.id;
     }
-    const [existing] = await tx.select().from(schema.tournaments).where(and(eq(schema.tournaments.name, input.name), eq(schema.tournaments.startDate, start)));
+    // the same event: same name and start, else the same event under the other site's title on overlapping dates
+    // (or an older import that took Loglig's empty 1753 date as its start); the existing name is kept
+    const day = 864e5;
+    const near = await tx.select().from(schema.tournaments).where(sql`(${schema.tournaments.startDate} <= ${new Date(end.getTime() + day).toISOString()}::timestamptz and ${schema.tournaments.endDate} >= ${new Date(start.getTime() - day).toISOString()}::timestamptz)
+      or (${schema.tournaments.name} = ${input.name} and ${schema.tournaments.startDate} < ${new Date(REAL_FROM).toISOString()}::timestamptz)`);
+    const existing = near.find((t) => t.name === input.name && +t.startDate === +start)
+      ?? near.filter((t) => t.name === input.name || sameEvent(t.name, input.name)).sort((x, y) => Number(!!y.sourceUrl) - Number(!!x.sourceUrl))[0];
     const fields = {
       endDate: end, status: status as 'FINISHED', level: input.level, section: input.section ?? 'YOUTH', feeAgorot: Math.round(input.feeShekel * 100), venueId,
       sourceUrl: input.sourceUrl || null, registerUrl: input.registerUrl || null, registrationCloses: closes,
@@ -106,7 +123,7 @@ export async function importCompetition(db: Db, input: CompetitionIn, now = new 
     let tid: string;
     if (input.resultsOnly && !existing) { stats.skipped = true; return; }
     if (existing && input.resultsOnly) { tid = existing.id; if (drawn) await tx.update(schema.tournaments).set({ status: status as 'FINISHED' }).where(eq(schema.tournaments.id, tid)); }
-    else if (existing) { tid = existing.id; await tx.update(schema.tournaments).set(fields).where(eq(schema.tournaments.id, tid)); }
+    else if (existing) { tid = existing.id; await tx.update(schema.tournaments).set({ ...fields, ...(+existing.startDate < REAL_FROM ? { startDate: start } : {}) }).where(eq(schema.tournaments.id, tid)); }
     else {
       tid = (await tx.insert(schema.tournaments).values({
         name: input.name, startDate: start, ruleSetId: rule.id, format: input.categories.some((c) => c.format === 'GROUPS_KNOCKOUT') ? 'GROUPS_KNOCKOUT' : 'KNOCKOUT', ...fields,
@@ -131,17 +148,18 @@ export async function importCompetition(db: Db, input: CompetitionIn, now = new 
     const known = await tx.select({
       id: schema.players.id, key: schema.players.logligId, first: schema.players.firstName, last: schema.players.lastName,
       gender: schema.players.gender, birth: schema.players.birthDate,
-    }).from(schema.players).where(sql`${schema.players.logligId} like 'rk:%' or ${schema.players.logligId} like 'cp:%' or ${schema.players.logligId} like 'll:%'`);
+    }).from(schema.players).where(sql`${schema.players.logligId} like 'rk:%' or ${schema.players.logligId} like 'cp:%' or ${schema.players.logligId} like 'll:%' or ${schema.players.logligId} like 'lu:%'`);
     const byName = new Map<string, { id: string; by: number | null }[]>();
     for (const k of known) {
       const nm = `${k.first} ${k.last}`.replace(/\s+/g, ' ').trim();
-      const by = k.key?.startsWith('cp:') ? null : k.birth.getUTCFullYear(); // created-here players only have an estimated year
+      const by = k.key?.startsWith('cp:') || k.key?.startsWith('lu:') ? null : k.birth.getUTCFullYear(); // created-here and roster players only have an estimated year
       const list = byName.get(`${k.gender}|${nm}`) ?? [];
       list.push({ id: k.id, by });
       byName.set(`${k.gender}|${nm}`, list);
     }
     const pick = (gender: Gender, name: string, age: number | null) => {
-      const list = byName.get(`${gender}|${name}`);
+      // an open category ("A", "פתוח 30") is played by the boys and girls already known under their own gender
+      const list = gender === 'OPEN' ? (['MALE', 'FEMALE', 'OPEN'] as const).map((g) => byName.get(`${g}|${name}`)).find((l) => l?.length) : byName.get(`${gender}|${name}`);
       if (!list?.length) return null;
       if (list.length === 1 || age == null) return list[0]!.id;
       const ok = list.find((x) => x.by != null && year - x.by <= age);
@@ -301,7 +319,40 @@ export async function importCompetition(db: Db, input: CompetitionIn, now = new 
 export async function removeTournament(db: Db, name: string) {
   const found = await db.select().from(schema.tournaments).where(eq(schema.tournaments.name, name));
   if (!found.length) return { removed: 0 };
-  const ids = found.map((t) => t.id);
+  return removeTournamentIds(db, found.map((t) => t.id));
+}
+
+/**
+ * Repairs what older imports left behind: a competition stored twice under the titles of the two sites (only the copy refreshed
+ * last is kept: the other one shows every match twice, the older ones with the score the wrong way round), and players created
+ * by an import that no longer appear anywhere (boys and girls once stored a second time as an "open" player).
+ */
+export async function dedupeMirror(db: Db) {
+  const ts = (await db.execute(sql`
+    select t.id, t.name, t.start_date, t.end_date, t.source_url, max(d.published_at) as refreshed
+    from tournaments t left join categories c on c.tournament_id = t.id left join draws d on d.category_id = c.id
+    group by t.id`)) as unknown as { id: string; name: string; start_date: Date | string; end_date: Date | string; source_url: string | null; refreshed: Date | string | null }[];
+  const at = (x: Date | string | null) => (x ? new Date(x).getTime() : 0);
+  const newest = (x: (typeof ts)[number], y: (typeof ts)[number]) => at(y.refreshed) - at(x.refreshed) || Number(!!y.source_url) - Number(!!x.source_url);
+  const gone = new Set<string>();
+  for (const t of [...ts].sort(newest)) {
+    if (gone.has(t.id)) continue;
+    for (const o of ts) {
+      if (o.id === t.id || gone.has(o.id) || !sameEvent(o.name, t.name)) continue;
+      if (at(o.start_date) > at(t.end_date) + 864e5 || at(o.end_date) < at(t.start_date) - 864e5) continue;
+      gone.add(o.id);
+    }
+  }
+  let tournaments = 0;
+  for (const id of gone) { try { tournaments += (await removeTournamentIds(db, [id])).removed; } catch { /* has payments: left alone */ } }
+  const orphans = (await db.execute(sql`
+    select p.id from players p where p.loglig_id like 'cp:%' and p.account_id is null
+      and not exists (select 1 from entries e where e.player_id = p.id) and not exists (select 1 from guardians g where g.player_id = p.id)`)) as unknown as { id: string }[];
+  const players = (await deletePlayersById(db, orphans.map((r) => r.id))).players;
+  return { tournaments, players };
+}
+
+async function removeTournamentIds(db: Db, ids: string[]) {
   const paid = await db.execute(sql`
     select count(*)::int as n from payments p join entries e on e.id = p.entry_id join categories c on c.id = e.category_id
     where c.tournament_id in (select jsonb_array_elements_text(${JSON.stringify(ids)}::jsonb)) and p.status <> 'UNPAID'`);

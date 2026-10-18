@@ -1,8 +1,8 @@
 import { beforeAll, describe, expect, it } from 'vitest';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { db, schema } from '@/db';
 import { resetDb } from './helpers';
-import { importCompetition, removeTournament, validateCompetitionImport } from '@/services/loglig-competitions';
+import { dedupeMirror, importCompetition, removeTournament, validateCompetitionImport } from '@/services/loglig-competitions';
 import { importRankings } from '@/services/loglig-rankings';
 import { groupStandings } from '@/services/results';
 
@@ -142,6 +142,59 @@ describe('loglig competition mirror', () => {
     const [tn] = await db.select().from(schema.tournaments).where(eq(schema.tournaments.name, 'אליפות כפילות'));
     const cats = await db.select().from(schema.categories).where(eq(schema.categories.tournamentId, tn!.id));
     expect(cats.map((c) => c.name)).toEqual(['בנים 12']);
+  });
+
+  it('one competition listed under two titles (ita.co.il "אליפות ארצית ...", the Loglig app "ארצית ...") stays one tournament', async () => {
+    const mk = (name: string, sets: { a: number; b: number }[]) => validateCompetitionImport({
+      kind: 'competition', name, start: '2026-08-14', end: '2026-08-20', feeShekel: 0, level: 'NATIONAL', venues: [],
+      categories: [{ name: 'בנים 12', source: '7', gender: 'MALE', age: 12, format: 'KNOCKOUT', matches: [m({ start: '2026-08-17T07:00:00.000Z', a: p('דני ארזי'), b: p('איתי בול'), sets })] }],
+    });
+    await importCompetition(db, mk('אליפות ארצית קיץ 9 2026 ע"ש בדיקה', [{ a: 6, b: 3 }, { a: 6, b: 0 }]), new Date('2026-10-10'));
+    await importCompetition(db, mk('ארצית קיץ 9 2026 ע"ש בדיקה', [{ a: 3, b: 6 }, { a: 0, b: 6 }]), new Date('2026-10-10'));
+    const ts = await db.select().from(schema.tournaments).where(sql`${schema.tournaments.name} like '%קיץ 9 2026%'`);
+    expect(ts.map((t) => t.name)).toEqual(['אליפות ארצית קיץ 9 2026 ע"ש בדיקה']);
+    const ms = await db.select().from(schema.matches).innerJoin(schema.categories, eq(schema.categories.id, schema.matches.categoryId)).where(eq(schema.categories.tournamentId, ts[0]!.id));
+    expect(ms.map((x) => x.matches.sets)).toEqual([[{ a: 3, b: 6 }, { a: 0, b: 6 }]]); // the latest import wins
+    // a different event with overlapping dates is not merged
+    await importCompetition(db, mk('אזורית קיץ 9 2026', [{ a: 6, b: 1 }, { a: 6, b: 1 }]), new Date('2026-10-10'));
+    expect((await db.select().from(schema.tournaments).where(sql`${schema.tournaments.name} like '%קיץ 9 2026%'`)).length).toBe(2);
+  });
+
+  it('boys/girls categories named נערים / נערות / ילדים reuse the ranked player instead of creating an OPEN twin', async () => {
+    await importRankings(db, { gender: 'MALE', rows: [{ rank: 1, name: 'עומר תאום', birthYear: 2010, club: 'מועדון א', national: 10, international: 0, total: 10 }] });
+    await importRankings(db, { gender: 'FEMALE', rows: [{ rank: 1, name: 'רוני תאומה', birthYear: 2010, club: 'מועדון א', national: 10, international: 0, total: 10 }] });
+    await importCompetition(db, validateCompetitionImport({
+      kind: 'competition', name: 'סבב מגדר', start: '2025-06-01', end: '2025-06-02', feeShekel: 0, level: 'NATIONAL', venues: [],
+      categories: [
+        { name: "נערים ב'", source: '1', gender: 'OPEN', age: null, format: 'KNOCKOUT', matches: [m({ start: '2025-06-01T07:00:00.000Z', a: p('עומר תאום'), b: p('זר חדש'), sets: [{ a: 6, b: 1 }, { a: 6, b: 1 }] })] },
+        { name: 'A', source: '2', gender: 'OPEN', age: null, format: 'KNOCKOUT', matches: [m({ start: '2025-06-01T07:00:00.000Z', a: p('רוני תאומה'), b: p('זרה חדשה'), sets: [{ a: 6, b: 1 }, { a: 6, b: 1 }] })] },
+      ],
+    }), new Date('2026-10-10'));
+    expect((await db.select().from(schema.players).where(eq(schema.players.firstName, 'עומר'))).map((x) => x.gender)).toEqual(['MALE']);
+    expect((await db.select().from(schema.players).where(eq(schema.players.firstName, 'רוני'))).map((x) => x.gender)).toEqual(['FEMALE']);
+    expect((await db.select().from(schema.categories).where(eq(schema.categories.name, "נערים ב'")))[0]!.gender).toBe('MALE');
+  });
+
+  it("Loglig's empty date (1753) never becomes a match date", () => {
+    const v = validateCompetitionImport({
+      kind: 'competition', name: 'סבב תאריך', start: '2023-07-03', end: '2023-07-05', feeShekel: 0, level: 'CIRCUIT', venues: [],
+      categories: [{ name: 'בנים 10', source: '1', gender: 'MALE', age: 10, format: 'KNOCKOUT', matches: [m({ start: '1753-01-01T00:00:00.000Z', a: p('א ב'), b: p('ג ד') })] }],
+    });
+    expect(v.categories[0]!.matches[0]!.start).toBe('2023-07-03T00:00:00.000Z');
+    expect(() => validateCompetitionImport({ kind: 'competition', name: 'x', start: '1753-01-01', end: '2023-07-05', categories: [] })).toThrow();
+  });
+
+  it('cleanup removes stale copies of a competition and players left without any history', async () => {
+    const rule = (await db.select().from(schema.ruleSets))[0]!;
+    // a copy left by an older import under another title, plus an orphaned OPEN twin
+    const [old] = await db.insert(schema.tournaments).values({ name: 'ארצית קיץ 9 2026', startDate: new Date('2026-08-14T00:00:00Z'), endDate: new Date('2026-08-20T23:59:59Z'), ruleSetId: rule.id, status: 'FINISHED' }).returning();
+    await db.insert(schema.players).values({ firstName: 'עומר', lastName: 'תאום', birthDate: new Date('2012-07-01'), gender: 'OPEN', logligId: 'cp:OPEN:עומר תאום' });
+    const res = await dedupeMirror(db);
+    expect(res.tournaments).toBeGreaterThanOrEqual(1);
+    expect((await db.select().from(schema.tournaments).where(eq(schema.tournaments.id, old!.id))).length).toBe(0);
+    expect((await db.select().from(schema.tournaments).where(eq(schema.tournaments.name, 'אליפות ארצית קיץ 9 2026 ע"ש בדיקה'))).length).toBe(1);
+    expect((await db.select().from(schema.players).where(eq(schema.players.firstName, 'עומר'))).map((x) => x.gender)).toEqual(['MALE']);
+    expect((await db.select().from(schema.players).where(eq(schema.players.lastName, 'ארזי'))).length).toBe(1); // players with matches stay
   });
 
   it('a results-only refresh updates matches but leaves the tournament details alone, and skips unknown tournaments', async () => {

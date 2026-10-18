@@ -136,8 +136,8 @@ export function parsePlayer(cell) {
 }
 
 export function genderOf(categoryName) {
-  if (/בנות|נשים/.test(categoryName)) return 'FEMALE';
-  if (/בנים|גברים/.test(categoryName)) return 'MALE';
+  if (/בנות|נשים|נערות|ילדות/.test(categoryName)) return 'FEMALE';
+  if (/בנים|גברים|נערים|ילדים/.test(categoryName)) return 'MALE';
   return 'OPEN';
 }
 export const ageOf = (categoryName) => { const m = categoryName.match(/(\d{2})/); return m ? Number(m[1]) : null; };
