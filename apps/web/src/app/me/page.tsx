@@ -12,6 +12,7 @@ import { childLoginName, isChildActor } from '@/services/children';
 import { ineligibleReason } from '@/services/eligibility';
 import { claimPlayerAction } from '@/app/actions9';
 import { tr } from '@/lib/i18n';
+import { AddPlayerForm } from '@/components/AddPlayerForm';
 
 const DOC: Record<string, string> = { ID_PHOTO: 'תמונת ת״ז', PARENT_CONSENT: 'אישור הורים', MEDICAL_CERTIFICATE: 'אישור רפואי', OTHER: 'אחר' };
 const DS: Record<string, string> = { PENDING: 'ממתין לאישור', APPROVED: 'אושר', REJECTED: 'נדחה', EXPIRED: 'פג תוקף' };
@@ -141,25 +142,12 @@ export default async function Me({ searchParams }: { searchParams: Promise<{ err
       {!isChild && (<>
       <h2 id="add-player">{ps.length ? t('הוספת שחקן או ילד נוסף') : t('הוספת שחקן')}</h2>
       {ps.length === 0 && <p className="muted" style={{ margin: '0 0 8px' }}>{t('כדי להירשם לתחרות צריך קודם פרופיל שחקן: שלכם, או של ילד/ה שאתם מלווים. התעודה נשמרת מוצפנת.')}</p>}
-      <form action={addPlayerAction} className="card fform">
-        <label>{t('שם פרטי')}<input name="first" required /></label><label>{t('שם משפחה')}<input name="last" required /></label>
-        <label>{t('תאריך לידה')}<input name="birth" type="date" required /></label>
-        <label>{t('מין')}<select name="gender"><option value="MALE">{t('זכר')}</option><option value="FEMALE">{t('נקבה')}</option></select></label>
-        <label className="full">{t('ת״ז (נשמר כמזהה מוצפן בלבד)')}<input name="nid" inputMode="numeric" /></label>
-        <label className="chk full"><input type="checkbox" name="child" value="1" defaultChecked={who === 'child'} /> {t('זה ילד/ה שלי')}</label>
-        <button className="btn full">{t('הוספה')}</button>
-      </form>
-      <h2 id="claim-player">{t('אני כבר רשום באיגוד')}</h2>
-      <p className="muted" style={{ margin: '0 0 8px' }}>{t('אם אתם או ילדכם כבר מופיעים במערכת (למשל מתחרויות קודמות), שייכו את הפרופיל הקיים לחשבון. עם ת״ז ותאריך לידה תואמים השיוך מיידי, אחרת הבקשה עוברת לאישור האיגוד.')}</p>
-      {pendingClaims.map((c) => <div key={c.id} className="card row"><strong>{c.firstName} {c.lastName}</strong><span className="pill warn">{t('ממתין לאישור האיגוד')}</span></div>)}
-      <form action={claimPlayerAction} className="card fform">
-        <label>{t('שם פרטי')}<input name="first" required /></label><label>{t('שם משפחה')}<input name="last" required /></label>
-        <label>{t('תאריך לידה')}<input name="birth" type="date" required /></label>
-        <label className="full">{t('ת״ז (נשמר כמזהה מוצפן בלבד)')}<input name="nid" inputMode="numeric" /></label>
-        <label className="full">{t('הערה לאיגוד')}<input name="reason" /></label>
-        <label className="chk full"><input type="checkbox" name="child" value="1" /> {t('זה ילד/ה שלי')}</label>
-        <button className="btn full">{t('שיוך שחקן קיים')}</button>
-      </form>
+      {pendingClaims.map((c) => <div key={c.id} className="card row" style={{ marginBottom: 10 }}><strong>{c.firstName} {c.lastName}</strong><span className="pill warn">{t('ממתין לאישור האיגוד')}</span></div>)}
+      <AddPlayerForm addAction={addPlayerAction} claimAction={claimPlayerAction} child={who === 'child'} l={{
+        newP: t('שחקן חדש'), existing: t('אני כבר רשום באיגוד'), first: t('שם פרטי'), last: t('שם משפחה'), birth: t('תאריך לידה'), gender: t('מין'),
+        male: t('זכר'), female: t('נקבה'), nid: t('ת״ז (נשמר כמזהה מוצפן בלבד)'), reason: t('הערה לאיגוד'), mine: t('זה ילד/ה שלי'), add: t('הוספה'), claim: t('שיוך שחקן קיים'),
+        hint: t('אם אתם או ילדכם כבר מופיעים במערכת (למשל מתחרויות קודמות), שייכו את הפרופיל הקיים לחשבון. עם ת״ז ותאריך לידה תואמים השיוך מיידי, אחרת הבקשה עוברת לאישור האיגוד.'),
+      }} />
       </>)}
       <form action="/logout?all=1" method="post" style={{ marginTop: 24 }}>
         <button className="btn ghost small">{t('התנתקות מכל המכשירים')}</button>
