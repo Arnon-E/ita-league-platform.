@@ -71,6 +71,7 @@ function Login({ onDone }: { onDone: (signedUp: boolean) => void }) {
       <TextInput style={[s.input, startAlign()]} placeholder={mode === 'signup' ? tr('סיסמה (10 תווים, אותיות וספרות)') : tr('סיסמה')} placeholderTextColor={T.muted} secureTextEntry value={pw} onChangeText={setPw} />
       <Pressable style={[s.chip, { alignSelf: 'flex-start' }, remember && s.chipOn]} onPress={() => setRemember(!remember)}><Text style={remember ? s.chipOnT : s.b}>{remember ? '✓ ' : ''}{tr('השאר אותי מחובר')}</Text></Pressable>
       <Pressable style={[s.btn, busy && { opacity: 0.6 }]} disabled={busy} onPress={submit}><Text style={s.btnT}>{mode === 'login' ? tr('כניסה') : tr('יצירת חשבון')}</Text></Pressable>
+      {mode === 'login' && <Pressable style={s.link} onPress={() => Linking.openURL(api.webUrl('/forgot'))}><Text style={s.linkT}>{tr('שכחתי סיסמה')}</Text></Pressable>}
       <Pressable style={s.link} onPress={() => { setErr(''); setMode(mode === 'login' ? 'signup' : 'login'); }}><Text style={s.linkT}>{mode === 'login' ? tr('אין חשבון? הרשמה') : tr('כבר רשומים? כניסה')}</Text></Pressable>
     </ScrollView>
   );
@@ -206,6 +207,7 @@ function TournamentList({ onOpen, authed, onGoAccount, go }: { onOpen: (id: stri
   const { data, err, busy, reload } = useLoad(api.tournaments);
   const [level, setLevel] = useState('');
   const [sec, setSec] = useState('');
+  const [season, setSeason] = useState('');
   const [st, setSt] = useState('up');
   const [q, setQ] = useState('');
   const [more, setMore] = useState(false);
@@ -216,7 +218,7 @@ function TournamentList({ onOpen, authed, onGoAccount, go }: { onOpen: (id: stri
   const dm = (iso: string) => new Date(iso).toLocaleDateString(locale(), { day: 'numeric', month: 'short' });
   const shown = [...(data ?? [])]
     .sort((a, b) => rank(a) - rank(b) || (rank(a) === 3 ? +new Date(b.startDate) - +new Date(a.startDate) : +new Date(a.startDate) - +new Date(b.startDate)))
-    .filter((x) => (!mineOnly || !!q.trim() || !!level || !!sec || x.relevant !== false) && (!q.trim() || x.name.includes(q.trim())) && (!level || x.level === level) && (!sec || x.section === sec)
+    .filter((x) => (!mineOnly || !!q.trim() || !!level || !!sec || !!season || x.relevant !== false) && (!season || String(new Date(x.startDate).getFullYear()) === season) && (!q.trim() || x.name.includes(q.trim())) && (!level || x.level === level) && (!sec || x.section === sec)
       && (st === 'all' || (st === 'up' ? !isDone(x) : st === 'open' ? x.status === 'REGISTRATION_OPEN' : st === 'live' ? x.status === 'IN_PROGRESS' : isDone(x))));
   return (
       <FlatList style={s.pad} contentContainerStyle={{ paddingBottom: 100, gap: 10 }} ListHeaderComponent={<View style={{ gap: 10 }}>
@@ -236,7 +238,7 @@ function TournamentList({ onOpen, authed, onGoAccount, go }: { onOpen: (id: stri
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0, flexShrink: 0 }} contentContainerStyle={{ gap: 8 }}>
         {([['up', tr('קרובות')], ['open', tr('הרשמה פתוחה')], ['live', tr('מתקיימת')], ['done', tr('הסתיימה')], ['all', tr('הכול')]] as const).map(([k, l]) => <Pressable key={k} style={[s.chip, st === k && s.chipOn]} onPress={() => setSt(k)}><Text style={st === k ? s.chipOnT : s.b}>{l}</Text></Pressable>)}
         {(data ?? []).some((x) => x.relevant === false) && <Pressable style={[s.chip, mineOnly && s.chipOn]} onPress={() => setMineOnly(!mineOnly)}><Text style={mineOnly ? s.chipOnT : s.b}>{mineOnly ? tr('✓ מתאימות לי') : tr('מתאימות לי')}</Text></Pressable>}
-        <Pressable style={[s.chip, (more || !!level || !!sec) && s.chipOn]} onPress={() => setMore(!more)}><Text style={(more || !!level || !!sec) ? s.chipOnT : s.b}>{level || sec ? tr('סינון ·') : tr('סינון')}</Text></Pressable>
+        <Pressable style={[s.chip, (more || !!level || !!sec || !!season) && s.chipOn]} onPress={() => setMore(!more)}><Text style={(more || !!level || !!sec || !!season) ? s.chipOnT : s.b}>{level || sec || season ? tr('סינון ·') : tr('סינון')}</Text></Pressable>
       </ScrollView>
       {more && <>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0, flexShrink: 0, marginTop: 8 }} contentContainerStyle={{ gap: 8 }}>
@@ -244,6 +246,9 @@ function TournamentList({ onOpen, authed, onGoAccount, go }: { onOpen: (id: stri
         </ScrollView>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0, flexShrink: 0, marginTop: 8 }} contentContainerStyle={{ gap: 8 }}>
           {([['', tr('כל הקטגוריות')], ['YOUTH', tr('נוער')], ['ADULTS', tr('בוגרים')], ['MASTERS', tr('מאסטרס')], ['OTHER', tr('אחר')]] as const).map(([k, l]) => <Pressable key={k} style={[s.chip, sec === k && s.chipOn]} onPress={() => setSec(k)}><Text style={sec === k ? s.chipOnT : s.b}>{l}</Text></Pressable>)}
+        </ScrollView>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0, flexShrink: 0, marginTop: 8 }} contentContainerStyle={{ gap: 8 }}>
+          {[['', tr('כל העונות')], ...[...new Set((data ?? []).map((x) => new Date(x.startDate).getFullYear()))].filter((y) => y >= 2000).sort((a, b) => b - a).map((y) => [String(y), String(y)])].map(([k, l]) => <Pressable key={k} style={[s.chip, season === k && s.chipOn]} onPress={() => setSeason(k)}><Text style={season === k ? s.chipOnT : s.b}>{l}</Text></Pressable>)}
         </ScrollView>
       </>}
       <Status err={err} busy={busy} empty={!!data && !shown.length && tr('אין תחרויות לפי הסינון')} />
@@ -325,31 +330,38 @@ function PlayerCard({ p }: { p: api.PlayerRow }) {
         {!!line && <Text style={s.muted}>{line}</Text>}
         {!!p.club && <Text style={s.muted}>{p.club}</Text>}
       </View>
+      {p.rank != null && <Text style={s.num}>#{p.rank}</Text>}
     </View>
   );
 }
 
 function Players() {
   const [q, setQ] = useState('');
+  const [g, setG] = useState<'MALE' | 'FEMALE' | undefined>(undefined);
+  const [age, setAge] = useState<number | undefined>(undefined);
   const [rows, setRows] = useState<api.PlayerRow[]>([]);
   const [busy, setBusy] = useState(true); const [err, setErr] = useState(''); const [done, setDone] = useState(false);
   const PAGE = 50;
   useEffect(() => {
     let live = true;
     setBusy(true); setErr(''); setDone(false);
-    api.players(q, 0, PAGE).then((r) => { if (live) { setRows(r); setDone(r.length < PAGE); } }).catch((e) => live && setErr(e.message)).finally(() => live && setBusy(false));
+    api.players(q, 0, PAGE, { g, age }).then((r) => { if (live) { setRows(r); setDone(r.length < PAGE); } }).catch((e) => live && setErr(e.message)).finally(() => live && setBusy(false));
     return () => { live = false; };
-  }, [q]);
+  }, [q, g, age]);
   const more = () => {
     if (busy || done) return;
     setBusy(true);
-    api.players(q, rows.length, PAGE).then((r) => { setRows((x) => [...x, ...r]); setDone(r.length < PAGE); }).catch((e) => setErr(e.message)).finally(() => setBusy(false));
+    api.players(q, rows.length, PAGE, { g, age }).then((r) => { setRows((x) => [...x, ...r]); setDone(r.length < PAGE); }).catch((e) => setErr(e.message)).finally(() => setBusy(false));
   };
   const data = rows;
   return (
     <View style={s.pad}>
       <Text style={s.h1}>{tr('שחקנים')}</Text>
       <TextInput style={[s.input, startAlign()]} placeholder={tr('חיפוש שחקן לפי שם')} placeholderTextColor={T.muted} value={q} onChangeText={setQ} />
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0, flexShrink: 0 }} contentContainerStyle={{ gap: 8 }}>
+        {([[undefined, tr('בנים ובנות')], ['MALE', tr('בנים/גברים')], ['FEMALE', tr('בנות/נשים')]] as const).map(([k, l]) => <Pressable key={l} style={[s.chip, g === k && s.chipOn]} onPress={() => setG(k)}><Text style={g === k ? s.chipOnT : s.b}>{l}</Text></Pressable>)}
+        {([[undefined, tr('כל הגילאים')], [12, tr('עד 12')], [14, tr('עד 14')], [16, tr('עד 16')], [18, tr('עד 18')]] as const).map(([k, l]) => <Pressable key={l} style={[s.chip, age === k && s.chipOn]} onPress={() => setAge(k)}><Text style={age === k ? s.chipOnT : s.b}>{l}</Text></Pressable>)}
+      </ScrollView>
       <Status err={err} busy={busy} empty={!!data && !data.length && tr('לא נמצאו שחקנים')} />
       <FlatList contentContainerStyle={{ paddingBottom: 100 }} data={data} keyExtractor={(p) => p.id} onEndReached={more} onEndReachedThreshold={0.6} renderItem={({ item }) => <PlayerCard p={item} />} />
     </View>
@@ -369,6 +381,8 @@ function Search({ initial, onOpen }: { initial: string; onOpen: (id: string) => 
   const [q, setQ] = useState(initial);
   const [show, setShow] = useState('');
   const ts = useLoad(api.tournaments); const cl = useLoad(api.clubs);
+  const [mine, setMine] = useState<Set<string>>(new Set());
+  useEffect(() => { api.me().then((m) => setMine(new Set(m.entries.map((e) => e.tournament)))).catch(() => {}); }, []);
   const [ps, setPs] = useState<api.PlayerRow[]>([]);
   const term = q.trim();
   useEffect(() => {
@@ -377,7 +391,8 @@ function Search({ initial, onOpen }: { initial: string; onOpen: (id: string) => 
     const h = setTimeout(() => api.players(term, 0, 20).then((r) => live && setPs(r)).catch(() => {}), 250);
     return () => { live = false; clearTimeout(h); };
   }, [term]);
-  const sc = SHORTCUTS.find((x) => x[0] === show);
+  const shortcuts = mine.size ? [...SHORTCUTS, ['mine', 'התחרויות שלי', 'של השחקנים בחשבון', (x: api.TournamentRow) => mine.has(x.name), -1] as (typeof SHORTCUTS)[number]] : SHORTCUTS;
+  const sc = shortcuts.find((x) => x[0] === show);
   const tours = term ? (ts.data ?? []).filter((x) => x.name.includes(term)).slice(0, 20)
     : sc ? (ts.data ?? []).filter(sc[3]).sort((a, b) => sc[4] * (+new Date(a.startDate) - +new Date(b.startDate))).slice(0, 60) : [];
   const clubs = term ? (cl.data ?? []).filter((c) => c.name.includes(term)).slice(0, 20) : [];
@@ -387,7 +402,7 @@ function Search({ initial, onOpen }: { initial: string; onOpen: (id: string) => 
       <Text style={s.h1}>{tr('חיפוש')}</Text>
       <TextInput style={[s.input, startAlign()]} placeholder={tr('שם שחקן, מועדון או תחרות')} placeholderTextColor={T.muted} value={q} onChangeText={setQ} autoFocus={!initial} returnKeyType="search" />
       {!term && <View style={{ gap: 8 }}>
-        {SHORTCUTS.map(([k, l, hint]) => <Pressable key={k} style={({ pressed }) => [s.card, show === k && s.cardOn, pressed && s.pressed]} onPress={() => setShow(show === k ? '' : k)}><Text style={s.b}>{tr(l)}</Text><Text style={s.muted}>{tr(hint)}</Text></Pressable>)}
+        {shortcuts.map(([k, l, hint]) => <Pressable key={k} style={({ pressed }) => [s.card, show === k && s.cardOn, pressed && s.pressed]} onPress={() => setShow(show === k ? '' : k)}><Text style={s.b}>{tr(l)}</Text><Text style={s.muted}>{tr(hint)}</Text></Pressable>)}
       </View>}
       <Status err={ts.err} busy={ts.busy && (!!term || !!sc)} empty={!!term && !ts.busy && !cl.busy && !tours.length && !clubs.length && !ps.length && tr('לא נמצא דבר')} />
       {!!ps.length && <><Text style={s.h2}>{tr('שחקנים')}</Text>{ps.map((p) => <PlayerCard key={p.id} p={p} />)}</>}

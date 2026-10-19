@@ -5,6 +5,7 @@
 const en: Record<string, string> = {
   // navigation
   'בית': 'Home',
+  'שכחתי סיסמה': 'Forgot password', 'כל העונות': 'All seasons', 'של השחקנים בחשבון': 'Of the players on the account', 
   'בן': 'Boy', 'בת': 'Girl', 'גבר': 'Man', 'אישה': 'Woman', 'גיל': 'Age',
   'עוד משחקים קרובים': 'More upcoming matches', 'עוד תוצאות': 'More results',
   'ת״ז (אופציונלי, נשמר מוצפן. מזרז שיוך שחקן קיים)': 'National ID (optional, stored encrypted; speeds up linking an existing player)',
