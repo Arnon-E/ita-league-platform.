@@ -5,6 +5,7 @@
 const en: Record<string, string> = {
   // navigation
   'בית': 'Home',
+  'שחקן': 'Player', 'מועדון': 'Club', 'משחק': 'Match', 'כדי לעקוב יש להתחבר בלשונית חשבון.': 'Sign in on the account tab to follow.', '✓ עוקב/ת': '✓ Following', '+ מעקב': '+ Follow', 'נקודות דירוג': 'Ranking points', 'ניצחונות / הפסדים': 'Wins / losses', 'משחקים אחרונים': 'Latest matches', 'טרם השתתף בתחרויות.': 'Has not played any tournament yet.', 'אין משחקים.': 'No matches.', 'היסטוריית נקודות': 'Points history', 'אין נקודות דירוג.': 'No ranking points.', 'קבוצות': 'Teams', 'אין שחקנים במועדון.': 'No players in the club.', 'בית, מחזור': 'Group, round', 'הדחה, סיבוב': 'Knockout, round', 'הטוב מ-3 סטים': 'Best of 3 sets', 'סטים': 'sets', 'המשחק עדיין לא מוכן: ממתין לסיום משחקים קודמים.': 'The match is not ready yet: waiting for earlier matches to finish.',
   'שכחתי סיסמה': 'Forgot password', 'כל העונות': 'All seasons', 'של השחקנים בחשבון': 'Of the players on the account', 
   'בן': 'Boy', 'בת': 'Girl', 'גבר': 'Man', 'אישה': 'Woman', 'גיל': 'Age',
   'עוד משחקים קרובים': 'More upcoming matches', 'עוד תוצאות': 'More results',

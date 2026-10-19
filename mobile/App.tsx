@@ -10,6 +10,7 @@ import { More } from './src/More';
 import { MyHome } from './src/MyHome';
 import { Bracket } from './src/Bracket';
 import { MatchCard, matchWhen } from './src/MatchCard';
+import { ClubScreen, MatchScreen, NavCtx, PlayerScreen, useNav, type Focus, type Nav } from './src/Detail';
 import { useFonts } from 'expo-font';
 import { T, Icon, BallMark, CourtLines, FONTS } from './src/theme';
 import { LANGS, isRtl, lang, loadLang, locale, nextLang, setLang, startAlign, tr } from './src/i18n';
@@ -96,16 +97,25 @@ function Welcome({ onPick, onSkip }: { onPick: (w: 'self' | 'child' | 'follow') 
 function Home({ authed, setAuthed, onLang }: { authed: boolean; setAuthed: (v: boolean) => void; onLang: (code: string) => void }) {
   const [tab, setTab] = useState<Tab>('t');
   const [open, setOpen] = useState<string | null>(null);
+  const [focus, setFocus] = useState<Focus | undefined>(undefined); // the player a tournament opens focused on (from a player's page)
+  const [subs, setSubs] = useState<{ k: 'player' | 'club' | 'match'; id: string }[]>([]); // player / club / match pages, stacked so Back returns to the previous one
+  const nav: Nav = {
+    player: (id) => setSubs((x) => [...x, { k: 'player', id }]), club: (id) => setSubs((x) => [...x, { k: 'club', id }]), match: (id) => setSubs((x) => [...x, { k: 'match', id }]),
+    tournament: (id, f) => { setFocus(f); setOpen(id); },
+  };
+  const sub = subs[subs.length - 1];
+  const popSub = () => setSubs((x) => x.slice(0, -1));
   const [who, setWho] = useState<'ask' | 'self' | 'child' | null>(null);
   const [menu, setMenu] = useState(false);
   const [extra, setExtra] = useState<{ v?: string; n: number }>({ n: 0 }); // a "more" section or a search term, applied afresh each time
-  const go: Go = (k, v) => { setOpen(null); setWho(null); setMenu(false); setExtra((x) => ({ v, n: x.n + 1 })); setTab(k); };
+  const go: Go = (k, v) => { setOpen(null); setFocus(undefined); setSubs([]); setWho(null); setMenu(false); setExtra((x) => ({ v, n: x.n + 1 })); setTab(k); };
   const [, bump] = useState(0);
   // sessions started before the name was stored: fetch it once so the header can show who is signed in
   useEffect(() => { if (authed && !api.currentUserName()) api.me().then((m) => api.rememberUserName(m.name)).then(() => bump((n) => n + 1)).catch(() => {}); }, [authed]);
   useEffect(() => { if (authed) registerPush(); }, [authed]);
   useEffect(() => { api.setAuthLostHandler(() => setAuthed(false)); return () => api.setAuthLostHandler(null); }, [setAuthed]);
   return (
+    <NavCtx.Provider value={nav}>
     <View style={{ flex: 1 }}>
       <View style={s.topbar}>
         <Pressable style={s.brandRow} onPress={() => go('t')} accessibilityLabel="ITA"><BallMark size={30} /><Text style={s.brand}>ITA</Text></Pressable>
@@ -119,7 +129,10 @@ function Home({ authed, setAuthed, onLang }: { authed: boolean; setAuthed: (v: b
         </View>
       </View>
       <View style={{ flex: 1 }}>
-        {open ? <Tournament id={open} onBack={() => setOpen(null)} onGoAccount={() => { setOpen(null); setTab('me'); }} />
+        {open ? <Tournament id={open} focus={focus} onBack={() => { setOpen(null); setFocus(undefined); }} onGoAccount={() => { setOpen(null); setSubs([]); setTab('me'); }} />
+          : sub?.k === 'player' ? <PlayerScreen key={sub.id} id={sub.id} onBack={popSub} />
+          : sub?.k === 'club' ? <ClubScreen key={sub.id} id={sub.id} onBack={popSub} />
+          : sub?.k === 'match' ? <MatchScreen key={sub.id} id={sub.id} onBack={popSub} />
           : tab === 't' ? <TournamentList onOpen={setOpen} authed={authed} onGoAccount={() => setTab('me')} go={go} />
           : tab === 'live' ? <Live />
           : tab === 'rank' ? <Rankings />
@@ -131,7 +144,7 @@ function Home({ authed, setAuthed, onLang }: { authed: boolean; setAuthed: (v: b
       {menu && <>
         <Pressable style={s.scrim} onPress={() => setMenu(false)} accessibilityLabel={tr('סגירת התפריט')} />
         <View style={s.menu}>
-          {MENU.map(([k, l, v]) => { const on = !open && tab === k && (k !== 'more' || extra.v === v); return <Pressable key={l} style={({ pressed }) => [s.menuRow, on && s.menuOn, pressed && s.pressed]} onPress={() => go(k, v)}><Text style={[s.menuT, on && s.menuOnT]}>{tr(l)}</Text></Pressable>; })}
+          {MENU.map(([k, l, v]) => { const on = !open && !sub && tab === k && (k !== 'more' || extra.v === v); return <Pressable key={l} style={({ pressed }) => [s.menuRow, on && s.menuOn, pressed && s.pressed]} onPress={() => go(k, v)}><Text style={[s.menuT, on && s.menuOnT]}>{tr(l)}</Text></Pressable>; })}
           <View style={s.menuSep} />
           <Pressable style={({ pressed }) => [s.menuRow, pressed && s.pressed]} onPress={() => go('me')}><Text style={s.menuT}>{authed ? tr('פרטים אישיים והרשמות') : tr('כניסה / הצטרפות')}</Text></Pressable>
           <View style={s.menuSep} />
@@ -139,9 +152,10 @@ function Home({ authed, setAuthed, onLang }: { authed: boolean; setAuthed: (v: b
         </View>
       </>}
       <View style={s.tabbar}>
-        {TABS.map(([k, l, ic]) => { const on = tab === k && !open; return <Pressable key={k} style={[s.tab, on && s.tabActive]} onPress={() => go(k)}><Icon name={ic} size={21} color={on ? T.btnText : T.muted} /><Text style={[s.tabT, on && s.tabOn]}>{tr(l)}</Text></Pressable>; })}
+        {TABS.map(([k, l, ic]) => { const on = tab === k && !open && !sub; return <Pressable key={k} style={[s.tab, on && s.tabActive]} onPress={() => go(k)}><Icon name={ic} size={21} color={on ? T.btnText : T.muted} /><Text style={[s.tabT, on && s.tabOn]}>{tr(l)}</Text></Pressable>; })}
       </View>
     </View>
+    </NavCtx.Provider>
   );
 }
 
@@ -266,17 +280,18 @@ const fmtSets = (sets: { a: number; b: number }[]) => `\u2066${(sets ?? []).map(
 
 /** A match in the feed: played and live ones on the shared match card; an upcoming one is a short line (who, court, time). */
 function FeedCard({ r }: { r: api.FeedRow }) {
+  const nav = useNav();
   const upcoming = r.status === 'SCHEDULED' && !(r.sets ?? []).length;
   if (!upcoming) {
     return <MatchCard a={r.a ?? tr('טרם נקבע')} b={r.b ?? tr('טרם נקבע')} sets={r.sets ?? []} status={r.status} winner={r.winner ?? null}
-      live={r.status === 'SCHEDULED'} caption={`${r.tournament} · ${r.category}`} when={matchWhen(r.start)} />;
+      live={r.status === 'SCHEDULED'} caption={`${r.tournament} · ${r.category}`} when={matchWhen(r.start)} onPress={() => nav.match(r.id)} />;
   }
   return (
-    <View style={s.card}>
+    <Pressable style={({ pressed }) => [s.card, pressed && s.pressed]} onPress={() => nav.match(r.id)}>
       <Text style={s.cardT}>{r.a} – {r.b}</Text>
       <Text>{`${r.court ? `${tr('מגרש {c}', { c: r.court })} · ` : ''}${r.start ? new Date(r.start).toLocaleString(locale(), { weekday: 'short', hour: '2-digit', minute: '2-digit' }) : ''}`}</Text>
       <Text style={s.muted}>{r.tournament} · {r.category}</Text>
-    </View>
+    </Pressable>
   );
 }
 
@@ -300,9 +315,13 @@ function Live() {
 }
 
 function Rankings() {
+  const nav = useNav();
+  const [club, setClub] = useState<{ id: string; name: string } | null>(null);
+  const [cq, setCq] = useState(''); const [pick, setPick] = useState(false);
+  const clubs = useLoad(api.clubs);
   const [g, setG] = useState<'MALE' | 'FEMALE'>('MALE');
   const [age, setAge] = useState<number | undefined>(undefined);
-  const { data, err, busy } = useLoad(() => api.rankings(g, age), [g, age]);
+  const { data, err, busy } = useLoad(() => api.rankings(g, age, club?.id), [g, age, club?.id]);
   return (
     <View style={s.pad}>
       <Text style={s.h1}>{tr('דירוג')}</Text>
@@ -310,9 +329,16 @@ function Rankings() {
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0, flexShrink: 0 }} contentContainerStyle={{ gap: 8 }}>
         {([[undefined, tr('כללי')], [12, tr('עד 12')], [14, tr('עד 14')], [16, tr('עד 16')], [18, tr('עד 18')]] as const).map(([a, l]) => <Pressable key={l} style={[s.chip, age === a && s.chipOn]} onPress={() => setAge(a)}><Text style={age === a ? s.chipOnT : s.b}>{l}</Text></Pressable>)}
       </ScrollView>
+      <Pressable style={[s.chip, (pick || !!club) && s.chipOn, { alignSelf: 'flex-start' }]} onPress={() => { if (club) { setClub(null); setPick(false); } else setPick(!pick); }}><Text style={(pick || !!club) ? s.chipOnT : s.b}>{club ? `✕ ${club.name}` : tr('מועדון')}</Text></Pressable>
+      {pick && !club && <View style={{ gap: 8 }}>
+        <TextInput style={[s.input, startAlign()]} placeholder={tr('חיפוש מועדון')} placeholderTextColor={T.muted} value={cq} onChangeText={setCq} />
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0, flexShrink: 0 }} contentContainerStyle={{ gap: 8 }}>
+          {(clubs.data ?? []).filter((c) => !cq.trim() || c.name.includes(cq.trim())).slice(0, 15).map((c) => <Pressable key={c.id} style={s.chip} onPress={() => { setClub({ id: c.id, name: c.name }); setPick(false); setCq(''); }}><Text style={s.b}>{c.name}</Text></Pressable>)}
+        </ScrollView>
+      </View>}
       <Status err={err} busy={busy} empty={!!data && !data.length && tr('אין עדיין נתוני דירוג')} />
       <FlatList contentContainerStyle={{ paddingBottom: 100 }} data={data ?? []} keyExtractor={(r) => r.playerId} renderItem={({ item }) => (
-        <View style={[s.card, s.row]}><Text style={s.num}>{item.rank}</Text><Text style={[s.b, { flex: 1 }]}>{item.name}</Text><Text style={s.b}>{item.points}</Text></View>
+        <Pressable style={({ pressed }) => [s.card, s.row, pressed && s.pressed]} onPress={() => nav.player(item.playerId)}><Text style={s.num}>{item.rank}</Text><Text style={[s.b, { flex: 1 }]}>{item.name}</Text><Text style={s.b}>{item.points}</Text></Pressable>
       )} />
     </View>
   );
@@ -320,10 +346,11 @@ function Rankings() {
 
 /** A player as the website's search shows them: photo (or initials), boy/girl/man/woman, age and club. */
 function PlayerCard({ p }: { p: api.PlayerRow }) {
+  const nav = useNav();
   const kind = p.gender === 'FEMALE' ? ((p.age ?? 99) < 18 ? 'בת' : 'אישה') : p.gender === 'MALE' ? ((p.age ?? 99) < 18 ? 'בן' : 'גבר') : '';
   const line = [kind && tr(kind), p.age != null ? `${tr('גיל')} ${p.age}` : p.birthYear ? String(p.birthYear) : ''].filter(Boolean).join(' · ');
   return (
-    <View style={[s.card, s.row, { flexWrap: 'nowrap', gap: 12 }]}>
+    <Pressable style={({ pressed }) => [s.card, s.row, { flexWrap: 'nowrap', gap: 12 }, pressed && s.pressed]} onPress={() => nav.player(p.id)}>
       <Avatar uri={p.photo ?? null} name={p.name} />
       <View style={{ flex: 1 }}>
         <Text style={s.b}>{p.name}</Text>
@@ -331,7 +358,7 @@ function PlayerCard({ p }: { p: api.PlayerRow }) {
         {!!p.club && <Text style={s.muted}>{p.club}</Text>}
       </View>
       {p.rank != null && <Text style={s.num}>#{p.rank}</Text>}
-    </View>
+    </Pressable>
   );
 }
 
@@ -378,6 +405,7 @@ const SHORTCUTS: [string, string, string, (x: api.TournamentRow) => boolean, num
 
 /** One box over players, clubs and competitions (the website's search page). */
 function Search({ initial, onOpen }: { initial: string; onOpen: (id: string) => void }) {
+  const nav = useNav();
   const [q, setQ] = useState(initial);
   const [show, setShow] = useState('');
   const ts = useLoad(api.tournaments); const cl = useLoad(api.clubs);
@@ -406,7 +434,7 @@ function Search({ initial, onOpen }: { initial: string; onOpen: (id: string) => 
       </View>}
       <Status err={ts.err} busy={ts.busy && (!!term || !!sc)} empty={!!term && !ts.busy && !cl.busy && !tours.length && !clubs.length && !ps.length && tr('לא נמצא דבר')} />
       {!!ps.length && <><Text style={s.h2}>{tr('שחקנים')}</Text>{ps.map((p) => <PlayerCard key={p.id} p={p} />)}</>}
-      {!!clubs.length && <><Text style={s.h2}>{tr('מועדונים')}</Text>{clubs.map((c) => <View key={c.id} style={s.card}><Text style={s.b}>{c.name}</Text><Text style={s.muted}>{c.city ? `${c.city} · ` : ''}{tr('{n} שחקנים', { n: c.players })}</Text></View>)}</>}
+      {!!clubs.length && <><Text style={s.h2}>{tr('מועדונים')}</Text>{clubs.map((c) => <Pressable key={c.id} style={({ pressed }) => [s.card, pressed && s.pressed]} onPress={() => nav.club(c.id)}><Text style={s.b}>{c.name}</Text><Text style={s.muted}>{c.city ? `${c.city} · ` : ''}{tr('{n} שחקנים', { n: c.players })}</Text></Pressable>)}</>}
       {!!tours.length && <><Text style={s.h2}>{term ? tr('תחרויות') : tr(sc?.[1] ?? '')}</Text>{tours.map((x) => <Pressable key={x.id} style={({ pressed }) => [s.card, pressed && s.pressed]} onPress={() => onOpen(x.id)}><Text style={s.b}>{x.name}</Text><Text style={s.muted}>{`${tr(STATUS_HE[x.status] ?? x.status)} · ${dm(x.startDate)}`}</Text></Pressable>)}</>}
     </ScrollView>
   );
@@ -445,7 +473,8 @@ function Avatar({ uri, name }: { uri: string | null; name: string }) {
   return <View style={[s.avatar, { alignItems: 'center', justifyContent: 'center', backgroundColor: T.volt }]}><Text style={{ color: T.ink, fontWeight: '800', fontSize: 20 }}>{name.trim().charAt(0)}</Text></View>;
 }
 
-function Tournament({ id, onBack, onGoAccount }: { id: string; onBack: () => void; onGoAccount: () => void }) {
+function Tournament({ id, focus, onBack, onGoAccount }: { id: string; focus?: Focus; onBack: () => void; onGoAccount: () => void }) {
+  const nav = useNav();
   const [d, setD] = useState<Awaited<ReturnType<typeof api.tournament>> | null>(null);
   const [score, setScore] = useState<api.Match | null>(null);
   const load = () => api.tournament(id).then(setD);
@@ -470,8 +499,14 @@ function Tournament({ id, onBack, onGoAccount }: { id: string; onBack: () => voi
     if (!fit || (fit.gender !== 'MALE' && fit.gender !== 'FEMALE')) { setFg(''); setFage(''); setFcat(''); return; }
     setFg(fit.gender); setFage(ageOf(fit.name) ? String(ageOf(fit.name)) : ''); setFcat(fit.id);
   };
+  // arriving from a player's page: that player is the focus, whoever is viewing
   useEffect(() => {
-    if (!d || auto || !api.isAuthed()) return;
+    if (!d || !focus || auto) return;
+    setAuto(true);
+    applyFor({ id: focus.id, gender: focus.gender, age: focus.age } as api.HomePerson);
+  }, [d, id]);
+  useEffect(() => {
+    if (!d || auto || focus || !api.isAuthed()) return;
     setAuto(true);
     api.myHome().then((h) => {
       setPeople(h.people);
@@ -564,11 +599,11 @@ function Tournament({ id, onBack, onGoAccount }: { id: string; onBack: () => voi
             <Text style={s.h2}>{tr('משתתפים ({n})', { n: shown.length })}</Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
               {shown.map((x) => (
-                <View key={x.categoryId + x.id} style={{ width: '30%', alignItems: 'center', gap: 4 }}>
+                <Pressable key={x.categoryId + x.id} onPress={() => nav.player(x.id)} style={{ width: '30%', alignItems: 'center', gap: 4 }}>
                   <Avatar uri={x.photo} name={x.name} />
                   <Text style={[s.b, { fontSize: 13, textAlign: 'center' }]} numberOfLines={2}>{x.name}</Text>
                   {!fcat && cats.length > 1 && <Text style={[s.muted, { fontSize: 11 }]} numberOfLines={1}>{cats.find((k) => k.id === x.categoryId)?.name}</Text>}
-                </View>
+                </Pressable>
               ))}
             </View>
           </View>

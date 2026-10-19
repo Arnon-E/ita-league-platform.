@@ -3,6 +3,7 @@ import { ActivityIndicator, FlatList, Linking, Pressable, ScrollView, StyleSheet
 import * as api from './api';
 import { T, Icon } from './theme';
 import { locale, startAlign, tr } from './i18n';
+import { useNav } from './Detail';
 
 const C = { navy: T.text, blue: T.blue, line: T.line, muted: T.muted };
 
@@ -138,6 +139,7 @@ function Regulations({ onBack }: { onBack: () => void }) {
 }
 
 function Clubs({ onBack }: { onBack: () => void }) {
+  const nav = useNav();
   const { data, err, busy } = useData(api.clubs);
   const [q, setQ] = useState('');
   const rows = (data ?? []).filter((c) => !q.trim() || c.name.includes(q.trim()));
@@ -146,12 +148,13 @@ function Clubs({ onBack }: { onBack: () => void }) {
       <Head title={tr('מועדונים')} onBack={onBack} />
       <TextInput style={[st.input, startAlign()]} placeholder={tr('חיפוש מועדון')} placeholderTextColor={T.muted} value={q} onChangeText={setQ} />
       <Wait err={err} busy={busy} />
-      <FlatList contentContainerStyle={{ paddingBottom: 100 }} data={rows} keyExtractor={(c) => c.id} renderItem={({ item }) => <View style={st.card}><Text style={st.b}>{item.name}</Text><Text style={st.muted}>{item.city ? `${item.city} · ` : ''}{tr('{n} שחקנים', { n: item.players })}</Text></View>} />
+      <FlatList contentContainerStyle={{ paddingBottom: 100 }} data={rows} keyExtractor={(c) => c.id} renderItem={({ item }) => <Pressable style={st.card} onPress={() => nav.club(item.id)}><Text style={st.b}>{item.name}</Text><Text style={st.muted}>{item.city ? `${item.city} · ` : ''}{tr('{n} שחקנים', { n: item.players })}</Text></Pressable>} />
     </View>
   );
 }
 
 function Stats({ onBack }: { onBack: () => void }) {
+  const nav = useNav();
   const { data, err, busy } = useData(api.stats);
   return (
     <ScrollView contentContainerStyle={st.pad}>
@@ -164,10 +167,10 @@ function Stats({ onBack }: { onBack: () => void }) {
           ))}
         </View>
         <Text style={st.h2}>{tr('מובילים בניצחונות')}</Text>
-        {data.top.map((p, i) => <View key={p.id} style={st.card}><Text style={st.b}>{i + 1}. {p.name}</Text><Text style={st.muted}>{p.club ?? ''} · {tr('{wins} ניצחונות מתוך {played} ({pct}%)', { wins: p.wins, played: p.played, pct: Math.round((100 * p.wins) / p.played) })}</Text></View>)}
+        {data.top.map((p, i) => <Pressable key={p.id} style={st.card} onPress={() => nav.player(p.id)}><Text style={st.b}>{i + 1}. {p.name}</Text><Text style={st.muted}>{p.club ?? ''} · {tr('{wins} ניצחונות מתוך {played} ({pct}%)', { wins: p.wins, played: p.played, pct: Math.round((100 * p.wins) / p.played) })}</Text></Pressable>)}
         {!data.top.length && <Text style={st.muted}>{tr('אין עדיין משחקים שהסתיימו')}</Text>}
         <Text style={st.h2}>{tr('מועדונים גדולים')}</Text>
-        {data.clubs.map((c) => <View key={c.id} style={st.card}><Text style={st.b}>{c.name}</Text><Text style={st.muted}>{tr('{n} שחקנים', { n: c.players })}</Text></View>)}
+        {data.clubs.map((c) => <Pressable key={c.id} style={st.card} onPress={() => nav.club(c.id)}><Text style={st.b}>{c.name}</Text><Text style={st.muted}>{tr('{n} שחקנים', { n: c.players })}</Text></Pressable>)}
       </>}
     </ScrollView>
   );

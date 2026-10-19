@@ -85,7 +85,7 @@ export const gallery = (tournamentId: string) => call<{ id: string; caption: str
 export const photoUrl = (photoId: string) => `${BASE}/api/gallery/${photoId}`;
 export const live = (u = 15, r = 15) => call<{ live: FeedRow[]; upcoming: FeedRow[]; results: FeedRow[]; moreUpcoming?: boolean; moreResults?: boolean }>(`/public/live?u=${u}&r=${r}`);
 export const sendLive = (matchId: string, sets: { a: number; b: number; superTb?: boolean }[]) => call(`/matches/${matchId}/live`, { method: 'POST', body: JSON.stringify({ sets }) });
-export const rankings = (g: 'MALE' | 'FEMALE', age?: number) => call<{ playerId: string; rank: number; points: number; name: string; club: string | null }[]>(`/public/rankings?g=${g}${age ? `&age=${age}` : ''}`);
+export const rankings = (g: 'MALE' | 'FEMALE', age?: number, club?: string) => call<{ playerId: string; rank: number; points: number; name: string; club: string | null }[]>(`/public/rankings?g=${g}${age ? `&age=${age}` : ''}${club ? `&club=${club}` : ''}`);
 export const webUrl = (path: string) => `${BASE}${path}`;
 export type PlayerRow = { rank?: number | null; id: string; name: string; club: string | null; birthYear?: number; age?: number; gender?: 'MALE' | 'FEMALE'; photo?: string | null };
 export const players = (q: string, offset = 0, limit = 50, f: { g?: 'MALE' | 'FEMALE'; age?: number } = {}) => call<PlayerRow[]>(`/public/players?q=${encodeURIComponent(q)}&offset=${offset}&limit=${limit}${f.g ? `&g=${f.g}` : ''}${f.age ? `&age=${f.age}` : ''}`);
@@ -135,3 +135,23 @@ export type FollowOverview = {
   tournaments: { id: string; name: string; status: string; startDate: string; endDate: string }[];
 };
 export const followOverview = () => call<FollowOverview>('/follows/overview');
+
+export type PlayerProfile = {
+  id: string; name: string; gender: 'MALE' | 'FEMALE'; photo: string | null; age: number; club: { id: string; name: string } | null;
+  rank: number | null; points: number; wins: number; losses: number; recent: boolean[];
+  next: { id: string; name: string; startDate: string } | null;
+  tournaments: { id: string; name: string; startDate: string; cats: string[] }[];
+  matches: { id: string; tournamentId: string | null; tournament: string; category: string; a: string; b: string; status: string; sets: { a: number; b: number }[]; start: string | null; winner: 'a' | 'b' | null; won: boolean | null }[];
+  awards: { date: string; points: number }[];
+};
+export const playerProfile = (id: string) => call<PlayerProfile>(`/public/players/${id}`);
+export type ClubProfile = {
+  id: string; name: string; city: string | null; players: { id: string; name: string }[];
+  info: { address?: string; phone?: string; email?: string; description?: string; officials?: { name: string; job: string }[]; teams?: string[]; roster?: { name: string; age: number | null }[] } | null;
+};
+export const clubProfile = (id: string) => call<ClubProfile>(`/public/clubs/${id}`);
+export type MatchInfo = {
+  id: string; tournamentId: string; tournament: string; category: string; stage: string; round: number; status: string; live: boolean;
+  a: string | null; b: string | null; sets: { a: number; b: number }[]; court: string | null; start: string | null; setsToWin: number; decider: string; winner: 'a' | 'b' | null;
+};
+export const matchInfo = (id: string) => call<MatchInfo>(`/public/matches/${id}`);
