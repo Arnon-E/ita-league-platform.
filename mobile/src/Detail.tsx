@@ -3,6 +3,7 @@ import { ActivityIndicator, Image, Linking, Pressable, ScrollView, StyleSheet, T
 import * as api from './api';
 import { MatchCard, matchWhen } from './MatchCard';
 import { T, Icon } from './theme';
+import { AdminAudit, AdminImport, AdminMessages, AdminReports, AdminRules, AdminVenues } from './AdminDesk';
 import { locale, startAlign, tr } from './i18n';
 
 /** How a screen opens a player, club, match or tournament (with a player in focus); provided by the app shell. */
@@ -11,16 +12,16 @@ export type Nav = { admin: () => void; player: (id: string) => void; club: (id: 
 export const NavCtx = createContext<Nav>({ admin: () => {}, player: () => {}, club: () => {}, match: () => {}, tournament: () => {} });
 export const useNav = () => useContext(NavCtx);
 
-function useData<D>(fn: () => Promise<D>, deps: unknown[]) {
+export function useData<D>(fn: () => Promise<D>, deps: unknown[]) {
   const [data, setData] = useState<D | null>(null); const [err, setErr] = useState(''); const [busy, setBusy] = useState(true);
   useEffect(() => { setBusy(true); setErr(''); fn().then(setData).catch((e) => setErr(e.message)).finally(() => setBusy(false)); }, deps);
   return { data, err, busy, set: setData };
 }
-const Wait = ({ err, busy }: { err: string; busy: boolean }) => (busy ? <ActivityIndicator color={T.blue} style={{ margin: 16 }} /> : err ? <Text style={st.err}>{err}</Text> : null);
-const Head = ({ title, onBack }: { title: string; onBack: () => void }) => (
+export const Wait = ({ err, busy }: { err: string; busy: boolean }) => (busy ? <ActivityIndicator color={T.blue} style={{ margin: 16 }} /> : err ? <Text style={st.err}>{err}</Text> : null);
+export const Head = ({ title, onBack }: { title: string; onBack: () => void }) => (
   <View style={st.head}><Pressable onPress={onBack} hitSlop={10}><View style={st.backBtn}><Icon name="back" size={20} color={T.text} /></View></Pressable><Text style={st.h1} numberOfLines={2}>{title}</Text></View>
 );
-const dm = (iso: string) => new Date(iso).toLocaleDateString(locale(), { day: 'numeric', month: 'short', year: 'numeric' });
+export const dm = (iso: string) => new Date(iso).toLocaleDateString(locale(), { day: 'numeric', month: 'short', year: 'numeric' });
 
 function FollowBtn({ kind, target }: { kind: 'PLAYER' | 'CLUB'; target: string }) {
   const [on, setOn] = useState(false); const [msg, setMsg] = useState('');
@@ -136,7 +137,6 @@ export function MatchScreen({ id, onBack }: { id: string; onBack: () => void }) 
 
 const DOCS: Record<string, string> = { ID_PHOTO: 'תמונת ת״ז', PARENT_CONSENT: 'אישור הורים', MEDICAL_CERTIFICATE: 'אישור רפואי', OTHER: 'אחר' };
 const ROLES: [string, string][] = [['SUPER_ADMIN', 'מנהל על'], ['FEDERATION_ADMIN', 'מנהל איגוד'], ['TOURNAMENT_MANAGER', 'מנהל טורניר'], ['REFEREE', 'שופט'], ['CLUB_MANAGER', 'מנהל מועדון'], ['PLAYER', 'שחקן/הורה']];
-const ADMIN_PAGES: [string, string][] = [['/admin/reports', 'דוחות'], ['/admin/messages', 'הודעות'], ['/admin/venues', 'מגרשים'], ['/admin/rules', 'כללי דירוג'], ['/admin/import', 'ייבוא'], ['/admin/audit', 'יומן פעולות']];
 
 function AdminUsers({ onBack }: { onBack: () => void }) {
   const u = useData(() => api.adminUsers(), []);
@@ -194,7 +194,7 @@ function AdminLinks({ onBack }: { onBack: () => void }) {
 
 /** Admin work queue: review documents and link-requests in the app; the desk screens (users, reports, ...) open on the website. */
 export function AdminScreen({ onBack }: { onBack: () => void }) {
-  const [page, setPage] = useState<'' | 'users' | 'links'>('');
+  const [page, setPage] = useState<'' | 'users' | 'links' | 'messages' | 'venues' | 'audit' | 'reports' | 'rules' | 'import'>('');
   const docs = useData(() => api.adminDocuments(), []); const claims = useData(() => api.adminClaims(), []);
   const [note, setNote] = useState<Record<string, string>>({}); const [msg, setMsg] = useState(''); const [err, setErr] = useState('');
   const run = (p: Promise<unknown>, reload: () => void) => { setErr(''); setMsg(''); p.then(() => { setMsg(tr('נשמר')); reload(); }).catch((e) => setErr(e.message)); };
@@ -202,6 +202,13 @@ export function AdminScreen({ onBack }: { onBack: () => void }) {
   const noteBox = (id: string) => <TextInput style={[st.input, startAlign()]} placeholder={tr('הערה (חובה בדחייה)')} placeholderTextColor={T.muted} value={note[id] ?? ''} onChangeText={(v) => setNote((x) => ({ ...x, [id]: v }))} />;
   if (page === 'users') return <AdminUsers onBack={() => setPage('')} />;
   if (page === 'links') return <AdminLinks onBack={() => setPage('')} />;
+  const back = () => setPage('');
+  if (page === 'messages') return <AdminMessages onBack={back} />;
+  if (page === 'venues') return <AdminVenues onBack={back} />;
+  if (page === 'audit') return <AdminAudit onBack={back} />;
+  if (page === 'reports') return <AdminReports onBack={back} />;
+  if (page === 'rules') return <AdminRules onBack={back} />;
+  if (page === 'import') return <AdminImport onBack={back} />;
   return (
     <ScrollView contentContainerStyle={st.pad} keyboardShouldPersistTaps="handled">
       <Head title={tr('ניהול')} onBack={onBack} />
@@ -242,13 +249,15 @@ export function AdminScreen({ onBack }: { onBack: () => void }) {
         </View>
       ))}
       {!claims.busy && !claims.err && !(claims.data ?? []).length && <Text style={st.muted}>{tr('אין בקשות ממתינות.')}</Text>}
-      <Text style={st.h2}>{tr('עוד באתר')}</Text>
-      {ADMIN_PAGES.map(([path, label]) => <Pressable key={path} style={st.card} onPress={() => Linking.openURL(api.webUrl(path))}><Text style={st.b}>{tr(label)} ↗</Text></Pressable>)}
+      <Text style={st.h2}>{tr('עוד')}</Text>
+      {([['messages', 'הודעות'], ['venues', 'מגרשים'], ['reports', 'דוחות'], ['rules', 'כללי דירוג'], ['import', 'ייבוא'], ['audit', 'יומן פעולות']] as const).map(([k, l]) => <Pressable key={k} style={st.card} onPress={() => setPage(k)}><Text style={st.b}>{tr(l)} ›</Text></Pressable>)}
     </ScrollView>
   );
 }
 
-const st = StyleSheet.create({
+export const st = StyleSheet.create({
+  btn: { minHeight: 52, borderRadius: 999, backgroundColor: T.btn, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 },
+  btnT: { color: T.btnText, fontSize: 16, fontWeight: '700' },
   input: { backgroundColor: T.surface, borderWidth: 1, borderColor: T.line2, borderRadius: 14, paddingHorizontal: 16, minHeight: 48, fontSize: 16, color: T.text },
   ok: { backgroundColor: T.okbg, color: T.ok, padding: 12, borderRadius: 14, overflow: 'hidden' },
   pad: { padding: 16, gap: 10, paddingBottom: 110 },

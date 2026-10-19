@@ -171,3 +171,15 @@ export type AdminLinkRow = { id: string; name: string; birth: string; account: {
 export const adminFindPlayers = (q: string) => call<AdminLinkRow[]>(`/admin/links?q=${encodeURIComponent(q)}`);
 export const adminLink = (playerId: string, email: string, mode: 'self' | 'guardian') => call<{ ok: true; user: string }>('/admin/links', { method: 'POST', body: JSON.stringify({ playerId, email, mode }) });
 export const adminUnlink = (playerId: string, userId?: string) => call<{ ok: true }>('/admin/links', { method: 'POST', body: JSON.stringify({ playerId, unlink: true, userId }) });
+
+export const adminMessageTargets = () => call<{ clubs: { id: string; name: string }[]; tournaments: { id: string; name: string }[] }>('/admin/messages');
+export const adminBroadcast = (audience: 'ALL' | 'CLUB' | 'TOURNAMENT', id: string, title: string, body: string) => call<{ sent: number }>('/admin/messages', { method: 'POST', body: JSON.stringify({ audience, id, title, body }) });
+export const adminVenues = () => call<{ id: string; name: string; city: string | null; courts: string[] }[]>('/admin/venues');
+export const adminVenueOp = (b: { op: 'venue' | 'courts' | 'delete'; name?: string; city?: string; venue?: string; names?: string }) => call<{ ok: true }>('/admin/venues', { method: 'POST', body: JSON.stringify(b) });
+export const adminAudit = () => call<{ id: string; at: string; action: string; entity: string; impersonated: boolean }[]>('/admin/audit');
+export const adminReportLink = (kind: string) => call<{ url: string }>('/admin/reports', { method: 'POST', body: JSON.stringify({ kind }) });
+export const adminRules = () => call<{ name: string; version: number; verified: boolean; json: string }>('/admin/rules');
+export const adminPublishRules = (name: string, json: string) => call<{ version: number }>('/admin/rules', { method: 'POST', body: JSON.stringify({ name, json }) });
+type ImportBrief = { created: number; updated: number; errors: number; firstErrors: string[] } | null;
+export const adminImport = (b: { kind: 'players' | 'points' | 'db'; csv?: string; url?: string; playersSql?: string; pointsSql?: string; dry: boolean }) =>
+  call<{ dry: boolean; result?: ImportBrief; players?: ImportBrief; points?: ImportBrief }>('/admin/import', { method: 'POST', body: JSON.stringify(b) });

@@ -2,6 +2,7 @@ import { sql } from 'drizzle-orm';
 import { db } from '@/db';
 import { can } from '@/lib/permissions';
 import { getActor } from '@/lib/session';
+import { verifySigned } from '@/lib/storage';
 
 type Report = { file: string; headers: string[]; query: ReturnType<typeof sql> };
 
@@ -42,11 +43,16 @@ const cell = (v: unknown) => {
   return `"${safe.replace(/"/g, '""')}"`;
 };
 
-export async function GET(_req: Request, ctx: { params: Promise<{ kind: string }> }) {
-  const actor = await getActor();
-  if (!actor) return Response.json({ error: 'unauthorized' }, { status: 401 });
-  if (!can(actor, 'audit.read')) return Response.json({ error: 'forbidden' }, { status: 403 });
-  const r = REPORTS[(await ctx.params).kind];
+export async function GET(req: Request, ctx: { params: Promise<{ kind: string }> }) {
+  const kind = (await ctx.params).kind;
+  // the app opens a short-lived signed link (issued to a signed-in admin); the website uses the session cookie
+  const sp = new URL(req.url).searchParams;
+  if (!(sp.get('sig') && verifySigned(`report:${kind}`, Number(sp.get('exp')), sp.get('sig')!))) {
+    const actor = await getActor();
+    if (!actor) return Response.json({ error: 'unauthorized' }, { status: 401 });
+    if (!can(actor, 'audit.read')) return Response.json({ error: 'forbidden' }, { status: 403 });
+  }
+  const r = REPORTS[kind];
   if (!r) return Response.json({ error: 'not found' }, { status: 404 });
   const rows = (await db.execute(r.query)) as unknown as Record<string, unknown>[];
   const lines = [r.headers.map(cell).join(','), ...rows.map((row) => Object.values(row).map(cell).join(','))];
