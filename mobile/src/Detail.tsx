@@ -254,7 +254,7 @@ const st = StyleSheet.create({
   pad: { padding: 16, gap: 10, paddingBottom: 110 },
   head: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 6 },
   backBtn: { width: 40, height: 40, borderRadius: 20, borderWidth: 1, borderColor: T.line2, backgroundColor: T.surface, alignItems: 'center', justifyContent: 'center' },
-  h1: { fontSize: 28, fontWeight: '800', color: T.text, letterSpacing: -0.8, flexShrink: 1 },
+  h1: { fontSize: 28, fontWeight: '800', color: T.text, flexShrink: 1, paddingEnd: 4 },
   h2: { fontSize: 22, fontWeight: '700', color: T.text, letterSpacing: -0.4, marginTop: 8, marginBottom: 2 },
   card: { backgroundColor: T.surface, borderWidth: 1, borderColor: T.line, borderRadius: 22, padding: 18, gap: 4 },
   b: { fontSize: 16, fontWeight: '700', color: T.text },
