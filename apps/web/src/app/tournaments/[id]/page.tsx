@@ -149,7 +149,7 @@ async function MyPlayerCard({ d, focus, mine, showAll }: { d: Detail; focus: Non
         {!entries.length && open && <Link className="btn small" href="/me">{tt('להרשמה')}</Link>}
       </div>
       {mine.length > 1 && (
-        <div className="row">{mine.map((x) => <Link key={x.id} href={`/tournaments/${d.t.id}?for=${x.id}`} className={`pill ${x.id === p.id ? 'lime' : ''}`}>{x.firstName}</Link>)}</div>
+        <div className="row">{mine.map((x) => <Link scroll={false} key={x.id} href={`/tournaments/${d.t.id}?for=${x.id}`} className={`pill ${x.id === p.id ? 'lime' : ''}`}>{x.firstName}</Link>)}</div>
       )}
       {next && (
         <div className="muted"><strong style={{ color: 'var(--text)' }}>{tt('המשחק הבא')}:</strong> {opp(next) || tt('יתברר')}{next.scheduledStart ? ` · ${fmtTime(next.scheduledStart)}` : ''}{next.courtLabel ? ` · ${tt('מגרש')} ${next.courtLabel}` : ''}</div>
@@ -197,14 +197,14 @@ async function CatFilter({ d, tab, cat, flt, withCats }: { d: Detail; tab: strin
     <div className="grid" style={{ gap: 12, margin: '8px 0 16px' }}>
       <div className="row">
         {genders.length > 1 && <>
-          <Link href={url({ g: '' })} className={`pill ${!flt.g ? 'lime' : ''}`}>{tt('בנים ובנות')}</Link>
-          {genders.includes('MALE') && <Link href={url({ g: 'MALE' })} className={`pill ${flt.g === 'MALE' ? 'lime' : ''}`}>{tt('בנים')}</Link>}
-          {genders.includes('FEMALE') && <Link href={url({ g: 'FEMALE' })} className={`pill ${flt.g === 'FEMALE' ? 'lime' : ''}`}>{tt('בנות')}</Link>}
+          <Link scroll={false} href={url({ g: '' })} className={`pill ${!flt.g ? 'lime' : ''}`}>{tt('בנים ובנות')}</Link>
+          {genders.includes('MALE') && <Link scroll={false} href={url({ g: 'MALE' })} className={`pill ${flt.g === 'MALE' ? 'lime' : ''}`}>{tt('בנים')}</Link>}
+          {genders.includes('FEMALE') && <Link scroll={false} href={url({ g: 'FEMALE' })} className={`pill ${flt.g === 'FEMALE' ? 'lime' : ''}`}>{tt('בנות')}</Link>}
         </>}
         {ages.length > 1 && <>
           <span className="muted">|</span>
-          <Link href={url({ age: '' })} className={`pill ${!flt.age ? 'lime' : ''}`}>{tt('כל הגילאים')}</Link>
-          {ages.map((a) => <Link key={a} href={url({ age: a })} className={`pill ${flt.age === a ? 'lime' : ''}`}>{tt('גיל')} {a}</Link>)}
+          <Link scroll={false} href={url({ age: '' })} className={`pill ${!flt.age ? 'lime' : ''}`}>{tt('כל הגילאים')}</Link>
+          {ages.map((a) => <Link scroll={false} key={a} href={url({ age: a })} className={`pill ${flt.age === a ? 'lime' : ''}`}>{tt('גיל')} {a}</Link>)}
         </>}
       </div>
       {withCats && (
@@ -218,7 +218,7 @@ async function CatFilter({ d, tab, cat, flt, withCats }: { d: Detail; tab: strin
           </GetForm>
         ) : (
           <div className="row">
-            {shown.map((c) => <Link key={c.id} href={url({ cat: c.id })} className={`pill ${cur === c.id ? 'lime' : ''}`}>{c.name}</Link>)}
+            {shown.map((c) => <Link scroll={false} key={c.id} href={url({ cat: c.id })} className={`pill ${cur === c.id ? 'lime' : ''}`}>{c.name}</Link>)}
             {!shown.length && <span className="muted">{tt('אין קטגוריות לפי הסינון.')}</span>}
           </div>
         )

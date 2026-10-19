@@ -121,7 +121,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ l
       </div>
       <div className="row" style={{ marginTop: 12 }}>
         {Object.entries(ST).map(([k, v]) => (
-          <Link key={k} href={href({ st: k })} className={`pill ${mode === k ? 'lime' : ''}`}>{t(v)}{k === 'up' ? ` ${counts2.up}` : k === 'done' ? ` ${counts2.done}` : ''}</Link>
+          <Link scroll={false} key={k} href={href({ st: k })} className={`pill ${mode === k ? 'lime' : ''}`}>{t(v)}{k === 'up' ? ` ${counts2.up}` : k === 'done' ? ` ${counts2.done}` : ''}</Link>
         ))}
       </div>
       {mine.length > 0 && (

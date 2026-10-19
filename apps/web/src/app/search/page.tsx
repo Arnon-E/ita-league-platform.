@@ -68,7 +68,7 @@ export default async function Search({ searchParams }: { searchParams: Promise<{
         <button className="btn">{t('חיפוש')}</button>
       </GetForm>
       <div className="row" style={{ margin: '10px 0 0' }} aria-label={t('חיפושים מהירים')}>
-        {shortcuts.map((s) => <Link key={s.key} href={`/search?show=${s.key}`} className={`pill ${!term && show === s.key ? 'lime' : ''}`} title={t(s.hint)}>{t(s.label)}</Link>)}
+        {shortcuts.map((s) => <Link scroll={false} key={s.key} href={`/search?show=${s.key}`} className={`pill ${!term && show === s.key ? 'lime' : ''}`} title={t(s.hint)}>{t(s.label)}</Link>)}
       </div>
       {none && <div className="card muted" style={{ marginTop: 14 }}>{t('לא נמצאו תוצאות עבור')} &quot;{term}&quot;.</div>}
       {!term && !show && <p className="muted" style={{ marginTop: 14 }}>{t('אפשר להקליד שם של שחקן, מועדון או תחרות, או לבחור אחד מהחיפושים המהירים.')}</p>}

@@ -25,8 +25,8 @@ export default async function Rankings({ searchParams }: { searchParams: Promise
       <p className="muted" style={{ fontSize: 13 }}>{t('הנקודות מסונכרנות מטבלת הדירוג הרשמית ב-Loglig, כסך נקודות אחד לכל שחקן. לכן "תוצאה אחת" משמעה סכום רשמי, ופירוט התוצאות הבודדות יופיע ככל שיתווספו תוצאות תחרויות.')}</p>
       <nav className="tabs">{[['MALE', 'בנים/גברים'], ['FEMALE', 'בנות/נשים']].map(([k, l]) => <a key={k} href={href({ g: k })} className={gender === k ? 'on' : ''}>{t(l ?? '')}</a>)}</nav>
       <div className="row" style={{ marginBottom: 14 }}>
-        <Link href={href({ age: '' })} className={`pill ${!ageN ? 'lime' : ''}`}>{t('כללי')}</Link>
-        {AGE_GROUPS.map((a) => <Link key={a} href={href({ age: String(a) })} className={`pill ${ageN === a ? 'lime' : ''}`}>{t('עד גיל')} {a}</Link>)}
+        <Link scroll={false} href={href({ age: '' })} className={`pill ${!ageN ? 'lime' : ''}`}>{t('כללי')}</Link>
+        {AGE_GROUPS.map((a) => <Link scroll={false} key={a} href={href({ age: String(a) })} className={`pill ${ageN === a ? 'lime' : ''}`}>{t('עד גיל')} {a}</Link>)}
         <GetForm className="row" style={{ marginInlineStart: 'auto' }}>
           <input type="hidden" name="g" value={gender} /><input type="hidden" name="age" value={age} />
           <AutoSelect name="club" defaultValue={club}><option value="">{t('כל המועדונים')}</option>{clubs.map(({ c }) => <option key={c.id} value={c.id}>{t(c.name)}</option>)}</AutoSelect>
