@@ -48,7 +48,7 @@ const EN: Record<string, string> = {
   'דמי השתתפות': 'Entry fee',
   'מועד אחרון להרשמה': 'Registration deadline', 'הרשמה בלוגליג': 'Register on Loglig', 'עמוד התחרות באתר האיגוד': 'Competition page on the ITA site',
   'מתקיימת עכשיו': 'Live now', 'בקרוב': 'Upcoming', 'חיפוש לפי שם תחרות': 'Search by competition name',
-  'בנים ובנות': 'Boys and girls', 'בנים': 'Boys', 'בנות': 'Girls', 'כל הגילאים': 'All ages', 'גיל': 'Age', 'כל הסוגים': 'All types', 'כל העונות': 'All seasons',
+  'בנים ובנות': 'Boys and girls', 'בנים': 'Boys', 'בן': 'Boy', 'בת': 'Girl', 'גבר': 'Man', 'אישה': 'Woman', 'בנות': 'Girls', 'כל הגילאים': 'All ages', 'גיל': 'Age', 'כל הסוגים': 'All types', 'כל העונות': 'All seasons',
   'ניקוי': 'Clear', 'הרשמה עד': 'Register by', 'לא נמצאו תחרויות לפי הסינון.': 'No competitions match the filter.',
   'שנת לידה': 'Birth year', 'הקודם': 'Previous', 'הבא': 'Next', 'ליגות': 'Leagues', 'ליגת Winner': 'Winner League',
   'קבוצות': 'teams', 'מחזורי משחקים שהסתיימו': 'matches played', 'אין עדיין ליגות.': 'No leagues yet.', 'עודכן': 'Updated', 'טבלאות': 'Standings',

@@ -5,6 +5,7 @@ import { db, schema } from '@/db';
 import { Shell } from '@/components/Shell';
 import { searchPlayers } from '@/services/public';
 import { fmtDate, STATUS } from '@/components/labels';
+import { photoUrl } from '@/lib/photos';
 import { tr } from '@/lib/i18n';
 import { getActor } from '@/lib/session';
 import { ownedPlayerIds } from '@/services/entries';
@@ -75,7 +76,20 @@ export default async function Search({ searchParams }: { searchParams: Promise<{
       {!term && active && <h2>{t(active.label)} ({ts.length})</h2>}
       {!term && active && !ts.length && <div className="card muted">{t('אין תחרויות להצגה.')}</div>}
       {ts.length > 0 && <>{term && <h2>{t('תחרויות')}</h2>}<div className="grid cols">{ts.map(card)}</div></>}
-      {players.length > 0 && <><h2>{t('שחקנים')}</h2><div className="grid cols">{players.map(({ p, club }) => <Link key={p.id} href={`/players/${p.id}`} className="card grid" style={{ gap: 4 }}><strong>{p.firstName} {p.lastName}</strong><span className="muted">{club ?? ''}</span></Link>)}</div></>}
+      {players.length > 0 && <><h2>{t('שחקנים')}</h2><div className="grid cols">{players.map(({ p, club }) => {
+        const age = Math.floor((now.getTime() - p.birthDate.getTime()) / (365.25 * DAY));
+        const kind = p.gender === 'FEMALE' ? (age < 18 ? 'בת' : 'אישה') : p.gender === 'MALE' ? (age < 18 ? 'בן' : 'גבר') : '';
+        return (
+          <Link key={p.id} href={`/players/${p.id}`} className="card row" style={{ gap: 12, flexWrap: 'nowrap' }}>
+            {photoUrl(p.photo) ? <img className="pavatar-img" style={{ width: 56, height: 56 }} src={photoUrl(p.photo)!} alt="" loading="lazy" referrerPolicy="no-referrer" /> : <span className="pavatar" aria-hidden style={{ width: 56, height: 56, fontSize: 20 }}>{p.firstName.charAt(0)}{p.lastName.charAt(0)}</span>}
+            <span className="grid" style={{ gap: 2, minWidth: 0 }}>
+              <strong>{p.firstName} {p.lastName}</strong>
+              <span className="muted">{[kind && t(kind), `${t('גיל')} ${age}`].filter(Boolean).join(' · ')}</span>
+              {club && <span className="muted">{club}</span>}
+            </span>
+          </Link>
+        );
+      })}</div></>}
       {clubs.length > 0 && <><h2>{t('מועדונים')}</h2><div className="grid cols">{clubs.map((c) => <Link key={c.id} href={`/clubs/${c.id}`} className="card grid" style={{ gap: 4 }}><strong>{c.name}</strong><span className="muted">{c.city ?? ''}</span></Link>)}</div></>}
     </Shell>
   );
