@@ -11,11 +11,13 @@ import { addPlayerAction, cancelEntryAction, childLoginAction, removeProfileActi
 import { childLoginName, isChildActor } from '@/services/children';
 import { ineligibleReason } from '@/services/eligibility';
 import { claimPlayerAction } from '@/app/actions9';
+import { tr } from '@/lib/i18n';
 
 const DOC: Record<string, string> = { ID_PHOTO: 'תמונת ת״ז', PARENT_CONSENT: 'אישור הורים', MEDICAL_CERTIFICATE: 'אישור רפואי', OTHER: 'אחר' };
 const DS: Record<string, string> = { PENDING: 'ממתין לאישור', APPROVED: 'אושר', REJECTED: 'נדחה', EXPIRED: 'פג תוקף' };
 
 export default async function Me({ searchParams }: { searchParams: Promise<{ err?: string; ok?: string; who?: string }> }) {
+  const t = await tr();
   const { err, ok, who } = await searchParams;
   const actor = await requireActor();
   const isChild = await isChildActor(db, actor);
@@ -33,16 +35,16 @@ export default async function Me({ searchParams }: { searchParams: Promise<{ err
   const checks = new Map(await Promise.all(ps.map(async (p) => [p.id, await checkDocuments(db, p.id, new Date())] as const)));
   return (
     <Shell nav="me">
-      <h1>האזור האישי</h1>
+      <h1>{t('האזור האישי')}</h1>
       <Flash err={err} ok={ok} />
       {ps.length === 0 && (
         <div className="card grid" style={{ gap: 10, marginBottom: 14 }}>
-          <strong style={{ fontSize: 18 }}>ברוכים הבאים</strong>
-          <span className="muted">כאן מנהלים הרשמות לתחרויות. מה תרצו לעשות?</span>
+          <strong style={{ fontSize: 18 }}>{t('ברוכים הבאים')}</strong>
+          <span className="muted">{t('כאן מנהלים הרשמות לתחרויות. מה תרצו לעשות?')}</span>
           <div className="row">
-            <a className="btn" href="/welcome">להירשם לתחרות: הוספת שחקן או ילד</a>
-            <a className="btn ghost" href="/following">לעקוב אחרי שחקנים ולקבל תוצאות</a>
-            <a className="btn ghost" href="/">לצפות בתחרויות</a>
+            <a className="btn" href="/welcome">{t('להירשם לתחרות: הוספת שחקן או ילד')}</a>
+            <a className="btn ghost" href="/following">{t('לעקוב אחרי שחקנים ולקבל תוצאות')}</a>
+            <a className="btn ghost" href="/">{t('לצפות בתחרויות')}</a>
           </div>
         </div>
       )}
@@ -50,58 +52,58 @@ export default async function Me({ searchParams }: { searchParams: Promise<{ err
         <section key={p.id} className="card grid" style={{ marginBottom: 12 }}>
           <div className="row" style={{ justifyContent: 'space-between' }}>
             <strong style={{ fontSize: 18 }}>{p.firstName} {p.lastName}</strong>
-            <span className={`pill ${checks.get(p.id)?.ok ? 'ok' : 'warn'}`}>{checks.get(p.id)?.ok ? 'כל המסמכים תקינים' : `חסר: ${checks.get(p.id)?.missing.map((m) => DOC[m]).join(', ')}`}</span>
+            <span className={`pill ${checks.get(p.id)?.ok ? 'ok' : 'warn'}`}>{checks.get(p.id)?.ok ? t('כל המסמכים תקינים') : `${t('חסר')}: ${checks.get(p.id)?.missing.map((m) => t(DOC[m] ?? m)).join(', ')}`}</span>
           </div>
           {docs.filter((d) => d.playerId === p.id).map((d) => (
-            <div key={d.id} className="row"><span>{DOC[d.type]}</span><span className={`pill ${d.status === 'APPROVED' ? 'ok' : d.status === 'REJECTED' ? 'bad' : 'warn'}`}>{DS[d.status]}</span>{d.reviewNote && <span className="muted">{d.reviewNote}</span>}<a className="muted" href={signedUrl(d.storageKey)} target="_blank">צפייה</a></div>
+            <div key={d.id} className="row"><span>{t(DOC[d.type] ?? d.type)}</span><span className={`pill ${d.status === 'APPROVED' ? 'ok' : d.status === 'REJECTED' ? 'bad' : 'warn'}`}>{t(DS[d.status] ?? d.status)}</span>{d.reviewNote && <span className="muted">{d.reviewNote}</span>}<a className="muted" href={signedUrl(d.storageKey)} target="_blank">{t('צפייה')}</a></div>
           ))}
           {!isChild && (
           <form action={uploadDocAction} className="row">
             <input type="hidden" name="player" value={p.id} />
-            <select name="type">{Object.entries(DOC).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
+            <select name="type">{Object.entries(DOC).map(([k, v]) => <option key={k} value={k}>{t(v)}</option>)}</select>
             <input name="file" type="file" accept="image/jpeg,image/png,application/pdf" required />
-            <label style={{ flexDirection: 'row', alignItems: 'center' }}>תוקף<input name="expires" type="date" /></label>
-            <button className="btn small">העלאה</button>
+            <label style={{ flexDirection: 'row', alignItems: 'center' }}>{t('תוקף')}<input name="expires" type="date" /></label>
+            <button className="btn small">{t('העלאה')}</button>
           </form>
           )}
           {open.length > 0 && (
             <form action={isChild ? suggestEntryAction : selfRegisterAction} className="row">
               <input type="hidden" name="player" value={p.id} />
               <select name="category">{open.filter((o) => !ineligibleReason(p, o.c, o.t)).map((o) => <option key={o.c.id} value={o.c.id}>{o.t.name} · {o.c.name}</option>)}</select>
-              <button className="btn small ghost">{isChild ? 'הצעה להורה להירשם' : 'הרשמה לתחרות'}</button>
+              <button className="btn small ghost">{isChild ? t('הצעה להורה להירשם') : t('הרשמה לתחרות')}</button>
             </form>
           )}
           {!isChild && (
             <details className="filters" style={{ marginTop: 0 }}>
-              <summary>עריכת פרטים</summary>
+              <summary>{t('עריכת פרטים')}</summary>
               <form action={updateProfileAction} className="row" style={{ marginTop: 8 }}>
                 <input type="hidden" name="player" value={p.id} />
-                <label>שם פרטי<input name="first" defaultValue={p.firstName} required /></label>
-                <label>שם משפחה<input name="last" defaultValue={p.lastName} required /></label>
-                <label>תאריך לידה<input name="birth" type="date" defaultValue={p.birthDate.toISOString().slice(0, 10)} required /></label>
-                <label>מין<select name="gender" defaultValue={p.gender}><option value="MALE">זכר</option><option value="FEMALE">נקבה</option></select></label>
-                <button className="btn small">שמירה</button>
+                <label>{t('שם פרטי')}<input name="first" defaultValue={p.firstName} required /></label>
+                <label>{t('שם משפחה')}<input name="last" defaultValue={p.lastName} required /></label>
+                <label>{t('תאריך לידה')}<input name="birth" type="date" defaultValue={p.birthDate.toISOString().slice(0, 10)} required /></label>
+                <label>{t('מין')}<select name="gender" defaultValue={p.gender}><option value="MALE">{t('זכר')}</option><option value="FEMALE">{t('נקבה')}</option></select></label>
+                <button className="btn small">{t('שמירה')}</button>
               </form>
               <form action={removeProfileAction} className="row" style={{ marginTop: 8 }}>
                 <input type="hidden" name="player" value={p.id} />
-                <label style={{ flexDirection: 'row', alignItems: 'center', fontWeight: 500 }}><input type="checkbox" required style={{ minHeight: 0 }} /> אני מאשר/ת להסיר את {p.firstName} מהחשבון</label>
-                <button className="btn small ghost" style={{ color: 'var(--bad)' }}>מחיקת פרופיל</button>
-                <span className="muted">פרופיל בלי הרשמות ותוצאות נמחק לגמרי. אם יש היסטוריה, הוא מוסר מהחשבון ונשאר ברשומות האיגוד.</span>
+                <label style={{ flexDirection: 'row', alignItems: 'center', fontWeight: 500 }}><input type="checkbox" required style={{ minHeight: 0 }} /> {t('אני מאשר/ת להסיר את')} {p.firstName} {t('מהחשבון')}</label>
+                <button className="btn small ghost" style={{ color: 'var(--bad)' }}>{t('מחיקת פרופיל')}</button>
+                <span className="muted">{t('פרופיל בלי הרשמות ותוצאות נמחק לגמרי. אם יש היסטוריה, הוא מוסר מהחשבון ונשאר ברשומות האיגוד.')}</span>
               </form>
             </details>
           )}
           {!isChild && p.accountId !== actor.id && (
             <form action={childLoginAction} className="row" style={{ borderTop: '1px solid var(--line)', paddingTop: 10 }}>
               <input type="hidden" name="player" value={p.id} />
-              <strong>{loginNames.get(p.id) ? `כניסה לילד/ה: ${loginNames.get(p.id)}` : 'כניסה לילד/ה'}</strong>
-              <label>שם משתמש<input name="username" defaultValue={loginNames.get(p.id) ?? ''} required pattern="[A-Za-z0-9._]{3,20}" autoCapitalize="none" /></label>
-              <label>סיסמה<input name="password" type="password" required minLength={10} autoComplete="new-password" /></label>
-              <button className="btn small ghost">{loginNames.get(p.id) ? 'עדכון סיסמה' : 'יצירת כניסה'}</button>
+              <strong>{loginNames.get(p.id) ? `${t('כניסה לילד/ה')}: ${loginNames.get(p.id)}` : t('כניסה לילד/ה')}</strong>
+              <label>{t('שם משתמש')}<input name="username" defaultValue={loginNames.get(p.id) ?? ''} required pattern="[A-Za-z0-9._]{3,20}" autoCapitalize="none" /></label>
+              <label>{t('סיסמה')}<input name="password" type="password" required minLength={10} autoComplete="new-password" /></label>
+              <button className="btn small ghost">{loginNames.get(p.id) ? t('עדכון סיסמה') : t('יצירת כניסה')}</button>
             </form>
           )}
         </section>
       ))}
-      <h2>הרשמות שלי</h2>
+      <h2>{t('הרשמות שלי')}</h2>
       {(() => {
         const live = ents.filter(({ e }) => e.status !== 'WITHDRAWN' && e.status !== 'REJECTED');
         const gone = ents.filter(({ e }) => e.status === 'WITHDRAWN' || e.status === 'REJECTED');
@@ -109,27 +111,27 @@ export default async function Me({ searchParams }: { searchParams: Promise<{ err
         return (
           <>
             <div className="card grid" style={{ gap: 12 }}>
-              {live.length ? live.map(({ e, c, t }) => (
+              {live.length ? live.map(({ e, c, t: tn }) => (
                 <div key={e.id} className="row" style={{ justifyContent: 'space-between' }}>
                   <div>
-                    <strong>{t.name}</strong>
+                    <strong>{tn.name}</strong>
                     <div className="muted">{who(e.playerId)} · {c.name}</div>
                   </div>
                   <div className="row">
-                    <span className={`pill ${ENTRY_STATUS[e.status]?.[1] ?? ''}`}>{ENTRY_STATUS[e.status]?.[0] ?? e.status}</span>
-                    <span className={`pill ${PAY_STATUS[e.paymentStatus]?.[1] ?? ''}`}>{PAY_STATUS[e.paymentStatus]?.[0] ?? e.paymentStatus}</span>
-                    {e.source === 'loglig' && <span className="pill">{'נרשם ב-Loglig'}</span>}
-                    {!isChild && e.source !== 'loglig' && e.paymentStatus === 'UNPAID' && t.feeAgorot > 0 && <form action={payAction}><input type="hidden" name="entry" value={e.id} /><button className="btn small">תשלום ₪{(t.feeAgorot / 100).toFixed(0)}</button></form>}
-                    {!isChild && e.source !== 'loglig' && e.paymentStatus === 'UNPAID' && <form action={cancelEntryAction}><input type="hidden" name="entry" value={e.id} /><button className="btn small ghost" style={{ color: 'var(--bad)' }}>ביטול הרשמה</button></form>}
+                    <span className={`pill ${ENTRY_STATUS[e.status]?.[1] ?? ''}`}>{t(ENTRY_STATUS[e.status]?.[0] ?? e.status)}</span>
+                    <span className={`pill ${PAY_STATUS[e.paymentStatus]?.[1] ?? ''}`}>{t(PAY_STATUS[e.paymentStatus]?.[0] ?? e.paymentStatus)}</span>
+                    {e.source === 'loglig' && <span className="pill">{t('נרשם ב-Loglig')}</span>}
+                    {!isChild && e.source !== 'loglig' && e.paymentStatus === 'UNPAID' && tn.feeAgorot > 0 && <form action={payAction}><input type="hidden" name="entry" value={e.id} /><button className="btn small"><>{t('תשלום')} ₪{(tn.feeAgorot / 100).toFixed(0)}</></button></form>}
+                    {!isChild && e.source !== 'loglig' && e.paymentStatus === 'UNPAID' && <form action={cancelEntryAction}><input type="hidden" name="entry" value={e.id} /><button className="btn small ghost" style={{ color: 'var(--bad)' }}>{t('ביטול הרשמה')}</button></form>}
                   </div>
                 </div>
-              )) : <span className="muted">אין הרשמות פעילות.</span>}
+              )) : <span className="muted">{t('אין הרשמות פעילות.')}</span>}
             </div>
             {gone.length > 0 && (
               <details className="filters">
-                <summary>הרשמות שבוטלו ({gone.length})</summary>
+                <summary>{t('הרשמות שבוטלו')} ({gone.length})</summary>
                 <div className="card grid" style={{ marginTop: 8 }}>
-                  {gone.map(({ e, c, t }) => <div key={e.id} className="row"><strong>{t.name}</strong><span className="muted">{who(e.playerId)} · {c.name}</span><span className={`pill ${ENTRY_STATUS[e.status]?.[1] ?? ''}`}>{ENTRY_STATUS[e.status]?.[0] ?? e.status}</span></div>)}
+                  {gone.map(({ e, c, t: tn }) => <div key={e.id} className="row"><strong>{tn.name}</strong><span className="muted">{who(e.playerId)} · {c.name}</span><span className={`pill ${ENTRY_STATUS[e.status]?.[1] ?? ''}`}>{t(ENTRY_STATUS[e.status]?.[0] ?? e.status)}</span></div>)}
                 </div>
               </details>
             )}
@@ -137,34 +139,34 @@ export default async function Me({ searchParams }: { searchParams: Promise<{ err
         );
       })()}
       {!isChild && (<>
-      <h2 id="add-player">{ps.length ? 'הוספת שחקן או ילד נוסף' : 'הוספת שחקן'}</h2>
-      {ps.length === 0 && <p className="muted" style={{ margin: '0 0 8px' }}>כדי להירשם לתחרות צריך קודם פרופיל שחקן: שלכם, או של ילד/ה שאתם מלווים. התעודה נשמרת מוצפנת.</p>}
+      <h2 id="add-player">{ps.length ? t('הוספת שחקן או ילד נוסף') : t('הוספת שחקן')}</h2>
+      {ps.length === 0 && <p className="muted" style={{ margin: '0 0 8px' }}>{t('כדי להירשם לתחרות צריך קודם פרופיל שחקן: שלכם, או של ילד/ה שאתם מלווים. התעודה נשמרת מוצפנת.')}</p>}
       <form action={addPlayerAction} className="card row">
-        <label>שם פרטי<input name="first" required /></label><label>שם משפחה<input name="last" required /></label>
-        <label>תאריך לידה<input name="birth" type="date" required /></label>
-        <label>מין<select name="gender"><option value="MALE">זכר</option><option value="FEMALE">נקבה</option></select></label>
-        <label>ת״ז (נשמר כמזהה מוצפן בלבד)<input name="nid" inputMode="numeric" /></label>
-        <label style={{ flexDirection: 'row', alignItems: 'center' }}><input type="checkbox" name="child" value="1" defaultChecked={who === 'child'} style={{ minHeight: 0 }} /> זה ילד/ה שלי</label>
-        <button className="btn">הוספה</button>
+        <label>{t('שם פרטי')}<input name="first" required /></label><label>{t('שם משפחה')}<input name="last" required /></label>
+        <label>{t('תאריך לידה')}<input name="birth" type="date" required /></label>
+        <label>{t('מין')}<select name="gender"><option value="MALE">{t('זכר')}</option><option value="FEMALE">{t('נקבה')}</option></select></label>
+        <label>{t('ת״ז (נשמר כמזהה מוצפן בלבד)')}<input name="nid" inputMode="numeric" /></label>
+        <label style={{ flexDirection: 'row', alignItems: 'center' }}><input type="checkbox" name="child" value="1" defaultChecked={who === 'child'} style={{ minHeight: 0 }} /> {t('זה ילד/ה שלי')}</label>
+        <button className="btn">{t('הוספה')}</button>
       </form>
-      <h2 id="claim-player">אני כבר רשום באיגוד</h2>
-      <p className="muted" style={{ margin: '0 0 8px' }}>אם אתם או ילדכם כבר מופיעים במערכת (למשל מתחרויות קודמות), שייכו את הפרופיל הקיים לחשבון. עם ת״ז ותאריך לידה תואמים השיוך מיידי, אחרת הבקשה עוברת לאישור האיגוד.</p>
-      {pendingClaims.map((c) => <div key={c.id} className="card row"><strong>{c.firstName} {c.lastName}</strong><span className="pill warn">ממתין לאישור האיגוד</span></div>)}
+      <h2 id="claim-player">{t('אני כבר רשום באיגוד')}</h2>
+      <p className="muted" style={{ margin: '0 0 8px' }}>{t('אם אתם או ילדכם כבר מופיעים במערכת (למשל מתחרויות קודמות), שייכו את הפרופיל הקיים לחשבון. עם ת״ז ותאריך לידה תואמים השיוך מיידי, אחרת הבקשה עוברת לאישור האיגוד.')}</p>
+      {pendingClaims.map((c) => <div key={c.id} className="card row"><strong>{c.firstName} {c.lastName}</strong><span className="pill warn">{t('ממתין לאישור האיגוד')}</span></div>)}
       <form action={claimPlayerAction} className="card row">
-        <label>שם פרטי<input name="first" required /></label><label>שם משפחה<input name="last" required /></label>
-        <label>תאריך לידה<input name="birth" type="date" required /></label>
-        <label>ת״ז (נשמר כמזהה מוצפן בלבד)<input name="nid" inputMode="numeric" /></label>
-        <label>הערה לאיגוד<input name="reason" /></label>
-        <label style={{ flexDirection: 'row', alignItems: 'center' }}><input type="checkbox" name="child" value="1" style={{ minHeight: 0 }} /> זה ילד/ה שלי</label>
-        <button className="btn">שיוך שחקן קיים</button>
+        <label>{t('שם פרטי')}<input name="first" required /></label><label>{t('שם משפחה')}<input name="last" required /></label>
+        <label>{t('תאריך לידה')}<input name="birth" type="date" required /></label>
+        <label>{t('ת״ז (נשמר כמזהה מוצפן בלבד)')}<input name="nid" inputMode="numeric" /></label>
+        <label>{t('הערה לאיגוד')}<input name="reason" /></label>
+        <label style={{ flexDirection: 'row', alignItems: 'center' }}><input type="checkbox" name="child" value="1" style={{ minHeight: 0 }} /> {t('זה ילד/ה שלי')}</label>
+        <button className="btn">{t('שיוך שחקן קיים')}</button>
       </form>
       </>)}
       <form action="/logout?all=1" method="post" style={{ marginTop: 24 }}>
-        <button className="btn ghost small">התנתקות מכל המכשירים</button>
-        <span className="muted"> {' '}מנתק את החשבון בכל הטלפונים והדפדפנים, למשל אם אבד מכשיר</span>
+        <button className="btn ghost small">{t('התנתקות מכל המכשירים')}</button>
+        <span className="muted"> {' '}{t('מנתק את החשבון בכל הטלפונים והדפדפנים, למשל אם אבד מכשיר')}</span>
       </form>
-      <h2>התראות</h2>
-      <div className="card grid">{notes.length ? notes.slice().reverse().slice(0, 20).map((n) => <div key={n.id}><strong>{n.title}</strong> <span className="muted">{n.body}</span></div>) : <span className="muted">אין התראות.</span>}</div>
+      <h2>{t('התראות')}</h2>
+      <div className="card grid">{notes.length ? notes.slice().reverse().slice(0, 20).map((n) => <div key={n.id}><strong>{n.title}</strong> <span className="muted">{n.body}</span></div>) : <span className="muted">{t('אין התראות.')}</span>}</div>
     </Shell>
   );
 }

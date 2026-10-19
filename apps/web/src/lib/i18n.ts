@@ -56,6 +56,7 @@ const EN: Record<string, string> = {
   'נוער': 'Youth', 'בוגרים': 'Adults', 'מאסטרס': 'Masters', 'אחר': 'Other', 'כל הקטגוריות': 'All sections',
   'תקנונים': 'Regulations', 'תקנונים ונהלים': 'Regulations and procedures', 'אין עדיין מסמכים.': 'No documents yet.', 'ניצח': 'Won',
   'תפריט': 'Menu',
+  'אני מאשר/ת להסיר את': 'I confirm removing', 'מהחשבון': 'from the account', 'הרשמות שבוטלו': 'Cancelled registrations', 'מנתק את החשבון בכל הטלפונים והדפדפנים, למשל אם אבד מכשיר': 'Signs the account out on all phones and browsers, e.g. if a device is lost',
   'טוען...': 'Loading...', 'נסו שוב': 'Try again',
   'אין קטגוריות לפי הסינון.': 'No categories match the filter.',
   'שחקנים פעילים': 'Active players', 'כל השחקנים': 'All players',
