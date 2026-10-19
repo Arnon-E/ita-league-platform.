@@ -18,6 +18,7 @@ import { bracketLayout, roundName } from '@/services/bracket';
 import { loadRuleSet } from '@/services/rules';
 import { myPlayerRows } from '@/services/home';
 import { ineligibleReason, relevantFor } from '@/services/eligibility';
+import { AutoSelect } from '@/components/AutoSelect';
 import { FORMAT, fmtDate, fmtTime, GENDER, LEVEL, MSTATUS, NEXT, STATUS, fmtScore } from '@/components/labels';
 import { refundAction } from '@/app/actions3';
 import { suggestedRefund } from '@/services/payments';
@@ -192,7 +193,7 @@ async function CatFilter({ d, tab, cat, flt, withCats }: { d: Detail; tab: strin
   const shown = narrow(d, flt).cats;
   const cur = (shown.find((x) => x.id === cat) ?? shown[0])?.id;
   return (
-    <div className="grid" style={{ gap: 8, margin: '4px 0 12px' }}>
+    <div className="grid" style={{ gap: 12, margin: '8px 0 16px' }}>
       <div className="row">
         {genders.length > 1 && <>
           <Link href={url({ g: '' })} className={`pill ${!flt.g ? 'lime' : ''}`}>{tt('בנים ובנות')}</Link>
@@ -209,10 +210,9 @@ async function CatFilter({ d, tab, cat, flt, withCats }: { d: Detail; tab: strin
         shown.length > 8 ? (
           <form className="row" action={`/tournaments/${d.t.id}`}>
             <input type="hidden" name="tab" value={tab} /><input type="hidden" name="g" value={flt.g} /><input type="hidden" name="age" value={flt.age} />
-            <select name="cat" defaultValue={cur} aria-label={tt('קטגוריה')} style={{ flex: 1, minWidth: 220 }}>
+            <AutoSelect name="cat" defaultValue={cur} aria-label={tt("קטגוריה")} style={{ flex: 1, minWidth: 220 }}>
               {shown.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
-            <button className="btn small">{tt('הצגה')}</button>
+            </AutoSelect>
             <span className="muted">{shown.length} {tt('קטגוריות. צמצמו לפי בנים/בנות וגיל למעלה.')}</span>
           </form>
         ) : (

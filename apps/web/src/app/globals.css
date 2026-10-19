@@ -459,3 +459,7 @@ details.acct .out.soft{color:var(--muted)}details.acct .out.soft:hover{backgroun
 .plist li{display:flex;align-items:center;gap:10px}
 .plist img{border-radius:50%;object-fit:cover;border:2px solid var(--volt);flex:none}
 .pavatar-img{width:68px;height:68px;border-radius:50%;object-fit:cover;border:3px solid var(--volt);flex:none}
+
+/* stacked blocks (cards, step trackers, button rows) never touch: a fixed gap unless the parent grid/row already spaces them */
+:not(.grid,.row)>.card+.card,:not(.grid,.row)>.card+.steps,:not(.grid,.row)>.steps+.card,:not(.grid,.row)>.row+.card,:not(.grid,.row)>.card+.row,:not(.grid,.row)>.steps+.row{margin-top:12px}
+.steps{margin-top:12px}
