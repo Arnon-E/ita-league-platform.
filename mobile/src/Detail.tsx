@@ -135,18 +135,80 @@ export function MatchScreen({ id, onBack }: { id: string; onBack: () => void }) 
 }
 
 const DOCS: Record<string, string> = { ID_PHOTO: 'תמונת ת״ז', PARENT_CONSENT: 'אישור הורים', MEDICAL_CERTIFICATE: 'אישור רפואי', OTHER: 'אחר' };
-const ADMIN_PAGES: [string, string][] = [['/admin/users', 'משתמשים והרשאות'], ['/admin/reports', 'דוחות'], ['/admin/messages', 'הודעות'], ['/admin/venues', 'מגרשים'], ['/admin/rules', 'כללי דירוג'], ['/admin/import', 'ייבוא'], ['/admin/audit', 'יומן פעולות']];
+const ROLES: [string, string][] = [['SUPER_ADMIN', 'מנהל על'], ['FEDERATION_ADMIN', 'מנהל איגוד'], ['TOURNAMENT_MANAGER', 'מנהל טורניר'], ['REFEREE', 'שופט'], ['CLUB_MANAGER', 'מנהל מועדון'], ['PLAYER', 'שחקן/הורה']];
+const ADMIN_PAGES: [string, string][] = [['/admin/reports', 'דוחות'], ['/admin/messages', 'הודעות'], ['/admin/venues', 'מגרשים'], ['/admin/rules', 'כללי דירוג'], ['/admin/import', 'ייבוא'], ['/admin/audit', 'יומן פעולות']];
+
+function AdminUsers({ onBack }: { onBack: () => void }) {
+  const u = useData(() => api.adminUsers(), []);
+  const [q, setQ] = useState(''); const [open, setOpen] = useState(''); const [msg, setMsg] = useState(''); const [err, setErr] = useState('');
+  const run = (p: Promise<unknown>) => { setErr(''); setMsg(''); p.then(() => { setMsg(tr('נשמר')); return api.adminUsers().then(u.set); }).catch((e) => setErr(e.message)); };
+  const rows = (u.data ?? []).filter((x) => !q.trim() || `${x.name} ${x.email}`.toLowerCase().includes(q.trim().toLowerCase())).slice(0, 60);
+  return (
+    <ScrollView contentContainerStyle={st.pad} keyboardShouldPersistTaps="handled">
+      <Head title={tr('משתמשים והרשאות')} onBack={onBack} />
+      <TextInput style={[st.input, startAlign()]} placeholder={tr('חיפוש לפי שם או אימייל')} placeholderTextColor={T.muted} value={q} onChangeText={setQ} autoCapitalize="none" />
+      {!!msg && <Text style={st.ok}>{msg}</Text>}{!!err && <Text style={st.err}>{err}</Text>}
+      <Wait err={u.err} busy={u.busy} />
+      {rows.map((x) => (
+        <View key={x.id} style={st.card}>
+          <Pressable onPress={() => setOpen(open === x.id ? '' : x.id)}>
+            <Text style={st.b}>{x.name}{x.active ? '' : ` · ${tr('מושבת')}`}</Text><Text style={st.muted}>{x.email} · {tr(ROLES.find((r) => r[0] === x.role)?.[1] ?? x.role)}</Text>
+          </Pressable>
+          {open === x.id && <View style={{ gap: 8, marginTop: 6 }}>
+            <View style={[st.row, { flexWrap: 'wrap' }]}>{ROLES.map(([k, l]) => <Pressable key={k} style={[st.chip, x.role === k && st.chipOn]} onPress={() => x.role !== k && run(api.adminSetRole(x.id, k))}><Text style={x.role === k ? st.chipOnT : st.b}>{tr(l)}</Text></Pressable>)}</View>
+            <Pressable style={st.chip} onPress={() => run(api.adminSetActive(x.id, !x.active))}><Text style={st.b}>{x.active ? tr('השבתה') : tr('הפעלה')}</Text></Pressable>
+          </View>}
+        </View>
+      ))}
+    </ScrollView>
+  );
+}
+
+function AdminLinks({ onBack }: { onBack: () => void }) {
+  const [q, setQ] = useState(''); const [rows, setRows] = useState<api.AdminLinkRow[]>([]); const [busy, setBusy] = useState(false);
+  const [email, setEmail] = useState<Record<string, string>>({}); const [msg, setMsg] = useState(''); const [err, setErr] = useState('');
+  const find = (term: string) => { if (term.trim().length < 2) { setRows([]); return; } setBusy(true); api.adminFindPlayers(term.trim()).then(setRows).catch((e) => setErr(e.message)).finally(() => setBusy(false)); };
+  useEffect(() => { const h = setTimeout(() => find(q), 300); return () => clearTimeout(h); }, [q]);
+  const run = (p: Promise<unknown>) => { setErr(''); setMsg(''); p.then(() => { setMsg(tr('נשמר')); find(q); }).catch((e) => setErr(e.message)); };
+  return (
+    <ScrollView contentContainerStyle={st.pad} keyboardShouldPersistTaps="handled">
+      <Head title={tr('שיוך ידני')} onBack={onBack} />
+      <TextInput style={[st.input, startAlign()]} placeholder={tr('שם פרטי או משפחה')} placeholderTextColor={T.muted} value={q} onChangeText={setQ} />
+      {!!msg && <Text style={st.ok}>{msg}</Text>}{!!err && <Text style={st.err}>{err}</Text>}
+      {busy && <ActivityIndicator color={T.blue} />}
+      {rows.map((p) => (
+        <View key={p.id} style={st.card}>
+          <Text style={st.b}>{p.name}</Text><Text style={st.muted}>{dm(p.birth)}</Text>
+          {p.account && <View style={st.row}><Text style={[st.muted, { flex: 1 }]}>{p.account.email}</Text><Pressable style={st.chip} onPress={() => run(api.adminUnlink(p.id))}><Text style={st.b}>{tr('ביטול שיוך')}</Text></Pressable></View>}
+          {p.guardians.map((g) => <View key={g.userId} style={st.row}><Text style={[st.muted, { flex: 1 }]}>{tr('הורה')}: {g.email}</Text><Pressable style={st.chip} onPress={() => run(api.adminUnlink(p.id, g.userId))}><Text style={st.b}>{tr('ביטול שיוך')}</Text></Pressable></View>)}
+          <TextInput style={[st.input, startAlign()]} placeholder={tr('אימייל המשתמש')} placeholderTextColor={T.muted} value={email[p.id] ?? ''} onChangeText={(v) => setEmail((x) => ({ ...x, [p.id]: v }))} autoCapitalize="none" keyboardType="email-address" />
+          <View style={st.row}>
+            <Pressable style={[st.chip, st.chipOn, { flex: 1 }]} onPress={() => run(api.adminLink(p.id, email[p.id] ?? '', 'self'))}><Text style={st.chipOnT}>{tr('השחקן עצמו')}</Text></Pressable>
+            <Pressable style={[st.chip, { flex: 1 }]} onPress={() => run(api.adminLink(p.id, email[p.id] ?? '', 'guardian'))}><Text style={st.b}>{tr('הורה/אפוטרופוס')}</Text></Pressable>
+          </View>
+        </View>
+      ))}
+    </ScrollView>
+  );
+}
 
 /** Admin work queue: review documents and link-requests in the app; the desk screens (users, reports, ...) open on the website. */
 export function AdminScreen({ onBack }: { onBack: () => void }) {
+  const [page, setPage] = useState<'' | 'users' | 'links'>('');
   const docs = useData(() => api.adminDocuments(), []); const claims = useData(() => api.adminClaims(), []);
   const [note, setNote] = useState<Record<string, string>>({}); const [msg, setMsg] = useState(''); const [err, setErr] = useState('');
   const run = (p: Promise<unknown>, reload: () => void) => { setErr(''); setMsg(''); p.then(() => { setMsg(tr('נשמר')); reload(); }).catch((e) => setErr(e.message)); };
   const reloadDocs = () => api.adminDocuments().then(docs.set).catch(() => {}); const reloadClaims = () => api.adminClaims().then(claims.set).catch(() => {});
   const noteBox = (id: string) => <TextInput style={[st.input, startAlign()]} placeholder={tr('הערה (חובה בדחייה)')} placeholderTextColor={T.muted} value={note[id] ?? ''} onChangeText={(v) => setNote((x) => ({ ...x, [id]: v }))} />;
+  if (page === 'users') return <AdminUsers onBack={() => setPage('')} />;
+  if (page === 'links') return <AdminLinks onBack={() => setPage('')} />;
   return (
     <ScrollView contentContainerStyle={st.pad} keyboardShouldPersistTaps="handled">
       <Head title={tr('ניהול')} onBack={onBack} />
+      <View style={st.row}>
+        <Pressable style={[st.card, { flex: 1 }]} onPress={() => setPage('users')}><Text style={st.b}>{tr('משתמשים והרשאות')} ›</Text></Pressable>
+        <Pressable style={[st.card, { flex: 1 }]} onPress={() => setPage('links')}><Text style={st.b}>{tr('שיוך ידני')} ›</Text></Pressable>
+      </View>
       {!!msg && <Text style={st.ok}>{msg}</Text>}
       {!!err && <Text style={st.err}>{err}</Text>}
       <Text style={st.h2}>{tr('אישור מסמכים')}</Text>
@@ -171,7 +233,7 @@ export function AdminScreen({ onBack }: { onBack: () => void }) {
           <Text style={st.muted}>{`${tr('מבקש/ת לשייך:')} ${c.first} ${c.last} · ${dm(c.birth)}${c.forChild ? ` · ${tr('ילד/ה')}` : ''}`}</Text>
           {!!c.reason && <Text style={st.muted}>{tr('הערה')}: {c.reason}</Text>}
           {c.candidate ? <Text style={st.b}>{`${tr('שחקן מועמד:')} ${c.candidate.name} · ${dm(c.candidate.birth)}${c.candidate.linked ? ` · ${tr('כבר משויך לחשבון')}` : ''}`}</Text>
-            : <Text style={st.muted}>{tr('לא נמצא שחקן מתאים אוטומטית. השיוך הידני נעשה באתר.')}</Text>}
+            : <Text style={st.muted}>{tr('לא נמצא שחקן מתאים אוטומטית. אפשר לשייך ידנית.')}</Text>}
           {noteBox(c.id)}
           <View style={st.row}>
             {c.candidate && <Pressable style={[st.chip, st.chipOn, { flex: 1 }]} onPress={() => run(api.adminResolveClaim(c.id, 'APPROVED', note[c.id]), reloadClaims)}><Text style={st.chipOnT}>{tr('אישור ושיוך')}</Text></Pressable>}

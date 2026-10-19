@@ -162,3 +162,12 @@ export const adminDocuments = () => call<AdminDoc[]>('/admin/documents');
 export const adminReviewDocument = (id: string, decision: 'APPROVED' | 'REJECTED', note?: string) => call<{ ok: true }>('/admin/documents', { method: 'POST', body: JSON.stringify({ id, decision, note }) });
 export const adminClaims = () => call<AdminClaim[]>('/admin/claims');
 export const adminResolveClaim = (id: string, decision: 'APPROVED' | 'REJECTED', note?: string) => call<{ ok: true }>('/admin/claims', { method: 'POST', body: JSON.stringify({ id, decision, note }) });
+
+export type AdminUser = { id: string; name: string; email: string; role: string; active: boolean };
+export const adminUsers = () => call<AdminUser[]>('/admin/users');
+export const adminSetRole = (id: string, role: string) => call<{ ok: true }>('/admin/users', { method: 'POST', body: JSON.stringify({ id, role }) });
+export const adminSetActive = (id: string, active: boolean) => call<{ ok: true }>('/admin/users', { method: 'POST', body: JSON.stringify({ id, active }) });
+export type AdminLinkRow = { id: string; name: string; birth: string; account: { id: string; email: string } | null; guardians: { userId: string; email: string }[] };
+export const adminFindPlayers = (q: string) => call<AdminLinkRow[]>(`/admin/links?q=${encodeURIComponent(q)}`);
+export const adminLink = (playerId: string, email: string, mode: 'self' | 'guardian') => call<{ ok: true; user: string }>('/admin/links', { method: 'POST', body: JSON.stringify({ playerId, email, mode }) });
+export const adminUnlink = (playerId: string, userId?: string) => call<{ ok: true }>('/admin/links', { method: 'POST', body: JSON.stringify({ playerId, unlink: true, userId }) });
