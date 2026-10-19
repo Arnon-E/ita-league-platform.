@@ -12,6 +12,7 @@ import { childLoginName, isChildActor } from '@/services/children';
 import { ineligibleReason } from '@/services/eligibility';
 import { claimPlayerAction } from '@/app/actions9';
 import { tr } from '@/lib/i18n';
+import { UploadDocForm } from '@/components/UploadDocForm';
 import { AddPlayerForm } from '@/components/AddPlayerForm';
 
 const DOC: Record<string, string> = { ID_PHOTO: 'תמונת ת״ז', PARENT_CONSENT: 'אישור הורים', MEDICAL_CERTIFICATE: 'אישור רפואי', OTHER: 'אחר' };
@@ -59,13 +60,7 @@ export default async function Me({ searchParams }: { searchParams: Promise<{ err
             <div key={d.id} className="row"><span>{t(DOC[d.type] ?? d.type)}</span><span className={`pill ${d.status === 'APPROVED' ? 'ok' : d.status === 'REJECTED' ? 'bad' : 'warn'}`}>{t(DS[d.status] ?? d.status)}</span>{d.reviewNote && <span className="muted">{d.reviewNote}</span>}<a className="muted" href={signedUrl(d.storageKey)} target="_blank">{t('צפייה')}</a></div>
           ))}
           {!isChild && (
-          <form action={uploadDocAction} className="fform">
-            <input type="hidden" name="player" value={p.id} />
-            <select name="type" aria-label={t('סוג מסמך')}>{Object.entries(DOC).map(([k, v]) => <option key={k} value={k}>{t(v)}</option>)}</select>
-            <input name="file" type="file" accept="image/jpeg,image/png,application/pdf" required className="full" />
-            <label>{t('תוקף')}<input name="expires" type="date" /></label>
-            <button className="btn small full">{t('העלאה')}</button>
-          </form>
+          <UploadDocForm action={uploadDocAction} player={p.id} types={Object.entries(DOC).map(([k, v]) => [k, t(v)])} labels={{ type: t('סוג מסמך'), expires: t('תוקף'), upload: t('העלאה') }} />
           )}
           {open.some((o) => !ineligibleReason(p, o.c, o.t)) && (
             <form action={isChild ? suggestEntryAction : selfRegisterAction} className="fform">
