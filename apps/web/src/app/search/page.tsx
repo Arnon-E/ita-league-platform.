@@ -1,3 +1,4 @@
+import { GetForm } from '@/components/GetForm';
 import Link from 'next/link';
 import { and, asc, desc, gte, ilike, inArray, lte, or, eq } from 'drizzle-orm';
 import { db, schema } from '@/db';
@@ -62,10 +63,10 @@ export default async function Search({ searchParams }: { searchParams: Promise<{
   return (
     <Shell nav="search">
       <h1>{t('חיפוש')}</h1>
-      <form className="row" style={{ margin: '12px 0 4px' }}>
+      <GetForm className="row" style={{ margin: '12px 0 4px' }}>
         <input name="q" defaultValue={q} placeholder={t('שחקנים, מועדונים, תחרויות')} autoFocus style={{ flex: 1, minWidth: 200 }} />
         <button className="btn">{t('חיפוש')}</button>
-      </form>
+      </GetForm>
       <div className="row" style={{ margin: '10px 0 0' }} aria-label={t('חיפושים מהירים')}>
         {shortcuts.map((s) => <Link key={s.key} href={`/search?show=${s.key}`} className={`pill ${!term && show === s.key ? 'lime' : ''}`} title={t(s.hint)}>{t(s.label)}</Link>)}
       </div>

@@ -1,3 +1,4 @@
+import { GetForm } from '@/components/GetForm';
 import Link from 'next/link';
 import { eq, sql } from 'drizzle-orm';
 import { schema } from '@/db';
@@ -131,7 +132,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ l
       )}
       <details className="filters" open={filtered}>
       <summary>{t('סינון')}{filtered ? ` · ${[level, season, needle, g, age, sec].filter(Boolean).length}` : ''}</summary>
-      <form className="card row" style={{ marginTop: 8 }}>
+      <GetForm className="card row" style={{ marginTop: 8 }}>
         <input type="hidden" name="st" value={mode} />
         <select name="sec" defaultValue={sec}><option value="">{t('כל הקטגוריות')}</option>{Object.entries(SEC).map(([k, v]) => <option key={k} value={k}>{t(v)}</option>)}</select>
         <input name="q" defaultValue={q} placeholder={t('חיפוש לפי שם תחרות')} style={{ flex: 1, minWidth: 180 }} />
@@ -141,7 +142,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ l
         {seasons.length > 1 && <select name="season" defaultValue={season}><option value="">{t('כל העונות')}</option>{seasons.map((y) => <option key={y} value={y}>{y}</option>)}</select>}
         <button className="btn">{t('הצגה')}</button>
         {filtered && <Link className="btn ghost" href="/">{t('ניקוי')}</Link>}
-      </form>
+      </GetForm>
       </details>
       <p className="muted" style={{ margin: '10px 0 0' }}>{shown.length} {t('תחרויות')}</p>
       {shown.length ? (

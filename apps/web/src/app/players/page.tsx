@@ -1,3 +1,4 @@
+import { GetForm } from '@/components/GetForm';
 import { db } from '@/db';
 import { Shell } from '@/components/Shell';
 import { tr } from '@/lib/i18n';
@@ -21,14 +22,14 @@ export default async function Players({ searchParams }: { searchParams: Promise<
   return (
     <Shell nav="players">
       <h1>{t('שחקנים')}</h1>
-      <form className="card row" style={{ margin: '12px 0' }}>
+      <GetForm className="card row" style={{ margin: '12px 0' }}>
         <input name="q" defaultValue={q} placeholder={t('חיפוש לפי שם')} style={{ flex: 1, minWidth: 180 }} />
         <select name="g" defaultValue={g}><option value="">{t('בנים ובנות')}</option><option value="MALE">{t('בנים')}</option><option value="FEMALE">{t('בנות')}</option></select>
         <select name="age" defaultValue={age}><option value="">{t('כל הגילאים')}</option>{[10, 12, 14, 16, 18].map((a) => <option key={a} value={a}>{t('עד גיל')} {a}</option>)}</select>
         <select name="club" defaultValue={club}><option value="">{t('כל המועדונים')}</option>{clubs.map(({ c }) => <option key={c.id} value={c.id}>{t(c.name)}</option>)}</select>
         <select name="show" defaultValue={show}><option value="">{t('שחקנים פעילים')}</option><option value="all">{t('כל השחקנים')}</option></select>
         <button className="btn">{t('חיפוש')}</button>
-      </form>
+      </GetForm>
       <p className="muted" style={{ margin: '0 0 8px' }}>
         {activeOnly ? t('מוצגים שחקנים פעילים בלבד (תחרו ב-18 החודשים האחרונים). לכולם בחרו "כל השחקנים".') : t('מוצגים כל השחקנים, כולל לא פעילים.')}
       </p>

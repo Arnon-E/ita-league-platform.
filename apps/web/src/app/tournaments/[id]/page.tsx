@@ -1,3 +1,4 @@
+import { GetForm } from '@/components/GetForm';
 import { photoUrl } from '@/lib/photos';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
@@ -208,13 +209,13 @@ async function CatFilter({ d, tab, cat, flt, withCats }: { d: Detail; tab: strin
       </div>
       {withCats && (
         shown.length > 8 ? (
-          <form className="row" action={`/tournaments/${d.t.id}`}>
+          <GetForm className="row" action={`/tournaments/${d.t.id}`}>
             <input type="hidden" name="tab" value={tab} /><input type="hidden" name="g" value={flt.g} /><input type="hidden" name="age" value={flt.age} />
             <AutoSelect name="cat" defaultValue={cur} aria-label={tt("קטגוריה")} style={{ flex: 1, minWidth: 220 }}>
               {shown.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </AutoSelect>
             <span className="muted">{shown.length} {tt('קטגוריות. צמצמו לפי בנים/בנות וגיל למעלה.')}</span>
-          </form>
+          </GetForm>
         ) : (
           <div className="row">
             {shown.map((c) => <Link key={c.id} href={url({ cat: c.id })} className={`pill ${cur === c.id ? 'lime' : ''}`}>{c.name}</Link>)}

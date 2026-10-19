@@ -1,3 +1,4 @@
+import { GetForm } from '@/components/GetForm';
 import Link from 'next/link';
 import { db } from '@/db';
 import { Shell } from '@/components/Shell';
@@ -20,11 +21,11 @@ export default async function Clubs({ searchParams }: { searchParams: Promise<{ 
     <Shell nav="clubs">
       <h1>{t('מועדונים')}</h1>
       <p className="muted">{needle ? `${rows.length} ${t('מועדונים')}` : `${rows.length} ${t('מועדונים עם שחקנים, מהגדול לקטן')}`}</p>
-      <form className="row" style={{ margin: '12px 0' }}>
+      <GetForm className="row" style={{ margin: '12px 0' }}>
         <input name="q" defaultValue={q} placeholder={t('חיפוש מועדון או עיר')} aria-label={t('חיפוש מועדון או עיר')} style={{ flex: 1, minWidth: 200 }} />
         <button className="btn">{t('חיפוש')}</button>
         {needle && <Link className="btn ghost" href="/clubs">{t('ניקוי')}</Link>}
-      </form>
+      </GetForm>
       <div className="grid cols">
         {rows.map(({ c, n }) => {
           const phone = (c.info as { phone?: string } | null)?.phone;

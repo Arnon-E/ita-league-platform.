@@ -1,3 +1,4 @@
+import { GetForm } from '@/components/GetForm';
 import { asc } from 'drizzle-orm';
 import { db, schema } from '@/db';
 import { Shell } from '@/components/Shell';
@@ -18,10 +19,10 @@ export default async function Regulations({ searchParams }: { searchParams: Prom
   return (
     <Shell nav="regs">
       <h1>{t('תקנונים ונהלים')}</h1>
-      <form className="card row" style={{ margin: '12px 0' }}>
+      <GetForm className="card row" style={{ margin: '12px 0' }}>
         <input name="q" defaultValue={q} placeholder={t('חיפוש')} style={{ flex: 1, minWidth: 180 }} />
         <button className="btn">{t('חיפוש')}</button>
-      </form>
+      </GetForm>
       {[...groups].map(([cat, items]) => (
         <section key={cat}>
           <h2>{t(cat)}</h2>

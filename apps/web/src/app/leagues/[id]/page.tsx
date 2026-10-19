@@ -1,3 +1,4 @@
+import { GetForm } from '@/components/GetForm';
 import { eq } from 'drizzle-orm';
 import { notFound } from 'next/navigation';
 import { db, schema } from '@/db';
@@ -35,9 +36,9 @@ export default async function League({ params, searchParams }: { params: Promise
         ))}
       </div>
       <h2>{t('לוח משחקים')}</h2>
-      <form className="card row" style={{ margin: '8px 0' }}>
+      <GetForm className="card row" style={{ margin: '8px 0' }}>
         <AutoSelect name="team" defaultValue={team}><option value="">{t('כל הקבוצות')}</option>{teams.map((x) => <option key={x} value={x}>{x}</option>)}</AutoSelect>
-      </form>
+      </GetForm>
       {d.rounds.map((r) => {
         const ms = r.matches.filter((m) => !team || m.home.team === team || m.away.team === team);
         if (!ms.length) return null;

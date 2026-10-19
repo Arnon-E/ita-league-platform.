@@ -1,3 +1,4 @@
+import { GetForm } from '@/components/GetForm';
 import { db } from '@/db';
 import { Shell } from '@/components/Shell';
 import Link from 'next/link';
@@ -26,10 +27,10 @@ export default async function Rankings({ searchParams }: { searchParams: Promise
       <div className="row" style={{ marginBottom: 14 }}>
         <Link href={href({ age: '' })} className={`pill ${!ageN ? 'lime' : ''}`}>{t('כללי')}</Link>
         {AGE_GROUPS.map((a) => <Link key={a} href={href({ age: String(a) })} className={`pill ${ageN === a ? 'lime' : ''}`}>{t('עד גיל')} {a}</Link>)}
-        <form className="row" style={{ marginInlineStart: 'auto' }}>
+        <GetForm className="row" style={{ marginInlineStart: 'auto' }}>
           <input type="hidden" name="g" value={gender} /><input type="hidden" name="age" value={age} />
           <AutoSelect name="club" defaultValue={club}><option value="">{t('כל המועדונים')}</option>{clubs.map(({ c }) => <option key={c.id} value={c.id}>{t(c.name)}</option>)}</AutoSelect>
-        </form>
+        </GetForm>
       </div>
       {all.length >= 3 && (
         <div className="podium" aria-label={t('שלושת המובילים')}>
