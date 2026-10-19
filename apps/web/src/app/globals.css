@@ -463,3 +463,12 @@ details.acct .out.soft{color:var(--muted)}details.acct .out.soft:hover{backgroun
 /* stacked blocks (cards, step trackers, button rows) never touch: a fixed gap unless the parent grid/row already spaces them */
 :not(.grid,.row)>.card+.card,:not(.grid,.row)>.card+.steps,:not(.grid,.row)>.steps+.card,:not(.grid,.row)>.row+.card,:not(.grid,.row)>.card+.row,:not(.grid,.row)>.steps+.row{margin-top:12px}
 .steps{margin-top:12px}
+/* stacked forms: every field full width, short fields pair up on wider screens */
+.fform{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:14px 12px;align-items:end}
+.fform>*{min-width:0}
+.fform input:not([type=checkbox]),.fform select{width:100%}
+.fform .full{grid-column:1/-1}
+.fform .chk{flex-direction:row;align-items:center;gap:10px;font-weight:500}
+.fform .chk input{width:20px;min-height:0;flex:none}
+.fform .acts{display:flex;gap:10px;flex-wrap:wrap}
+@media(max-width:720px){.fform{grid-template-columns:minmax(0,1fr)}.fform .acts .btn,.fform>.btn{width:100%}}

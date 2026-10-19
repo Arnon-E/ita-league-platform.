@@ -58,47 +58,47 @@ export default async function Me({ searchParams }: { searchParams: Promise<{ err
             <div key={d.id} className="row"><span>{t(DOC[d.type] ?? d.type)}</span><span className={`pill ${d.status === 'APPROVED' ? 'ok' : d.status === 'REJECTED' ? 'bad' : 'warn'}`}>{t(DS[d.status] ?? d.status)}</span>{d.reviewNote && <span className="muted">{d.reviewNote}</span>}<a className="muted" href={signedUrl(d.storageKey)} target="_blank">{t('צפייה')}</a></div>
           ))}
           {!isChild && (
-          <form action={uploadDocAction} className="row">
+          <form action={uploadDocAction} className="fform">
             <input type="hidden" name="player" value={p.id} />
-            <select name="type">{Object.entries(DOC).map(([k, v]) => <option key={k} value={k}>{t(v)}</option>)}</select>
-            <input name="file" type="file" accept="image/jpeg,image/png,application/pdf" required />
-            <label style={{ flexDirection: 'row', alignItems: 'center' }}>{t('תוקף')}<input name="expires" type="date" /></label>
-            <button className="btn small">{t('העלאה')}</button>
+            <select name="type" aria-label={t('סוג מסמך')}>{Object.entries(DOC).map(([k, v]) => <option key={k} value={k}>{t(v)}</option>)}</select>
+            <input name="file" type="file" accept="image/jpeg,image/png,application/pdf" required className="full" />
+            <label>{t('תוקף')}<input name="expires" type="date" /></label>
+            <button className="btn small full">{t('העלאה')}</button>
           </form>
           )}
-          {open.length > 0 && (
-            <form action={isChild ? suggestEntryAction : selfRegisterAction} className="row">
+          {open.some((o) => !ineligibleReason(p, o.c, o.t)) && (
+            <form action={isChild ? suggestEntryAction : selfRegisterAction} className="fform">
               <input type="hidden" name="player" value={p.id} />
               <select name="category">{open.filter((o) => !ineligibleReason(p, o.c, o.t)).map((o) => <option key={o.c.id} value={o.c.id}>{o.t.name} · {o.c.name}</option>)}</select>
-              <button className="btn small ghost">{isChild ? t('הצעה להורה להירשם') : t('הרשמה לתחרות')}</button>
+              <button className="btn small ghost full">{isChild ? t('הצעה להורה להירשם') : t('הרשמה לתחרות')}</button>
             </form>
           )}
           {!isChild && (
             <details className="filters" style={{ marginTop: 0 }}>
               <summary>{t('עריכת פרטים')}</summary>
-              <form action={updateProfileAction} className="row" style={{ marginTop: 8 }}>
+              <form action={updateProfileAction} className="fform" style={{ marginTop: 8 }}>
                 <input type="hidden" name="player" value={p.id} />
                 <label>{t('שם פרטי')}<input name="first" defaultValue={p.firstName} required /></label>
                 <label>{t('שם משפחה')}<input name="last" defaultValue={p.lastName} required /></label>
                 <label>{t('תאריך לידה')}<input name="birth" type="date" defaultValue={p.birthDate.toISOString().slice(0, 10)} required /></label>
                 <label>{t('מין')}<select name="gender" defaultValue={p.gender}><option value="MALE">{t('זכר')}</option><option value="FEMALE">{t('נקבה')}</option></select></label>
-                <button className="btn small">{t('שמירה')}</button>
+                <button className="btn small full">{t('שמירה')}</button>
               </form>
-              <form action={removeProfileAction} className="row" style={{ marginTop: 8 }}>
+              <form action={removeProfileAction} className="fform" style={{ marginTop: 8 }}>
                 <input type="hidden" name="player" value={p.id} />
-                <label style={{ flexDirection: 'row', alignItems: 'center', fontWeight: 500 }}><input type="checkbox" required style={{ minHeight: 0 }} /> {t('אני מאשר/ת להסיר את')} {p.firstName} {t('מהחשבון')}</label>
-                <button className="btn small ghost" style={{ color: 'var(--bad)' }}>{t('מחיקת פרופיל')}</button>
-                <span className="muted">{t('פרופיל בלי הרשמות ותוצאות נמחק לגמרי. אם יש היסטוריה, הוא מוסר מהחשבון ונשאר ברשומות האיגוד.')}</span>
+                <label className="chk full"><input type="checkbox" required /> {t('אני מאשר/ת להסיר את')} {p.firstName} {t('מהחשבון')}</label>
+                <button className="btn small ghost full" style={{ color: 'var(--bad)' }}>{t('מחיקת פרופיל')}</button>
+                <span className="muted full">{t('פרופיל בלי הרשמות ותוצאות נמחק לגמרי. אם יש היסטוריה, הוא מוסר מהחשבון ונשאר ברשומות האיגוד.')}</span>
               </form>
             </details>
           )}
           {!isChild && p.accountId !== actor.id && (
-            <form action={childLoginAction} className="row" style={{ borderTop: '1px solid var(--line)', paddingTop: 10 }}>
+            <form action={childLoginAction} className="fform" style={{ borderTop: '1px solid var(--line)', paddingTop: 10 }}>
               <input type="hidden" name="player" value={p.id} />
-              <strong>{loginNames.get(p.id) ? `${t('כניסה לילד/ה')}: ${loginNames.get(p.id)}` : t('כניסה לילד/ה')}</strong>
+              <strong className="full">{loginNames.get(p.id) ? `${t('כניסה לילד/ה')}: ${loginNames.get(p.id)}` : t('כניסה לילד/ה')}</strong>
               <label>{t('שם משתמש')}<input name="username" defaultValue={loginNames.get(p.id) ?? ''} required pattern="[A-Za-z0-9._]{3,20}" autoCapitalize="none" /></label>
               <label>{t('סיסמה')}<input name="password" type="password" required minLength={10} autoComplete="new-password" /></label>
-              <button className="btn small ghost">{loginNames.get(p.id) ? t('עדכון סיסמה') : t('יצירת כניסה')}</button>
+              <button className="btn small ghost full">{loginNames.get(p.id) ? t('עדכון סיסמה') : t('יצירת כניסה')}</button>
             </form>
           )}
         </section>
@@ -141,24 +141,24 @@ export default async function Me({ searchParams }: { searchParams: Promise<{ err
       {!isChild && (<>
       <h2 id="add-player">{ps.length ? t('הוספת שחקן או ילד נוסף') : t('הוספת שחקן')}</h2>
       {ps.length === 0 && <p className="muted" style={{ margin: '0 0 8px' }}>{t('כדי להירשם לתחרות צריך קודם פרופיל שחקן: שלכם, או של ילד/ה שאתם מלווים. התעודה נשמרת מוצפנת.')}</p>}
-      <form action={addPlayerAction} className="card row">
+      <form action={addPlayerAction} className="card fform">
         <label>{t('שם פרטי')}<input name="first" required /></label><label>{t('שם משפחה')}<input name="last" required /></label>
         <label>{t('תאריך לידה')}<input name="birth" type="date" required /></label>
         <label>{t('מין')}<select name="gender"><option value="MALE">{t('זכר')}</option><option value="FEMALE">{t('נקבה')}</option></select></label>
-        <label>{t('ת״ז (נשמר כמזהה מוצפן בלבד)')}<input name="nid" inputMode="numeric" /></label>
-        <label style={{ flexDirection: 'row', alignItems: 'center' }}><input type="checkbox" name="child" value="1" defaultChecked={who === 'child'} style={{ minHeight: 0 }} /> {t('זה ילד/ה שלי')}</label>
-        <button className="btn">{t('הוספה')}</button>
+        <label className="full">{t('ת״ז (נשמר כמזהה מוצפן בלבד)')}<input name="nid" inputMode="numeric" /></label>
+        <label className="chk full"><input type="checkbox" name="child" value="1" defaultChecked={who === 'child'} /> {t('זה ילד/ה שלי')}</label>
+        <button className="btn full">{t('הוספה')}</button>
       </form>
       <h2 id="claim-player">{t('אני כבר רשום באיגוד')}</h2>
       <p className="muted" style={{ margin: '0 0 8px' }}>{t('אם אתם או ילדכם כבר מופיעים במערכת (למשל מתחרויות קודמות), שייכו את הפרופיל הקיים לחשבון. עם ת״ז ותאריך לידה תואמים השיוך מיידי, אחרת הבקשה עוברת לאישור האיגוד.')}</p>
       {pendingClaims.map((c) => <div key={c.id} className="card row"><strong>{c.firstName} {c.lastName}</strong><span className="pill warn">{t('ממתין לאישור האיגוד')}</span></div>)}
-      <form action={claimPlayerAction} className="card row">
+      <form action={claimPlayerAction} className="card fform">
         <label>{t('שם פרטי')}<input name="first" required /></label><label>{t('שם משפחה')}<input name="last" required /></label>
         <label>{t('תאריך לידה')}<input name="birth" type="date" required /></label>
-        <label>{t('ת״ז (נשמר כמזהה מוצפן בלבד)')}<input name="nid" inputMode="numeric" /></label>
-        <label>{t('הערה לאיגוד')}<input name="reason" /></label>
-        <label style={{ flexDirection: 'row', alignItems: 'center' }}><input type="checkbox" name="child" value="1" style={{ minHeight: 0 }} /> {t('זה ילד/ה שלי')}</label>
-        <button className="btn">{t('שיוך שחקן קיים')}</button>
+        <label className="full">{t('ת״ז (נשמר כמזהה מוצפן בלבד)')}<input name="nid" inputMode="numeric" /></label>
+        <label className="full">{t('הערה לאיגוד')}<input name="reason" /></label>
+        <label className="chk full"><input type="checkbox" name="child" value="1" /> {t('זה ילד/ה שלי')}</label>
+        <button className="btn full">{t('שיוך שחקן קיים')}</button>
       </form>
       </>)}
       <form action="/logout?all=1" method="post" style={{ marginTop: 24 }}>

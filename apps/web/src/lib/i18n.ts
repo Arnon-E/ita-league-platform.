@@ -273,7 +273,7 @@ const EN: Record<string, string> = {
   'שכחתי סיסמה': 'Forgot password', 'של השחקנים בחשבון': 'Of the players on your account', 'שלושת המובילים': 'Top three', 'שליחת אימייל עדיין לא מוגדרת באתר. פנו לאיגוד לאיפוס הסיסמה.': 'Email isn\'t set up on the site yet. Contact the federation to reset your password.',
   'שליחת קישור': 'Send link', 'שם': 'Name', 'שם התחרות': 'Tournament name', 'שם משפחה': 'Last name', 'שם משתמש': 'Username', 'שם פרטי': 'First name', 'שמירה': 'Save',
   'שמירה וכניסה': 'Save and log in', 'שמירה ועדכון הלוח': 'Save and update the schedule', 'שעה מדויקת': 'Exact time', 'שעה מדויקת / לא לפני': 'Exact time / not before',
-  'שעות': 'Hours', 'שעות ביום': 'Hours per day', 'שעת התחלה': 'Start time', 'תאריך': 'Date', 'תאריך לידה': 'Date of birth', 'תוקף': 'Valid until', 'תחילת תחרות': 'Start tournament',
+  'שעות': 'Hours', 'שעות ביום': 'Hours per day', 'שעת התחלה': 'Start time', 'תאריך': 'Date', 'תאריך לידה': 'Date of birth', 'תוקף': 'Valid until', 'סוג מסמך': 'Document type', 'תחילת תחרות': 'Start tournament',
   'תחרויות בשנה האחרונה': 'Tournaments in the past year', 'תמונה מהתחרות': 'Tournament photo', 'תמונות (JPG / PNG, עד 8MB)': 'Photos (JPG / PNG, up to 8MB)',
   'תמונת ת״ז': 'ID photo', 'תקין': 'Valid', 'תשלום': 'Payment', 'ת״ז (נשמר כמזהה מוצפן בלבד)': 'ID number (stored only as an encrypted identifier)', '← כל המועדונים': '← All clubs',
   '★ במעקב': '★ Following', '☆ מעקב': '☆ Follow', 'אין עדיין נקודות דירוג.': 'No ranking points yet.', 'תקנוני האיגוד': 'Federation regulations', 'נוער ותחרויות': 'Youth and tournaments',
