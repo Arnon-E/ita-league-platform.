@@ -55,7 +55,10 @@ export default async function TournamentPage({ params, searchParams }: { params:
     gallery: photoCount > 0,
   };
   // A signed-in player or parent lands on their own player's category: the filters, the category and the tab are chosen for them.
-  const mine = !manage && actor ? await myPlayerRows(db, actor).catch(() => []) : [];
+  const owned = !manage && actor ? await myPlayerRows(db, actor).catch(() => []) : [];
+  // Arriving from a player's page (?for=<player>): that player is the focus, whoever is viewing.
+  const viewed = sp.for && !owned.some((x) => x.id === sp.for) ? d.ents.find((x) => x.e.playerId === sp.for)?.p : undefined;
+  const mine: Mine = viewed ? [viewed] : owned;
   const focus = focusFor(d, mine, sp.for ?? '');
   const useFocus = !!focus && !explicitFilter;
   const flt = useFocus && focus!.cat
@@ -79,7 +82,7 @@ export default async function TournamentPage({ params, searchParams }: { params:
       {tab === 'entries' && <Entries d={d} manage={manage} />}
       {(tab === 'draw' || tab === 'results' || tab === 'schedule') && (useFocus ? <details className="filters"><summary>{tt('שינוי קטגוריה')}</summary><CatFilter d={d} tab={tab} cat={cat} flt={flt} withCats /></details> : <CatFilter d={d} tab={tab} cat={cat} flt={flt} withCats />)}
       {tab === 'draw' && <DrawTab d={sp.cat ? pick(narrow(d, flt), cat) : ageGroup(narrow(d, flt), cat)} manage={manage} hl={new Set((focus?.entries ?? []).map((x) => x.e.id))} />}
-      {tab === 'results' && <Results d={pick(narrow(d, flt), cat)} scorer={scorer} />}
+      {tab === 'results' && <Results d={pick(narrow(d, flt), cat)} scorer={scorer} hl={new Set((focus?.entries ?? []).map((x) => x.e.id))} />}
       {tab === 'schedule' && <Schedule d={pick(narrow(d, flt), cat)} manage={manage} />}
       {tab === 'gallery' && <Gallery tournamentId={t.id} manage={scorer} />}
     </Shell>
@@ -589,7 +592,7 @@ async function DrawTab({ d, manage, hl }: { d: Detail; manage: boolean; hl: Set<
   );
 }
 
-async function Results({ d, scorer }: { d: Detail; scorer: boolean }) {
+async function Results({ d, scorer, hl }: { d: Detail; scorer: boolean; hl: Set<string> }) {
   const tt = await tr();
   const nm = (id: string | null) => (id ? d.names.get(id) ?? '?' : tt('טרם נקבע'));
   return (
@@ -600,7 +603,7 @@ async function Results({ d, scorer }: { d: Detail; scorer: boolean }) {
           <div className="card" style={{ overflow: 'auto' }}>
             <table><thead><tr><th>{tt('שלב')}</th><th>{tt('משחק')}</th><th>{tt('תוצאה')}</th><th>{tt('מגרש / שעה')}</th><th /></tr></thead><tbody>
               {d.ms.filter((m) => m.categoryId === c.id).map((m) => (
-                <tr key={m.id}>
+                <tr key={m.id} style={(m.aEntryId && hl.has(m.aEntryId)) || (m.bEntryId && hl.has(m.bEntryId)) ? { background: 'var(--limebg, rgba(190,242,100,.18))' } : undefined}>
                   <td>{m.stage === 'GROUP' ? `${tt('שלב הבתים')} · ${tt('מחזור')} ${m.round}` : `${tt('הדחה')} · ${tt('סיבוב')} ${m.round}`}</td>
                   <td colSpan={2} style={{ minWidth: 260 }}>
                     <MatchScore aName={nm(m.aEntryId)} bName={nm(m.bEntryId)} sets={m.status === 'SCHEDULED' ? [] : (m.sets as { a: number; b: number }[])} status={m.status}

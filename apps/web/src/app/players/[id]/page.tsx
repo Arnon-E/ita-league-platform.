@@ -49,13 +49,13 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
       {(recent.length > 0 || next) && (
         <div className="card row" style={{ marginTop: 12, justifyContent: 'space-between' }}>
           {recent.length > 0 && <div><div className="muted" style={{ marginBottom: 6 }}>{t('משחקים אחרונים')}</div><div className="pform">{recent.map((w, i) => <i key={i} className={w ? 'w' : 'l'}>{t(w ? 'נ' : 'ה')}</i>)}</div></div>}
-          {next && <div><div className="muted" style={{ marginBottom: 6 }}>{t('התחרות הבאה')}</div><Link href={`/tournaments/${next.t.id}`}><strong>{next.t.name}</strong></Link> <span className="muted">· {fmtDate(next.t.startDate)}</span></div>}
+          {next && <div><div className="muted" style={{ marginBottom: 6 }}>{t('התחרות הבאה')}</div><Link href={`/tournaments/${next.t.id}?for=${p.id}`}><strong>{next.t.name}</strong></Link> <span className="muted">· {fmtDate(next.t.startDate)}</span></div>}
         </div>
       )}
       <h2>{t('תחרויות')}</h2>
       <div className="card" style={{ overflow: 'auto' }}>
         <table><thead><tr><th>{t('תחרות')}</th><th>{t('קטגוריה')}</th><th>{t('תאריך')}</th></tr></thead><tbody>
-          {byTournament.map((g) => <tr key={g.t.id}><td><Link href={`/tournaments/${g.t.id}`}><u>{g.t.name}</u></Link></td><td>{g.cats.join(' · ')}</td><td>{fmtDate(g.t.startDate)}</td></tr>)}
+          {byTournament.map((g) => <tr key={g.t.id}><td><Link href={`/tournaments/${g.t.id}?for=${p.id}`}><u>{g.t.name}</u></Link></td><td>{g.cats.join(' · ')}</td><td>{fmtDate(g.t.startDate)}</td></tr>)}
         </tbody></table>
         {!byTournament.length && <p className="muted">{t('טרם השתתף בתחרויות.')}</p>}
       </div>
@@ -66,7 +66,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
             const won = !!m.winnerEntryId && entryIds.includes(m.winnerEntryId);
             return (
               <tr key={m.id}>
-                <td>{catOf.get(m.categoryId)?.t.name}</td>
+                <td>{catOf.get(m.categoryId) ? <Link href={`/tournaments/${catOf.get(m.categoryId)!.t.id}?for=${p.id}`}>{catOf.get(m.categoryId)!.t.name}</Link> : null}<div className="muted">{catOf.get(m.categoryId)?.c.name}</div></td>
                 <td><Link href={`/matches/${m.id}`}>{names.get(m.aEntryId!)} – {names.get(m.bEntryId!)}</Link>{m.scheduledStart && m.status === 'SCHEDULED' ? <span className="muted"> · {fmtTime(m.scheduledStart)}</span> : null}</td>
                 <td>{m.status === 'SCHEDULED' ? <span className="pill warn">{t(MSTATUS[m.status] ?? m.status)}</span> : !m.winnerEntryId ? <span className="pill">{t('ללא הכרעה')} {fmtScore(m.sets as { a: number; b: number }[])}</span> : <span className={`pill ${won ? 'ok' : 'bad'}`}>{t(won ? 'ניצחון' : 'הפסד')} {fmtScore(m.sets as { a: number; b: number }[])}</span>}</td>
               </tr>
