@@ -10,7 +10,7 @@ import { More } from './src/More';
 import { MyHome } from './src/MyHome';
 import { Bracket } from './src/Bracket';
 import { MatchCard, matchWhen } from './src/MatchCard';
-import { ClubScreen, MatchScreen, NavCtx, PlayerScreen, useNav, type Focus, type Nav } from './src/Detail';
+import { AdminScreen, ClubScreen, MatchScreen, NavCtx, PlayerScreen, useNav, type Focus, type Nav } from './src/Detail';
 import { useFonts } from 'expo-font';
 import { T, Icon, BallMark, CourtLines, FONTS } from './src/theme';
 import { LANGS, isRtl, lang, loadLang, locale, nextLang, setLang, startAlign, tr } from './src/i18n';
@@ -98,8 +98,9 @@ function Home({ authed, setAuthed, onLang }: { authed: boolean; setAuthed: (v: b
   const [tab, setTab] = useState<Tab>('t');
   const [open, setOpen] = useState<string | null>(null);
   const [focus, setFocus] = useState<Focus | undefined>(undefined); // the player a tournament opens focused on (from a player's page)
-  const [subs, setSubs] = useState<{ k: 'player' | 'club' | 'match'; id: string }[]>([]); // player / club / match pages, stacked so Back returns to the previous one
+  const [subs, setSubs] = useState<{ k: 'player' | 'club' | 'match' | 'admin'; id: string }[]>([]); // player / club / match pages, stacked so Back returns to the previous one
   const nav: Nav = {
+    admin: () => setSubs((x) => [...x, { k: 'admin', id: '' }]),
     player: (id) => setSubs((x) => [...x, { k: 'player', id }]), club: (id) => setSubs((x) => [...x, { k: 'club', id }]), match: (id) => setSubs((x) => [...x, { k: 'match', id }]),
     tournament: (id, f) => { setFocus(f); setOpen(id); },
   };
@@ -131,6 +132,7 @@ function Home({ authed, setAuthed, onLang }: { authed: boolean; setAuthed: (v: b
       <View style={{ flex: 1 }}>
         {open ? <Tournament id={open} focus={focus} onBack={() => { setOpen(null); setFocus(undefined); }} onGoAccount={() => { setOpen(null); setSubs([]); setTab('me'); }} />
           : sub?.k === 'player' ? <PlayerScreen key={sub.id} id={sub.id} onBack={popSub} />
+          : sub?.k === 'admin' ? <AdminScreen onBack={popSub} />
           : sub?.k === 'club' ? <ClubScreen key={sub.id} id={sub.id} onBack={popSub} />
           : sub?.k === 'match' ? <MatchScreen key={sub.id} id={sub.id} onBack={popSub} />
           : tab === 't' ? <TournamentList onOpen={setOpen} authed={authed} onGoAccount={() => setTab('me')} go={go} />
@@ -217,6 +219,7 @@ function Tiles({ data, go, onOpenStatus }: { data: { status: string; relevant?: 
 }
 
 function TournamentList({ onOpen, authed, onGoAccount, go }: { onOpen: (id: string) => void; authed: boolean; onGoAccount: () => void; go: Go }) {
+  const nav = useNav();
   const [hq, setHq] = useState('');
   const { data, err, busy, reload } = useLoad(api.tournaments);
   const [level, setLevel] = useState('');
@@ -246,7 +249,7 @@ function TournamentList({ onOpen, authed, onGoAccount, go }: { onOpen: (id: stri
       </View>
       <Featured data={data} onOpen={onOpen} />
       <Tiles data={data} go={go} onOpenStatus={() => setSt('open')} />
-      <MyHome authed={authed} onOpen={onOpen} onGoAccount={onGoAccount} />
+      <MyHome authed={authed} onOpen={onOpen} onGoAccount={onGoAccount} onAdmin={nav.admin} />
       <Text style={s.h2}>{tr('תחרויות')}</Text>
       <TextInput style={[s.input, startAlign()]} placeholder={tr('חיפוש לפי שם תחרות')} placeholderTextColor={T.muted} value={q} onChangeText={setQ} />
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0, flexShrink: 0 }} contentContainerStyle={{ gap: 8 }}>
@@ -357,7 +360,7 @@ function PlayerCard({ p }: { p: api.PlayerRow }) {
         {!!line && <Text style={s.muted}>{line}</Text>}
         {!!p.club && <Text style={s.muted}>{p.club}</Text>}
       </View>
-      {p.rank != null && <Text style={s.num}>#{p.rank}</Text>}
+      {p.rank != null && <Text style={[s.b, { fontSize: 18 }]}>{`#${p.rank}`}</Text>}
     </Pressable>
   );
 }

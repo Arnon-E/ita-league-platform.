@@ -1,14 +1,14 @@
 import { createContext, useContext, useEffect, useState } from 'react';
-import { ActivityIndicator, Image, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Image, Linking, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import * as api from './api';
 import { MatchCard, matchWhen } from './MatchCard';
 import { T, Icon } from './theme';
-import { locale, tr } from './i18n';
+import { locale, startAlign, tr } from './i18n';
 
 /** How a screen opens a player, club, match or tournament (with a player in focus); provided by the app shell. */
 export type Focus = { id: string; gender: 'MALE' | 'FEMALE'; age: number };
-export type Nav = { player: (id: string) => void; club: (id: string) => void; match: (id: string) => void; tournament: (id: string, focus?: Focus) => void };
-export const NavCtx = createContext<Nav>({ player: () => {}, club: () => {}, match: () => {}, tournament: () => {} });
+export type Nav = { admin: () => void; player: (id: string) => void; club: (id: string) => void; match: (id: string) => void; tournament: (id: string, focus?: Focus) => void };
+export const NavCtx = createContext<Nav>({ admin: () => {}, player: () => {}, club: () => {}, match: () => {}, tournament: () => {} });
 export const useNav = () => useContext(NavCtx);
 
 function useData<D>(fn: () => Promise<D>, deps: unknown[]) {
@@ -134,7 +134,61 @@ export function MatchScreen({ id, onBack }: { id: string; onBack: () => void }) 
   );
 }
 
+const DOCS: Record<string, string> = { ID_PHOTO: 'תמונת ת״ז', PARENT_CONSENT: 'אישור הורים', MEDICAL_CERTIFICATE: 'אישור רפואי', OTHER: 'אחר' };
+const ADMIN_PAGES: [string, string][] = [['/admin/users', 'משתמשים והרשאות'], ['/admin/reports', 'דוחות'], ['/admin/messages', 'הודעות'], ['/admin/venues', 'מגרשים'], ['/admin/rules', 'כללי דירוג'], ['/admin/import', 'ייבוא'], ['/admin/audit', 'יומן פעולות']];
+
+/** Admin work queue: review documents and link-requests in the app; the desk screens (users, reports, ...) open on the website. */
+export function AdminScreen({ onBack }: { onBack: () => void }) {
+  const docs = useData(() => api.adminDocuments(), []); const claims = useData(() => api.adminClaims(), []);
+  const [note, setNote] = useState<Record<string, string>>({}); const [msg, setMsg] = useState(''); const [err, setErr] = useState('');
+  const run = (p: Promise<unknown>, reload: () => void) => { setErr(''); setMsg(''); p.then(() => { setMsg(tr('נשמר')); reload(); }).catch((e) => setErr(e.message)); };
+  const reloadDocs = () => api.adminDocuments().then(docs.set).catch(() => {}); const reloadClaims = () => api.adminClaims().then(claims.set).catch(() => {});
+  const noteBox = (id: string) => <TextInput style={[st.input, startAlign()]} placeholder={tr('הערה (חובה בדחייה)')} placeholderTextColor={T.muted} value={note[id] ?? ''} onChangeText={(v) => setNote((x) => ({ ...x, [id]: v }))} />;
+  return (
+    <ScrollView contentContainerStyle={st.pad} keyboardShouldPersistTaps="handled">
+      <Head title={tr('ניהול')} onBack={onBack} />
+      {!!msg && <Text style={st.ok}>{msg}</Text>}
+      {!!err && <Text style={st.err}>{err}</Text>}
+      <Text style={st.h2}>{tr('אישור מסמכים')}</Text>
+      <Wait err={docs.err} busy={docs.busy} />
+      {(docs.data ?? []).map((d) => (
+        <View key={d.id} style={st.card}>
+          <Text style={st.b}>{d.player}</Text><Text style={st.muted}>{tr(DOCS[d.type] ?? d.type)} · {dm(d.createdAt)}</Text>
+          <Pressable onPress={() => Linking.openURL(api.webUrl(d.url))}><Text style={st.link}>{tr('צפייה')}</Text></Pressable>
+          {noteBox(d.id)}
+          <View style={st.row}>
+            <Pressable style={[st.chip, st.chipOn, { flex: 1 }]} onPress={() => run(api.adminReviewDocument(d.id, 'APPROVED', note[d.id]), reloadDocs)}><Text style={st.chipOnT}>{tr('אישור')}</Text></Pressable>
+            <Pressable style={[st.chip, { flex: 1 }]} onPress={() => run(api.adminReviewDocument(d.id, 'REJECTED', note[d.id]), reloadDocs)}><Text style={st.b}>{tr('דחייה')}</Text></Pressable>
+          </View>
+        </View>
+      ))}
+      {!docs.busy && !docs.err && !(docs.data ?? []).length && <Text style={st.muted}>{tr('אין מסמכים ממתינים.')}</Text>}
+      <Text style={st.h2}>{tr('בקשות שיוך')}</Text>
+      <Wait err={claims.err} busy={claims.busy} />
+      {(claims.data ?? []).map((c) => (
+        <View key={c.id} style={st.card}>
+          <Text style={st.b}>{c.user}</Text><Text style={st.muted}>{c.email}</Text>
+          <Text style={st.muted}>{`${tr('מבקש/ת לשייך:')} ${c.first} ${c.last} · ${dm(c.birth)}${c.forChild ? ` · ${tr('ילד/ה')}` : ''}`}</Text>
+          {!!c.reason && <Text style={st.muted}>{tr('הערה')}: {c.reason}</Text>}
+          {c.candidate ? <Text style={st.b}>{`${tr('שחקן מועמד:')} ${c.candidate.name} · ${dm(c.candidate.birth)}${c.candidate.linked ? ` · ${tr('כבר משויך לחשבון')}` : ''}`}</Text>
+            : <Text style={st.muted}>{tr('לא נמצא שחקן מתאים אוטומטית. השיוך הידני נעשה באתר.')}</Text>}
+          {noteBox(c.id)}
+          <View style={st.row}>
+            {c.candidate && <Pressable style={[st.chip, st.chipOn, { flex: 1 }]} onPress={() => run(api.adminResolveClaim(c.id, 'APPROVED', note[c.id]), reloadClaims)}><Text style={st.chipOnT}>{tr('אישור ושיוך')}</Text></Pressable>}
+            <Pressable style={[st.chip, { flex: 1 }]} onPress={() => run(api.adminResolveClaim(c.id, 'REJECTED', note[c.id]), reloadClaims)}><Text style={st.b}>{tr('דחייה')}</Text></Pressable>
+          </View>
+        </View>
+      ))}
+      {!claims.busy && !claims.err && !(claims.data ?? []).length && <Text style={st.muted}>{tr('אין בקשות ממתינות.')}</Text>}
+      <Text style={st.h2}>{tr('עוד באתר')}</Text>
+      {ADMIN_PAGES.map(([path, label]) => <Pressable key={path} style={st.card} onPress={() => Linking.openURL(api.webUrl(path))}><Text style={st.b}>{tr(label)} ↗</Text></Pressable>)}
+    </ScrollView>
+  );
+}
+
 const st = StyleSheet.create({
+  input: { backgroundColor: T.surface, borderWidth: 1, borderColor: T.line2, borderRadius: 14, paddingHorizontal: 16, minHeight: 48, fontSize: 16, color: T.text },
+  ok: { backgroundColor: T.okbg, color: T.ok, padding: 12, borderRadius: 14, overflow: 'hidden' },
   pad: { padding: 16, gap: 10, paddingBottom: 110 },
   head: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 6 },
   backBtn: { width: 40, height: 40, borderRadius: 20, borderWidth: 1, borderColor: T.line2, backgroundColor: T.surface, alignItems: 'center', justifyContent: 'center' },

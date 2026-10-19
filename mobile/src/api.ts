@@ -155,3 +155,10 @@ export type MatchInfo = {
   a: string | null; b: string | null; sets: { a: number; b: number }[]; court: string | null; start: string | null; setsToWin: number; decider: string; winner: 'a' | 'b' | null;
 };
 export const matchInfo = (id: string) => call<MatchInfo>(`/public/matches/${id}`);
+
+export type AdminDoc = { id: string; type: string; player: string; createdAt: string; url: string };
+export type AdminClaim = { id: string; user: string; email: string; first: string; last: string; birth: string; forChild: boolean; reason: string | null; candidate: { id: string; name: string; birth: string; linked: boolean } | null };
+export const adminDocuments = () => call<AdminDoc[]>('/admin/documents');
+export const adminReviewDocument = (id: string, decision: 'APPROVED' | 'REJECTED', note?: string) => call<{ ok: true }>('/admin/documents', { method: 'POST', body: JSON.stringify({ id, decision, note }) });
+export const adminClaims = () => call<AdminClaim[]>('/admin/claims');
+export const adminResolveClaim = (id: string, decision: 'APPROVED' | 'REJECTED', note?: string) => call<{ ok: true }>('/admin/claims', { method: 'POST', body: JSON.stringify({ id, decision, note }) });

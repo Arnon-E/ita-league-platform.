@@ -10,7 +10,7 @@ const when = (iso: string | null) => (iso ? new Date(iso).toLocaleString(locale(
 const score = (sets: { a: number; b: number }[]) => `⁦${sets.map((x) => `${x.a}-${x.b}`).join('  ')}⁩`;
 
 /** Personal home for a signed-in player and/or parent: one card per player profile on the account. Renders nothing for guests or accounts without a profile. */
-export function MyHome({ authed, onOpen, onGoAccount }: { authed: boolean; onOpen: (tournamentId: string) => void; onGoAccount: () => void }) {
+export function MyHome({ authed, onOpen, onGoAccount, onAdmin }: { authed: boolean; onOpen: (tournamentId: string) => void; onGoAccount: () => void; onAdmin?: () => void }) {
   const [h, setH] = useState<Awaited<ReturnType<typeof api.myHome>> | null>(null);
   useEffect(() => { if (authed) api.myHome().then(setH).catch(() => setH(null)); else setH(null); }, [authed]);
   if (!h || (h.role === 'NONE' && !h.work)) return null;
@@ -21,6 +21,7 @@ export function MyHome({ authed, onOpen, onGoAccount }: { authed: boolean; onOpe
         <View style={{ gap: 10 }}>
           <Text style={m.h2}>{tr(w.kind === 'ADMIN' ? 'מה מחכה לטיפול' : w.kind === 'CLUB' ? 'המועדון שלי' : 'התחרויות שלי')}</Text>
           {w.admin && <View style={m.stats}>{([['מסמכים לאישור', w.admin.pendingDocs], ['בקשות שיוך', w.admin.pendingClaims], ['הרשמה פתוחה', w.admin.openRegistration], ['מתקיימות', w.admin.inProgress]] as const).map(([l, n]) => <View key={l} style={m.stat}><Text style={m.statN}>{n}</Text><Text style={m.muted}>{tr(l)}</Text></View>)}</View>}
+          {w.admin && !!onAdmin && <Pressable style={m.card} onPress={onAdmin}><Text style={{ fontWeight: '700', color: T.text, fontSize: 16 }}>{tr('לטיפול: מסמכים ובקשות שיוך')} ›</Text></Pressable>}
           {w.tournaments.map((x) => (
             <Pressable key={x.id} style={m.card} onPress={() => onOpen(x.id)}>
               <Text style={m.name}>{x.name}</Text>
