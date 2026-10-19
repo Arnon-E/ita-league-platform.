@@ -43,3 +43,4 @@ Deletes every `@ita-test.invalid` account and what it owns (player profiles, ent
 | 2026-10-14 | נוצר `qa-test-admin@ita-test.invalid` (FEDERATION_ADMIN) | Arnon |
 | 2026-10-15 | נוצר `qa-test-player@ita-test.invalid` (PLAYER), לבדיקת כרטיס "מחכה לך"; למחוק בסיום הבדיקה | Arnon (הורץ על ידי Claude) |
 | 2026-10-20 | נוצר `qa-test-admin@ita-test.invalid` (FEDERATION_ADMIN) לבדיקת מסך הניהול באפליקציה, ונמחק מיד בסיום (נמחקו גם חשבונות בדיקה קודמים); נוצר מחדש `qa-test-player@ita-test.invalid` (PLAYER) | Arnon (הורץ על ידי Claude) |
+| 2026-10-20 | נוצר `qa-test-admin@ita-test.invalid` (FEDERATION_ADMIN) לבדיקת מסכי הניהול באפליקציה במכשיר (אישור/דחיית מסמך, תפקיד, שיוך, מתקן); נמחקו כל חשבונות הבדיקה בסיום, ונוצר מחדש `qa-test-player@ita-test.invalid` (PLAYER) | Arnon (הורץ על ידי Claude) |
