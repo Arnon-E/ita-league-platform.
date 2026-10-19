@@ -309,7 +309,7 @@ export const matches = pgTable('matches', {
   notBefore: timestamp('not_before', { withTimezone: true }),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   updatedById: text('updated_by_id'),
-}, (t) => [index('matches_cat_idx').on(t.categoryId, t.stage, t.round)]);
+}, (t) => [index('matches_cat_idx').on(t.categoryId, t.stage, t.round), index('matches_status_start_idx').on(t.status, t.scheduledStart)]);
 
 export const pointsAwards = pgTable('points_awards', {
   id: id(),

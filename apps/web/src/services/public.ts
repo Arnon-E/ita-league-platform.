@@ -71,22 +71,25 @@ export async function clubDetail(db: Db, id: string) {
 }
 
 /** Matches across all tournaments: upcoming with a time slot, and recent results. */
-export async function liveFeed(db: Db) {
+export async function liveFeed(db: Db, o: { upcoming?: number; results?: number } = {}) {
+  const nUp = o.upcoming ?? 60, nRes = o.results ?? 40;
   const dayStart = new Date(); dayStart.setHours(0, 0, 0, 0);
   const base = () => db.select({ m: matches, c: categories, t: tournaments }).from(matches)
     .innerJoin(categories, eq(categories.id, matches.categoryId)).innerJoin(tournaments, eq(tournaments.id, categories.tournamentId));
   const ready = and(sql`${matches.aEntryId} is not null`, sql`${matches.bEntryId} is not null`);
   // three small, indexed-friendly queries instead of one wide scan: live now, next up, latest results
-  const [live, upcoming, results] = await Promise.all([
+  // one row more than asked for tells the page whether a "show more" is needed
+  const [live, upcomingAll, resultsAll] = await Promise.all([
     base().where(and(ready, eq(matches.live, true), eq(matches.status, 'SCHEDULED'))).limit(50),
-    base().where(and(ready, eq(matches.status, 'SCHEDULED'), eq(matches.live, false), gte(matches.scheduledStart, dayStart))).orderBy(asc(matches.scheduledStart)).limit(60),
-    base().where(and(ready, sql`${matches.status} <> 'SCHEDULED'`)).orderBy(desc(sql`coalesce(${matches.scheduledStart}, ${matches.notBefore}, ${matches.updatedAt})`)).limit(40),
+    base().where(and(ready, eq(matches.status, 'SCHEDULED'), eq(matches.live, false), gte(matches.scheduledStart, dayStart))).orderBy(asc(matches.scheduledStart)).limit(nUp + 1),
+    base().where(and(ready, sql`${matches.status} <> 'SCHEDULED'`)).orderBy(desc(sql`coalesce(${matches.scheduledStart}, ${matches.notBefore}, ${matches.updatedAt})`)).limit(nRes + 1),
   ]);
+  const upcoming = upcomingAll.slice(0, nUp), results = resultsAll.slice(0, nRes);
   const ids = [...new Set([...live, ...upcoming, ...results].flatMap((r) => [r.m.aEntryId, r.m.bEntryId]).filter((x): x is string => !!x))];
   const named = ids.length
     ? await db.select({ id: entries.id, f: players.firstName, l: players.lastName }).from(entries).innerJoin(players, eq(players.id, entries.playerId)).where(inArray(entries.id, ids))
     : [];
-  return { live, upcoming, results, names: new Map(named.map((r) => [r.id, `${r.f} ${r.l}`])) };
+  return { live, upcoming, results, moreUpcoming: upcomingAll.length > nUp, moreResults: resultsAll.length > nRes, names: new Map(named.map((r) => [r.id, `${r.f} ${r.l}`])) };
 }
 
 export const AGE_GROUPS = [12, 14, 16, 18] as const;

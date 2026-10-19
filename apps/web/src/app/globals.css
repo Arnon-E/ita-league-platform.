@@ -103,7 +103,8 @@ a.pill:hover{border-color:var(--line2)}
 
 /* forms */
 input,select,textarea{font:inherit;min-height:48px;padding:0 16px;border-radius:14px;border:1px solid var(--line2);background:var(--surface);color:var(--text);transition:border-color .15s var(--ease),box-shadow .15s var(--ease)}
-select{padding-inline-end:12px}
+select{appearance:none;-webkit-appearance:none;cursor:pointer;padding-inline:16px 44px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238E9B94' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-size:18px;background-position:right 14px center}
+html[dir=rtl] select{background-position:left 14px center}
 textarea{padding:12px 16px}
 input::placeholder,textarea::placeholder{color:var(--muted);opacity:.85}
 input:focus,select:focus,textarea:focus{outline:none;border-color:var(--blue2);box-shadow:0 0 0 4px color-mix(in srgb,var(--blue2) 22%,transparent)}
@@ -117,6 +118,14 @@ th,td{padding:14px 18px;text-align:start;border-bottom:1px solid var(--line)}
 th{font-size:12.5px;font-weight:600;color:var(--muted);background:var(--surface2);position:sticky;top:0}
 tbody tr{transition:background-color .12s var(--ease)}tbody tr:hover{background:var(--surface2)}tbody tr:last-child td{border-bottom:0}
 .card:has(>table){padding:0;overflow:hidden}
+/* a heading inside a table card keeps the card's inner padding */
+.card:has(>table)>strong:first-child{display:block;padding:16px 22px 6px}
+.card:has(>table)>h2,.card:has(>table)>h3{margin:0;padding:16px 22px 6px}
+.card:has(>table)>p,.card:has(>table)>.muted{margin:0;padding:16px 22px}
+.card.lt table th,.card.lt table td{padding:12px 12px}
+.card.lt table th:first-child,.card.lt table td:first-child{padding-inline-start:22px}
+.card.lt table th:last-child,.card.lt table td:last-child{padding-inline-end:22px}
+.cols.wide{grid-template-columns:repeat(auto-fit,minmax(min(100%,520px),1fr))}
 .card>table:only-child td:first-child,.card>table:only-child th:first-child{padding-inline-start:22px}
 
 /* tabs: a flat segmented control */
@@ -266,6 +275,7 @@ a.comp:hover .act{box-shadow:inset 0 0 0 1px var(--text)}
 .ulist{padding:0;overflow:hidden}
 .urow{display:grid;grid-template-columns:130px 1fr auto;gap:12px;align-items:center;padding:16px 20px;border-bottom:1px solid var(--line)}
 .urow:last-child{border-bottom:0}
+.ulist>p{margin:0;padding:18px 22px}
 .umain{display:flex;flex-direction:column;gap:2px;min-width:0}
 .utime{font-variant-numeric:tabular-nums;color:var(--muted);font-size:14px}
 .ucourt{font-weight:600;font-size:14px;white-space:nowrap}
@@ -332,7 +342,7 @@ td a:not(.btn):hover,p a:not(.btn):hover,.muted a:not(.btn):hover{color:var(--bl
 }
 
 /* sign-in pages */
-main.auth{max-width:1180px;display:grid;grid-template-columns:1.1fr 1fr;gap:12px;min-height:100vh;padding:12px;animation:none}
+.auth{display:grid;grid-template-columns:1.1fr 1fr;gap:12px;min-height:calc(100dvh - 200px)}
 .authside{position:relative;overflow:hidden;isolation:isolate;display:flex;flex-direction:column;justify-content:space-between;gap:40px;padding:40px;border-radius:32px;color:#fff;
   background:radial-gradient(520px 320px at 8% 0%,rgba(198,237,69,.16),transparent 70%),radial-gradient(600px 420px at 100% 100%,rgba(36,71,245,.35),transparent 70%),var(--ink)}
 .authside>*:not(.court){position:relative;z-index:1}
@@ -343,8 +353,7 @@ main.auth{max-width:1180px;display:grid;grid-template-columns:1.1fr 1fr;gap:12px
 .authform{display:flex;flex-direction:column;justify-content:center;max-width:430px;width:100%;margin:0 auto;padding:24px 12px}
 .authform h1{font-size:clamp(32px,3.6vw,44px);letter-spacing:-.04em}
 .authform .card{padding:24px;margin-top:18px}
-@media(max-width:860px){main.auth{grid-template-columns:1fr;min-height:0;gap:0}.authside{padding:24px;gap:20px;border-radius:28px}.authside h2{font-size:34px}.authside .court{display:none}.authside p{font-size:15px}.authform{padding:28px 6px}}
-@media(max-width:720px){body:has(main.auth){padding-top:0}}
+@media(max-width:860px){.auth{grid-template-columns:1fr;min-height:0;gap:0}.authside{padding:24px;gap:20px;border-radius:28px}.authside h2{font-size:34px}.authside .court{display:none}.authside p{font-size:15px}.authform{padding:28px 6px}}
 
 /* header groups: main sections in the middle, search + account at the end */
 header.top nav{justify-content:space-between}
@@ -406,7 +415,6 @@ details.acct .out:hover{background:var(--badbg)}
   .podium{gap:6px}.pod{padding:12px}.pod strong{font-size:13px}
 }
 /* dynamic toolbar on phones */
-main.auth{min-height:100dvh}
 .only-m{display:none!important}
 @media(max-width:720px){
   header.top nav.open .only-m{display:flex!important}

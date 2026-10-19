@@ -22,7 +22,7 @@ const EN: Record<string, string> = {
   'אין עדיין תחרויות. צרו תחרות חדשה כדי להתחיל.': 'No tournaments yet.',
   // live
   'משחקים חיים': 'Live matches', 'משחקים קרובים': 'Upcoming matches', 'תוצאות אחרונות': 'Latest results', 'שעה': 'Time', 'מגרש': 'Court', 'משחק': 'Match',
-  'תחרות': 'Tournament', 'תוצאה': 'Result', 'אין משחקים מתוכננים.': 'No matches scheduled.', 'אין עדיין תוצאות.': 'No results yet.', 'חי': 'Live',
+  'תחרות': 'Tournament', 'תוצאה': 'Result', 'אין משחקים מתוכננים.': 'No matches scheduled.', 'הצג עוד': 'Show more', 'אין עדיין תוצאות.': 'No results yet.', 'חי': 'Live',
   // rankings
   'בנים/גברים': 'Boys / Men', 'בנות/נשים': 'Girls / Women', 'שחקן': 'Player', 'נקודות': 'Points', 'תוצאות נספרות': 'Counted results', 'תוצאות שנספרו (עד 6)': 'Counted results (up to 6)', 'שחקנים מדורגים': 'ranked players', 'שחקנים רשומים': 'registered players', 'מועדונים עם שחקנים': 'clubs with players',
   'הנקודות מסונכרנות מטבלת הדירוג הרשמית ב-Loglig, כסך נקודות אחד לכל שחקן. לכן "תוצאה אחת" משמעה סכום רשמי, ופירוט התוצאות הבודדות יופיע ככל שיתווספו תוצאות תחרויות.': 'Points are mirrored from the official Loglig ranking table as one total per player, so "1 result" means an official total. Individual results will appear as tournament results are added here.',

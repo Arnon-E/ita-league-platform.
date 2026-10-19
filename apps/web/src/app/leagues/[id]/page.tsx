@@ -2,6 +2,7 @@ import { eq } from 'drizzle-orm';
 import { notFound } from 'next/navigation';
 import { db, schema } from '@/db';
 import { Shell } from '@/components/Shell';
+import { AutoSelect } from '@/components/AutoSelect';
 import { tr } from '@/lib/i18n';
 import type { LeagueData } from '@/services/loglig-leagues';
 
@@ -21,9 +22,9 @@ export default async function League({ params, searchParams }: { params: Promise
       <h1>{l.name}</h1>
       <p className="muted">{t('עודכן')}: {l.updatedAt.toLocaleString('he-IL', { timeZone: 'Asia/Jerusalem' })}</p>
       <h2>{t('טבלאות')}</h2>
-      <div className="grid cols">
+      <div className="grid cols wide">
         {d.groups.map((g) => (
-          <div key={g.name} className="card" style={{ overflow: 'auto' }}>
+          <div key={g.name} className="card lt" style={{ overflow: 'auto' }}>
             <strong>{g.name}</strong>
             <table><thead><tr><th>#</th><th>{t('קבוצה')}</th><th>{t('מש׳')}</th><th>{t('נק׳')}</th><th>{t('נצ׳')}</th><th>{t('הפ׳')}</th><th>{t('סטים')}</th><th>{t('גיימים')}</th></tr></thead><tbody>
               {g.standings.map((s) => (
@@ -35,14 +36,13 @@ export default async function League({ params, searchParams }: { params: Promise
       </div>
       <h2>{t('לוח משחקים')}</h2>
       <form className="card row" style={{ margin: '8px 0' }}>
-        <select name="team" defaultValue={team}><option value="">{t('כל הקבוצות')}</option>{teams.map((x) => <option key={x} value={x}>{x}</option>)}</select>
-        <button className="btn">{t('סינון')}</button>
+        <AutoSelect name="team" defaultValue={team}><option value="">{t('כל הקבוצות')}</option>{teams.map((x) => <option key={x} value={x}>{x}</option>)}</AutoSelect>
       </form>
       {d.rounds.map((r) => {
         const ms = r.matches.filter((m) => !team || m.home.team === team || m.away.team === team);
         if (!ms.length) return null;
         return (
-          <section key={r.name} className="card" style={{ overflow: 'auto', marginBottom: 10 }}>
+          <section key={r.name} className="card lt" style={{ overflow: 'auto', marginBottom: 10 }}>
             {/* round names come from the federation as "מחזור 3": in English they read "Round 3" */}
             <strong>{t('מחזור') === 'מחזור' ? r.name : r.name.replace(/^מחזור(?=\s*\d)/, 'Round')}</strong>
             <table><tbody>

@@ -3,6 +3,7 @@ import { Shell } from '@/components/Shell';
 import Link from 'next/link';
 import { tr } from '@/lib/i18n';
 import { AGE_GROUPS, listClubs, rankingTable } from '@/services/public';
+import { AutoSelect } from '@/components/AutoSelect';
 import { RankingRows } from '@/components/InfiniteRows';
 
 const PAGE = 60;
@@ -27,8 +28,7 @@ export default async function Rankings({ searchParams }: { searchParams: Promise
         {AGE_GROUPS.map((a) => <Link key={a} href={href({ age: String(a) })} className={`pill ${ageN === a ? 'lime' : ''}`}>{t('עד גיל')} {a}</Link>)}
         <form className="row" style={{ marginInlineStart: 'auto' }}>
           <input type="hidden" name="g" value={gender} /><input type="hidden" name="age" value={age} />
-          <select name="club" defaultValue={club}><option value="">{t('כל המועדונים')}</option>{clubs.map(({ c }) => <option key={c.id} value={c.id}>{t(c.name)}</option>)}</select>
-          <button className="btn small ghost">{t('סינון')}</button>
+          <AutoSelect name="club" defaultValue={club}><option value="">{t('כל המועדונים')}</option>{clubs.map(({ c }) => <option key={c.id} value={c.id}>{t(c.name)}</option>)}</AutoSelect>
         </form>
       </div>
       {all.length >= 3 && (

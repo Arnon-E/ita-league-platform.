@@ -7,9 +7,16 @@ import { tr } from '@/lib/i18n';
 import { AutoRefresh } from '@/components/AutoRefresh';
 import { MatchScore, matchWhen } from '@/components/MatchScore';
 
-export default async function Live() {
+const STEP = 15;
+
+export default async function Live({ searchParams }: { searchParams: Promise<{ u?: string; r?: string }> }) {
   const t0 = await tr();
-  const { live, upcoming, results, names } = await liveFeed(db);
+  const sp = await searchParams;
+  // "show more" raises the page size in the URL, so the first paint stays small and fast
+  const size = (v: string | undefined) => Math.min(150, Math.max(STEP, Number(v) || STEP));
+  const [nUp, nRes] = [size(sp.u), size(sp.r)];
+  const { live, upcoming, results, moreUpcoming, moreResults, names } = await liveFeed(db, { upcoming: nUp, results: nRes });
+  const more = (u: number, r: number) => `/live?u=${u}&r=${r}`;
   const nm = (id: string | null) => (id ? names.get(id) ?? '?' : '—');
   return (
     <Shell nav="live">
@@ -35,6 +42,7 @@ export default async function Live() {
         ))}
         {!upcoming.length && <p className="muted">{t0('אין משחקים מתוכננים.')}</p>}
       </div>
+      {moreUpcoming && <div className="row" style={{ marginTop: 12 }}><Link href={more(nUp + STEP, nRes)} scroll={false} className="btn small ghost">{t0('הצג עוד')}</Link></div>}
       <h2>{t0('תוצאות אחרונות')}</h2>
       <div className="sbgrid">
         {results.map(({ m, c, t }) => (
@@ -45,6 +53,7 @@ export default async function Live() {
         ))}
       </div>
       {!results.length && <p className="muted">{t0('אין עדיין תוצאות.')}</p>}
+      {moreResults && <div className="row" style={{ marginTop: 12 }}><Link href={more(nUp, nRes + STEP)} scroll={false} className="btn small ghost">{t0('הצג עוד')}</Link></div>}
     </Shell>
   );
 }
