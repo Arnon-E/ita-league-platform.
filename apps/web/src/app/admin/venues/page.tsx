@@ -5,8 +5,10 @@ import { Flash, Shell } from '@/components/Shell';
 import { can } from '@/lib/permissions';
 import { requireActor } from '@/lib/session';
 import { courtsForVenueAction, deleteVenueAction, venueAction } from '@/app/actions4';
+import { tr } from '@/lib/i18n';
 
 export default async function Venues({ searchParams }: { searchParams: Promise<{ err?: string; ok?: string }> }) {
+  const t = await tr();
   const { err, ok } = await searchParams;
   const a = await requireActor();
   if (!can(a, 'courts.manage')) redirect('/');
@@ -14,12 +16,12 @@ export default async function Venues({ searchParams }: { searchParams: Promise<{
   const courts = await db.select().from(schema.courts).orderBy(asc(schema.courts.name));
   return (
     <Shell nav="venues">
-      <h1>מתקנים ומגרשים</h1>
+      <h1>{t('מתקנים ומגרשים')}</h1>
       <Flash err={err} ok={ok} />
       <form action={venueAction} className="card row" style={{ margin: '12px 0' }}>
-        <label>שם המתקן<input name="name" required /></label>
-        <label>עיר<input name="city" /></label>
-        <button className="btn">הוספת מתקן</button>
+        <label>{t('שם המתקן')}<input name="name" required /></label>
+        <label>{t('עיר')}<input name="city" /></label>
+        <button className="btn">{t('הוספת מתקן')}</button>
       </form>
       <div className="grid cols">
         {venues.map((v) => (
@@ -28,13 +30,13 @@ export default async function Venues({ searchParams }: { searchParams: Promise<{
             <div className="row">{courts.filter((c) => c.venueId === v.id).map((c) => <span key={c.id} className="pill">{c.name}</span>)}</div>
             <form action={courtsForVenueAction} className="row">
               <input type="hidden" name="venue" value={v.id} />
-              <input name="names" placeholder="מגרשים: 1, 2, 3" required style={{ flex: 1, minWidth: 120 }} />
-              <button className="btn small ghost">הוספה</button>
+              <input name="names" placeholder={t('מגרשים: 1, 2, 3')} required style={{ flex: 1, minWidth: 120 }} />
+              <button className="btn small ghost">{t('הוספה')}</button>
             </form>
-            <form action={deleteVenueAction}><input type="hidden" name="venue" value={v.id} /><button className="btn small ghost">מחיקת מתקן</button></form>
+            <form action={deleteVenueAction}><input type="hidden" name="venue" value={v.id} /><button className="btn small ghost">{t('מחיקת מתקן')}</button></form>
           </div>
         ))}
-        {!venues.length && <div className="card muted">אין עדיין מתקנים.</div>}
+        {!venues.length && <div className="card muted">{t('אין עדיין מתקנים.')}</div>}
       </div>
     </Shell>
   );
