@@ -50,7 +50,7 @@ export async function register(name: string, email: string, phone: string, passw
 }
 export const updatePlayer = (id: string, p: { first: string; last: string; birth: string; gender: 'MALE' | 'FEMALE' }) => call<{ ok: true }>(`/players/${id}`, { method: 'PATCH', body: JSON.stringify(p) });
 export const removePlayer = (id: string) => call<{ deleted: boolean }>(`/players/${id}`, { method: 'DELETE' });
-export const addPlayer = (p: { first: string; last: string; birth: string; gender: 'MALE' | 'FEMALE'; forChild: boolean }) => call<{ id: string; linkedExisting?: boolean; pending?: boolean }>('/players', { method: 'POST', body: JSON.stringify(p) });
+export const addPlayer = (p: { first: string; last: string; birth: string; gender: 'MALE' | 'FEMALE'; forChild: boolean; nationalId?: string }) => call<{ id: string; linkedExisting?: boolean; pending?: boolean }>('/players', { method: 'POST', body: JSON.stringify(p) });
 
 export type Match = { id: string; categoryId: string; stage: string; round: number; index?: number; status: string; a: { id: string | null; name: string | null }; b: { id: string | null; name: string | null }; court: string | null; start: string | null; sets: { a: number; b: number }[]; winnerEntryId?: string | null };
 export type TournamentRow = { id: string; name: string; status: string; level: string; section: string; startDate: string; endDate: string; registrationCloses: string | null; relevant?: boolean };
@@ -83,10 +83,11 @@ export const follows = () => call<{ kind: string; target: string }[]>('/follows'
 export const toggleFollow = (kind: 'PLAYER' | 'CLUB' | 'TOURNAMENT', target: string) => call<{ following: boolean }>('/follows', { method: 'POST', body: JSON.stringify({ kind, target }) });
 export const gallery = (tournamentId: string) => call<{ id: string; caption: string | null }[]>(`/tournaments/${tournamentId}/gallery`);
 export const photoUrl = (photoId: string) => `${BASE}/api/gallery/${photoId}`;
-export const live = () => call<{ live: FeedRow[]; upcoming: FeedRow[]; results: FeedRow[] }>('/public/live');
+export const live = (u = 15, r = 15) => call<{ live: FeedRow[]; upcoming: FeedRow[]; results: FeedRow[]; moreUpcoming?: boolean; moreResults?: boolean }>(`/public/live?u=${u}&r=${r}`);
 export const sendLive = (matchId: string, sets: { a: number; b: number; superTb?: boolean }[]) => call(`/matches/${matchId}/live`, { method: 'POST', body: JSON.stringify({ sets }) });
 export const rankings = (g: 'MALE' | 'FEMALE', age?: number) => call<{ playerId: string; rank: number; points: number; name: string; club: string | null }[]>(`/public/rankings?g=${g}${age ? `&age=${age}` : ''}`);
-export const players = (q: string, offset = 0, limit = 50) => call<{ id: string; name: string; club: string | null; birthYear?: number }[]>(`/public/players?q=${encodeURIComponent(q)}&offset=${offset}&limit=${limit}`);
+export type PlayerRow = { id: string; name: string; club: string | null; birthYear?: number; age?: number; gender?: 'MALE' | 'FEMALE'; photo?: string | null };
+export const players = (q: string, offset = 0, limit = 50) => call<PlayerRow[]>(`/public/players?q=${encodeURIComponent(q)}&offset=${offset}&limit=${limit}`);
 
 export type LeagueRow = { id: string; name: string; gender: string; teams: number; played: number; total: number };
 export type LeagueDetail = {

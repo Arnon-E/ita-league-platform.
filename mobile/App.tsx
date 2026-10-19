@@ -276,13 +276,20 @@ function FeedCard({ r }: { r: api.FeedRow }) {
 }
 
 function Live() {
-  const { data, err, busy, reload } = useLoad(api.live);
+  const [n, setN] = useState({ u: 15, r: 15 });
+  const { data, err, busy, reload } = useLoad(() => api.live(n.u, n.r), [n.u, n.r]);
   const rows = [...(data?.live ?? []).map((r) => ['l' + r.id, r] as const), ...(data?.upcoming ?? []).map((r) => ['u' + r.id, r] as const), ...(data?.results ?? []).map((r) => ['r' + r.id, r] as const)];
   return (
     <View style={s.pad}>
       <Text style={s.h1}>{tr('משחקים')}</Text>
       <Status err={err} busy={busy} empty={!!data && !rows.length && tr('אין משחקים להצגה')} />
-      <FlatList contentContainerStyle={{ paddingBottom: 100 }} data={rows} keyExtractor={(x) => x[0]} onRefresh={reload} refreshing={false} renderItem={({ item }) => <FeedCard r={item[1]} />} />
+      <FlatList contentContainerStyle={{ paddingBottom: 100 }} data={rows} keyExtractor={(x) => x[0]} onRefresh={reload} refreshing={false} renderItem={({ item }) => <FeedCard r={item[1]} />}
+        ListFooterComponent={data?.moreUpcoming || data?.moreResults ? (
+          <View style={{ gap: 8 }}>
+            {data.moreUpcoming && <Pressable style={s.chip} onPress={() => setN((x) => ({ ...x, u: x.u + 15 }))}><Text style={s.b}>{tr('עוד משחקים קרובים')}</Text></Pressable>}
+            {data.moreResults && <Pressable style={s.chip} onPress={() => setN((x) => ({ ...x, r: x.r + 15 }))}><Text style={s.b}>{tr('עוד תוצאות')}</Text></Pressable>}
+          </View>
+        ) : null} />
     </View>
   );
 }
@@ -306,9 +313,25 @@ function Rankings() {
   );
 }
 
+/** A player as the website's search shows them: photo (or initials), boy/girl/man/woman, age and club. */
+function PlayerCard({ p }: { p: api.PlayerRow }) {
+  const kind = p.gender === 'FEMALE' ? ((p.age ?? 99) < 18 ? 'בת' : 'אישה') : p.gender === 'MALE' ? ((p.age ?? 99) < 18 ? 'בן' : 'גבר') : '';
+  const line = [kind && tr(kind), p.age != null ? `${tr('גיל')} ${p.age}` : p.birthYear ? String(p.birthYear) : ''].filter(Boolean).join(' · ');
+  return (
+    <View style={[s.card, s.row, { flexWrap: 'nowrap', gap: 12 }]}>
+      <Avatar uri={p.photo ?? null} name={p.name} />
+      <View style={{ flex: 1 }}>
+        <Text style={s.b}>{p.name}</Text>
+        {!!line && <Text style={s.muted}>{line}</Text>}
+        {!!p.club && <Text style={s.muted}>{p.club}</Text>}
+      </View>
+    </View>
+  );
+}
+
 function Players() {
   const [q, setQ] = useState('');
-  const [rows, setRows] = useState<{ id: string; name: string; club: string | null; birthYear?: number }[]>([]);
+  const [rows, setRows] = useState<api.PlayerRow[]>([]);
   const [busy, setBusy] = useState(true); const [err, setErr] = useState(''); const [done, setDone] = useState(false);
   const PAGE = 50;
   useEffect(() => {
@@ -328,7 +351,7 @@ function Players() {
       <Text style={s.h1}>{tr('שחקנים')}</Text>
       <TextInput style={[s.input, startAlign()]} placeholder={tr('חיפוש שחקן לפי שם')} placeholderTextColor={T.muted} value={q} onChangeText={setQ} />
       <Status err={err} busy={busy} empty={!!data && !data.length && tr('לא נמצאו שחקנים')} />
-      <FlatList contentContainerStyle={{ paddingBottom: 100 }} data={data} keyExtractor={(p) => p.id} onEndReached={more} onEndReachedThreshold={0.6} renderItem={({ item }) => <View style={s.card}><Text style={s.b}>{item.name}</Text><Text style={s.muted}>{item.club ?? ''}{item.birthYear ? ` · ${item.birthYear}` : ''}</Text></View>} />
+      <FlatList contentContainerStyle={{ paddingBottom: 100 }} data={data} keyExtractor={(p) => p.id} onEndReached={more} onEndReachedThreshold={0.6} renderItem={({ item }) => <PlayerCard p={item} />} />
     </View>
   );
 }
@@ -346,7 +369,7 @@ function Search({ initial, onOpen }: { initial: string; onOpen: (id: string) => 
   const [q, setQ] = useState(initial);
   const [show, setShow] = useState('');
   const ts = useLoad(api.tournaments); const cl = useLoad(api.clubs);
-  const [ps, setPs] = useState<{ id: string; name: string; club: string | null; birthYear?: number }[]>([]);
+  const [ps, setPs] = useState<api.PlayerRow[]>([]);
   const term = q.trim();
   useEffect(() => {
     if (!term) { setPs([]); return; }
@@ -367,7 +390,7 @@ function Search({ initial, onOpen }: { initial: string; onOpen: (id: string) => 
         {SHORTCUTS.map(([k, l, hint]) => <Pressable key={k} style={({ pressed }) => [s.card, show === k && s.cardOn, pressed && s.pressed]} onPress={() => setShow(show === k ? '' : k)}><Text style={s.b}>{tr(l)}</Text><Text style={s.muted}>{tr(hint)}</Text></Pressable>)}
       </View>}
       <Status err={ts.err} busy={ts.busy && (!!term || !!sc)} empty={!!term && !ts.busy && !cl.busy && !tours.length && !clubs.length && !ps.length && tr('לא נמצא דבר')} />
-      {!!ps.length && <><Text style={s.h2}>{tr('שחקנים')}</Text>{ps.map((p) => <View key={p.id} style={s.card}><Text style={s.b}>{p.name}</Text><Text style={s.muted}>{p.club ?? ''}{p.birthYear ? ` · ${p.birthYear}` : ''}</Text></View>)}</>}
+      {!!ps.length && <><Text style={s.h2}>{tr('שחקנים')}</Text>{ps.map((p) => <PlayerCard key={p.id} p={p} />)}</>}
       {!!clubs.length && <><Text style={s.h2}>{tr('מועדונים')}</Text>{clubs.map((c) => <View key={c.id} style={s.card}><Text style={s.b}>{c.name}</Text><Text style={s.muted}>{c.city ? `${c.city} · ` : ''}{tr('{n} שחקנים', { n: c.players })}</Text></View>)}</>}
       {!!tours.length && <><Text style={s.h2}>{term ? tr('תחרויות') : tr(sc?.[1] ?? '')}</Text>{tours.map((x) => <Pressable key={x.id} style={({ pressed }) => [s.card, pressed && s.pressed]} onPress={() => onOpen(x.id)}><Text style={s.b}>{x.name}</Text><Text style={s.muted}>{`${tr(STATUS_HE[x.status] ?? x.status)} · ${dm(x.startDate)}`}</Text></Pressable>)}</>}
     </ScrollView>
@@ -731,7 +754,7 @@ function EditProfile({ player, onDone, onError }: { player: { id: string; first:
         <TextInput style={[s.input, startAlign()]} placeholder={tr('שם פרטי')} placeholderTextColor={T.muted} value={first} onChangeText={setFirst} />
         <TextInput style={[s.input, startAlign()]} placeholder={tr('שם משפחה')} placeholderTextColor={T.muted} value={last} onChangeText={setLast} />
         <TextInput style={[s.input, startAlign()]} placeholder={tr('תאריך לידה (YYYY-MM-DD)')} placeholderTextColor={T.muted} keyboardType="numbers-and-punctuation" value={birth} onChangeText={setBirth} />
-        <View style={s.row}>{([['MALE', tr('בן / גבר')], ['FEMALE', tr('בת / אישה')]] as const).map(([k, l]) => <Pressable key={k} style={[s.chip, gender === k && s.chipOn]} onPress={() => setGender(k)}><Text style={gender === k ? s.chipOnT : s.b}>{l}</Text></Pressable>)}</View>
+      <View style={s.row}>{([['MALE', tr('בן / גבר')], ['FEMALE', tr('בת / אישה')]] as const).map(([k, l]) => <Pressable key={k} style={[s.chip, gender === k && s.chipOn]} onPress={() => setGender(k)}><Text style={gender === k ? s.chipOnT : s.b}>{l}</Text></Pressable>)}</View>
         <Pressable style={s.btn} onPress={save}><Text style={s.btnT}>{tr('שמירה')}</Text></Pressable>
       </>}
       <Pressable style={[s.btn, s.btnGhost]} onPress={remove}><Text style={[s.btnT, { color: T.bad }]}>{tr('מחיקת פרופיל')}</Text></Pressable>
@@ -771,12 +794,12 @@ const why = (o: Limits, p: MePlayer) =>
 function AddPlayer({ onAdded, onError, preset }: { onAdded: (msg: string) => void; onError: (e: string) => void; preset?: 'self' | 'child' | null }) {
   const [openForm, setOpenForm] = useState(!!preset);
   const [first, setFirst] = useState(''); const [last, setLast] = useState(''); const [birth, setBirth] = useState('');
-  const [gender, setGender] = useState<'MALE' | 'FEMALE'>('MALE'); const [child, setChild] = useState(preset === 'child');
+  const [gender, setGender] = useState<'MALE' | 'FEMALE'>('MALE'); const [child, setChild] = useState(preset === 'child'); const [nid, setNid] = useState('');
   if (!openForm) return <Pressable style={s.btn} onPress={() => setOpenForm(true)}><Text style={s.btnT}>{tr('+ הוספת שחקן')}</Text></Pressable>;
   const save = () => {
     onError('');
-    api.addPlayer({ first: first.trim(), last: last.trim(), birth: birth.trim(), gender, forChild: child })
-      .then((r) => { setOpenForm(false); setFirst(''); setLast(''); setBirth(''); onAdded(r.pending ? tr('נמצא שחקן קיים שאי אפשר לחבר אוטומטית. הבקשה נשלחה לאישור האיגוד') : r.linkedExisting ? tr('נמצא שחקן קיים באיגוד, והוא חובר לחשבון שלך עם הדירוג וההיסטוריה') : tr('הפרופיל נוצר')); }).catch((e) => onError(e.message));
+    api.addPlayer({ first: first.trim(), last: last.trim(), birth: birth.trim(), gender, forChild: child, ...(nid.trim() ? { nationalId: nid.trim() } : {}) })
+      .then((r) => { setOpenForm(false); setFirst(''); setLast(''); setBirth(''); setNid(''); onAdded(r.pending ? tr('נמצא שחקן קיים שאי אפשר לחבר אוטומטית. הבקשה נשלחה לאישור האיגוד') : r.linkedExisting ? tr('נמצא שחקן קיים באיגוד, והוא חובר לחשבון שלך עם הדירוג וההיסטוריה') : tr('הפרופיל נוצר')); }).catch((e) => onError(e.message));
   };
   return (
     <View style={s.card}>
@@ -784,6 +807,7 @@ function AddPlayer({ onAdded, onError, preset }: { onAdded: (msg: string) => voi
       <TextInput style={[s.input, startAlign()]} placeholder={tr('שם פרטי')} placeholderTextColor={T.muted} value={first} onChangeText={setFirst} />
       <TextInput style={[s.input, startAlign()]} placeholder={tr('שם משפחה')} placeholderTextColor={T.muted} value={last} onChangeText={setLast} />
       <TextInput style={[s.input, startAlign()]} placeholder={tr('תאריך לידה (YYYY-MM-DD)')} placeholderTextColor={T.muted} keyboardType="numbers-and-punctuation" value={birth} onChangeText={setBirth} />
+      <TextInput style={[s.input, startAlign()]} placeholder={tr('ת״ז (אופציונלי, נשמר מוצפן. מזרז שיוך שחקן קיים)')} placeholderTextColor={T.muted} keyboardType="number-pad" value={nid} onChangeText={setNid} />
       <View style={s.row}>{([['MALE', tr('בן / גבר')], ['FEMALE', tr('בת / אישה')]] as const).map(([k, l]) => <Pressable key={k} style={[s.chip, gender === k && s.chipOn]} onPress={() => setGender(k)}><Text style={gender === k ? s.chipOnT : s.b}>{l}</Text></Pressable>)}</View>
       <Pressable style={[s.chip, child && s.chipOn, { alignSelf: 'flex-start' }]} onPress={() => setChild(!child)}><Text style={child ? s.chipOnT : s.b}>{child ? '✓ ' : ''}{tr('זה ילד/ה שלי (הורה נרשם עבור ילד)')}</Text></Pressable>
       <View style={s.row}><Pressable style={[s.btn, { flex: 1 }]} onPress={save}><Text style={s.btnT}>{tr('שמירה')}</Text></Pressable><Pressable style={[s.chip, { minHeight: 54 }]} onPress={() => setOpenForm(false)}><Text style={s.b}>{tr('ביטול')}</Text></Pressable></View>
