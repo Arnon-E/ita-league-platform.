@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { locale, tr } from './i18n';
 import { T } from './theme';
@@ -16,7 +17,8 @@ export function matchWhen(d: string | Date | null | undefined, kind?: string | n
  * The app's one match card, the same as the website's: a row per side (a pair on two lines in doubles), a column per set, the winner
  * bold with a green check; the footer holds the status (live, walkover, retired), competition and category, and the time.
  */
-export function MatchCard({ a, b, sets, status, winner, live, caption, when, mine, onPress }: {
+export const MatchCard = memo(MatchCardImpl);
+function MatchCardImpl({ a, b, sets, status, winner, live, caption, when, mine, onPress }: {
   a: string | string[]; b: string | string[]; sets: SetScore[]; status: string; winner: Side | null | undefined;
   live?: boolean; caption?: string; when?: string; mine?: Side; onPress?: () => void;
 }) {
@@ -53,10 +55,12 @@ export function MatchCard({ a, b, sets, status, winner, live, caption, when, min
       )}
     </>
   );
-  return onPress ? <Pressable style={({ pressed }) => [c.card, pressed && { opacity: 0.85 }]} onPress={onPress}>{body}</Pressable> : <View style={c.card}>{body}</View>;
+  const card = [c.card, mine && c.cardMine];
+  return onPress ? <Pressable style={({ pressed }) => [card, pressed && { opacity: 0.85 }]} onPress={onPress}>{body}</Pressable> : <View style={card}>{body}</View>;
 }
 
 const c = StyleSheet.create({
+  cardMine: { borderColor: T.volt, borderWidth: 2 },
   card: { backgroundColor: T.surface, borderWidth: 1, borderColor: T.line, borderRadius: 22, paddingHorizontal: 16, paddingVertical: 10, marginBottom: 10 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 8 },
   line: { borderTopWidth: 1, borderColor: T.line },

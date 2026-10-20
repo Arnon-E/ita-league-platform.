@@ -8,7 +8,7 @@ let token: string | null = null;
 let role: string | null = null;
 let userName: string | null = null;
 export async function loadToken() { token = await SecureStore.getItemAsync('ita_token'); role = await SecureStore.getItemAsync('ita_role'); userName = await SecureStore.getItemAsync('ita_name'); return token; }
-export async function logout() { adminReturn = null; token = null; role = null; userName = null; await SecureStore.deleteItemAsync('ita_token'); await SecureStore.deleteItemAsync('ita_role'); await SecureStore.deleteItemAsync('ita_name'); }
+export async function logout() { cache.clear(); adminReturn = null; token = null; role = null; userName = null; await SecureStore.deleteItemAsync('ita_token'); await SecureStore.deleteItemAsync('ita_role'); await SecureStore.deleteItemAsync('ita_name'); }
 /** Name of the signed-in user, shown in the app header. */
 export const currentUserName = () => userName;
 export const currentRole = () => role;
@@ -42,7 +42,25 @@ function heMessage(err: string | undefined, status: number): string {
   return err ?? tr('שגיאה ({status})', { status });
 }
 
-async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
+/** Public GETs are kept for a minute and shared while in flight, so tab switches and screens that ask for the same list are instant. Any write, sign-in or sign-out clears it. */
+const CACHE_MS = 60_000;
+const cache = new Map<string, { at: number; p: Promise<unknown> }>();
+const cacheable = (path: string, init: RequestInit) => !init.method && /^\/(public|tournaments)(\/|\?|$)/.test(path);
+export const clearCache = () => cache.clear();
+
+function call<T>(path: string, init: RequestInit = {}): Promise<T> {
+  if (init.method && init.method !== 'GET') cache.clear();
+  if (!cacheable(path, init)) return rawCall<T>(path, init);
+  const key = `${token ? 1 : 0}${path}`;
+  const hit = cache.get(key);
+  if (hit && Date.now() - hit.at < CACHE_MS) return hit.p as Promise<T>;
+  const p = rawCall<T>(path, init);
+  cache.set(key, { at: Date.now(), p });
+  p.catch(() => cache.delete(key));
+  return p;
+}
+
+async function rawCall<T>(path: string, init: RequestInit = {}): Promise<T> {
   const res = await fetch(`${BASE}/api/v1${path}`, { ...init, headers: { 'content-type': 'application/json', ...(token ? { authorization: `Bearer ${token}` } : {}), ...(init.headers ?? {}) } });
   const body = await res.json().catch(() => ({}));
   if (res.status === 401 && token) { await logout(); onAuthLost?.(); }
@@ -99,7 +117,7 @@ export const gallery = (tournamentId: string) => call<{ id: string; caption: str
 export const photoUrl = (photoId: string) => `${BASE}/api/gallery/${photoId}`;
 export const live = (u = 15, r = 15) => call<{ live: FeedRow[]; upcoming: FeedRow[]; results: FeedRow[]; moreUpcoming?: boolean; moreResults?: boolean }>(`/public/live?u=${u}&r=${r}`);
 export const sendLive = (matchId: string, sets: { a: number; b: number; superTb?: boolean }[]) => call(`/matches/${matchId}/live`, { method: 'POST', body: JSON.stringify({ sets }) });
-export const rankings = (g: 'MALE' | 'FEMALE', age?: number, club?: string) => call<{ playerId: string; rank: number; points: number; name: string; club: string | null }[]>(`/public/rankings?g=${g}${age ? `&age=${age}` : ''}${club ? `&club=${club}` : ''}`);
+export const rankings = (g: 'MALE' | 'FEMALE', age?: number, club?: string, offset = 0, limit = 50) => call<{ playerId: string; rank: number; points: number; name: string; club: string | null }[]>(`/public/rankings?g=${g}${age ? `&age=${age}` : ''}${club ? `&club=${club}` : ''}&offset=${offset}&limit=${limit}`);
 export const webUrl = (path: string) => `${BASE}${path}`;
 export type PlayerRow = { rank?: number | null; id: string; name: string; club: string | null; birthYear?: number; age?: number; gender?: 'MALE' | 'FEMALE'; photo?: string | null };
 export const players = (q: string, offset = 0, limit = 50, f: { g?: 'MALE' | 'FEMALE'; age?: number } = {}) => call<PlayerRow[]>(`/public/players?q=${encodeURIComponent(q)}&offset=${offset}&limit=${limit}${f.g ? `&g=${f.g}` : ''}${f.age ? `&age=${f.age}` : ''}`);

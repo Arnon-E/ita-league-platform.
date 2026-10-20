@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type * as api from './api';
 import { bracketLayout, roundName } from './bracketLayout';
@@ -12,7 +13,8 @@ const GAP = 24; // space between rounds, half of it on each side for the connect
  * of matches joined by a bracket line to the match it leads to, a score per set, the winner in bold. The viewer's own player (me)
  * is marked. Scrolls sideways; follows the language's direction.
  */
-export function Bracket({ matches, me, onPress }: { matches: api.Match[]; me?: string; onPress?: (m: api.Match) => void }) {
+export const Bracket = memo(BracketImpl);
+function BracketImpl({ matches, me, onPress }: { matches: api.Match[]; me?: string; onPress?: (m: api.Match) => void }) {
   const tree = bracketLayout(matches.map((m, i) => ({ ...m, index: m.index ?? i, aEntryId: m.a.id, bEntryId: m.b.id, winnerEntryId: m.winnerEntryId ?? null })));
   if (!tree) return null;
   const { cols } = tree;

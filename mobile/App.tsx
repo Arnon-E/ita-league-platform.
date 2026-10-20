@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, Image, ScrollView, I18nManager, Pressable, SafeAreaView, StatusBar, StyleSheet, Text, TextInput, View } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
@@ -168,7 +168,7 @@ function useLoad<T>(fn: () => Promise<T>, deps: unknown[] = []) {
   const [data, setData] = useState<T | null>(null); const [err, setErr] = useState(''); const [busy, setBusy] = useState(true);
   const load = () => { setBusy(true); setErr(''); fn().then(setData).catch((e) => setErr(e.message)).finally(() => setBusy(false)); };
   useEffect(load, deps);
-  return { data, err, busy, reload: load };
+  return { data, err, busy, reload: () => { api.clearCache(); load(); } };
 }
 
 function Status({ err, busy, empty }: { err: string; busy: boolean; empty?: string | false }) {
@@ -327,7 +327,21 @@ function Rankings() {
   const clubs = useLoad(api.clubs);
   const [g, setG] = useState<'MALE' | 'FEMALE'>('MALE');
   const [age, setAge] = useState<number | undefined>(undefined);
-  const { data, err, busy } = useLoad(() => api.rankings(g, age, club?.id), [g, age, club?.id]);
+  const PAGE = 50;
+  const [rows, setRows] = useState<Awaited<ReturnType<typeof api.rankings>>>([]);
+  const [busy, setBusy] = useState(true); const [err, setErr] = useState(''); const [done, setDone] = useState(false);
+  useEffect(() => {
+    let live = true;
+    setBusy(true); setErr(''); setDone(false); setRows([]);
+    api.rankings(g, age, club?.id, 0, PAGE).then((r) => { if (live) { setRows(r); setDone(r.length < PAGE); } }).catch((e) => live && setErr(e.message)).finally(() => live && setBusy(false));
+    return () => { live = false; };
+  }, [g, age, club?.id]);
+  const more = () => {
+    if (busy || done) return;
+    setBusy(true);
+    api.rankings(g, age, club?.id, rows.length, PAGE).then((r) => { setRows((x) => [...x, ...r]); setDone(r.length < PAGE); }).catch((e) => setErr(e.message)).finally(() => setBusy(false));
+  };
+  const data = rows;
   return (
     <View style={s.pad}>
       <Text style={s.h1}>{tr('דירוג')}</Text>
@@ -343,7 +357,7 @@ function Rankings() {
         </View>
       </View>}
       <Status err={err} busy={busy} empty={!!data && !data.length && tr('אין עדיין נתוני דירוג')} />
-      <FlatList contentContainerStyle={{ paddingBottom: 100 }} data={data ?? []} keyExtractor={(r) => r.playerId} renderItem={({ item }) => (
+      <FlatList contentContainerStyle={{ paddingBottom: 100 }} data={data} keyExtractor={(r) => r.playerId} onEndReached={more} onEndReachedThreshold={0.6} initialNumToRender={12} windowSize={7} renderItem={({ item }) => (
         <Pressable style={({ pressed }) => [s.card, s.row, pressed && s.pressed]} onPress={() => nav.player(item.playerId)}><Text style={s.num}>{item.rank}</Text><Text style={[s.b, { flex: 1 }]}>{item.name}</Text><Text style={s.b}>{item.points}</Text></Pressable>
       )} />
     </View>
@@ -351,7 +365,7 @@ function Rankings() {
 }
 
 /** A player as the website's search shows them: photo (or initials), boy/girl/man/woman, age and club. */
-function PlayerCard({ p }: { p: api.PlayerRow }) {
+const PlayerCard = memo(function PlayerCard({ p }: { p: api.PlayerRow }) {
   const nav = useNav();
   const kind = p.gender === 'FEMALE' ? ((p.age ?? 99) < 18 ? 'בת' : 'אישה') : p.gender === 'MALE' ? ((p.age ?? 99) < 18 ? 'בן' : 'גבר') : '';
   const line = [kind && tr(kind), p.age != null ? `${tr('גיל')} ${p.age}` : p.birthYear ? String(p.birthYear) : ''].filter(Boolean).join(' · ');
@@ -366,7 +380,7 @@ function PlayerCard({ p }: { p: api.PlayerRow }) {
       {p.rank != null && <Text style={[s.b, { fontSize: 18 }]}>{`#${p.rank}`}</Text>}
     </Pressable>
   );
-}
+});
 
 function Players() {
   const [q, setQ] = useState('');
@@ -479,8 +493,10 @@ function Avatar({ uri, name }: { uri: string | null; name: string }) {
   return <View style={[s.avatar, { alignItems: 'center', justifyContent: 'center', backgroundColor: T.volt }]}><Text style={{ color: T.ink, fontWeight: '800', fontSize: 20 }}>{name.trim().charAt(0)}</Text></View>;
 }
 
+const NO_MATCHES: api.Match[] = [];
 function Tournament({ id, focus, onBack, onGoAccount }: { id: string; focus?: Focus; onBack: () => void; onGoAccount: () => void }) {
   const nav = useNav();
+  const canScore = api.canScore();
   const [d, setD] = useState<Awaited<ReturnType<typeof api.tournament>> | null>(null);
   const [score, setScore] = useState<api.Match | null>(null);
   const load = () => api.tournament(id).then(setD);
@@ -491,6 +507,7 @@ function Tournament({ id, focus, onBack, onGoAccount }: { id: string; focus?: Fo
   // a signed-in player or parent lands on their own category: gender, age group and category are chosen for them (they can change it)
   const [auto, setAuto] = useState(false);
   const [people, setPeople] = useState<api.HomePerson[]>([]); const [meId, setMeId] = useState(''); const [showInfo, setShowInfo] = useState(false);
+  const [allParts, setAllParts] = useState(false);
   const [asList, setAsList] = useState(false); // knockout draws show as trees; the list is a tap away
   const [picked, setPicked] = useState(false); // a category chip was tapped (else the category came from the filters or my player)
   // choose gender, age group and category for one of my players: the one they are entered in, else the youngest age group that fits
@@ -542,6 +559,23 @@ function Tournament({ id, focus, onBack, onGoAccount }: { id: string; focus?: Fo
     return d.categories.filter((c) => c.gender === base.gender && ageOfC(c.name) === ageOfC(base.name) && hasKo(c.id)).sort((a, b) => order(a) - order(b));
   })();
   const treeIds = new Set(treeCats.map((c) => c.id));
+  // knockout matches per category, computed once per load, so every tree gets the same array between renders
+  const koByCat = useMemo(() => {
+    const m = new Map<string, api.Match[]>();
+    for (const x of d?.matches ?? []) if (x.stage === 'KO') { const l = m.get(x.categoryId); if (l) l.push(x); else m.set(x.categoryId, [x]); }
+    return m;
+  }, [d]);
+  const onScoreTap = useCallback((m: api.Match) => { if (m.a.id && m.b.id) setScore(m); }, []);
+  const [moreTrees, setMoreTrees] = useState(false);
+  const treeKey = treeCats.map((c) => c.id).join(',');
+  const listData = useMemo(() => (d?.matches ?? []).filter((m) => {
+    // the trees already show these categories' knockout matches: the list keeps the group stages
+    if (!asList && m.stage === 'KO' && treeIds.has(m.categoryId)) return false;
+    if (fcat) return m.categoryId === fcat;
+    if (!fg && !fage) return true;
+    const c = d?.categories.find((x) => x.id === m.categoryId);
+    return !!c && (!fg || c.gender === fg) && (!fage || ((c.name.match(/(\d{2})/) ?? [])[1] ?? '') === fage);
+  }), [d, asList, treeKey, fcat, fg, fage]);
   if (score) return <Score m={score} onDone={() => { setScore(null); load(); }} />;
   return (
       <FlatList style={s.pad} contentContainerStyle={{ paddingBottom: 100, gap: 10 }} ListHeaderComponent={<View style={{ gap: 10 }}>
@@ -604,7 +638,7 @@ function Tournament({ id, focus, onBack, onGoAccount }: { id: string; focus?: Fo
           <View style={{ gap: 8 }}>
             <Text style={s.h2}>{tr('משתתפים ({n})', { n: shown.length })}</Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
-              {shown.map((x) => (
+              {(allParts ? shown : shown.slice(0, 18)).map((x) => (
                 <Pressable key={x.categoryId + x.id} onPress={() => nav.player(x.id)} style={{ width: '30%', alignItems: 'center', gap: 4 }}>
                   <Avatar uri={x.photo} name={x.name} />
                   <Text style={[s.b, { fontSize: 13, textAlign: 'center' }]} numberOfLines={2}>{x.name}</Text>
@@ -612,45 +646,42 @@ function Tournament({ id, focus, onBack, onGoAccount }: { id: string; focus?: Fo
                 </Pressable>
               ))}
             </View>
+            {shown.length > 18 && <Pressable style={[s.chip, { alignSelf: 'flex-start' }]} onPress={() => setAllParts(!allParts)}><Text style={s.b}>{allParts ? tr('הצג פחות') : tr('הצג את כל המשתתפים ({n})', { n: shown.length })}</Text></Pressable>}
           </View>
         );
       })()}
       {(() => {
         if (!treeCats.length) return null;
-        const me = people.find((x) => x.id === meId)?.name;
+        const me = people.find((x) => x.id === meId)?.name ?? focus?.name;
         return (
           <View style={{ gap: 10 }}>
             <View style={s.row}>
               <Pressable style={[s.chip, !asList && s.chipOn]} onPress={() => setAsList(false)}><Text style={!asList ? s.chipOnT : s.b}>{tr('עץ התחרות')}</Text></Pressable>
               <Pressable style={[s.chip, asList && s.chipOn]} onPress={() => setAsList(true)}><Text style={asList ? s.chipOnT : s.b}>{tr('רשימת משחקים')}</Text></Pressable>
             </View>
-            {!asList && treeCats.map((c) => (
+            {!asList && (moreTrees ? treeCats : treeCats.slice(0, 1)).map((c) => (
               <View key={c.id} style={{ gap: 6 }}>
                 {treeCats.length > 1 && <Text style={s.b}>{c.name}</Text>}
-                <Bracket matches={(d?.matches ?? []).filter((m) => m.categoryId === c.id && m.stage === 'KO')} me={me} onPress={api.canScore() ? (m) => { if (m.a.id && m.b.id) setScore(m); } : undefined} />
+                <Bracket matches={koByCat.get(c.id) ?? NO_MATCHES} me={me} onPress={canScore ? onScoreTap : undefined} />
               </View>
             ))}
+            {!asList && treeCats.length > 1 && <Pressable style={[s.chip, { alignSelf: 'flex-start' }]} onPress={() => setMoreTrees(!moreTrees)}><Text style={s.b}>{moreTrees ? tr('הצג פחות') : tr('עוד עצים ({n})', { n: treeCats.length - 1 })}</Text></Pressable>}
           </View>
         );
       })()}
       </View>}
-        data={(d?.matches ?? []).filter((m) => {
-          // the trees already show these categories' knockout matches: the list keeps the group stages
-          if (!asList && m.stage === 'KO' && treeIds.has(m.categoryId)) return false;
-          if (fcat) return m.categoryId === fcat;
-          if (!fg && !fage) return true;
-          const c = d?.categories.find((x) => x.id === m.categoryId);
-          return !!c && (!fg || c.gender === fg) && (!fage || ((c.name.match(/(\d{2})/) ?? [])[1] ?? '') === fage);
-        })}
+        data={listData}
         keyExtractor={(m) => m.id} initialNumToRender={12}
         renderItem={({ item: m }) => {
           const done = m.status !== 'SCHEDULED' && m.status !== 'VOID';
           const win = m.winnerEntryId ? (m.winnerEntryId === m.a.id ? 'a' : m.winnerEntryId === m.b.id ? 'b' : null) : null;
           const cat = d?.categories.find((x) => x.id === m.categoryId)?.name;
+          const meName = people.find((x) => x.id === meId)?.name ?? focus?.name;
+          const mineSide = meName ? (m.a.name === meName ? 'a' : m.b.name === meName ? 'b' : undefined) : undefined;
           const where = m.status === 'SCHEDULED' ? (m.court ? tr('מגרש {c}', { c: m.court }) : tr('טרם שובץ')) : '';
           return (
             <MatchCard a={m.a.name ?? tr('טרם נקבע')} b={m.b.name ?? tr('טרם נקבע')} sets={done ? m.sets ?? [] : []} status={m.status} winner={win}
-              caption={[fcat ? '' : cat, where].filter(Boolean).join(' · ') || undefined} when={matchWhen(m.start)}
+              caption={[fcat ? '' : cat, where].filter(Boolean).join(' · ') || undefined} when={matchWhen(m.start)} mine={mineSide}
               onPress={m.a.id && m.b.id && api.canScore() ? () => setScore(m) : undefined} />
           );
         }} />

@@ -7,7 +7,7 @@ import { AdminAudit, AdminImport, AdminMessages, AdminReports, AdminRules, Admin
 import { locale, startAlign, tr } from './i18n';
 
 /** How a screen opens a player, club, match or tournament (with a player in focus); provided by the app shell. */
-export type Focus = { id: string; gender: 'MALE' | 'FEMALE'; age: number };
+export type Focus = { id: string; gender: 'MALE' | 'FEMALE'; age: number; name: string };
 export type Nav = { reload: () => void; admin: () => void; player: (id: string) => void; club: (id: string) => void; match: (id: string) => void; tournament: (id: string, focus?: Focus) => void };
 export const NavCtx = createContext<Nav>({ reload: () => {}, admin: () => {}, player: () => {}, club: () => {}, match: () => {}, tournament: () => {} });
 export const useNav = () => useContext(NavCtx);
@@ -37,7 +37,7 @@ export function PlayerScreen({ id, onBack }: { id: string; onBack: () => void })
   const nav = useNav();
   const { data: d, err, busy } = useData(() => api.playerProfile(id), [id]);
   const [bad, setBad] = useState(false);
-  const focus: Focus | undefined = d ? { id: d.id, gender: d.gender, age: d.age } : undefined;
+  const focus: Focus | undefined = d ? { id: d.id, gender: d.gender, age: d.age, name: d.name } : undefined;
   const kind = d ? (d.gender === 'FEMALE' ? (d.age < 18 ? 'בת' : 'אישה') : d.age < 18 ? 'בן' : 'גבר') : '';
   return (
     <ScrollView contentContainerStyle={st.pad}>
