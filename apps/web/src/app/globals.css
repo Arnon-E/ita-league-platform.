@@ -188,7 +188,10 @@ header.top .burger{display:none}
   .navscrim{display:block;position:fixed;inset:0;z-index:25;background:rgba(5,10,8,.55);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
   main{padding:14px 12px 28px}h1{font-size:28px}.hero{padding:28px 22px;border-radius:28px}.hero h1{font-size:40px}.hero p{font-size:16px}
   .tabs{width:100%}
-  .court{display:none}
+  /* phone hero: flat ink like the app, with the court lines kept (small, top corner) instead of hidden */
+  .hero{background:radial-gradient(360px 220px at 8% 0%,rgba(198,237,69,.12),transparent 70%),var(--ink)}
+  .hero .court{display:block;inset-block:-2% auto;inset-inline-end:-18%;width:380px;opacity:.28}
+  .authside .court{display:none}
 }
 @media print{header.top,.noprint,.tabs,.sitefoot,.tabbar{display:none!important}body{background:#fff;color:#000;padding:0}main{max-width:none;padding:0;animation:none}.card{border:0;padding:0;box-shadow:none}th{position:static}}
 
