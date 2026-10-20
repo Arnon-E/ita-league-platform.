@@ -15,14 +15,20 @@ export async function resetToken(u: { id: string; passwordHash: string }) {
 }
 
 /** Emails the reset link when the address belongs to an account. Always resolves the same way, so the form never reveals who is registered. */
-export async function requestPasswordReset(db: Db, emailRaw: string, origin: string): Promise<{ sent: boolean; configured: boolean }> {
+export async function requestPasswordReset(db: Db, emailRaw: string, origin: string): Promise<{ sent: boolean; configured: boolean; failed?: boolean }> {
   const email = emailRaw.trim().toLowerCase();
   const send = buildSenders(db).EMAIL;
   const [u] = await db.select().from(schema.users).where(eq(schema.users.email, email));
   if (!send) return { sent: false, configured: false };
   if (u && u.active) {
     const link = `${origin}/reset?token=${await resetToken(u)}`;
-    await send({ userId: u.id, title: 'איפוס סיסמה', body: `לבחירת סיסמה חדשה: ${link} (הקישור תקף לשעה)` } as never);
+    try {
+      await send({ userId: u.id, title: 'איפוס סיסמה', body: `לבחירת סיסמה חדשה: ${link} (הקישור תקף לשעה)` } as never);
+    } catch (e) {
+      // the provider refused (unverified sender domain, bad key...): say so instead of crashing the page
+      console.error('password reset email failed', e instanceof Error ? e.message : e);
+      return { sent: false, configured: true, failed: true };
+    }
     return { sent: true, configured: true };
   }
   return { sent: false, configured: true };
