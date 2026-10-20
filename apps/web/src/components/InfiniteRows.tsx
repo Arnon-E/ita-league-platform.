@@ -55,15 +55,25 @@ const Footer = ({ done, busy, err, sentinel, more, labels }: { done: boolean; bu
   </div>
 );
 
+const initials = (name: string) => name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => Array.from(w)[0]).join('').toUpperCase();
+
 export function PlayersRows({ initial, query, pageSize, genders, labels }: {
   initial: PlayerRow[]; query: string; pageSize: number; genders: Record<string, string>; labels: { player: string; club: string; gender: string; birth: string; rank: string; loading: string; retry: string; end: string; none: string };
 }) {
   const { rows, done, busy, err, more, sentinel } = useInfinite<PlayerRow>(initial, pageSize, (o) => `/api/v1/public/players?${query}&offset=${o}&limit=${pageSize}`);
   return (
-    <div className="card" style={{ overflow: 'auto' }}>
-      <table className="stack plist"><thead><tr><th>{labels.player}</th><th>{labels.rank}</th><th>{labels.club}</th><th>{labels.gender}</th><th>{labels.birth}</th></tr></thead><tbody>
-        {rows.map((p) => <tr key={p.id}><td><Link href={`/players/${p.id}`}><strong>{p.name}</strong></Link></td><td>{p.rank ? `#${p.rank}` : '—'}</td><td>{p.club ?? '—'}</td><td>{genders[p.gender] ?? ''}</td><td>{p.birthYear}</td></tr>)}
-      </tbody></table>
+    <div className="card prows">
+      <ul>
+        {rows.map((p) => (
+          <li key={p.id}>
+            <Link href={`/players/${p.id}`}>
+              <span className="pav" aria-hidden="true">{initials(p.name)}</span>
+              <span className="pmain"><strong>{p.name}</strong><span className="muted">{p.club ?? '—'}</span></span>
+              <span className="pside"><b className={`prank${p.rank ? '' : ' none'}`} title={labels.rank}>{p.rank ? `#${p.rank}` : '—'}</b><span className="muted">{p.birthYear} · {genders[p.gender] ?? ''}</span></span>
+            </Link>
+          </li>
+        ))}
+      </ul>
       {!rows.length && <p className="muted">{labels.none}</p>}
       <Footer done={done} busy={busy} err={err} sentinel={sentinel} more={more} labels={labels} />
     </div>

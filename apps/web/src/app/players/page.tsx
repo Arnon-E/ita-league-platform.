@@ -1,3 +1,5 @@
+import Link from 'next/link';
+import { AutoSelect } from '@/components/AutoSelect';
 import { GetForm } from '@/components/GetForm';
 import { db } from '@/db';
 import { Shell } from '@/components/Shell';
@@ -19,20 +21,30 @@ export default async function Players({ searchParams }: { searchParams: Promise<
   ]);
   // the same filters the page used, passed on to the endpoint that serves the following pages
   const query = new URLSearchParams({ q, club, g: gender ?? '', age: ageN ? String(ageN) : '', show: activeOnly ? '' : 'all' }).toString();
+  const href = (s: string) => `/players?${new URLSearchParams({ q, club, g: gender ?? '', age: ageN ? String(ageN) : '', show: s }).toString()}`;
   return (
     <Shell nav="players">
       <h1>{t('שחקנים')}</h1>
-      <GetForm className="card row" style={{ margin: '12px 0' }}>
-        <input name="q" defaultValue={q} placeholder={t('חיפוש לפי שם')} style={{ flex: 1, minWidth: 180 }} />
-        <select name="g" defaultValue={g}><option value="">{t('בנים ובנות')}</option><option value="MALE">{t('בנים')}</option><option value="FEMALE">{t('בנות')}</option></select>
-        <select name="age" defaultValue={age}><option value="">{t('כל הגילאים')}</option>{[10, 12, 14, 16, 18].map((a) => <option key={a} value={a}>{t('עד גיל')} {a}</option>)}</select>
-        <select name="club" defaultValue={club}><option value="">{t('כל המועדונים')}</option>{clubs.map(({ c }) => <option key={c.id} value={c.id}>{t(c.name)}</option>)}</select>
-        <select name="show" defaultValue={show}><option value="">{t('שחקנים פעילים')}</option><option value="all">{t('כל השחקנים')}</option></select>
-        <button className="btn">{t('חיפוש')}</button>
+      <GetForm className="pfilters">
+        <input type="hidden" name="show" value={show} />
+        <div className="psearch">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></svg>
+          <input name="q" defaultValue={q} placeholder={t('חיפוש לפי שם')} aria-label={t('חיפוש לפי שם')} enterKeyHint="search" />
+          <button className="btn small">{t('חיפוש')}</button>
+        </div>
+        <div className="pselects">
+          <AutoSelect name="g" defaultValue={g} aria-label={t('בנים ובנות')}><option value="">{t('בנים ובנות')}</option><option value="MALE">{t('בנים')}</option><option value="FEMALE">{t('בנות')}</option></AutoSelect>
+          <AutoSelect name="age" defaultValue={age} aria-label={t('כל הגילאים')}><option value="">{t('כל הגילאים')}</option>{[10, 12, 14, 16, 18].map((a) => <option key={a} value={a}>{t('עד גיל')} {a}</option>)}</AutoSelect>
+          <AutoSelect name="club" defaultValue={club} aria-label={t('כל המועדונים')}><option value="">{t('כל המועדונים')}</option>{clubs.map(({ c }) => <option key={c.id} value={c.id}>{t(c.name)}</option>)}</AutoSelect>
+        </div>
       </GetForm>
-      <p className="muted" style={{ margin: '0 0 8px' }}>
-        {activeOnly ? t('מוצגים שחקנים פעילים בלבד (תחרו ב-18 החודשים האחרונים). לכולם בחרו "כל השחקנים".') : t('מוצגים כל השחקנים, כולל לא פעילים.')}
-      </p>
+      <div className="pstatus">
+        <nav className="tabs" style={{ margin: 0 }}>
+          <Link scroll={false} href={href('')} className={activeOnly ? 'on' : ''}>{t('שחקנים פעילים')}</Link>
+          <Link scroll={false} href={href('all')} className={!activeOnly ? 'on' : ''}>{t('כל השחקנים')}</Link>
+        </nav>
+        <p className="muted">{activeOnly ? t('מוצגים שחקנים פעילים בלבד (תחרו ב-18 החודשים האחרונים). לכולם בחרו "כל השחקנים".') : t('מוצגים כל השחקנים, כולל לא פעילים.')}</p>
+      </div>
       <PlayersRows
         key={query}
         initial={rows.map(({ p, club: cn }) => ({ id: p.id, name: `${p.firstName} ${p.lastName}`, club: cn, gender: p.gender, birthYear: p.birthDate.getUTCFullYear(), rank: rk.get(p.id) ?? null }))}
