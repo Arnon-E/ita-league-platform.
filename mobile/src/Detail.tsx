@@ -8,8 +8,8 @@ import { locale, startAlign, tr } from './i18n';
 
 /** How a screen opens a player, club, match or tournament (with a player in focus); provided by the app shell. */
 export type Focus = { id: string; gender: 'MALE' | 'FEMALE'; age: number };
-export type Nav = { admin: () => void; player: (id: string) => void; club: (id: string) => void; match: (id: string) => void; tournament: (id: string, focus?: Focus) => void };
-export const NavCtx = createContext<Nav>({ admin: () => {}, player: () => {}, club: () => {}, match: () => {}, tournament: () => {} });
+export type Nav = { reload: () => void; admin: () => void; player: (id: string) => void; club: (id: string) => void; match: (id: string) => void; tournament: (id: string, focus?: Focus) => void };
+export const NavCtx = createContext<Nav>({ reload: () => {}, admin: () => {}, player: () => {}, club: () => {}, match: () => {}, tournament: () => {} });
 export const useNav = () => useContext(NavCtx);
 
 export function useData<D>(fn: () => Promise<D>, deps: unknown[]) {
@@ -139,6 +139,7 @@ const DOCS: Record<string, string> = { ID_PHOTO: 'תמונת ת״ז', PARENT_CON
 const ROLES: [string, string][] = [['SUPER_ADMIN', 'מנהל על'], ['FEDERATION_ADMIN', 'מנהל איגוד'], ['TOURNAMENT_MANAGER', 'מנהל טורניר'], ['REFEREE', 'שופט'], ['CLUB_MANAGER', 'מנהל מועדון'], ['PLAYER', 'שחקן/הורה']];
 
 function AdminUsers({ onBack }: { onBack: () => void }) {
+  const nav = useNav();
   const u = useData(() => api.adminUsers(), []);
   const [q, setQ] = useState(''); const [open, setOpen] = useState(''); const [msg, setMsg] = useState(''); const [err, setErr] = useState('');
   const run = (p: Promise<unknown>) => { setErr(''); setMsg(''); p.then(() => { setMsg(tr('נשמר')); return api.adminUsers().then(u.set); }).catch((e) => setErr(e.message)); };
@@ -156,7 +157,10 @@ function AdminUsers({ onBack }: { onBack: () => void }) {
           </Pressable>
           {open === x.id && <View style={{ gap: 8, marginTop: 6 }}>
             <View style={[st.row, { flexWrap: 'wrap' }]}>{ROLES.map(([k, l]) => <Pressable key={k} style={[st.chip, x.role === k && st.chipOn]} onPress={() => x.role !== k && run(api.adminSetRole(x.id, k))}><Text style={x.role === k ? st.chipOnT : st.b}>{tr(l)}</Text></Pressable>)}</View>
-            <Pressable style={st.chip} onPress={() => run(api.adminSetActive(x.id, !x.active))}><Text style={st.b}>{x.active ? tr('השבתה') : tr('הפעלה')}</Text></Pressable>
+            <View style={st.row}>
+              <Pressable style={st.chip} onPress={() => run(api.adminSetActive(x.id, !x.active))}><Text style={st.b}>{x.active ? tr('השבתה') : tr('הפעלה')}</Text></Pressable>
+              {api.currentRole() === 'SUPER_ADMIN' && !api.isImpersonating() && x.active && <Pressable style={st.chip} onPress={() => api.impersonate(x.id).then(() => nav.reload()).catch((e) => setErr(e.message))}><Text style={st.b}>{tr('התחזות')}</Text></Pressable>}
+            </View>
           </View>}
         </View>
       ))}

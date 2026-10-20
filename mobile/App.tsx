@@ -99,7 +99,9 @@ function Home({ authed, setAuthed, onLang }: { authed: boolean; setAuthed: (v: b
   const [open, setOpen] = useState<string | null>(null);
   const [focus, setFocus] = useState<Focus | undefined>(undefined); // the player a tournament opens focused on (from a player's page)
   const [subs, setSubs] = useState<{ k: 'player' | 'club' | 'match' | 'admin'; id: string }[]>([]); // player / club / match pages, stacked so Back returns to the previous one
+  const [epoch, setEpoch] = useState(0); // bumps when the signed-in identity changes (impersonation), so every screen reloads its data
   const nav: Nav = {
+    reload: () => { setSubs([]); setOpen(null); setFocus(undefined); setTab('t'); setEpoch((e) => e + 1); },
     admin: () => setSubs((x) => [...x, { k: 'admin', id: '' }]),
     player: (id) => setSubs((x) => [...x, { k: 'player', id }]), club: (id) => setSubs((x) => [...x, { k: 'club', id }]), match: (id) => setSubs((x) => [...x, { k: 'match', id }]),
     tournament: (id, f) => { setFocus(f); setOpen(id); },
@@ -117,7 +119,8 @@ function Home({ authed, setAuthed, onLang }: { authed: boolean; setAuthed: (v: b
   useEffect(() => { api.setAuthLostHandler(() => setAuthed(false)); return () => api.setAuthLostHandler(null); }, [setAuthed]);
   return (
     <NavCtx.Provider value={nav}>
-    <View style={{ flex: 1 }}>
+    <View style={{ flex: 1 }} key={epoch}>
+      {api.isImpersonating() && <Pressable style={{ backgroundColor: T.warnbg, paddingVertical: 8, paddingHorizontal: 16 }} onPress={() => { api.stopImpersonating(); nav.reload(); }}><Text style={{ color: T.warn, fontWeight: '700', textAlign: 'center' }}>{tr('מתחזה ל-{name}. חזרה למנהל', { name: api.currentUserName() ?? '' })}</Text></Pressable>}
       <View style={s.topbar}>
         <Pressable style={s.brandRow} onPress={() => go('t')} accessibilityLabel="ITA"><BallMark size={30} /><Text style={s.brand}>ITA</Text></Pressable>
         <View style={s.topEnd}>

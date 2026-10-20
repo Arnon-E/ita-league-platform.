@@ -8,9 +8,23 @@ let token: string | null = null;
 let role: string | null = null;
 let userName: string | null = null;
 export async function loadToken() { token = await SecureStore.getItemAsync('ita_token'); role = await SecureStore.getItemAsync('ita_role'); userName = await SecureStore.getItemAsync('ita_name'); return token; }
-export async function logout() { token = null; role = null; userName = null; await SecureStore.deleteItemAsync('ita_token'); await SecureStore.deleteItemAsync('ita_role'); await SecureStore.deleteItemAsync('ita_name'); }
+export async function logout() { adminReturn = null; token = null; role = null; userName = null; await SecureStore.deleteItemAsync('ita_token'); await SecureStore.deleteItemAsync('ita_role'); await SecureStore.deleteItemAsync('ita_name'); }
 /** Name of the signed-in user, shown in the app header. */
 export const currentUserName = () => userName;
+export const currentRole = () => role;
+/** Super admin acting as another user: the admin's own session is kept in memory (never stored) so "back" restores it. */
+let adminReturn: { token: string | null; role: string | null; name: string | null } | null = null;
+export const isImpersonating = () => !!adminReturn;
+export async function impersonate(id: string) {
+  const r = await call<{ token: string; name: string; role: string }>('/admin/impersonate', { method: 'POST', body: JSON.stringify({ id }) });
+  adminReturn = { token, role, name: userName };
+  token = r.token; role = r.role; userName = r.name;
+  return r;
+}
+export function stopImpersonating() {
+  if (!adminReturn) return;
+  token = adminReturn.token; role = adminReturn.role; userName = adminReturn.name; adminReturn = null;
+}
 export async function rememberUserName(name: string) { userName = name; await SecureStore.setItemAsync('ita_name', name); }
 export const isAuthed = () => !!token;
 /** Ends every session of this account on every device (including this one), then clears the local one. */
