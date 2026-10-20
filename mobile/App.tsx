@@ -343,6 +343,8 @@ function Rankings() {
     api.rankings(g, age, club?.id, rows.length, PAGE).then((r) => { setRows((x) => [...x, ...r]); setDone(r.length < PAGE); }).catch((e) => setErr(e.message)).finally(() => setBusy(false));
   };
   const data = rows;
+  const podium = rows.length >= 3 && rows[0]!.rank === 1 ? rows.slice(0, 3) : [];
+  const rest = podium.length ? rows.slice(3) : rows;
   return (
     <View style={s.pad}>
       <Text style={s.h1}>{tr('דירוג')}</Text>
@@ -358,9 +360,32 @@ function Rankings() {
         </View>
       </View>}
       <Status err={err} busy={busy} empty={!!data && !data.length && tr('אין עדיין נתוני דירוג')} />
-      <FlatList contentContainerStyle={{ paddingBottom: 100 }} data={data} keyExtractor={(r) => r.playerId} onEndReached={more} onEndReachedThreshold={0.6} initialNumToRender={12} windowSize={7} renderItem={({ item }) => (
-        <Pressable style={({ pressed }) => [s.card, s.row, pressed && s.pressed]} onPress={() => nav.player(item.playerId)}><Text style={s.num}>{item.rank}</Text><Text style={[s.b, { flex: 1 }]}>{item.name}</Text><Text style={s.b}>{item.points}</Text></Pressable>
-      )} />
+      <FlatList contentContainerStyle={{ paddingBottom: 100 }} data={rest} keyExtractor={(r) => r.playerId} onEndReached={more} onEndReachedThreshold={0.6} initialNumToRender={12} windowSize={7}
+        ListHeaderComponent={podium.length === 3 ? (
+          <View style={s.podium}>
+            {[podium[1]!, podium[0]!, podium[2]!].map((r) => (
+              <Pressable key={r.playerId} onPress={() => nav.player(r.playerId)} style={({ pressed }) => [s.pod, r.rank === 1 && s.pod1, pressed && s.pressed]}>
+                <Text style={[s.podN, r.rank === 1 && { color: T.ink, fontSize: 52 }]}>{r.rank}</Text>
+                <Text style={[s.b, { fontSize: 14 }, r.rank === 1 && { color: T.ink }]} numberOfLines={2}>{r.name}</Text>
+                {!!r.club && <Text style={[s.muted, { fontSize: 12 }, r.rank === 1 && { color: '#3C4E12' }]} numberOfLines={1}>{r.club}</Text>}
+                <Text style={[s.podPts, r.rank === 1 && { color: T.ink }]}>{r.points}</Text>
+              </Pressable>
+            ))}
+          </View>
+        ) : null}
+        renderItem={({ item }) => (
+          <Pressable style={({ pressed }) => [s.card, s.row, { flexWrap: 'nowrap', gap: 12, paddingVertical: 12 }, pressed && s.pressed]} onPress={() => nav.player(item.playerId)}>
+            <Text style={[s.num, { fontSize: 20, width: 36 }]}>{item.rank}</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={s.b} numberOfLines={1}>{item.name}</Text>
+              {!!item.club && <Text style={s.muted} numberOfLines={1}>{item.club}</Text>}
+            </View>
+            <View style={{ alignItems: 'flex-end' }}>
+              <Text style={{ color: T.text, fontWeight: '800', fontSize: 20 }}>{item.points}</Text>
+              <Text style={[s.muted, { fontSize: 12 }]}>{tr('נקודות')}</Text>
+            </View>
+          </Pressable>
+        )} />
     </View>
   );
 }
@@ -1012,5 +1037,10 @@ const s = StyleSheet.create({
   tab: { flex: 1, minHeight: 54, alignItems: 'center', justifyContent: 'center', gap: 1, borderRadius: 999 }, tabActive: { backgroundColor: T.btn },
   tabT: { color: T.muted, fontWeight: '500', fontSize: 11 }, tabOn: { color: T.btnText, fontWeight: '700' },
   chip: { paddingHorizontal: 16, minHeight: 40, borderRadius: 999, borderWidth: 1, borderColor: T.line2, alignItems: 'center', justifyContent: 'center', backgroundColor: T.surface }, chipOn: { backgroundColor: T.btn, borderColor: T.btn }, chipOnT: { color: T.btnText, fontWeight: '700' },
+  podium: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, marginVertical: 12 },
+  pod: { flex: 1, minHeight: 130, justifyContent: 'flex-end', gap: 2, padding: 12, borderRadius: 20, backgroundColor: T.surface, borderWidth: 1, borderColor: T.line },
+  pod1: { flex: 1.15, minHeight: 170, backgroundColor: T.volt, borderColor: T.volt },
+  podN: { fontSize: 36, fontWeight: '800', color: T.muted, marginBottom: 'auto' },
+  podPts: { marginTop: 6, fontSize: 20, fontWeight: '800', color: T.text },
   num: { width: 32, textAlign: 'center', fontSize: 28, fontWeight: '800', color: T.text },
 });

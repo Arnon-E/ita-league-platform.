@@ -4,6 +4,7 @@ import * as api from './api';
 import { T } from './theme';
 import { locale, tr } from './i18n';
 import { MatchCard, matchWhen } from './MatchCard';
+import { useNav } from './Detail';
 
 const DOC: Record<string, string> = { ID_PHOTO: 'תמונת ת״ז', PARENT_CONSENT: 'אישור הורים', MEDICAL_CERTIFICATE: 'אישור רפואי', OTHER: 'אחר' };
 const when = (iso: string | null) => (iso ? new Date(iso).toLocaleString(locale(), { weekday: 'short', day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' }) : '');
@@ -11,6 +12,7 @@ const score = (sets: { a: number; b: number }[]) => `⁦${sets.map((x) => `${x.a
 
 /** Personal home for a signed-in player and/or parent: one card per player profile on the account. Renders nothing for guests or accounts without a profile. */
 export function MyHome({ authed, onOpen, onGoAccount, onAdmin }: { authed: boolean; onOpen: (tournamentId: string) => void; onGoAccount: () => void; onAdmin?: () => void }) {
+  const nav = useNav();
   const [h, setH] = useState<Awaited<ReturnType<typeof api.myHome>> | null>(null);
   useEffect(() => { if (authed) api.myHome().then(setH).catch(() => setH(null)); else setH(null); }, [authed]);
   if (!h || (h.role === 'NONE' && !h.work)) return null;
@@ -48,13 +50,14 @@ export function MyHome({ authed, onOpen, onGoAccount, onAdmin }: { authed: boole
       {h.people.length > 0 && <Text style={m.h2}>{tr(h.role === 'PLAYER' ? 'הבית שלי' : h.role === 'PARENT' ? 'הילדים שלי' : 'אני והילדים')}</Text>}
       {h.people.map((p) => (
         <View key={p.id} style={m.card}>
-          <View style={m.head}>
+          <Pressable style={({ pressed }) => [m.head, pressed && { opacity: 0.7 }]} onPress={() => nav.player(p.id)} accessibilityRole="link">
             <View style={m.av}><Text style={m.avT}>{p.name.split(' ').map((w) => w[0]).slice(0, 2).join('')}</Text></View>
             <View style={{ flex: 1 }}>
               <Text style={m.name}>{p.name}</Text>
               <Text style={m.muted}>{p.relation === 'CHILD' ? `${tr('ילד/ה')} · ` : ''}{tr('גיל {n}', { n: p.age })}{p.club ? ` · ${p.club}` : ''}</Text>
             </View>
-          </View>
+            <Text style={[m.muted, { fontSize: 22 }]}>›</Text>
+          </Pressable>
           <View style={m.stats}>
             <View style={m.stat}><Text style={m.statN}>{p.rank ? `#${p.rank}` : '—'}</Text><Text style={m.muted}>{tr('דירוג')}</Text></View>
             <View style={m.stat}><Text style={m.statN}>{p.points}</Text><Text style={m.muted}>{tr('נקודות')}</Text></View>

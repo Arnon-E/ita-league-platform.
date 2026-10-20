@@ -117,7 +117,7 @@ export const gallery = (tournamentId: string) => call<{ id: string; caption: str
 export const photoUrl = (photoId: string) => `${BASE}/api/gallery/${photoId}`;
 export const live = (u = 15, r = 15) => call<{ live: FeedRow[]; upcoming: FeedRow[]; results: FeedRow[]; moreUpcoming?: boolean; moreResults?: boolean }>(`/public/live?u=${u}&r=${r}`);
 export const sendLive = (matchId: string, sets: { a: number; b: number; superTb?: boolean }[]) => call(`/matches/${matchId}/live`, { method: 'POST', body: JSON.stringify({ sets }) });
-export const rankings = (g: 'MALE' | 'FEMALE', age?: number, club?: string, offset = 0, limit = 50) => call<{ playerId: string; rank: number; points: number; name: string; club: string | null }[]>(`/public/rankings?g=${g}${age ? `&age=${age}` : ''}${club ? `&club=${club}` : ''}&offset=${offset}&limit=${limit}`);
+export const rankings = (g: 'MALE' | 'FEMALE', age?: number, club?: string, offset = 0, limit = 50) => call<{ playerId: string; rank: number; points: number; name: string; club: string | null; counted?: number }[]>(`/public/rankings?g=${g}${age ? `&age=${age}` : ''}${club ? `&club=${club}` : ''}&offset=${offset}&limit=${limit}`);
 export const webUrl = (path: string) => `${BASE}${path}`;
 export type PlayerRow = { rank?: number | null; id: string; name: string; club: string | null; birthYear?: number; age?: number; gender?: 'MALE' | 'FEMALE'; photo?: string | null };
 export const players = (q: string, offset = 0, limit = 50, f: { g?: 'MALE' | 'FEMALE'; age?: number } = {}) => call<PlayerRow[]>(`/public/players?q=${encodeURIComponent(q)}&offset=${offset}&limit=${limit}${f.g ? `&g=${f.g}` : ''}${f.age ? `&age=${f.age}` : ''}`);
