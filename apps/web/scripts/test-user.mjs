@@ -18,7 +18,7 @@ const env = { ...loadEnv(path.resolve(here, '../.env.production.local')), ...pro
 const base = opt('--url', env.PUBLIC_URL ?? 'https://ita-league-platform-jpgi.vercel.app').replace(/\/$/, '');
 const action = args.find((a) => a === 'create' || a === 'delete');
 if (!action || !env.CRON_SECRET) { console.error('usage: node scripts/test-user.mjs create|delete [--admin] [--url <site>]  (needs CRON_SECRET)'); process.exit(1); }
-const body = action === 'create' ? { kind: 'test-user-create', role: args.includes('--admin') ? 'FEDERATION_ADMIN' : 'PLAYER' } : { kind: 'test-user-delete' };
+const body = action === 'create' ? { kind: 'test-user-create', role: args.includes('--super') ? 'SUPER_ADMIN' : args.includes('--admin') ? 'FEDERATION_ADMIN' : 'PLAYER' } : { kind: 'test-user-delete' };
 const res = await fetch(`${base}/api/sync/loglig`, { method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${env.CRON_SECRET}` }, body: JSON.stringify(body) });
 console.log(res.status, await res.text());
 process.exit(res.ok ? 0 : 1);
