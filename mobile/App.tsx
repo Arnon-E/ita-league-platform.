@@ -348,11 +348,13 @@ function Rankings() {
   return (
     <View style={s.pad}>
       <Text style={s.h1}>{tr('דירוג')}</Text>
+      <Text style={s.muted}>{tr('הדירוג מחושב לפי 6 התוצאות הטובות ביותר ב-52 השבועות האחרונים')}</Text>
+      <Text style={[s.muted, { fontSize: 13 }]}>{tr('הנקודות מסונכרנות מטבלת הדירוג הרשמית ב-Loglig, כסך נקודות אחד לכל שחקן. לכן "תוצאה אחת" משמעה סכום רשמי, ופירוט התוצאות הבודדות יופיע ככל שיתווספו תוצאות תחרויות.')}</Text>
       <View style={s.row}>{([['MALE', tr('בנים/גברים')], ['FEMALE', tr('בנות/נשים')]] as const).map(([k, l]) => <Pressable key={k} style={[s.chip, g === k && s.chipOn]} onPress={() => setG(k)}><Text style={g === k ? s.chipOnT : s.b}>{l}</Text></Pressable>)}</View>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-        {([[undefined, tr('כללי')], [12, tr('עד 12')], [14, tr('עד 14')], [16, tr('עד 16')], [18, tr('עד 18')]] as const).map(([a, l]) => <Pressable key={l} style={[s.chip, age === a && s.chipOn]} onPress={() => setAge(a)}><Text style={age === a ? s.chipOnT : s.b}>{l}</Text></Pressable>)}
+        {([[undefined, tr('כללי')], [12, `${tr('עד גיל')} 12`], [14, `${tr('עד גיל')} 14`], [16, `${tr('עד גיל')} 16`], [18, `${tr('עד גיל')} 18`]] as const).map(([a, l]) => <Pressable key={l} style={[s.chip, age === a && s.chipOn]} onPress={() => setAge(a)}><Text style={age === a ? s.chipOnT : s.b}>{l}</Text></Pressable>)}
       </View>
-      <Pressable style={[s.chip, (pick || !!club) && s.chipOn, { alignSelf: 'flex-start' }]} onPress={() => { if (club) { setClub(null); setPick(false); } else setPick(!pick); }}><Text style={(pick || !!club) ? s.chipOnT : s.b}>{club ? `✕ ${club.name}` : tr('מועדון')}</Text></Pressable>
+      <Pressable style={[s.chip, (pick || !!club) && s.chipOn, { alignSelf: 'flex-start' }]} onPress={() => { if (club) { setClub(null); setPick(false); } else setPick(!pick); }}><Text style={(pick || !!club) ? s.chipOnT : s.b}>{club ? `✕ ${club.name}` : tr('כל המועדונים')}</Text></Pressable>
       {pick && !club && <View style={{ gap: 8 }}>
         <TextInput style={[s.input, startAlign()]} placeholder={tr('חיפוש מועדון')} placeholderTextColor={T.muted} value={cq} onChangeText={setCq} />
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
@@ -368,7 +370,7 @@ function Rankings() {
                 <Text style={[s.podN, r.rank === 1 && { color: T.ink, fontSize: 52 }]}>{r.rank}</Text>
                 <Text style={[s.b, { fontSize: 14 }, r.rank === 1 && { color: T.ink }]} numberOfLines={2}>{r.name}</Text>
                 {!!r.club && <Text style={[s.muted, { fontSize: 12 }, r.rank === 1 && { color: '#3C4E12' }]} numberOfLines={1}>{r.club}</Text>}
-                <Text style={[s.podPts, r.rank === 1 && { color: T.ink }]}>{r.points}</Text>
+                <Text style={[s.podPts, r.rank === 1 && { color: T.ink }]}>{r.points} <Text style={{ fontSize: 12, fontWeight: '500', color: r.rank === 1 ? '#3C4E12' : T.muted }}>{tr('נקודות')}</Text></Text>
               </Pressable>
             ))}
           </View>
@@ -383,6 +385,7 @@ function Rankings() {
             <View style={{ alignItems: 'flex-end' }}>
               <Text style={{ color: T.text, fontWeight: '800', fontSize: 20 }}>{item.points}</Text>
               <Text style={[s.muted, { fontSize: 12 }]}>{tr('נקודות')}</Text>
+              {item.counted != null && <Text style={[s.muted, { fontSize: 12 }]}>{item.counted} {tr('תוצאות שנספרו (עד 6)')}</Text>}
             </View>
           </Pressable>
         )} />

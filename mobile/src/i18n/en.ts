@@ -4,6 +4,9 @@
  */
 const en: Record<string, string> = {
   // navigation
+  'עד גיל': 'Under', 'כל המועדונים': 'All clubs', 'תוצאות שנספרו (עד 6)': 'counted results (up to 6)',
+  'הדירוג מחושב לפי 6 התוצאות הטובות ביותר ב-52 השבועות האחרונים': 'The ranking counts the best 6 results of the last 52 weeks',
+  'הנקודות מסונכרנות מטבלת הדירוג הרשמית ב-Loglig, כסך נקודות אחד לכל שחקן. לכן "תוצאה אחת" משמעה סכום רשמי, ופירוט התוצאות הבודדות יופיע ככל שיתווספו תוצאות תחרויות.': 'Points are synced from the official Loglig ranking table as one total per player, so "one result" means an official sum; individual results will appear as competition results are added.',
   'בית': 'Home',
   'עוד עצים ({n})': 'More draws ({n})',
   'הצג פחות': 'Show less', 'הצג את כל המשתתפים ({n})': 'Show all participants ({n})',
