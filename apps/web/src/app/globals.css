@@ -362,7 +362,7 @@ header.top .srch{display:inline-flex;align-items:center;justify-content:center;g
 header.top .srch .lbl{display:none}
 header.top .srch.on{background:var(--btn);color:var(--btn-text)}
 details.acct summary{padding:4px 12px 4px 4px;gap:8px}
-details.acct .av{display:grid;place-items:center;width:34px;height:34px;border-radius:50%;background:var(--volt);color:var(--ink);font-family:var(--display);font-weight:800;font-size:15px}
+details.acct .av{display:grid;place-items:center;width:34px;height:34px;border-radius:50%;background:var(--volt);color:var(--ink);font-family:var(--display);font-weight:800;font-size:15px;letter-spacing:0}
 details.acct summary::after{display:none}
 details.acct>div{inset-inline-start:auto;inset-inline-end:0}
 details.acct .out{width:100%;text-align:start;padding:8px 14px;border-radius:14px;border:0;background:none;color:var(--bad);font:inherit;font-weight:500;font-size:15px;cursor:pointer;transition:background-color .15s var(--ease)}

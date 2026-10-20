@@ -30,7 +30,7 @@ export async function Shell({ children, nav }: { children: ReactNode; nav?: stri
         </NavMenu>
         {actor && (
           <details className="adm acct bar">
-            <summary aria-label={u?.name ?? t('החשבון שלי')}><span className="av" aria-hidden>{(u?.name ?? '?').trim().charAt(0).toUpperCase()}</span><span className="uname">{u?.name}</span></summary>
+            <summary aria-label={u?.name ?? t('החשבון שלי')}><span className="av" aria-hidden>{(u?.name ?? '?').trim().split(/\s+/).map((w) => w.charAt(0)).slice(0, 2).join('').toUpperCase()}</span><span className="uname">{u?.name}</span></summary>
             <div>
               <div className="whoami"><strong>{u?.name}</strong><span className="muted">{u?.email.endsWith('@kid.ita.invalid') ? u.email.split('@')[0] : u?.email}</span></div>
               {l('/me', 'פרטים אישיים והרשמות', 'me')}{l('/following', 'המעקב שלי', 'following')}

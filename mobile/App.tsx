@@ -125,7 +125,7 @@ function Home({ authed, setAuthed, onLang }: { authed: boolean; setAuthed: (v: b
         <Pressable style={s.brandRow} onPress={() => go('t')} accessibilityLabel="ITA"><BallMark size={30} /><Text style={s.brand}>ITA</Text></Pressable>
         <View style={s.topEnd}>
           {authed && !!api.currentUserName()
-            ? <Pressable style={s.topAv} onPress={() => go('me')} accessibilityLabel={tr('פרטים אישיים')}><Text style={s.topAvT}>{api.currentUserName()!.trim().charAt(0).toUpperCase()}</Text></Pressable>
+            ? <Pressable style={s.topAv} onPress={() => go('me')} accessibilityLabel={tr('פרטים אישיים')}><Text style={s.topAvT}>{initialsOf(api.currentUserName()!)}</Text></Pressable>
             : <Pressable style={s.topLogin} onPress={() => go('me')}><Text style={s.topLoginT}>{tr('כניסה')}</Text></Pressable>}
           {/* as on the website: shows the language it switches to */}
           <Pressable style={s.langBtn} onPress={() => onLang(nextLang().code)} accessibilityLabel={nextLang().name}><Text style={s.langBtnT}>{nextLang().short}</Text></Pressable>
@@ -512,11 +512,14 @@ function MyPlayerBlock({ d, me, parts, people, onSwitch, showInfo, onToggleInfo 
   );
 }
 
+/** First letter of the first and last name, e.g. "דניאל ארז" -> "דא". */
+function initialsOf(name: string) { return name.trim().split(/\s+/).map((w) => w.charAt(0)).slice(0, 2).join('').toUpperCase(); }
+
 /** A player's Loglig photo, or their initial when there is none or the file is missing. */
 function Avatar({ uri, name }: { uri: string | null; name: string }) {
   const [bad, setBad] = useState(false);
   if (uri && !bad) return <Image source={{ uri }} style={s.avatar} onError={() => setBad(true)} />;
-  return <View style={[s.avatar, { alignItems: 'center', justifyContent: 'center', backgroundColor: T.volt }]}><Text style={{ color: T.ink, fontWeight: '800', fontSize: 20 }}>{name.trim().charAt(0)}</Text></View>;
+  return <View style={[s.avatar, { alignItems: 'center', justifyContent: 'center', backgroundColor: T.volt }]}><Text style={{ color: T.ink, fontWeight: '800', fontSize: 20 }}>{initialsOf(name)}</Text></View>;
 }
 
 type MatchRowProps = { m: api.Match; catName: string; meName?: string; canScore: boolean; onScore: (m: api.Match) => void };
