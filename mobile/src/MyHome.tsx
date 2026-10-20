@@ -53,10 +53,9 @@ export function MyHome({ authed, onOpen, onGoAccount, onAdmin }: { authed: boole
           <Pressable style={({ pressed }) => [m.head, pressed && { opacity: 0.7 }]} onPress={() => nav.player(p.id)} accessibilityRole="link">
             <View style={m.av}><Text style={m.avT}>{p.name.split(' ').map((w) => w[0]).slice(0, 2).join('')}</Text></View>
             <View style={{ flex: 1 }}>
-              <Text style={m.name}>{p.name}</Text>
+              <Text style={[m.name, m.link]}>{p.name}</Text>
               <Text style={m.muted}>{p.relation === 'CHILD' ? `${tr('ילד/ה')} · ` : ''}{tr('גיל {n}', { n: p.age })}{p.club ? ` · ${p.club}` : ''}</Text>
             </View>
-            <Text style={[m.muted, { fontSize: 22 }]}>›</Text>
           </Pressable>
           <View style={m.stats}>
             <View style={m.stat}><Text style={m.statN}>{p.rank ? `#${p.rank}` : '—'}</Text><Text style={m.muted}>{tr('דירוג')}</Text></View>
@@ -97,6 +96,7 @@ const m = StyleSheet.create({
   card: { backgroundColor: T.surface, borderWidth: 1, borderColor: T.line, borderRadius: 22, padding: 18, gap: 12 },
   head: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   av: { width: 48, height: 48, borderRadius: 24, backgroundColor: T.volt, alignItems: 'center', justifyContent: 'center' }, avT: { color: T.ink, fontWeight: '800', fontSize: 18 },
+  link: { color: T.blue, textDecorationLine: 'underline' },
   name: { fontSize: 18, fontWeight: '700', color: T.text }, muted: { color: T.muted, fontSize: 13 }, b: { color: T.text, fontWeight: '700', fontSize: 16 },
   stats: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
   stat: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 16, backgroundColor: T.surface2, borderWidth: 1, borderColor: T.line, minWidth: 74 }, statN: { color: T.text, fontWeight: '700', fontSize: 20 },

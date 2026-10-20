@@ -33,7 +33,7 @@ export function MyHome({ home, t }: { home: Home; t: (s: string) => string }) {
             <div className="row" style={{ flexWrap: 'nowrap' }}>
               <span className="pavatar" aria-hidden style={{ width: 48, height: 48, fontSize: 18 }}>{p.name.split(' ').map((w) => w[0]).slice(0, 2).join('')}</span>
               <div style={{ minWidth: 0 }}>
-                <Link href={`/players/${p.id}`}><strong style={{ fontSize: 18 }}>{p.name}</strong></Link>
+                <Link href={`/players/${p.id}`} className="mh-name"><strong style={{ fontSize: 18 }}>{p.name}</strong></Link>
                 <div className="muted">{p.relation === 'CHILD' ? `${t('ילד/ה')} · ` : ''}{t('גיל')} {p.age}{p.club ? ` · ${p.club}` : ''}</div>
                 {p.relation === 'CHILD' && <Link href="/me" className="muted"><u>{p.childLogin ? `${t('כניסה לילד/ה')}: ${p.childLogin}` : t('יצירת כניסה לילד/ה')}</u></Link>}
               </div>
