@@ -19,6 +19,7 @@
     ],
     "extra": {
       "apiUrl": "https://ita-league-platform-jpgi.vercel.app"
-    }
+    },
+    "newArchEnabled": true
   }
 }
