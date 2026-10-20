@@ -350,9 +350,9 @@ function Rankings() {
       <Text style={s.h1}>{tr('דירוג')}</Text>
       <Text style={s.muted}>{tr('הדירוג מחושב לפי 6 התוצאות הטובות ביותר ב-52 השבועות האחרונים')}</Text>
       <Text style={[s.muted, { fontSize: 13 }]}>{tr('הנקודות מסונכרנות מטבלת הדירוג הרשמית ב-Loglig, כסך נקודות אחד לכל שחקן. לכן "תוצאה אחת" משמעה סכום רשמי, ופירוט התוצאות הבודדות יופיע ככל שיתווספו תוצאות תחרויות.')}</Text>
-      <View style={s.row}>{([['MALE', tr('בנים/גברים')], ['FEMALE', tr('בנות/נשים')]] as const).map(([k, l]) => <Pressable key={k} style={[s.chip, g === k && s.chipOn]} onPress={() => setG(k)}><Text style={g === k ? s.chipOnT : s.b}>{l}</Text></Pressable>)}</View>
+      <View style={s.rtabs}>{([['MALE', tr('בנים/גברים')], ['FEMALE', tr('בנות/נשים')]] as const).map(([k, l]) => <Pressable key={k} style={[s.rtab, g === k && s.rtabOn]} onPress={() => setG(k)}><Text style={g === k ? s.chipOnT : { color: T.muted, fontWeight: '500' }}>{l}</Text></Pressable>)}</View>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-        {([[undefined, tr('כללי')], [12, `${tr('עד גיל')} 12`], [14, `${tr('עד גיל')} 14`], [16, `${tr('עד גיל')} 16`], [18, `${tr('עד גיל')} 18`]] as const).map(([a, l]) => <Pressable key={l} style={[s.chip, age === a && s.chipOn]} onPress={() => setAge(a)}><Text style={age === a ? s.chipOnT : s.b}>{l}</Text></Pressable>)}
+        {([[undefined, tr('כללי')], [12, `${tr('עד גיל')} 12`], [14, `${tr('עד גיל')} 14`], [16, `${tr('עד גיל')} 16`], [18, `${tr('עד גיל')} 18`]] as const).map(([a, l]) => <Pressable key={l} style={[s.pill, age === a && s.pillOn]} onPress={() => setAge(a)}><Text style={{ fontSize: 12.5, fontWeight: '600', color: age === a ? T.ink : T.text }}>{l}</Text></Pressable>)}
       </View>
       <Pressable style={[s.chip, (pick || !!club) && s.chipOn, { alignSelf: 'flex-start' }]} onPress={() => { if (club) { setClub(null); setPick(false); } else setPick(!pick); }}><Text style={(pick || !!club) ? s.chipOnT : s.b}>{club ? `✕ ${club.name}` : tr('כל המועדונים')}</Text></Pressable>
       {pick && !club && <View style={{ gap: 8 }}>
@@ -375,16 +375,16 @@ function Rankings() {
             ))}
           </View>
         ) : null}
-        renderItem={({ item }) => (
-          <Pressable style={({ pressed }) => [s.card, s.row, { flexWrap: 'nowrap', gap: 12, paddingVertical: 12 }, pressed && s.pressed]} onPress={() => nav.player(item.playerId)}>
-            <Text style={[s.num, { fontSize: 20, width: 36 }]}>{item.rank}</Text>
+        ListFooterComponent={rest.length ? <View style={s.rowEnd} /> : null}
+        renderItem={({ item, index }) => (
+          <Pressable style={({ pressed }) => [s.rrow, index === 0 && s.rrowFirst, pressed && s.pressed]} onPress={() => nav.player(item.playerId)}>
+            <Text style={[s.num, { fontSize: 18, width: 36 }]}>{item.rank}</Text>
             <View style={{ flex: 1 }}>
-              <Text style={s.b} numberOfLines={1}>{item.name}</Text>
-              {!!item.club && <Text style={s.muted} numberOfLines={1}>{item.club}</Text>}
+              <Text style={[s.b, { fontWeight: '600' }]} numberOfLines={1}>{item.name}</Text>
+              {!!item.club && <Text style={[s.muted, { fontSize: 13 }]} numberOfLines={1}>{item.club}</Text>}
             </View>
             <View style={{ alignItems: 'flex-end' }}>
-              <Text style={{ color: T.text, fontWeight: '800', fontSize: 20 }}>{item.points}</Text>
-              <Text style={[s.muted, { fontSize: 12 }]}>{tr('נקודות')}</Text>
+              <Text style={{ color: T.text, fontWeight: '700', fontSize: 20 }}>{item.points}</Text>
               {item.counted != null && <Text style={[s.muted, { fontSize: 12 }]}>{item.counted} {tr('תוצאות שנספרו (עד 6)')}</Text>}
             </View>
           </Pressable>
@@ -1043,6 +1043,12 @@ const s = StyleSheet.create({
   tab: { flex: 1, minHeight: 54, alignItems: 'center', justifyContent: 'center', gap: 1, borderRadius: 999 }, tabActive: { backgroundColor: T.btn },
   tabT: { color: T.muted, fontWeight: '500', fontSize: 11 }, tabOn: { color: T.btnText, fontWeight: '700' },
   chip: { paddingHorizontal: 16, minHeight: 40, borderRadius: 999, borderWidth: 1, borderColor: T.line2, alignItems: 'center', justifyContent: 'center', backgroundColor: T.surface }, chipOn: { backgroundColor: T.btn, borderColor: T.btn }, chipOnT: { color: T.btnText, fontWeight: '700' },
+  rtabs: { flexDirection: 'row', alignSelf: 'flex-start', gap: 2, padding: 4, backgroundColor: T.surface2, borderWidth: 1, borderColor: T.line, borderRadius: 999 },
+  rtab: { paddingHorizontal: 20, paddingVertical: 9, borderRadius: 999 }, rtabOn: { backgroundColor: T.btn },
+  pill: { paddingHorizontal: 12, paddingVertical: 4, borderRadius: 999, backgroundColor: T.surface2, borderWidth: 1, borderColor: T.line }, pillOn: { backgroundColor: T.volt, borderColor: T.volt },
+  rrow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14, paddingHorizontal: 16, backgroundColor: T.surface, borderLeftWidth: 1, borderRightWidth: 1, borderBottomWidth: 1, borderColor: T.line },
+  rrowFirst: { borderTopWidth: 1, borderTopLeftRadius: 22, borderTopRightRadius: 22 },
+  rowEnd: { height: 14, backgroundColor: T.surface, borderWidth: 1, borderTopWidth: 0, borderColor: T.line, borderBottomLeftRadius: 22, borderBottomRightRadius: 22 },
   podium: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, marginVertical: 12 },
   pod: { flex: 1, minHeight: 130, justifyContent: 'flex-end', gap: 2, padding: 12, borderRadius: 20, backgroundColor: T.surface, borderWidth: 1, borderColor: T.line },
   pod1: { flex: 1.15, minHeight: 170, backgroundColor: T.volt, borderColor: T.volt },
