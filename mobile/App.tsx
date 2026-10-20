@@ -236,10 +236,11 @@ function TournamentList({ onOpen, authed, onGoAccount, go }: { onOpen: (id: stri
   // open registration, then running, then upcoming soonest first, then finished latest first
   const rank = (x: { status: string; endDate: string }) => (x.status === 'REGISTRATION_OPEN' ? 0 : x.status === 'IN_PROGRESS' ? 1 : isDone(x) ? 3 : 2);
   const dm = (iso: string) => new Date(iso).toLocaleDateString(locale(), { day: 'numeric', month: 'short' });
-  const shown = [...(data ?? [])]
-    .sort((a, b) => rank(a) - rank(b) || (rank(a) === 3 ? +new Date(b.startDate) - +new Date(a.startDate) : +new Date(a.startDate) - +new Date(b.startDate)))
+  const sorted = useMemo(() => [...(data ?? [])]
+    .sort((a, b) => rank(a) - rank(b) || (rank(a) === 3 ? +new Date(b.startDate) - +new Date(a.startDate) : +new Date(a.startDate) - +new Date(b.startDate))), [data]);
+  const shown = useMemo(() => sorted
     .filter((x) => (!mineOnly || !!q.trim() || !!level || !!sec || !!season || x.relevant !== false) && (!season || String(new Date(x.startDate).getFullYear()) === season) && (!q.trim() || x.name.includes(q.trim())) && (!level || x.level === level) && (!sec || x.section === sec)
-      && (st === 'all' || (st === 'up' ? !isDone(x) : st === 'open' ? x.status === 'REGISTRATION_OPEN' : st === 'live' ? x.status === 'IN_PROGRESS' : isDone(x))));
+      && (st === 'all' || (st === 'up' ? !isDone(x) : st === 'open' ? x.status === 'REGISTRATION_OPEN' : st === 'live' ? x.status === 'IN_PROGRESS' : isDone(x)))), [sorted, mineOnly, q, level, sec, season, st]);
   return (
       <FlatList style={s.pad} contentContainerStyle={{ paddingBottom: 100, gap: 10 }} ListHeaderComponent={<View style={{ gap: 10 }}>
       <View style={s.hero}><CourtLines /><Text style={s.heroT}>{tr('איגוד הטניס בישראל')}</Text><Text style={s.heroS}>{tr('תחרויות, לוחות משחקים ותוצאות חיות')}</Text>
