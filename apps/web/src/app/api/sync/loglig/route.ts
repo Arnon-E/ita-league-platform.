@@ -24,7 +24,7 @@ export async function POST(req: Request) {
   if (!authorized(req)) return new Response('Unauthorized', { status: 401 });
   try {
     const body = await req.json();
-    if (body?.kind === 'test-user-create') return Response.json(await createTestUser(db, body.role === 'FEDERATION_ADMIN' ? 'FEDERATION_ADMIN' : body.role === 'SUPER_ADMIN' ? 'SUPER_ADMIN' : 'PLAYER'));
+    if (body?.kind === 'test-user-create') return Response.json(await createTestUser(db, body.role === 'FEDERATION_ADMIN' ? 'FEDERATION_ADMIN' : 'PLAYER'));
     if (body?.kind === 'test-user-delete') return Response.json(await removeTestUsers(db));
     if (body?.kind === 'cleanup-pairs') return Response.json(await removePairPlayers(db));
     if (body?.kind === 'dedupe') return Response.json(await dedupeMirror(db));

@@ -18,8 +18,8 @@ function password() {
 }
 
 /** Creates one clearly-marked test account and returns its one-time password. Role is PLAYER or FEDERATION_ADMIN. */
-export async function createTestUser(db: Db, role: 'PLAYER' | 'FEDERATION_ADMIN' | 'SUPER_ADMIN') {
-  const email = `qa-test-${role === 'PLAYER' ? 'player' : role === 'SUPER_ADMIN' ? 'superadmin' : 'admin'}${TEST_DOMAIN}`;
+export async function createTestUser(db: Db, role: 'PLAYER' | 'FEDERATION_ADMIN') {
+  const email = `qa-test-${role === 'PLAYER' ? 'player' : 'admin'}${TEST_DOMAIN}`;
   const pw = password();
   const u = await signUp(db, { email, password: pw, name: NAME });
   if (role !== 'PLAYER') await db.update(schema.users).set({ role }).where(eq(schema.users.id, u.id));
