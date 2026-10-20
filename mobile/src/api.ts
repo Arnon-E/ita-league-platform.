@@ -121,7 +121,7 @@ export const rankingCount = (g: 'MALE' | 'FEMALE', age?: number, club?: string) 
 export const rankings = (g: 'MALE' | 'FEMALE', age?: number, club?: string, offset = 0, limit = 50) => call<{ playerId: string; rank: number; points: number; name: string; club: string | null; counted?: number }[]>(`/public/rankings?g=${g}${age ? `&age=${age}` : ''}${club ? `&club=${club}` : ''}&offset=${offset}&limit=${limit}`);
 export const webUrl = (path: string) => `${BASE}${path}`;
 export type PlayerRow = { rank?: number | null; id: string; name: string; club: string | null; birthYear?: number; age?: number; gender?: 'MALE' | 'FEMALE'; photo?: string | null };
-export const players = (q: string, offset = 0, limit = 50, f: { g?: 'MALE' | 'FEMALE'; age?: number } = {}) => call<PlayerRow[]>(`/public/players?q=${encodeURIComponent(q)}&offset=${offset}&limit=${limit}${f.g ? `&g=${f.g}` : ''}${f.age ? `&age=${f.age}` : ''}`);
+export const players = (q: string, offset = 0, limit = 50, f: { g?: 'MALE' | 'FEMALE'; age?: number; club?: string; all?: boolean } = {}) => call<PlayerRow[]>(`/public/players?q=${encodeURIComponent(q)}&offset=${offset}&limit=${limit}${f.g ? `&g=${f.g}` : ''}${f.age ? `&age=${f.age}` : ''}${f.club ? `&club=${f.club}` : ''}${f.all ? '&show=all' : ''}`);
 
 export type LeagueRow = { id: string; name: string; gender: string; teams: number; played: number; total: number };
 export type LeagueDetail = {

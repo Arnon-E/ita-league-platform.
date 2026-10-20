@@ -395,20 +395,34 @@ function Rankings() {
   );
 }
 
-/** A player as the website's search shows them: photo (or initials), boy/girl/man/woman, age and club. */
-const PlayerCard = memo(function PlayerCard({ p }: { p: api.PlayerRow }) {
+/** A closed select that opens its options right below it (the phone's version of the website's dropdowns). */
+function Dropdown<V extends string | number | undefined>({ value, options, onChange }: { value: V; options: readonly (readonly [V, string])[]; onChange: (v: V) => void }) {
+  const [open, setOpen] = useState(false);
+  const cur = options.find(([v]) => v === value)?.[1] ?? '';
+  return (
+    <View style={{ flex: 1, minWidth: 0 }}>
+      <Pressable style={[s.select, s.pselect]} onPress={() => setOpen(!open)}><Text style={{ color: T.text, fontSize: 15, fontWeight: '500', flex: 1 }} numberOfLines={1}>{cur}</Text><Text style={{ color: T.muted, fontSize: 20, lineHeight: 22 }}>{open ? '⌃' : '⌄'}</Text></Pressable>
+      {open && <View style={s.popmenu}>{options.map(([v, l]) => <Pressable key={String(v)} style={({ pressed }) => [s.popitem, v === value && { backgroundColor: T.btn }, pressed && s.pressed]} onPress={() => { onChange(v); setOpen(false); }}><Text style={{ color: v === value ? T.btnText : T.text, fontWeight: v === value ? '700' : '500' }}>{l}</Text></Pressable>)}</View>}
+    </View>
+  );
+}
+
+/** A player as one row of the list card: photo (or initials), name and club, rank and year of birth. */
+const PlayerCard = memo(function PlayerCard({ p, first }: { p: api.PlayerRow; first?: boolean }) {
   const nav = useNav();
   const kind = p.gender === 'FEMALE' ? ((p.age ?? 99) < 18 ? 'בת' : 'אישה') : p.gender === 'MALE' ? ((p.age ?? 99) < 18 ? 'בן' : 'גבר') : '';
-  const line = [kind && tr(kind), p.age != null ? `${tr('גיל')} ${p.age}` : p.birthYear ? String(p.birthYear) : ''].filter(Boolean).join(' · ');
+  const line = [p.birthYear ? String(p.birthYear) : '', kind && tr(kind)].filter(Boolean).join(' · ');
   return (
-    <Pressable style={({ pressed }) => [s.card, s.row, { flexWrap: 'nowrap', gap: 12 }, pressed && s.pressed]} onPress={() => nav.player(p.id)}>
-      <Avatar uri={p.photo ?? null} name={p.name} />
+    <Pressable style={({ pressed }) => [s.rrow, first && s.rrowFirst, pressed && s.pressed]} onPress={() => nav.player(p.id)}>
+      <View style={s.pavSm}>{p.photo ? <Image source={{ uri: p.photo }} style={s.pavSm} /> : <Text style={{ color: T.muted, fontWeight: '700', fontSize: 15 }}>{initialsOf(p.name)}</Text>}</View>
       <View style={{ flex: 1 }}>
-        <Text style={s.b}>{p.name}</Text>
-        {!!line && <Text style={s.muted}>{line}</Text>}
-        {!!p.club && <Text style={s.muted}>{p.club}</Text>}
+        <Text style={[s.b, { fontWeight: '600', fontSize: 16 }]} numberOfLines={1}>{p.name}</Text>
+        {!!p.club && <Text style={[s.muted, { fontSize: 13 }]} numberOfLines={1}>{p.club}</Text>}
       </View>
-      {p.rank != null && <Text style={[s.b, { fontSize: 18 }]}>{`#${p.rank}`}</Text>}
+      <View style={{ alignItems: 'flex-end' }}>
+        <Text style={{ color: p.rank != null ? T.text : T.muted, fontWeight: '700', fontSize: 17 }}>{p.rank != null ? `#${p.rank}` : '—'}</Text>
+        {!!line && <Text style={[s.muted, { fontSize: 12 }]}>{line}</Text>}
+      </View>
     </Pressable>
   );
 });
@@ -417,31 +431,50 @@ function Players() {
   const [q, setQ] = useState('');
   const [g, setG] = useState<'MALE' | 'FEMALE' | undefined>(undefined);
   const [age, setAge] = useState<number | undefined>(undefined);
+  const [club, setClub] = useState<{ id: string; name: string } | null>(null);
+  const [cq, setCq] = useState(''); const [pick, setPick] = useState(false);
+  const [all, setAll] = useState(false);
+  const clubs = useLoad(api.clubs);
   const [rows, setRows] = useState<api.PlayerRow[]>([]);
   const [busy, setBusy] = useState(true); const [err, setErr] = useState(''); const [done, setDone] = useState(false);
   const PAGE = 50;
+  const f = { g, age, ...(club ? { club: club.id } : {}), all };
   useEffect(() => {
     let live = true;
     setBusy(true); setErr(''); setDone(false);
-    api.players(q, 0, PAGE, { g, age }).then((r) => { if (live) { setRows(r); setDone(r.length < PAGE); } }).catch((e) => live && setErr(e.message)).finally(() => live && setBusy(false));
+    api.players(q, 0, PAGE, f).then((r) => { if (live) { setRows(r); setDone(r.length < PAGE); } }).catch((e) => live && setErr(e.message)).finally(() => live && setBusy(false));
     return () => { live = false; };
-  }, [q, g, age]);
+  }, [q, g, age, club?.id, all]);
   const more = () => {
     if (busy || done) return;
     setBusy(true);
-    api.players(q, rows.length, PAGE, { g, age }).then((r) => { setRows((x) => [...x, ...r]); setDone(r.length < PAGE); }).catch((e) => setErr(e.message)).finally(() => setBusy(false));
+    api.players(q, rows.length, PAGE, f).then((r) => { setRows((x) => [...x, ...r]); setDone(r.length < PAGE); }).catch((e) => setErr(e.message)).finally(() => setBusy(false));
   };
   const data = rows;
   return (
     <View style={s.pad}>
       <Text style={s.h1}>{tr('שחקנים')}</Text>
-      <TextInput style={[s.input, startAlign()]} placeholder={tr('חיפוש שחקן לפי שם')} placeholderTextColor={T.muted} value={q} onChangeText={setQ} />
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-        {([[undefined, tr('בנים ובנות')], ['MALE', tr('בנים/גברים')], ['FEMALE', tr('בנות/נשים')]] as const).map(([k, l]) => <Pressable key={l} style={[s.chip, g === k && s.chipOn]} onPress={() => setG(k)}><Text style={g === k ? s.chipOnT : s.b}>{l}</Text></Pressable>)}
-        {([[undefined, tr('כל הגילאים')], [12, tr('עד 12')], [14, tr('עד 14')], [16, tr('עד 16')], [18, tr('עד 18')]] as const).map(([k, l]) => <Pressable key={l} style={[s.chip, age === k && s.chipOn]} onPress={() => setAge(k)}><Text style={age === k ? s.chipOnT : s.b}>{l}</Text></Pressable>)}
+      <View style={s.psearch}>
+        <Text style={{ color: T.muted, fontSize: 18 }}>⌕</Text>
+        <TextInput style={[{ flex: 1, minHeight: 46, color: T.text, fontSize: 16 }, startAlign()]} placeholder={tr('חיפוש לפי שם')} placeholderTextColor={T.muted} value={q} onChangeText={setQ} returnKeyType="search" />
       </View>
+      <View style={{ flexDirection: 'row', gap: 8, zIndex: 3 }}>
+        <Dropdown value={g} onChange={setG} options={[[undefined, tr('בנים ובנות')], ['MALE', tr('בנים')], ['FEMALE', tr('בנות')]] as const} />
+        <Dropdown value={age} onChange={setAge} options={[[undefined, tr('כל הגילאים')], [10, `${tr('עד גיל')} 10`], [12, `${tr('עד גיל')} 12`], [14, `${tr('עד גיל')} 14`], [16, `${tr('עד גיל')} 16`], [18, `${tr('עד גיל')} 18`]] as const} />
+      </View>
+      <Pressable style={[s.select, s.pselect]} onPress={() => { if (club) { setClub(null); setPick(false); } else setPick(!pick); }}><Text style={{ color: T.text, fontSize: 15, fontWeight: '500', flex: 1 }} numberOfLines={1}>{club ? club.name : tr('כל המועדונים')}</Text><Text style={{ color: T.muted, fontSize: 20, lineHeight: 22 }}>{club ? '✕' : pick ? '⌃' : '⌄'}</Text></Pressable>
+      {pick && !club && <View style={{ gap: 8 }}>
+        <TextInput style={[s.input, startAlign()]} placeholder={tr('חיפוש מועדון')} placeholderTextColor={T.muted} value={cq} onChangeText={setCq} />
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+          {(clubs.data ?? []).filter((c) => !cq.trim() || c.name.includes(cq.trim())).slice(0, 15).map((c) => <Pressable key={c.id} style={s.chip} onPress={() => { setClub({ id: c.id, name: c.name }); setPick(false); setCq(''); }}><Text style={s.b}>{c.name}</Text></Pressable>)}
+        </View>
+      </View>}
+      <View style={s.rtabs}>{([[false, tr('שחקנים פעילים')], [true, tr('כל השחקנים')]] as const).map(([k, l]) => <Pressable key={l} style={[s.rtab, { flex: 1, alignItems: 'center' }, all === k && s.rtabOn]} onPress={() => setAll(k)}><Text style={all === k ? s.chipOnT : { color: T.muted, fontWeight: '500' }}>{l}</Text></Pressable>)}</View>
+      <Text style={[s.muted, { fontSize: 13 }]}>{all ? tr('מוצגים כל השחקנים, כולל לא פעילים.') : tr('מוצגים שחקנים פעילים בלבד (תחרו ב-18 החודשים האחרונים). לכולם בחרו "כל השחקנים".')}</Text>
       <Status err={err} busy={busy} empty={!!data && !data.length && tr('לא נמצאו שחקנים')} />
-      <FlatList contentContainerStyle={{ paddingBottom: 100 }} data={data} keyExtractor={(p) => p.id} onEndReached={more} onEndReachedThreshold={0.6} renderItem={({ item }) => <PlayerCard p={item} />} />
+      <FlatList contentContainerStyle={{ paddingBottom: 100 }} data={data} keyExtractor={(p) => p.id} onEndReached={more} onEndReachedThreshold={0.6} initialNumToRender={12} windowSize={7}
+        ListFooterComponent={data.length ? <View style={s.rowEnd} /> : null}
+        renderItem={({ item, index }) => <PlayerCard p={item} first={index === 0} />} />
     </View>
   );
 }
@@ -484,7 +517,7 @@ function Search({ initial, onOpen }: { initial: string; onOpen: (id: string) => 
         {shortcuts.map(([k, l, hint]) => <Pressable key={k} style={({ pressed }) => [s.card, show === k && s.cardOn, pressed && s.pressed]} onPress={() => setShow(show === k ? '' : k)}><Text style={s.b}>{tr(l)}</Text><Text style={s.muted}>{tr(hint)}</Text></Pressable>)}
       </View>}
       <Status err={ts.err} busy={ts.busy && (!!term || !!sc)} empty={!!term && !ts.busy && !cl.busy && !tours.length && !clubs.length && !ps.length && tr('לא נמצא דבר')} />
-      {!!ps.length && <><Text style={s.h2}>{tr('שחקנים')}</Text>{ps.map((p) => <PlayerCard key={p.id} p={p} />)}</>}
+      {!!ps.length && <><Text style={s.h2}>{tr('שחקנים')}</Text><View style={{ borderRadius: 22, overflow: 'hidden', borderTopWidth: 1, borderColor: T.line }}>{ps.map((p) => <PlayerCard key={p.id} p={p} />)}</View></>}
       {!!clubs.length && <><Text style={s.h2}>{tr('מועדונים')}</Text>{clubs.map((c) => <Pressable key={c.id} style={({ pressed }) => [s.card, pressed && s.pressed]} onPress={() => nav.club(c.id)}><Text style={s.b}>{c.name}</Text><Text style={s.muted}>{c.city ? `${c.city} · ` : ''}{tr('{n} שחקנים', { n: c.players })}</Text></Pressable>)}</>}
       {!!tours.length && <><Text style={s.h2}>{term ? tr('תחרויות') : tr(sc?.[1] ?? '')}</Text>{tours.map((x) => <Pressable key={x.id} style={({ pressed }) => [s.card, pressed && s.pressed]} onPress={() => onOpen(x.id)}><Text style={s.b}>{x.name}</Text><Text style={s.muted}>{`${tr(STATUS_HE[x.status] ?? x.status)} · ${dm(x.startDate)}`}</Text></Pressable>)}</>}
     </ScrollView>
@@ -1051,6 +1084,11 @@ const s = StyleSheet.create({
   pill: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 4, borderRadius: 999, backgroundColor: T.surface2, borderWidth: 1, borderColor: T.line }, pillOn: { backgroundColor: T.volt, borderColor: T.volt },
   rrow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14, paddingHorizontal: 16, backgroundColor: T.surface, borderLeftWidth: 1, borderRightWidth: 1, borderBottomWidth: 1, borderColor: T.line },
   rrowFirst: { borderTopWidth: 1, borderTopLeftRadius: 22, borderTopRightRadius: 22 },
+  pselect: { borderRadius: 999, backgroundColor: T.surface2, borderColor: T.line },
+  psearch: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 18, borderRadius: 999, borderWidth: 1, borderColor: T.line2, backgroundColor: T.surface },
+  popmenu: { position: 'absolute', top: 52, start: 0, end: 0, zIndex: 10, padding: 6, gap: 2, borderRadius: 20, borderWidth: 1, borderColor: T.line, backgroundColor: T.surface, elevation: 8, shadowColor: '#000', shadowOpacity: 0.18, shadowRadius: 16, shadowOffset: { width: 0, height: 8 } },
+  popitem: { paddingHorizontal: 14, paddingVertical: 12, borderRadius: 14 },
+  pavSm: { width: 44, height: 44, borderRadius: 22, backgroundColor: T.surface2, borderWidth: 1, borderColor: T.line, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   rowEnd: { height: 14, backgroundColor: T.surface, borderWidth: 1, borderTopWidth: 0, borderColor: T.line, borderBottomLeftRadius: 22, borderBottomRightRadius: 22 },
   podium: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, marginVertical: 12 },
   pod: { flex: 1, minHeight: 130, justifyContent: 'flex-end', gap: 2, padding: 12, borderRadius: 20, backgroundColor: T.surface, borderWidth: 1, borderColor: T.line },
