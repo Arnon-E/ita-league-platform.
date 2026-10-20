@@ -255,21 +255,21 @@ function TournamentList({ onOpen, authed, onGoAccount, go }: { onOpen: (id: stri
       <MyHome authed={authed} onOpen={onOpen} onGoAccount={onGoAccount} onAdmin={nav.admin} />
       <Text style={s.h2}>{tr('תחרויות')}</Text>
       <TextInput style={[s.input, startAlign()]} placeholder={tr('חיפוש לפי שם תחרות')} placeholderTextColor={T.muted} value={q} onChangeText={setQ} />
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0, flexShrink: 0 }} contentContainerStyle={{ gap: 8 }}>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
         {([['up', tr('קרובות')], ['open', tr('הרשמה פתוחה')], ['live', tr('מתקיימת')], ['done', tr('הסתיימה')], ['all', tr('הכול')]] as const).map(([k, l]) => <Pressable key={k} style={[s.chip, st === k && s.chipOn]} onPress={() => setSt(k)}><Text style={st === k ? s.chipOnT : s.b}>{l}</Text></Pressable>)}
         {(data ?? []).some((x) => x.relevant === false) && <Pressable style={[s.chip, mineOnly && s.chipOn]} onPress={() => setMineOnly(!mineOnly)}><Text style={mineOnly ? s.chipOnT : s.b}>{mineOnly ? tr('✓ מתאימות לי') : tr('מתאימות לי')}</Text></Pressable>}
         <Pressable style={[s.chip, (more || !!level || !!sec || !!season) && s.chipOn]} onPress={() => setMore(!more)}><Text style={(more || !!level || !!sec || !!season) ? s.chipOnT : s.b}>{level || sec || season ? tr('סינון ·') : tr('סינון')}</Text></Pressable>
-      </ScrollView>
+      </View>
       {more && <>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0, flexShrink: 0, marginTop: 8 }} contentContainerStyle={{ gap: 8 }}>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
           {([['', tr('כל הסוגים')], ['NATIONAL', tr('ארצית')], ['REGIONAL', tr('אזורית')], ['INTERNATIONAL', tr('בינלאומית')], ['CIRCUIT', tr('סבב')]] as const).map(([k, l]) => <Pressable key={k} style={[s.chip, level === k && s.chipOn]} onPress={() => setLevel(k)}><Text style={level === k ? s.chipOnT : s.b}>{l}</Text></Pressable>)}
-        </ScrollView>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0, flexShrink: 0, marginTop: 8 }} contentContainerStyle={{ gap: 8 }}>
+        </View>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
           {([['', tr('כל הקטגוריות')], ['YOUTH', tr('נוער')], ['ADULTS', tr('בוגרים')], ['MASTERS', tr('מאסטרס')], ['OTHER', tr('אחר')]] as const).map(([k, l]) => <Pressable key={k} style={[s.chip, sec === k && s.chipOn]} onPress={() => setSec(k)}><Text style={sec === k ? s.chipOnT : s.b}>{l}</Text></Pressable>)}
-        </ScrollView>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0, flexShrink: 0, marginTop: 8 }} contentContainerStyle={{ gap: 8 }}>
+        </View>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
           {[['', tr('כל העונות')], ...[...new Set((data ?? []).map((x) => new Date(x.startDate).getFullYear()))].filter((y) => y >= 2000).sort((a, b) => b - a).map((y) => [String(y), String(y)])].map(([k, l]) => <Pressable key={k} style={[s.chip, season === k && s.chipOn]} onPress={() => setSeason(k)}><Text style={season === k ? s.chipOnT : s.b}>{l}</Text></Pressable>)}
-        </ScrollView>
+        </View>
       </>}
       <Status err={err} busy={busy} empty={!!data && !shown.length && tr('אין תחרויות לפי הסינון')} />
       </View>} data={shown} keyExtractor={(t) => t.id} onRefresh={reload} refreshing={false} renderItem={({ item }) => (
@@ -332,15 +332,15 @@ function Rankings() {
     <View style={s.pad}>
       <Text style={s.h1}>{tr('דירוג')}</Text>
       <View style={s.row}>{([['MALE', tr('בנים/גברים')], ['FEMALE', tr('בנות/נשים')]] as const).map(([k, l]) => <Pressable key={k} style={[s.chip, g === k && s.chipOn]} onPress={() => setG(k)}><Text style={g === k ? s.chipOnT : s.b}>{l}</Text></Pressable>)}</View>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0, flexShrink: 0 }} contentContainerStyle={{ gap: 8 }}>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
         {([[undefined, tr('כללי')], [12, tr('עד 12')], [14, tr('עד 14')], [16, tr('עד 16')], [18, tr('עד 18')]] as const).map(([a, l]) => <Pressable key={l} style={[s.chip, age === a && s.chipOn]} onPress={() => setAge(a)}><Text style={age === a ? s.chipOnT : s.b}>{l}</Text></Pressable>)}
-      </ScrollView>
+      </View>
       <Pressable style={[s.chip, (pick || !!club) && s.chipOn, { alignSelf: 'flex-start' }]} onPress={() => { if (club) { setClub(null); setPick(false); } else setPick(!pick); }}><Text style={(pick || !!club) ? s.chipOnT : s.b}>{club ? `✕ ${club.name}` : tr('מועדון')}</Text></Pressable>
       {pick && !club && <View style={{ gap: 8 }}>
         <TextInput style={[s.input, startAlign()]} placeholder={tr('חיפוש מועדון')} placeholderTextColor={T.muted} value={cq} onChangeText={setCq} />
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0, flexShrink: 0 }} contentContainerStyle={{ gap: 8 }}>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
           {(clubs.data ?? []).filter((c) => !cq.trim() || c.name.includes(cq.trim())).slice(0, 15).map((c) => <Pressable key={c.id} style={s.chip} onPress={() => { setClub({ id: c.id, name: c.name }); setPick(false); setCq(''); }}><Text style={s.b}>{c.name}</Text></Pressable>)}
-        </ScrollView>
+        </View>
       </View>}
       <Status err={err} busy={busy} empty={!!data && !data.length && tr('אין עדיין נתוני דירוג')} />
       <FlatList contentContainerStyle={{ paddingBottom: 100 }} data={data ?? []} keyExtractor={(r) => r.playerId} renderItem={({ item }) => (
@@ -391,10 +391,10 @@ function Players() {
     <View style={s.pad}>
       <Text style={s.h1}>{tr('שחקנים')}</Text>
       <TextInput style={[s.input, startAlign()]} placeholder={tr('חיפוש שחקן לפי שם')} placeholderTextColor={T.muted} value={q} onChangeText={setQ} />
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0, flexShrink: 0 }} contentContainerStyle={{ gap: 8 }}>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
         {([[undefined, tr('בנים ובנות')], ['MALE', tr('בנים/גברים')], ['FEMALE', tr('בנות/נשים')]] as const).map(([k, l]) => <Pressable key={l} style={[s.chip, g === k && s.chipOn]} onPress={() => setG(k)}><Text style={g === k ? s.chipOnT : s.b}>{l}</Text></Pressable>)}
         {([[undefined, tr('כל הגילאים')], [12, tr('עד 12')], [14, tr('עד 14')], [16, tr('עד 16')], [18, tr('עד 18')]] as const).map(([k, l]) => <Pressable key={l} style={[s.chip, age === k && s.chipOn]} onPress={() => setAge(k)}><Text style={age === k ? s.chipOnT : s.b}>{l}</Text></Pressable>)}
-      </ScrollView>
+      </View>
       <Status err={err} busy={busy} empty={!!data && !data.length && tr('לא נמצאו שחקנים')} />
       <FlatList contentContainerStyle={{ paddingBottom: 100 }} data={data} keyExtractor={(p) => p.id} onEndReached={more} onEndReachedThreshold={0.6} renderItem={({ item }) => <PlayerCard p={item} />} />
     </View>
@@ -461,7 +461,7 @@ function MyPlayerBlock({ d, me, parts, people, onSwitch, showInfo, onToggleInfo 
         <Avatar uri={parts[0]?.photo ?? null} name={me.name} />
         <View style={{ flex: 1 }}><Text style={s.cardT}>{me.name}</Text><Text style={s.muted}>{tr('רשום: {cats}', { cats: catNames })}</Text></View>
       </View>
-      {people.length > 1 && <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0, flexShrink: 0 }} contentContainerStyle={{ gap: 8 }}>{people.map((x) => <Pressable key={x.id} style={[s.chip, x.id === me.id && s.chipOn]} onPress={() => onSwitch(x.id)}><Text style={x.id === me.id ? s.chipOnT : s.b}>{x.name.split(' ')[0]}</Text></Pressable>)}</ScrollView>}
+      {people.length > 1 && <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>{people.map((x) => <Pressable key={x.id} style={[s.chip, x.id === me.id && s.chipOn]} onPress={() => onSwitch(x.id)}><Text style={x.id === me.id ? s.chipOnT : s.b}>{x.name.split(' ')[0]}</Text></Pressable>)}</View>}
       {next && <Text style={s.muted}><Text style={s.b}>{tr('המשחק הבא:')} </Text>{`${(iAmA(next) ? next.b.name : next.a.name) ?? tr('יתברר')}${next.start ? ` · ${new Date(next.start).toLocaleString(locale(), { weekday: 'short', day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' })}` : ''}${next.court ? ` · ${tr('מגרש {c}', { c: next.court })}` : ''}`}</Text>}
       {played.map((m) => {
         const won = !!m.winnerEntryId && m.winnerEntryId === (iAmA(m) ? m.a.id : m.b.id);
@@ -577,14 +577,14 @@ function Tournament({ id, focus, onBack, onGoAccount }: { id: string; focus?: Fo
         const shownCats = cats.filter((c) => (!fg || c.gender === fg) && (!fage || ageOf(c.name) === fage));
         return (
           <View style={{ gap: 8 }}>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0, flexShrink: 0 }} contentContainerStyle={{ gap: 8 }}>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
               {chip(!fg, tr('בנים ובנות'), () => { setFg(''); setFcat(''); setPicked(false); }, 'g0')}
               {chip(fg === 'MALE', tr('בנים'), () => { setFg('MALE'); setFcat(''); setPicked(false); }, 'g1')}
               {chip(fg === 'FEMALE', tr('בנות'), () => { setFg('FEMALE'); setFcat(''); setPicked(false); }, 'g2')}
               {chip(!fage, tr('כל הגילאים'), () => { setFage(''); setFcat(''); setPicked(false); }, 'a0')}
               {ages.map((a) => chip(fage === a, tr('גיל {n}', { n: a }), () => { setFage(a); setFcat(''); setPicked(false); }, 'a' + a))}
-            </ScrollView>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0, flexShrink: 0 }} contentContainerStyle={{ gap: 8 }}>
+            </View>
+            <ScrollView style={{ maxHeight: 176 }} nestedScrollEnabled showsVerticalScrollIndicator contentContainerStyle={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
               {chip(!fcat, tr('כל הקטגוריות'), () => { setFcat(''); setPicked(false); }, 'c0')}
               {shownCats.map((c) => chip(fcat === c.id, c.name, () => { setFcat(c.id); setPicked(true); }, c.id))}
             </ScrollView>
