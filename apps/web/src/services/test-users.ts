@@ -29,7 +29,10 @@ export async function createTestUser(db: Db, role: 'PLAYER' | 'FEDERATION_ADMIN'
 /** Deletes every test account with everything it owns (profiles, entries, follows, notifications...). Safe to run repeatedly. */
 export async function removeTestUsers(db: Db) {
   const users = await db.select({ id: schema.users.id }).from(schema.users).where(like(schema.users.email, `%${TEST_DOMAIN}`));
-  if (!users.length) return { users: 0, players: 0 };
+  if (!users.length) {
+    await db.execute(sql`delete from clubs where name like 'ZZ TEST CLUB%' and not exists (select 1 from players p where p.club_id = clubs.id)`);
+    return { users: 0, players: 0 };
+  }
   const ids = users.map((u) => u.id);
   const list = JSON.stringify(ids);
   const owned = (await db.execute(sql`select id from players where account_id in (select jsonb_array_elements_text(${list}::jsonb))`)) as unknown as { id: string }[];
@@ -45,5 +48,7 @@ export async function removeTestUsers(db: Db) {
     else await db.execute(sql`update ${t} set ${c} = null where ${c} in (select jsonb_array_elements_text(${list}::jsonb))`);
   }
   await db.execute(sql`delete from users where id in (select jsonb_array_elements_text(${list}::jsonb))`);
+  // clubs made for the broadcast test (named 'ZZ TEST CLUB...') go too, once empty
+  await db.execute(sql`delete from clubs where name like 'ZZ TEST CLUB%' and not exists (select 1 from players p where p.club_id = clubs.id)`);
   return { users: ids.length, players: owned.length };
 }
