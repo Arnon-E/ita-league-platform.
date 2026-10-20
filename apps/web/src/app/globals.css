@@ -398,8 +398,9 @@ details.acct .out:hover{background:var(--badbg)}
 .hsearch,.hero p{max-width:100%}
 @media(max-width:900px){.home-hero{grid-template-columns:minmax(0,1fr)}}
 @media(max-width:720px){
-  .hsearch input{padding-inline:14px;font-size:16px}
-  .hsearch .btn{padding:0 18px}
+  .hsearch input{padding-inline:12px;font-size:16px;text-overflow:ellipsis}
+  .hsearch input::placeholder{font-size:13.5px;text-overflow:ellipsis}
+  .hsearch .btn{padding:0 14px}
   .feat strong{font-size:23px}
   .feat .count>span{min-width:0;flex:1}
   .feat .count b{font-size:32px}
