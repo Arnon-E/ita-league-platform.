@@ -356,7 +356,7 @@ function Rankings() {
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
         {([[undefined, tr('כללי')], [12, `${tr('עד גיל')} 12`], [14, `${tr('עד גיל')} 14`], [16, `${tr('עד גיל')} 16`], [18, `${tr('עד גיל')} 18`]] as const).map(([a, l]) => <Pressable key={l} style={[s.pill, age === a && s.pillOn]} onPress={() => setAge(a)}>{age === a && <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: T.ink }} />}<Text style={{ fontSize: 12.5, fontWeight: '600', color: age === a ? T.ink : T.text }}>{l}</Text></Pressable>)}
       </View>
-      <Pressable style={s.select} onPress={() => { if (club) { setClub(null); setPick(false); } else setPick(!pick); }}><Text style={{ color: T.text, fontSize: 16, flex: 1 }} numberOfLines={1}>{club ? club.name : tr('כל המועדונים')}</Text><Text style={{ color: T.muted, fontSize: 16 }}>{club ? '✕' : pick ? '⌃' : '⌄'}</Text></Pressable>
+      <Pressable style={s.select} onPress={() => { if (club) { setClub(null); setPick(false); } else setPick(!pick); }}><Text style={{ color: T.text, fontSize: 16, flex: 1 }} numberOfLines={1}>{club ? club.name : tr('כל המועדונים')}</Text><Text style={{ color: T.muted, fontSize: 22, lineHeight: 24 }}>{club ? '✕' : pick ? '⌃' : '⌄'}</Text></Pressable>
       {pick && !club && <View style={{ gap: 8 }}>
         <TextInput style={[s.input, startAlign()]} placeholder={tr('חיפוש מועדון')} placeholderTextColor={T.muted} value={cq} onChangeText={setCq} />
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
@@ -1045,7 +1045,7 @@ const s = StyleSheet.create({
   tab: { flex: 1, minHeight: 54, alignItems: 'center', justifyContent: 'center', gap: 1, borderRadius: 999 }, tabActive: { backgroundColor: T.btn },
   tabT: { color: T.muted, fontWeight: '500', fontSize: 11 }, tabOn: { color: T.btnText, fontWeight: '700' },
   chip: { paddingHorizontal: 16, minHeight: 40, borderRadius: 999, borderWidth: 1, borderColor: T.line2, alignItems: 'center', justifyContent: 'center', backgroundColor: T.surface }, chipOn: { backgroundColor: T.btn, borderColor: T.btn }, chipOnT: { color: T.btnText, fontWeight: '700' },
-  select: { flexDirection: 'row', alignItems: 'center', minHeight: 48, paddingHorizontal: 16, borderRadius: 16, borderWidth: 1.5, borderColor: T.line2, backgroundColor: T.surface },
+  select: { flexDirection: 'row', alignItems: 'center', minHeight: 48, paddingHorizontal: 16, borderRadius: 16, borderWidth: 1, borderColor: T.line2, backgroundColor: T.surface },
   rtabs: { flexDirection: 'row', alignSelf: 'stretch', gap: 2, padding: 4, backgroundColor: T.surface2, borderWidth: 1, borderColor: T.line, borderRadius: 999 },
   rtab: { paddingHorizontal: 20, paddingVertical: 9, borderRadius: 999 }, rtabOn: { backgroundColor: T.btn },
   pill: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 4, borderRadius: 999, backgroundColor: T.surface2, borderWidth: 1, borderColor: T.line }, pillOn: { backgroundColor: T.volt, borderColor: T.volt },
