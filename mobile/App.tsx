@@ -493,7 +493,98 @@ function Avatar({ uri, name }: { uri: string | null; name: string }) {
   return <View style={[s.avatar, { alignItems: 'center', justifyContent: 'center', backgroundColor: T.volt }]}><Text style={{ color: T.ink, fontWeight: '800', fontSize: 20 }}>{name.trim().charAt(0)}</Text></View>;
 }
 
+type MatchRowProps = { m: api.Match; catName: string; meName?: string; canScore: boolean; onScore: (m: api.Match) => void };
+const MatchRow = memo(function MatchRow({ m, catName, meName, canScore, onScore }: MatchRowProps) {
+  const done = m.status !== 'SCHEDULED' && m.status !== 'VOID';
+  const win = m.winnerEntryId ? (m.winnerEntryId === m.a.id ? 'a' : m.winnerEntryId === m.b.id ? 'b' : null) : null;
+  const mineSide = meName ? (m.a.name === meName ? 'a' : m.b.name === meName ? 'b' : undefined) : undefined;
+  const where = m.status === 'SCHEDULED' ? (m.court ? tr('מגרש {c}', { c: m.court }) : tr('טרם שובץ')) : '';
+  return (
+    <MatchCard a={m.a.name ?? tr('טרם נקבע')} b={m.b.name ?? tr('טרם נקבע')} sets={done ? m.sets ?? [] : []} status={m.status} winner={win}
+      caption={[catName, where].filter(Boolean).join(' · ') || undefined} when={matchWhen(m.start)} mine={mineSide}
+      onPress={m.a.id && m.b.id && canScore ? () => onScore(m) : undefined} />
+  );
+});
+
 const NO_MATCHES: api.Match[] = [];
+const keyOfMatch = (m: api.Match) => m.id;
+const NO_PARTS: api.Participant[] = [];
+const NO_CATS: api.Cat[] = [];
+type SetStr = (v: string) => void;
+/** Gender / age / category chips of a tournament. Memoised: it redraws only when the filters or the categories change. */
+const CatFilters = memo(function CatFilters({ cats, fg, fage, fcat, setFg, setFage, setFcat, setPicked }: { cats: api.Cat[]; fg: string; fage: string; fcat: string; setFg: SetStr; setFage: SetStr; setFcat: SetStr; setPicked: (v: boolean) => void }) {
+                const ageOf = (n: string) => (n.match(/(\d{2})/) ?? [])[1] ?? '';
+        const ages = [...new Set(cats.map((c) => ageOf(c.name)).filter(Boolean))].sort();
+        const chip = (on: boolean, label: string, press: () => void, key: string) => (
+          <Pressable key={key} style={[s.chip, on && s.chipOn]} onPress={press}><Text style={on ? s.chipOnT : s.b}>{label}</Text></Pressable>
+        );
+        const shownCats = cats.filter((c) => (!fg || c.gender === fg) && (!fage || ageOf(c.name) === fage));
+        return (
+          <View style={{ gap: 8 }}>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+              {chip(!fg, tr('בנים ובנות'), () => { setFg(''); setFcat(''); setPicked(false); }, 'g0')}
+              {chip(fg === 'MALE', tr('בנים'), () => { setFg('MALE'); setFcat(''); setPicked(false); }, 'g1')}
+              {chip(fg === 'FEMALE', tr('בנות'), () => { setFg('FEMALE'); setFcat(''); setPicked(false); }, 'g2')}
+              {chip(!fage, tr('כל הגילאים'), () => { setFage(''); setFcat(''); setPicked(false); }, 'a0')}
+              {ages.map((a) => chip(fage === a, tr('גיל {n}', { n: a }), () => { setFage(a); setFcat(''); setPicked(false); }, 'a' + a))}
+            </View>
+            <ScrollView style={{ maxHeight: 176 }} nestedScrollEnabled showsVerticalScrollIndicator contentContainerStyle={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+              {chip(!fcat, tr('כל הקטגוריות'), () => { setFcat(''); setPicked(false); }, 'c0')}
+              {shownCats.map((c) => chip(fcat === c.id, c.name, () => { setFcat(c.id); setPicked(true); }, c.id))}
+            </ScrollView>
+          </View>
+        );
+});
+
+/** The participants grid with a short preview and a show-all button. Memoised, because every avatar is a remote image. */
+const ParticipantsBlock = memo(function ParticipantsBlock({ participants, cats, fg, fage, fcat }: { participants: api.Participant[]; cats: api.Cat[]; fg: string; fage: string; fcat: string }) {
+  const nav = useNav();
+  const [allParts, setAllParts] = useState(false);
+                const ageOf = (n: string) => (n.match(/(\d{2})/) ?? [])[1] ?? '';
+        const shown = participants.filter((x) => {
+          if (fcat) return x.categoryId === fcat;
+          const c = cats.find((k) => k.id === x.categoryId);
+          return !!c && (!fg || c.gender === fg) && (!fage || ageOf(c.name) === fage);
+        });
+        if (!shown.length) return null;
+        return (
+          <View style={{ gap: 8 }}>
+            <Text style={s.h2}>{tr('משתתפים ({n})', { n: shown.length })}</Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+              {(allParts ? shown : shown.slice(0, 18)).map((x) => (
+                <Pressable key={x.categoryId + x.id} onPress={() => nav.player(x.id)} style={{ width: '30%', alignItems: 'center', gap: 4 }}>
+                  <Avatar uri={x.photo} name={x.name} />
+                  <Text style={[s.b, { fontSize: 13, textAlign: 'center' }]} numberOfLines={2}>{x.name}</Text>
+                  {!fcat && cats.length > 1 && <Text style={[s.muted, { fontSize: 11 }]} numberOfLines={1}>{cats.find((k) => k.id === x.categoryId)?.name}</Text>}
+                </Pressable>
+              ))}
+            </View>
+            {shown.length > 18 && <Pressable style={[s.chip, { alignSelf: 'flex-start' }]} onPress={() => setAllParts(!allParts)}><Text style={s.b}>{allParts ? tr('הצג פחות') : tr('הצג את כל המשתתפים ({n})', { n: shown.length })}</Text></Pressable>}
+          </View>
+        );
+});
+
+/** The knockout draws of the chosen category: one open, the rest on request. Memoised, so a tap on a filter does not redraw an unchanged tree. */
+const TreesBlock = memo(function TreesBlock({ treeCats, koByCat, me, canScore, onScoreTap, asList, setAsList }: { treeCats: api.Cat[]; koByCat: Map<string, api.Match[]>; me?: string; canScore: boolean; onScoreTap: (m: api.Match) => void; asList: boolean; setAsList: (v: boolean) => void }) {
+  const [moreTrees, setMoreTrees] = useState(false);
+        if (!treeCats.length) return null;
+        return (
+          <View style={{ gap: 10 }}>
+            <View style={s.row}>
+              <Pressable style={[s.chip, !asList && s.chipOn]} onPress={() => setAsList(false)}><Text style={!asList ? s.chipOnT : s.b}>{tr('עץ התחרות')}</Text></Pressable>
+              <Pressable style={[s.chip, asList && s.chipOn]} onPress={() => setAsList(true)}><Text style={asList ? s.chipOnT : s.b}>{tr('רשימת משחקים')}</Text></Pressable>
+            </View>
+            {!asList && (moreTrees ? treeCats : treeCats.slice(0, 1)).map((c) => (
+              <View key={c.id} style={{ gap: 6 }}>
+                {treeCats.length > 1 && <Text style={s.b}>{c.name}</Text>}
+                <Bracket matches={koByCat.get(c.id) ?? NO_MATCHES} me={me} onPress={canScore ? onScoreTap : undefined} />
+              </View>
+            ))}
+            {!asList && treeCats.length > 1 && <Pressable style={[s.chip, { alignSelf: 'flex-start' }]} onPress={() => setMoreTrees(!moreTrees)}><Text style={s.b}>{moreTrees ? tr('הצג פחות') : tr('עוד עצים ({n})', { n: treeCats.length - 1 })}</Text></Pressable>}
+          </View>
+        );
+});
+
 function Tournament({ id, focus, onBack, onGoAccount }: { id: string; focus?: Focus; onBack: () => void; onGoAccount: () => void }) {
   const nav = useNav();
   const canScore = api.canScore();
@@ -507,7 +598,6 @@ function Tournament({ id, focus, onBack, onGoAccount }: { id: string; focus?: Fo
   // a signed-in player or parent lands on their own category: gender, age group and category are chosen for them (they can change it)
   const [auto, setAuto] = useState(false);
   const [people, setPeople] = useState<api.HomePerson[]>([]); const [meId, setMeId] = useState(''); const [showInfo, setShowInfo] = useState(false);
-  const [allParts, setAllParts] = useState(false);
   const [asList, setAsList] = useState(false); // knockout draws show as trees; the list is a tap away
   const [picked, setPicked] = useState(false); // a category chip was tapped (else the category came from the filters or my player)
   // choose gender, age group and category for one of my players: the one they are entered in, else the youngest age group that fits
@@ -566,7 +656,6 @@ function Tournament({ id, focus, onBack, onGoAccount }: { id: string; focus?: Fo
     return m;
   }, [d]);
   const onScoreTap = useCallback((m: api.Match) => { if (m.a.id && m.b.id) setScore(m); }, []);
-  const [moreTrees, setMoreTrees] = useState(false);
   const treeKey = treeCats.map((c) => c.id).join(',');
   const listData = useMemo(() => (d?.matches ?? []).filter((m) => {
     // the trees already show these categories' knockout matches: the list keeps the group stages
@@ -576,6 +665,11 @@ function Tournament({ id, focus, onBack, onGoAccount }: { id: string; focus?: Fo
     const c = d?.categories.find((x) => x.id === m.categoryId);
     return !!c && (!fg || c.gender === fg) && (!fage || ((c.name.match(/(\d{2})/) ?? [])[1] ?? '') === fage);
   }), [d, asList, treeKey, fcat, fg, fage]);
+  const catName = useMemo(() => new Map((d?.categories ?? []).map((c) => [c.id, c.name])), [d]);
+  const meName = people.find((x) => x.id === meId)?.name ?? focus?.name;
+  const renderMatch = useCallback(({ item: m }: { item: api.Match }) => (
+    <MatchRow m={m} catName={fcat ? '' : catName.get(m.categoryId) ?? ''} meName={meName} canScore={canScore} onScore={setScore} />
+  ), [catName, fcat, meName, canScore]);
   if (score) return <Score m={score} onDone={() => { setScore(null); load(); }} />;
   return (
       <FlatList style={s.pad} contentContainerStyle={{ paddingBottom: 100, gap: 10 }} ListHeaderComponent={<View style={{ gap: 10 }}>
@@ -601,90 +695,13 @@ function Tournament({ id, focus, onBack, onGoAccount }: { id: string; focus?: Fo
           </View>
         : <RegisterBox tournamentName={d.tournament.name} categories={d.categories} onGoAccount={onGoAccount} />)}
       {d && !d.matches.length && !(d.participants ?? []).some((x) => x.id === meId) && <Text style={s.muted}>{tr('לוח המשחקים והתוצאות יופיעו כאן אחרי ההגרלה.')}</Text>}
-      {(d?.categories.length ?? 0) > 1 && (() => {
-        const cats = d!.categories;
-        const ageOf = (n: string) => (n.match(/(\d{2})/) ?? [])[1] ?? '';
-        const ages = [...new Set(cats.map((c) => ageOf(c.name)).filter(Boolean))].sort();
-        const chip = (on: boolean, label: string, press: () => void, key: string) => (
-          <Pressable key={key} style={[s.chip, on && s.chipOn]} onPress={press}><Text style={on ? s.chipOnT : s.b}>{label}</Text></Pressable>
-        );
-        const shownCats = cats.filter((c) => (!fg || c.gender === fg) && (!fage || ageOf(c.name) === fage));
-        return (
-          <View style={{ gap: 8 }}>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-              {chip(!fg, tr('בנים ובנות'), () => { setFg(''); setFcat(''); setPicked(false); }, 'g0')}
-              {chip(fg === 'MALE', tr('בנים'), () => { setFg('MALE'); setFcat(''); setPicked(false); }, 'g1')}
-              {chip(fg === 'FEMALE', tr('בנות'), () => { setFg('FEMALE'); setFcat(''); setPicked(false); }, 'g2')}
-              {chip(!fage, tr('כל הגילאים'), () => { setFage(''); setFcat(''); setPicked(false); }, 'a0')}
-              {ages.map((a) => chip(fage === a, tr('גיל {n}', { n: a }), () => { setFage(a); setFcat(''); setPicked(false); }, 'a' + a))}
-            </View>
-            <ScrollView style={{ maxHeight: 176 }} nestedScrollEnabled showsVerticalScrollIndicator contentContainerStyle={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-              {chip(!fcat, tr('כל הקטגוריות'), () => { setFcat(''); setPicked(false); }, 'c0')}
-              {shownCats.map((c) => chip(fcat === c.id, c.name, () => { setFcat(c.id); setPicked(true); }, c.id))}
-            </ScrollView>
-          </View>
-        );
-      })()}
-      {(() => {
-        const cats = d?.categories ?? [];
-        const ageOf = (n: string) => (n.match(/(\d{2})/) ?? [])[1] ?? '';
-        const shown = (d?.participants ?? []).filter((x) => {
-          if (fcat) return x.categoryId === fcat;
-          const c = cats.find((k) => k.id === x.categoryId);
-          return !!c && (!fg || c.gender === fg) && (!fage || ageOf(c.name) === fage);
-        });
-        if (!shown.length) return null;
-        return (
-          <View style={{ gap: 8 }}>
-            <Text style={s.h2}>{tr('משתתפים ({n})', { n: shown.length })}</Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
-              {(allParts ? shown : shown.slice(0, 18)).map((x) => (
-                <Pressable key={x.categoryId + x.id} onPress={() => nav.player(x.id)} style={{ width: '30%', alignItems: 'center', gap: 4 }}>
-                  <Avatar uri={x.photo} name={x.name} />
-                  <Text style={[s.b, { fontSize: 13, textAlign: 'center' }]} numberOfLines={2}>{x.name}</Text>
-                  {!fcat && cats.length > 1 && <Text style={[s.muted, { fontSize: 11 }]} numberOfLines={1}>{cats.find((k) => k.id === x.categoryId)?.name}</Text>}
-                </Pressable>
-              ))}
-            </View>
-            {shown.length > 18 && <Pressable style={[s.chip, { alignSelf: 'flex-start' }]} onPress={() => setAllParts(!allParts)}><Text style={s.b}>{allParts ? tr('הצג פחות') : tr('הצג את כל המשתתפים ({n})', { n: shown.length })}</Text></Pressable>}
-          </View>
-        );
-      })()}
-      {(() => {
-        if (!treeCats.length) return null;
-        const me = people.find((x) => x.id === meId)?.name ?? focus?.name;
-        return (
-          <View style={{ gap: 10 }}>
-            <View style={s.row}>
-              <Pressable style={[s.chip, !asList && s.chipOn]} onPress={() => setAsList(false)}><Text style={!asList ? s.chipOnT : s.b}>{tr('עץ התחרות')}</Text></Pressable>
-              <Pressable style={[s.chip, asList && s.chipOn]} onPress={() => setAsList(true)}><Text style={asList ? s.chipOnT : s.b}>{tr('רשימת משחקים')}</Text></Pressable>
-            </View>
-            {!asList && (moreTrees ? treeCats : treeCats.slice(0, 1)).map((c) => (
-              <View key={c.id} style={{ gap: 6 }}>
-                {treeCats.length > 1 && <Text style={s.b}>{c.name}</Text>}
-                <Bracket matches={koByCat.get(c.id) ?? NO_MATCHES} me={me} onPress={canScore ? onScoreTap : undefined} />
-              </View>
-            ))}
-            {!asList && treeCats.length > 1 && <Pressable style={[s.chip, { alignSelf: 'flex-start' }]} onPress={() => setMoreTrees(!moreTrees)}><Text style={s.b}>{moreTrees ? tr('הצג פחות') : tr('עוד עצים ({n})', { n: treeCats.length - 1 })}</Text></Pressable>}
-          </View>
-        );
-      })()}
+      {(d?.categories.length ?? 0) > 1 && <CatFilters cats={d!.categories} fg={fg} fage={fage} fcat={fcat} setFg={setFg} setFage={setFage} setFcat={setFcat} setPicked={setPicked} />}
+      <ParticipantsBlock participants={d?.participants ?? NO_PARTS} cats={d?.categories ?? NO_CATS} fg={fg} fage={fage} fcat={fcat} />
+      <TreesBlock treeCats={treeCats} koByCat={koByCat} me={people.find((x) => x.id === meId)?.name ?? focus?.name} canScore={canScore} onScoreTap={onScoreTap} asList={asList} setAsList={setAsList} />
       </View>}
         data={listData}
-        keyExtractor={(m) => m.id} initialNumToRender={12}
-        renderItem={({ item: m }) => {
-          const done = m.status !== 'SCHEDULED' && m.status !== 'VOID';
-          const win = m.winnerEntryId ? (m.winnerEntryId === m.a.id ? 'a' : m.winnerEntryId === m.b.id ? 'b' : null) : null;
-          const cat = d?.categories.find((x) => x.id === m.categoryId)?.name;
-          const meName = people.find((x) => x.id === meId)?.name ?? focus?.name;
-          const mineSide = meName ? (m.a.name === meName ? 'a' : m.b.name === meName ? 'b' : undefined) : undefined;
-          const where = m.status === 'SCHEDULED' ? (m.court ? tr('מגרש {c}', { c: m.court }) : tr('טרם שובץ')) : '';
-          return (
-            <MatchCard a={m.a.name ?? tr('טרם נקבע')} b={m.b.name ?? tr('טרם נקבע')} sets={done ? m.sets ?? [] : []} status={m.status} winner={win}
-              caption={[fcat ? '' : cat, where].filter(Boolean).join(' · ') || undefined} when={matchWhen(m.start)} mine={mineSide}
-              onPress={m.a.id && m.b.id && api.canScore() ? () => setScore(m) : undefined} />
-          );
-        }} />
+        keyExtractor={keyOfMatch} initialNumToRender={10} maxToRenderPerBatch={8} windowSize={5} removeClippedSubviews
+        renderItem={renderMatch} />
   );
 }
 
