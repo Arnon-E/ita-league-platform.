@@ -10,7 +10,11 @@
       "bundleIdentifier": "il.org.tennis.league"
     },
     "android": {
-      "package": "il.org.tennis.league"
+      "package": "il.org.tennis.league",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon/adaptive-foreground.png",
+        "backgroundColor": "#1D4FE0"
+      }
     },
     "plugins": [
       "expo-secure-store",
@@ -20,6 +24,7 @@
     "extra": {
       "apiUrl": "https://ita-league-platform-jpgi.vercel.app"
     },
-    "newArchEnabled": true
+    "newArchEnabled": true,
+    "icon": "./assets/icon/icon.png"
   }
 }
