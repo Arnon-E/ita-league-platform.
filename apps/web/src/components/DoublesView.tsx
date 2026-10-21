@@ -79,7 +79,9 @@ export function DoublesView({ cats, labels }: { cats: DoublesViewCat[]; labels: 
                 {g.info && <span className="muted" style={{ fontSize: 13 }} dir="auto">{g.info}</span>}
               </span>
               <span style={{ fontSize: 13, fontWeight: 700, padding: '3px 10px', borderRadius: 999, background: doneCount === ms.length && ms.length ? 'var(--okbg, #dcfce7)' : 'var(--surface, #fff)', border: LINE }} dir="ltr">{doneCount}/{ms.length}</span>
-              <span aria-hidden style={{ transition: 'transform .15s', transform: open ? 'rotate(180deg)' : 'none' }}>⌄</span>
+              <span aria-hidden style={{ width: 28, height: 28, flex: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: 999, border: LINE, background: 'var(--surface, #fff)' }}>
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ transition: 'transform .2s', transform: open ? 'rotate(180deg)' : 'none' }}><path d="M3 5l4 4 4-4" /></svg>
+              </span>
             </button>
             {open && (
               <div style={{ overflow: 'auto' }}>

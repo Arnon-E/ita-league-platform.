@@ -709,7 +709,10 @@ const DoublesBlock = memo(function DoublesBlock({ doubles, tables }: { doubles: 
                 {!!first && <Text style={[s.muted, { fontSize: 13 }]}>{[first.court, matchWhen(first.start, first.kind)].filter(Boolean).join(' · ')}</Text>}
               </View>
               <View style={{ borderWidth: 1, borderColor: T.line2, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 2, backgroundColor: doneCount === gm.length && gm.length ? T.okbg : T.surface }}><Text style={{ fontSize: 13, fontWeight: '700', color: T.text, direction: 'ltr' }}>{`${doneCount}/${gm.length}`}</Text></View>
-              <Text style={{ color: T.muted, transform: [{ rotate: open ? '180deg' : '0deg' }] }}>⌄</Text>
+              {/* drawn with borders, not a font glyph, so it looks the same on every Android font */}
+              <View style={{ width: 28, height: 28, borderRadius: 14, borderWidth: 1, borderColor: T.line2, backgroundColor: T.surface, alignItems: 'center', justifyContent: 'center' }}>
+                <View style={{ width: 8, height: 8, borderRightWidth: 2, borderBottomWidth: 2, borderColor: T.text, transform: [{ translateY: open ? 2 : -2 }, { rotate: open ? '-135deg' : '45deg' }] }} />
+              </View>
             </Pressable>
             {open && <>
               {shown.map((m) => {
