@@ -689,6 +689,12 @@ const DoublesBlock = memo(function DoublesBlock({ doubles, tables }: { doubles: 
               </View>
             </View>
           ))}
+          {ms.filter((m) => m.stage === 'GROUP' && (m.group ?? 'בית 1') === t.group && m.status === 'SCHEDULED').map((m, i) => (
+            <View key={m.id} style={{ borderTopWidth: i ? 0 : 1, borderColor: T.line, paddingTop: i ? 6 : 8 }}>
+              <Text style={[s.muted, { fontSize: 13 }]}>{[matchWhen(m.start, m.kind), m.court].filter(Boolean).join(' · ') || '—'}</Text>
+              <Text style={s.b}>{`${m.a.join(' / ')} – ${m.b.join(' / ')}`}</Text>
+            </View>
+          ))}
         </View>
         {ms.filter((m) => m.stage === 'GROUP' && (m.group ?? 'בית 1') === t.group && m.status !== 'SCHEDULED').map((m) => card(m))}
         </View>

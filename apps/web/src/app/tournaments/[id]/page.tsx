@@ -613,9 +613,9 @@ async function DoublesTab({ d }: { d: Detail }) {
         return { group: groupLabel(g.group), info: first ? [first.court, matchWhen(first.scheduledStart, first.scheduleKind)].filter(Boolean).join(' · ') : undefined, rows: g.rows };
       }),
       matches: sorted.map((m) => ({
-        id: m.id, group: m.stage === 'GROUP' ? groupLabel(m.groupName ?? 'בית 1') : '', a: m.aName.split(' / '), b: m.bName.split(' / '), sets: m.status === 'SCHEDULED' ? [] : (m.sets as { a: number; b: number }[]), status: m.status,
+        id: m.id, court: m.court ?? '', group: m.stage === 'GROUP' ? groupLabel(m.groupName ?? 'בית 1') : '', a: m.aName.split(' / '), b: m.bName.split(' / '), sets: m.status === 'SCHEDULED' ? [] : (m.sets as { a: number; b: number }[]), status: m.status,
         winner: (m.winner === 'a' || m.winner === 'b' ? m.winner : null) as 'a' | 'b' | null,
-        caption: [m.stage === 'GROUP' ? '' : tt('הדחה'), m.court].filter(Boolean).join(' · '), when: matchWhen(m.scheduledStart, m.scheduleKind),
+        caption: [m.stage === 'GROUP' ? '' : tt('הדחה'), m.status === 'SCHEDULED' ? '' : m.court].filter(Boolean).join(' · '), when: matchWhen(m.scheduledStart, m.scheduleKind),
       })),
     };
   });

@@ -5,7 +5,7 @@ import { MatchScore } from '@/components/MatchScore';
 export interface DoublesViewCat {
   name: string;
   tables: { group: string; info?: string; rows: { pair: string; rank: number; played: number; wins: number; losses: number; setsFor: number; setsAgainst: number }[] }[];
-  matches: { id: string; a: string[]; b: string[]; sets: { a: number; b: number; superTb?: boolean }[]; status: string; winner: 'a' | 'b' | null; caption: string; when?: string; group: string }[];
+  matches: { id: string; a: string[]; b: string[]; sets: { a: number; b: number; superTb?: boolean }[]; status: string; winner: 'a' | 'b' | null; caption: string; when?: string; group: string; court?: string }[];
 }
 export interface DoublesViewLabels { pair: string; played: string; wins: string; losses: string; sets: string; walkover: string; retired: string; void: string; live: string; won: string }
 
@@ -36,6 +36,17 @@ export function DoublesView({ cats, labels }: { cats: DoublesViewCat[]; labels: 
                 </tr>
               ))}
             </tbody></table>
+            {/* matches not yet played: one line each, with their time, so everyone can find their own */}
+            {cat.matches.some((m) => m.group === g.group && m.status === 'SCHEDULED') && (
+              <div style={{ borderTop: '1px solid var(--line, #e5e7eb)', marginTop: 8, paddingTop: 8, display: 'grid', gap: 8 }}>
+                {cat.matches.filter((m) => m.group === g.group && m.status === 'SCHEDULED').map((m) => (
+                  <div key={m.id}>
+                    <div className="muted" style={{ fontSize: 13 }} dir="auto">{[m.when, m.court].filter(Boolean).join(' · ') || '—'}</div>
+                    <div>{m.a.join(' / ')} <span className="muted">–</span> {m.b.join(' / ')}</div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
           {cat.matches.filter((m) => m.group === g.group && m.status !== 'SCHEDULED').map((m) => card(m))}
         </section>
