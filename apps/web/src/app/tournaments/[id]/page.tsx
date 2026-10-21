@@ -597,6 +597,12 @@ async function DrawTab({ d, manage, hl }: { d: Detail; manage: boolean; hl: Set<
 }
 
 /** Doubles draws mirrored from Loglig: per category the group tables, then every match (group, then knockout) as the match card. */
+/** "24.10" and "10:00" in Israel time: the two lines a grid cell shows for a match still to be played. */
+const slotOf = (d: Date): [string, string] => [
+  d.toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit', timeZone: 'Asia/Jerusalem' }).replace(/\//g, '.'),
+  d.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem' }),
+];
+
 async function DoublesTab({ d }: { d: Detail }) {
   const tt = await tr();
   const groupLabel = (g: string) => (tt('שלב הבתים') === 'שלב הבתים' ? g : g.replace(/^בית(?=\s*\d)/, 'Group'));
@@ -613,7 +619,7 @@ async function DoublesTab({ d }: { d: Detail }) {
         return { group: groupLabel(g.group), info: first ? [first.court, matchWhen(first.scheduledStart, first.scheduleKind)].filter(Boolean).join(' · ') : undefined, rows: g.rows };
       }),
       matches: sorted.map((m) => ({
-        id: m.id, court: m.court ?? '', group: m.stage === 'GROUP' ? groupLabel(m.groupName ?? 'בית 1') : '', a: m.aName.split(' / '), b: m.bName.split(' / '), sets: m.status === 'SCHEDULED' ? [] : (m.sets as { a: number; b: number }[]), status: m.status,
+        id: m.id, slot: m.scheduledStart ? slotOf(m.scheduledStart) : undefined, court: m.court ?? '', group: m.stage === 'GROUP' ? groupLabel(m.groupName ?? 'בית 1') : '', a: m.aName.split(' / '), b: m.bName.split(' / '), sets: m.status === 'SCHEDULED' ? [] : (m.sets as { a: number; b: number }[]), status: m.status,
         winner: (m.winner === 'a' || m.winner === 'b' ? m.winner : null) as 'a' | 'b' | null,
         caption: [m.stage === 'GROUP' ? '' : tt('הדחה'), m.status === 'SCHEDULED' ? '' : m.court].filter(Boolean).join(' · '), when: matchWhen(m.scheduledStart, m.scheduleKind),
       })),
