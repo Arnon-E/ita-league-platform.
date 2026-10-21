@@ -92,7 +92,7 @@ export type Participant = { categoryId: string; id: string; name: string; club: 
 export type DoublesMatch = { id: string; category: string; stage: string; group: string | null; round: number; status: string; a: string[]; b: string[]; sets: { a: number; b: number; superTb?: boolean }[]; winner: 'a' | 'b' | null; court: string | null; start: string | null; kind: string | null };
 export type DoublesTable = { category: string; group: string; rows: { pair: string; played: number; wins: number; losses: number; setsFor: number; setsAgainst: number; gamesFor: number; gamesAgainst: number; rank: number }[] };
 export const tournament = (id: string) => call<{ tournament: { name: string; status: string; startDate: string; endDate: string; registrationCloses: string | null; registerUrl: string | null }; categories: Cat[]; matches: Match[]; participants?: Participant[]; doubles?: DoublesMatch[]; doublesTables?: DoublesTable[] }>(`/tournaments/${id}`);
-export const me = () => call<{ name: string; isChild: boolean; players: { id: string; name: string; first: string; last: string; birth: string; synced: boolean; gender: 'MALE' | 'FEMALE'; birthYear: number; own: boolean; childLogin: string | null; documents: { ok: boolean; missing: string[] } }[]; entries: { id: string; playerId: string; player: string; tournament: string; category: string; status: string; payment: string }[]; notifications: { id: string; title: string; body: string }[] }>('/me');
+export const me = () => call<{ name: string; isChild: boolean; canCreate: boolean; suggestions: Suggestion[]; players: { id: string; name: string; first: string; last: string; birth: string; synced: boolean; gender: 'MALE' | 'FEMALE'; birthYear: number; own: boolean; childLogin: string | null; documents: { ok: boolean; missing: string[] } }[]; entries: { id: string; playerId: string; player: string; tournament: string; tournamentStatus: string; category: string; status: string; payment: string }[]; notifications: { id: string; title: string; body: string }[] }>('/me');
 export const sendResult = (matchId: string, body: unknown) => call(`/matches/${matchId}/result`, { method: 'POST', body: JSON.stringify(body) });
 export const registerDevice = (pushToken: string, platform: 'ios' | 'android') => call('/devices', { method: 'POST', body: JSON.stringify({ token: pushToken, platform }) });
 
@@ -160,7 +160,9 @@ export type HomeWork = {
   tournaments: { id: string; name: string; status: string; start: string; end: string; waiting: number; upcoming: number }[];
   club: { id: string; name: string; players: number; upcomingEntries: number; top: { id: string; name: string; rank: number; points: number }[] } | null;
 };
-export const myHome = () => call<{ role: 'NONE' | 'PLAYER' | 'PARENT' | 'BOTH'; isChild: boolean; people: HomePerson[]; work: HomeWork | null }>('/me/home');
+export type Suggestion = { id: string; playerId: string; player: string; categoryId: string; category: string; tournamentId: string; tournament: string };
+export const myHome = () => call<{ role: 'NONE' | 'PLAYER' | 'PARENT' | 'BOTH'; isChild: boolean; people: HomePerson[]; work: HomeWork | null; suggestions: Suggestion[] }>('/me/home');
+export const answerSuggestion = (id: string, accept: boolean) => call<{ ok: true }>('/entries/suggest/answer', { method: 'POST', body: JSON.stringify({ id, accept }) });
 export const setChildLogin = (playerId: string, username: string, password: string) => call<{ username: string }>('/children/login', { method: 'POST', body: JSON.stringify({ playerId, username, password }) });
 export const suggestEntry = (categoryId: string) => call<{ ok: true }>('/entries/suggest', { method: 'POST', body: JSON.stringify({ categoryId }) });
 

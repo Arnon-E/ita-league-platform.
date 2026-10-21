@@ -2,6 +2,7 @@ import Link from 'next/link';
 import type { myHome } from '@/services/home';
 import { fmtDate, fmtTime } from '@/components/labels';
 import { MatchScore, matchWhen } from '@/components/MatchScore';
+import { answerSuggestionAction } from '@/app/actions2';
 
 type Home = Awaited<ReturnType<typeof myHome>>;
 const DOC: Record<string, string> = { ID_PHOTO: 'תמונת ת״ז', PARENT_CONSENT: 'אישור הורים', MEDICAL_CERTIFICATE: 'אישור רפואי', OTHER: 'אחר' };
@@ -26,6 +27,21 @@ export function MyHome({ home, t }: { home: Home; t: (s: string) => string }) {
   return (
     <section className="myhome" aria-label={t('הבית שלי')}>
       {work && <Work work={work} t={t} />}
+      {home.suggestions.length > 0 && (
+        <div className="card grid" style={{ gap: 10, marginBottom: 14, borderColor: 'var(--lime)' }}>
+          <strong>{t('בקשות הרשמה מהילדים')}</strong>
+          {home.suggestions.map((s) => (
+            <div key={s.id} className="row" style={{ justifyContent: 'space-between' }}>
+              <span><strong>{s.player}</strong> {t('רוצה להירשם')}: <Link href={`/tournaments/${s.tournamentId}`}><u>{s.tournament}</u></Link> · {s.category}</span>
+              <form action={answerSuggestionAction} className="row">
+                <input type="hidden" name="id" value={s.id} />
+                <button name="answer" value="accept" className="btn small">{t('רישום')}</button>
+                <button name="answer" value="dismiss" className="btn small ghost">{t('לא עכשיו')}</button>
+              </form>
+            </div>
+          ))}
+        </div>
+      )}
       {home.people.length > 0 && <h2 style={{ marginTop: work ? 18 : 0 }}>{t(home.role === 'PLAYER' ? 'הבית שלי' : home.role === 'PARENT' ? 'הילדים שלי' : 'אני והילדים')}</h2>}
       <div className="grid cols">
         {home.people.map((p) => (

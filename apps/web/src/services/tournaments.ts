@@ -49,7 +49,9 @@ const TRANSITIONS: Record<string, string[]> = {
   REGISTRATION_CLOSED: ['REGISTRATION_OPEN', 'DRAWN', 'CANCELLED'],
   DRAWN: ['IN_PROGRESS', 'REGISTRATION_CLOSED', 'CANCELLED'],
   IN_PROGRESS: ['FINISHED', 'CANCELLED'],
-  FINISHED: [], CANCELLED: [],
+  FINISHED: [],
+  // a cancelled tournament can be brought back as a draft (e.g. cancelled by mistake)
+  CANCELLED: ['DRAFT'],
 };
 
 export async function setStatus(db: Db, actor: Actor, tournamentId: string, to: keyof typeof TRANSITIONS) {
@@ -101,6 +103,9 @@ export async function addCategory(db: Db, actor: Actor, tournamentId: string, in
   format?: 'KNOCKOUT' | 'GROUPS_KNOCKOUT' | 'ROUND_ROBIN'; groupConfig?: { groupSize: number; groupCount?: number; advancers: number };
 }) {
   assertCan(actor, 'tournament.manage', await scopeFor(db, actor, tournamentId));
+  const [t] = await db.select({ status: tournaments.status }).from(tournaments).where(eq(tournaments.id, tournamentId));
+  if (t?.status === 'CANCELLED') throw new Error('התחרות בוטלה. אפשר לשחזר אותה ואז להוסיף קטגוריות');
+  if (t?.status === 'FINISHED') throw new Error('התחרות הסתיימה, אי אפשר להוסיף קטגוריות');
   const [c] = await db.insert(categories).values({ ...input, tournamentId }).returning();
   await audit(db, actor, 'category.add', 'tournament', tournamentId, { name: input.name });
   return c as NonNullable<typeof c>;

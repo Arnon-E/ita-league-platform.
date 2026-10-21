@@ -25,13 +25,19 @@ const stGroup = (x: { status: string; endDate: Date }) =>
 export default async function Home({ searchParams }: { searchParams: Promise<{ level?: string; season?: string; q?: string; g?: string; age?: string; st?: string; sec?: string; rel?: string }> }) {
   const t = await tr();
   const { level = '', season = '', q = '', g = '', age = '', st = '', sec = '', rel = '' } = await searchParams;
-  const [ts, actor, counts, cats] = await Promise.all([
+  const [allTs, actor, counts, cats, withEntries] = await Promise.all([
     listTournaments(db),
     getActor(),
     db.execute(sql`select (select count(*) from players)::int as players, (select count(*) from clubs c where exists (select 1 from players p where p.club_id = c.id) and not (c.name like '%,%' and (select count(*) from players p where p.club_id = c.id) <= 2))::int as clubs,
       (select count(*) from matches where live and status = 'SCHEDULED')::int as live`),
     db.select({ tid: schema.categories.tournamentId, gender: schema.categories.gender, name: schema.categories.name, minBirthYear: schema.categories.minBirthYear, maxBirthYear: schema.categories.maxBirthYear }).from(schema.categories),
+    db.selectDistinct({ tid: schema.categories.tournamentId }).from(schema.entries).innerJoin(schema.categories, eq(schema.categories.id, schema.entries.categoryId)),
   ]);
+  // people who run tournaments manage rather than register; they also get to see (and restore) cancelled ones
+  const staff = !!actor && can(actor, 'tournament.create');
+  // a cancelled competition nobody had entered is not history worth showing to the public
+  const entered = new Set(withEntries.map((x) => x.tid));
+  const ts = staff ? allTs : allTs.filter((x) => x.status !== 'CANCELLED' || entered.has(x.id));
   const catsOf = new Map<string, { gender: string; age: number | null }[]>();
   for (const c of cats) {
     const a = c.name.match(/(\d{2})/);
@@ -94,7 +100,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ l
             <button className="btn ink">{t('חיפוש')}</button>
           </form>
         </div>
-        {nextOpen && closes && (
+        {nextOpen && closes && !staff && (
           <Link href={`/tournaments/${nextOpen.id}`} className="feat">
             <small>{t('ההרשמה פתוחה')}</small>
             <strong>{nextOpen.name}</strong>
@@ -109,7 +115,9 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ l
         )}
       </section>
       <nav className="bento" aria-label={t('ניווט מהיר')}>
-        <Link href="/?st=open#list" className="pri"><span className="n">{openCount}</span><b>{t('להירשם לתחרות')}</b><small>{openCount ? t('פתוחות עכשיו') : t('אין כרגע הרשמה פתוחה')}</small></Link>
+        {staff
+          ? <Link href="/tournaments/new" className="pri"><span className="n">+</span><b>{t('תחרות חדשה')}</b><small>{openCount ? `${openCount} ${t('פתוחות להרשמה')}` : t('יצירת תחרות')}</small></Link>
+          : <Link href="/?st=open#list" className="pri"><span className="n">{openCount}</span><b>{t('להירשם לתחרות')}</b><small>{openCount ? t('פתוחות עכשיו') : t('אין כרגע הרשמה פתוחה')}</small></Link>}
         <Link href="/live"><span className="n">{c.live}</span><b>{t('משחקים ותוצאות')}</b><small>{c.live ? t('משחקים חיים עכשיו') : t('לוחות ותוצאות')}</small></Link>
         <Link href="/rankings"><span className="n">{c.players.toLocaleString('he-IL')}</span><b>{t('דירוג')}</b><small>{t('שחקנים רשומים')}</small></Link>
         <Link href="/clubs"><span className="n">{c.clubs.toLocaleString('he-IL')}</span><b>{t('מועדונים')}</b><small>{t('מועדונים עם שחקנים')}</small></Link>
@@ -150,7 +158,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ l
           items={shown.map((x) => ({
             id: x.id, name: x.name, status: x.status, statusLabel: t(STATUS[x.status]?.[0] ?? x.status), statusCls: STATUS[x.status]?.[1] ?? '',
             level: t(LEVEL[x.level] ?? ''), dates: `${fmtDate(x.startDate)} – ${fmtDate(x.endDate)}`,
-            group: stGroup(x), action: t(ACTION[stGroup(x)] ?? 'פרטים'), day: String(x.startDate.getDate()), mon: x.startDate.toLocaleDateString('he-IL', { month: 'short' }),
+            group: stGroup(x), action: t(staff && stGroup(x) === 'open' ? 'ניהול' : ACTION[stGroup(x)] ?? 'פרטים'), day: String(x.startDate.getDate()), mon: x.startDate.toLocaleDateString('he-IL', { month: 'short' }),
             deadline: x.status === 'REGISTRATION_OPEN' && x.registrationCloses ? `${t('הרשמה עד')} ${x.registrationCloses.toLocaleDateString('he-IL', { timeZone: 'Asia/Jerusalem' })}` : null,
           }))}
         />

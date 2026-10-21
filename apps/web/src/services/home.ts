@@ -2,7 +2,7 @@ import { and, eq, gte, inArray, lt, sql } from 'drizzle-orm';
 import { schema, type Db } from '@/db';
 import type { Actor } from '@/lib/auth';
 import { checkDocuments, ownedPlayerIds } from '@/services/entries';
-import { childLoginName, isChildActor } from '@/services/children';
+import { childLoginName, isChildActor, pendingSuggestions } from '@/services/children';
 import { playerProfile } from '@/services/public';
 import { ineligibleReason } from '@/services/eligibility';
 import { rankingFor } from '@/services/rankings';
@@ -69,7 +69,7 @@ async function myPeople(db: Db, actor: Actor) {
   const own = await db.select().from(players).where(eq(players.accountId, actor.id));
   const links = await db.select({ p: players }).from(guardians).innerJoin(players, eq(players.id, guardians.playerId)).where(eq(guardians.userId, actor.id));
   const mine = [...own.map((p) => ({ p, relation: 'SELF' as const })), ...links.filter((l) => !own.some((o) => o.id === l.p.id)).map((l) => ({ p: l.p, relation: 'CHILD' as const }))];
-  if (!mine.length) return { role: 'NONE' as const, people: [] };
+  if (!mine.length) return { role: 'NONE' as const, people: [], suggestions: [] as Awaited<ReturnType<typeof pendingSuggestions>> };
 
   const now = new Date();
   const rules = await loadRuleSet(db, (await ensureDefaultRuleSet(db)).id);
@@ -80,7 +80,7 @@ async function myPeople(db: Db, actor: Actor) {
     .innerJoin(tournaments, eq(tournaments.id, categories.tournamentId)).where(eq(tournaments.status, 'REGISTRATION_OPEN'));
   const ownEntries = await db.select({ e: entries, c: categories, t: tournaments }).from(entries)
     .innerJoin(categories, eq(categories.id, entries.categoryId)).innerJoin(tournaments, eq(tournaments.id, categories.tournamentId))
-    .where(inArray(entries.playerId, mine.map((x) => x.p.id)));
+    .where(and(inArray(entries.playerId, mine.map((x) => x.p.id)), sql`${tournaments.status} <> 'CANCELLED'`));
 
   const people = await Promise.all(mine.map(async ({ p, relation }) => {
     const d = await playerProfile(db, p.id);
@@ -150,7 +150,8 @@ async function myPeople(db: Db, actor: Actor) {
     };
   }));
   const role = people.some((x) => x.relation === 'CHILD') ? (people.some((x) => x.relation === 'SELF') ? 'BOTH' : 'PARENT') : 'PLAYER';
-  return { role: role as 'PLAYER' | 'PARENT' | 'BOTH', people };
+  const suggestions = role === 'PLAYER' ? [] : await pendingSuggestions(db, actor);
+  return { role: role as 'PLAYER' | 'PARENT' | 'BOTH', people, suggestions };
 }
 
 /** The players a signed-in person plays or manages, for hiding competitions that cannot apply. Staff and admins get none, so they always see everything. */

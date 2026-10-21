@@ -1,6 +1,6 @@
 'use server';
 import { cookies } from 'next/headers';
-import { setChildLogin, suggestEntry } from '@/services/children';
+import { answerSuggestion, setChildLogin, suggestEntry } from '@/services/children';
 import { removeProfile, updateProfile } from '@/services/profiles';
 import { flushNotifications } from '@/lib/senders';
 import { redirect } from 'next/navigation';
@@ -105,4 +105,13 @@ export async function importAction(fd: FormData) {
     msg = `ok=${encodeURIComponent(`${dry ? 'בדיקה בלבד: ' : ''}נוצרו ${rep.created}, עודכנו ${rep.updated}, שגיאות ${rep.errors.length}${rep.errors.slice(0, 5).map((e) => ` · שורה ${e.row}: ${e.reason}`).join('')}`)}`;
   } catch (e) { msg = `err=${encodeURIComponent(e instanceof Error ? e.message : 'שגיאה')}`; }
   redirect(`/admin/import?${msg}`);
+}
+
+export async function answerSuggestionAction(fd: FormData) {
+  const a = await requireActor();
+  const accept = s(fd, 'answer') === 'accept';
+  await guarded('/me', async () => {
+    await answerSuggestion(db, a, s(fd, 'id'), accept, (category, player) => registerEntry(db, a, category, player));
+    return accept ? 'הילד/ה נרשם/ה לקטגוריה' : 'ההצעה נדחתה';
+  });
 }

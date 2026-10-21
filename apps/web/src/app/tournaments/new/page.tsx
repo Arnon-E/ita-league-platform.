@@ -1,6 +1,6 @@
 import { Shell, Flash } from '@/components/Shell';
 import { createTournamentAction } from '@/app/actions';
-import { FORMAT, LEVEL } from '@/components/labels';
+import { FORMAT, LEVEL, POINTS_TABLE_LABEL } from '@/components/labels';
 import { db } from '@/db';
 import { requireActor } from '@/lib/session';
 import { can } from '@/lib/permissions';
@@ -25,7 +25,7 @@ export default async function NewTournament({ searchParams }: { searchParams: Pr
         <label>{t('רמת התחרות')}<select name="level">{Object.entries(LEVEL).map(([k, v]) => <option key={k} value={k}>{t(v)}</option>)}</select></label>
         <label>{t('סוג התחרות')}<select name="section"><option value="YOUTH">{t('נוער')}</option><option value="ADULTS">{t('בוגרים (מגיל 13 בנות, 14 בנים)')}</option><option value="MASTERS">{t('מאסטרס / סניורים (מגיל 18)')}</option><option value="OTHER">{t('אחר')}</option></select></label>
         <label>{t('פורמט')}<select name="format">{Object.entries(FORMAT).map(([k, v]) => <option key={k} value={k}>{t(v)}</option>)}</select></label>
-        <label>{t('טבלת ניקוד')}<select name="points"><option value="DEFAULT">{t('ברירת מחדל')}</option>{tables.map((k) => <option key={k} value={k}>{k}</option>)}</select></label>
+        <label>{t('טבלת ניקוד')}<select name="points"><option value="DEFAULT">{t('ברירת מחדל')}</option>{tables.map((k) => <option key={k} value={k}>{t(POINTS_TABLE_LABEL[k] ?? k)}</option>)}</select></label>
         <label>{t('דמי השתתפות (₪)')}<input name="fee" type="number" min="0" step="1" defaultValue="0" /></label>
         <button className="btn">{t('יצירה')}</button>
       </form>

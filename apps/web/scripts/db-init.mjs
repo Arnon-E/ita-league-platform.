@@ -49,6 +49,10 @@ try {
     b1 text references players(id) on delete set null, b2 text references players(id) on delete set null, a_name text not null, b_name text not null,
     status text not null, sets jsonb not null default '[]', winner text, schedule_kind text, scheduled_start timestamptz, court text)`;
   for (const c of ['tournament_id', 'a1', 'a2', 'b1', 'b2']) await sql.unsafe(`create index if not exists doubles_${c === 'tournament_id' ? 'tournament' : c}_idx on doubles_matches (${c})`);
+  await sql`create table if not exists entry_suggestions (
+    id text primary key, player_id text not null references players(id) on delete cascade, category_id text not null references categories(id) on delete cascade,
+    status text not null default 'PENDING', created_at timestamptz not null default now())`;
+  await sql`create unique index if not exists entry_suggestion_uq on entry_suggestions (player_id, category_id)`;
   await sql`create table if not exists result_overrides (
     id text primary key, tournament text not null, player_a text not null, player_b text not null, winner text not null, note text,
     created_at timestamptz not null default now())`;

@@ -7,8 +7,8 @@ import { ownedPlayerIds, checkDocuments } from '@/services/entries';
 import { inbox } from '@/services/notifications';
 import { signedUrl } from '@/lib/storage';
 import { payAction } from '@/app/actions3';
-import { addPlayerAction, cancelEntryAction, childLoginAction, removeProfileAction, updateProfileAction, selfRegisterAction, suggestEntryAction, uploadDocAction } from '@/app/actions2';
-import { childLoginName, isChildActor } from '@/services/children';
+import { addPlayerAction, cancelEntryAction, childLoginAction, removeProfileAction, updateProfileAction, selfRegisterAction, suggestEntryAction, uploadDocAction, answerSuggestionAction } from '@/app/actions2';
+import { childLoginName, isChildActor, pendingSuggestions } from '@/services/children';
 import { ineligibleReason } from '@/services/eligibility';
 import { claimPlayerAction } from '@/app/actions9';
 import { tr } from '@/lib/i18n';
@@ -32,6 +32,7 @@ export default async function Me({ searchParams }: { searchParams: Promise<{ err
   const open = await db.select({ c: schema.categories, t: schema.tournaments }).from(schema.categories)
     .innerJoin(schema.tournaments, eq(schema.tournaments.id, schema.categories.tournamentId)).where(eq(schema.tournaments.status, 'REGISTRATION_OPEN'));
   const notes = await inbox(db, actor.id);
+  const suggestions = isChild ? [] : await pendingSuggestions(db, actor);
   const pendingClaims = await db.select().from(schema.claimRequests).where(and(eq(schema.claimRequests.userId, actor.id), eq(schema.claimRequests.status, 'PENDING')));
   const loginNames = new Map(await Promise.all(ps.filter((p) => p.accountId !== actor.id).map(async (p) => [p.id, await childLoginName(db, p.id)] as const)));
   const checks = new Map(await Promise.all(ps.map(async (p) => [p.id, await checkDocuments(db, p.id, new Date())] as const)));
@@ -48,6 +49,21 @@ export default async function Me({ searchParams }: { searchParams: Promise<{ err
             <a className="btn ghost" href="/following">{t('לעקוב אחרי שחקנים ולקבל תוצאות')}</a>
             <a className="btn ghost" href="/">{t('לצפות בתחרויות')}</a>
           </div>
+        </div>
+      )}
+      {suggestions.length > 0 && (
+        <div className="card grid" style={{ gap: 10, marginBottom: 14, borderColor: 'var(--lime)' }}>
+          <strong>{t('בקשות הרשמה מהילדים')}</strong>
+          {suggestions.map((s) => (
+            <div key={s.id} className="row" style={{ justifyContent: 'space-between' }}>
+              <span><strong>{s.player}</strong> {t('רוצה להירשם')}: {s.tournament} · {s.category}</span>
+              <form action={answerSuggestionAction} className="row">
+                <input type="hidden" name="id" value={s.id} />
+                <button name="answer" value="accept" className="btn small">{t('רישום')}</button>
+                <button name="answer" value="dismiss" className="btn small ghost">{t('לא עכשיו')}</button>
+              </form>
+            </div>
+          ))}
         </div>
       )}
       {ps.map((p) => (
@@ -101,8 +117,9 @@ export default async function Me({ searchParams }: { searchParams: Promise<{ err
       ))}
       <h2>{t('הרשמות שלי')}</h2>
       {(() => {
-        const live = ents.filter(({ e }) => e.status !== 'WITHDRAWN' && e.status !== 'REJECTED');
-        const gone = ents.filter(({ e }) => e.status === 'WITHDRAWN' || e.status === 'REJECTED');
+        const dead = (x: (typeof ents)[number]) => x.e.status === 'WITHDRAWN' || x.e.status === 'REJECTED' || x.t.status === 'CANCELLED';
+        const live = ents.filter((x) => !dead(x));
+        const gone = ents.filter(dead);
         const who = (id: string) => { const q = ps.find((x) => x.id === id); return q ? `${q.firstName} ${q.lastName}` : ''; };
         return (
           <>
@@ -127,7 +144,7 @@ export default async function Me({ searchParams }: { searchParams: Promise<{ err
               <details className="filters">
                 <summary>{t('הרשמות שבוטלו')} ({gone.length})</summary>
                 <div className="card grid" style={{ marginTop: 8 }}>
-                  {gone.map(({ e, c, t: tn }) => <div key={e.id} className="row"><strong>{tn.name}</strong><span className="muted">{who(e.playerId)} · {c.name}</span><span className={`pill ${ENTRY_STATUS[e.status]?.[1] ?? ''}`}>{t(ENTRY_STATUS[e.status]?.[0] ?? e.status)}</span></div>)}
+                  {gone.map(({ e, c, t: tn }) => <div key={e.id} className="row"><strong>{tn.name}</strong><span className="muted">{who(e.playerId)} · {c.name}</span><span className={`pill ${tn.status === 'CANCELLED' ? 'bad' : ENTRY_STATUS[e.status]?.[1] ?? ''}`}>{tn.status === 'CANCELLED' ? t('התחרות בוטלה') : t(ENTRY_STATUS[e.status]?.[0] ?? e.status)}</span></div>)}
                 </div>
               </details>
             )}
