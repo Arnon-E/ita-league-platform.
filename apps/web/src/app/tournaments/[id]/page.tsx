@@ -612,8 +612,15 @@ async function DoublesTab({ d, dc, tab, forId }: { d: Detail; dc: string; tab: s
       {tables.map((g) => (
         <div key={g.group} className="card" style={{ overflow: 'auto' }}>
           <strong>{groupLabel(g.group)}</strong>
-          <table><thead><tr><th>#</th><th>{tt('זוג')}</th><th>{tt('מש׳')}</th><th>{tt('נצ׳')}</th><th>{tt('הפ׳')}</th><th>{tt('סטים')}</th><th>{tt('גיימים')}</th></tr></thead><tbody>
-            {g.rows.map((r) => <tr key={r.pair}><td>{r.rank}</td><td>{r.pair}</td><td>{r.played}</td><td>{r.wins}</td><td>{r.losses}</td><td>{r.setsFor}–{r.setsAgainst}</td><td>{r.gamesFor}–{r.gamesAgainst}</td></tr>)}
+          <table style={{ tableLayout: 'auto' }}><thead><tr><th style={{ width: 28 }}>#</th><th>{tt('זוג')}</th><th>{tt('מש׳')}</th><th>{tt('נצ׳')}</th><th>{tt('הפ׳')}</th><th>{tt('סטים')}</th></tr></thead><tbody>
+            {g.rows.map((r) => (
+              <tr key={r.pair}>
+                <td>{r.rank}</td>
+                <td style={{ width: '100%', minWidth: 150 }}>{r.pair.split(' / ').map((n) => <div key={n} style={{ whiteSpace: 'nowrap' }}>{n}</div>)}</td>
+                <td>{r.played}</td><td>{r.wins}</td><td>{r.losses}</td>
+                <td dir="ltr" style={{ whiteSpace: 'nowrap', textAlign: 'center' }}>{r.setsFor}-{r.setsAgainst}</td>
+              </tr>
+            ))}
           </tbody></table>
         </div>
       ))}

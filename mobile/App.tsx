@@ -669,11 +669,14 @@ const DoublesBlock = memo(function DoublesBlock({ doubles, tables }: { doubles: 
       {tables.filter((t) => t.category === cat).map((t) => (
         <View key={t.group} style={s.card}>
           <Text style={s.cardT}>{groupLabel(t.group)}</Text>
-          {t.rows.map((r) => (
-            <View key={r.pair} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 4 }}>
-              <Text style={[s.muted, { width: 18 }]}>{r.rank}</Text>
-              <Text style={[s.b, { flex: 1 }]} numberOfLines={2}>{r.pair}</Text>
-              <Text style={[s.muted, { direction: 'ltr' }]}>{`${r.wins}-${r.losses} · ${r.setsFor}-${r.setsAgainst}`}</Text>
+          {t.rows.map((r, i) => (
+            <View key={r.pair} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8, borderTopWidth: i ? 1 : 0, borderColor: T.line }}>
+              <Text style={[s.muted, { width: 18, textAlign: 'center' }]}>{r.rank}</Text>
+              <View style={{ flex: 1 }}>{r.pair.split(' / ').map((n) => <Text key={n} style={s.b} numberOfLines={1}>{n}</Text>)}</View>
+              <View style={{ alignItems: 'center', minWidth: 54 }}>
+                <Text style={[s.b, { direction: 'ltr' }]}>{`${r.wins}-${r.losses}`}</Text>
+                <Text style={[s.muted, { fontSize: 12, direction: 'ltr' }]}>{`${tr('סטים')} ${r.setsFor}-${r.setsAgainst}`}</Text>
+              </View>
             </View>
           ))}
         </View>
