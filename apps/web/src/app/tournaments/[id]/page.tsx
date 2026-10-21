@@ -50,7 +50,7 @@ export default async function TournamentPage({ params, searchParams }: { params:
   const photoCount = manage ? 1 : (await listPhotos(db, t.id)).length;
   const hasContent: Record<string, boolean> = {
     overview: true,
-    entries: d.ents.some((x) => x.e.status === 'CONFIRMED'),
+    entries: false, // the overview already lists the participants per category; the tab stays for staff (entry management)
     draw: d.draws.some((x) => x.publishedAt),
     results: d.ms.some((m) => m.status !== 'SCHEDULED'),
     schedule: d.ms.some((m) => m.scheduledStart && m.aEntryId && m.bEntryId),
