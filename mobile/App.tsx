@@ -660,6 +660,8 @@ const DoublesBlock = memo(function DoublesBlock({ doubles, tables }: { doubles: 
   if (!cat) return null;
   const ms = doubles.filter((m) => m.category === cat).sort((x, y) => (x.stage === y.stage ? 0 : x.stage === 'GROUP' ? -1 : 1) || (x.group ?? '').localeCompare(y.group ?? '', 'he', { numeric: true }) || (x.start ?? '').localeCompare(y.start ?? ''));
   const groupLabel = (g: string) => (tr('שלב הבתים') === 'שלב הבתים' ? g : g.replace(/^בית(?=\s*\d)/, 'Group'));
+  const card = (m: api.DoublesMatch) => <MatchCard key={m.id} a={m.a} b={m.b} sets={m.status === 'SCHEDULED' ? [] : m.sets} status={m.status} winner={m.winner}
+    caption={[m.stage === 'GROUP' ? '' : tr('הדחה'), m.court].filter(Boolean).join(' · ')} when={matchWhen(m.start, m.kind)} />;
   return (
     <View style={{ gap: 10 }}>
       <Text style={s.h2}>{tr('זוגות')}</Text>
@@ -667,7 +669,8 @@ const DoublesBlock = memo(function DoublesBlock({ doubles, tables }: { doubles: 
         {names.map((n) => <Pressable key={n} style={[s.chip, n === cat && s.chipOn]} onPress={() => setSel(n)}><Text style={n === cat ? s.chipOnT : s.b}>{n}</Text></Pressable>)}
       </ScrollView>
       {tables.filter((t) => t.category === cat).map((t) => (
-        <View key={t.group} style={s.card}>
+        <View key={t.group} style={{ gap: 10 }}>
+        <View style={s.card}>
           <Text style={s.cardT}>{groupLabel(t.group)}</Text>
           {t.rows.map((r, i) => (
             <View key={r.pair} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8, borderTopWidth: i ? 1 : 0, borderColor: T.line }}>
@@ -680,9 +683,10 @@ const DoublesBlock = memo(function DoublesBlock({ doubles, tables }: { doubles: 
             </View>
           ))}
         </View>
+        {ms.filter((m) => m.stage === 'GROUP' && (m.group ?? 'בית 1') === t.group).map((m) => card(m))}
+        </View>
       ))}
-      {ms.map((m) => <MatchCard key={m.id} a={m.a} b={m.b} sets={m.status === 'SCHEDULED' ? [] : m.sets} status={m.status} winner={m.winner}
-        caption={[m.stage === 'GROUP' ? groupLabel(m.group ?? 'בית 1') : tr('הדחה'), m.court].filter(Boolean).join(' · ')} when={matchWhen(m.start, m.kind)} />)}
+      {ms.filter((m) => m.stage !== 'GROUP').map((m) => card(m))}
     </View>
   );
 });

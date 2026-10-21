@@ -609,9 +609,9 @@ async function DoublesTab({ d }: { d: Detail }) {
       name,
       tables: doublesTables(ms).map((g) => ({ group: groupLabel(g.group), rows: g.rows })),
       matches: sorted.map((m) => ({
-        id: m.id, a: m.aName.split(' / '), b: m.bName.split(' / '), sets: m.status === 'SCHEDULED' ? [] : (m.sets as { a: number; b: number }[]), status: m.status,
+        id: m.id, group: m.stage === 'GROUP' ? groupLabel(m.groupName ?? 'בית 1') : '', a: m.aName.split(' / '), b: m.bName.split(' / '), sets: m.status === 'SCHEDULED' ? [] : (m.sets as { a: number; b: number }[]), status: m.status,
         winner: (m.winner === 'a' || m.winner === 'b' ? m.winner : null) as 'a' | 'b' | null,
-        caption: [m.stage === 'GROUP' ? groupLabel(m.groupName ?? 'בית 1') : tt('הדחה'), m.court].filter(Boolean).join(' · '), when: matchWhen(m.scheduledStart, m.scheduleKind),
+        caption: [m.stage === 'GROUP' ? '' : tt('הדחה'), m.court].filter(Boolean).join(' · '), when: matchWhen(m.scheduledStart, m.scheduleKind),
       })),
     };
   });
