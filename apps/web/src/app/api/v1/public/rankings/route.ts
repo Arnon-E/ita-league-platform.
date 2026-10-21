@@ -16,4 +16,4 @@ export const GET = (req: Request) => handlePublic(async () => {
   const limit = Number(q.get('limit'));
   const offset = Math.max(0, Number(q.get('offset')) || 0);
   return limit > 0 ? rows.slice(offset, offset + Math.min(200, limit)) : rows;
-});
+}, 60);

@@ -14,4 +14,4 @@ export const GET = (req: Request) => handlePublic(async () => {
     winner: m.winnerEntryId ? (m.winnerEntryId === m.aEntryId ? 'a' : m.winnerEntryId === m.bEntryId ? 'b' : null) : null,
   });
   return { live: f.live.map(row), upcoming: f.upcoming.map(row), results: f.results.map(row), moreUpcoming: f.moreUpcoming, moreResults: f.moreResults };
-});
+}, 10);

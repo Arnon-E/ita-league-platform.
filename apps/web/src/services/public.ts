@@ -71,7 +71,19 @@ export async function clubDetail(db: Db, id: string) {
 }
 
 /** Matches across all tournaments: upcoming with a time slot, and recent results. */
-export async function liveFeed(db: Db, o: { upcoming?: number; results?: number } = {}) {
+const feedMemo = new Map<string, { at: number; p: ReturnType<typeof liveFeedUncached> }>();
+/** Same page size asked again within a few seconds (the page, the app, many visitors on one instance) shares one query. */
+export function liveFeed(db: Db, o: { upcoming?: number; results?: number } = {}) {
+  const key = `${o.upcoming ?? 60}:${o.results ?? 40}`;
+  const hit = feedMemo.get(key);
+  if (hit && Date.now() - hit.at < 5000) return hit.p;
+  const p = liveFeedUncached(db, o);
+  feedMemo.set(key, { at: Date.now(), p });
+  p.catch(() => feedMemo.delete(key));
+  return p;
+}
+
+async function liveFeedUncached(db: Db, o: { upcoming?: number; results?: number } = {}) {
   const nUp = o.upcoming ?? 60, nRes = o.results ?? 40;
   const dayStart = new Date(); dayStart.setHours(0, 0, 0, 0);
   const base = () => db.select({ m: matches, c: categories, t: tournaments }).from(matches)
@@ -119,4 +131,15 @@ export async function rankingTable(db: Db, o: { gender: 'MALE' | 'FEMALE'; age?:
     out.push({ rank: out.length + 1, playerId: r.playerId, name: `${x.p.firstName} ${x.p.lastName}`, club: x.club, points: r.points, counted: r.counted.length });
   }
   return out;
+}
+
+let countsMemo: { at: number; p: Promise<unknown> } | null = null;
+/** The three counters on the home page; they move slowly, so one query per minute per instance is plenty. */
+export function homeCounts(db: Db) {
+  if (countsMemo && Date.now() - countsMemo.at < 60000) return countsMemo.p;
+  const p = db.execute(sql`select (select count(*) from players)::int as players, (select count(*) from clubs c where exists (select 1 from players p where p.club_id = c.id) and not (c.name like '%,%' and (select count(*) from players p where p.club_id = c.id) <= 2))::int as clubs,
+      (select count(*) from matches where live and status = 'SCHEDULED')::int as live`);
+  countsMemo = { at: Date.now(), p };
+  p.catch(() => { countsMemo = null; });
+  return p;
 }

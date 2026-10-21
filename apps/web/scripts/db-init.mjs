@@ -49,6 +49,8 @@ try {
     b1 text references players(id) on delete set null, b2 text references players(id) on delete set null, a_name text not null, b_name text not null,
     status text not null, sets jsonb not null default '[]', winner text, schedule_kind text, scheduled_start timestamptz, court text)`;
   for (const c of ['tournament_id', 'a1', 'a2', 'b1', 'b2']) await sql.unsafe(`create index if not exists doubles_${c === 'tournament_id' ? 'tournament' : c}_idx on doubles_matches (${c})`);
+  // the live feed's "latest results" sorts finished matches by this expression; without an index it sorts the whole table per visit
+  await sql`create index if not exists matches_result_time_idx on matches ((coalesce(scheduled_start, not_before, updated_at))) where status <> 'SCHEDULED'`;
   await sql`create table if not exists entry_suggestions (
     id text primary key, player_id text not null references players(id) on delete cascade, category_id text not null references categories(id) on delete cascade,
     status text not null default 'PENDING', created_at timestamptz not null default now())`;

@@ -17,4 +17,4 @@ export const GET = () => handlePublic(async () => {
     select (select count(*) from tournaments)::int as tournaments, (select count(*) from players)::int as players,
       (select count(*) from matches where winner_entry_id is not null)::int as matches`)) as unknown as { tournaments: number; players: number; matches: number }[];
   return { totals, top, clubs };
-});
+}, 60);

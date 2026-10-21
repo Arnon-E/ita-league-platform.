@@ -20,9 +20,11 @@ export async function handle(req: Request, fn: (actor: Actor) => Promise<unknown
 }
 
 /** Read-only endpoints open to everyone (the public site shows the same data). */
-export async function handlePublic(fn: () => Promise<unknown>): Promise<Response> {
+export async function handlePublic(fn: () => Promise<unknown>, cacheSeconds = 0): Promise<Response> {
   try {
-    return Response.json(await fn());
+    // identical for everyone, so the CDN may serve it for a few seconds instead of every visitor reaching the database
+    const headers: Record<string, string> = cacheSeconds ? { 'cache-control': `public, s-maxage=${cacheSeconds}, stale-while-revalidate=${cacheSeconds * 3}` } : {};
+    return Response.json(await fn(), { headers });
   } catch (e) {
     return Response.json({ error: e instanceof Error ? e.message : 'error' }, { status: 400 });
   }

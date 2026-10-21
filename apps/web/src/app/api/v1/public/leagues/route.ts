@@ -12,4 +12,4 @@ export const GET = () => handlePublic(async () => {
       played: d.rounds.reduce((n, r) => n + r.matches.filter((m) => m.done).length, 0), total: d.rounds.reduce((n, r) => n + r.matches.length, 0),
     };
   });
-});
+}, 60);

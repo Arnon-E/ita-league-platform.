@@ -12,6 +12,7 @@ import { tr } from '@/lib/i18n';
 import { InfiniteCards } from '@/components/InfiniteCards';
 import { Court } from '@/components/Brand';
 import { myHome, myPlayersForRelevance } from '@/services/home';
+import { homeCounts } from '@/services/public';
 import { MyHome } from '@/components/MyHome';
 import { relevantFor } from '@/services/eligibility';
 
@@ -28,8 +29,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ l
   const [allTs, actor, counts, cats, withEntries] = await Promise.all([
     listTournaments(db),
     getActor(),
-    db.execute(sql`select (select count(*) from players)::int as players, (select count(*) from clubs c where exists (select 1 from players p where p.club_id = c.id) and not (c.name like '%,%' and (select count(*) from players p where p.club_id = c.id) <= 2))::int as clubs,
-      (select count(*) from matches where live and status = 'SCHEDULED')::int as live`),
+    homeCounts(db),
     db.select({ tid: schema.categories.tournamentId, gender: schema.categories.gender, name: schema.categories.name, minBirthYear: schema.categories.minBirthYear, maxBirthYear: schema.categories.maxBirthYear }).from(schema.categories),
     db.selectDistinct({ tid: schema.categories.tournamentId }).from(schema.entries).innerJoin(schema.categories, eq(schema.categories.id, schema.entries.categoryId)),
   ]);
