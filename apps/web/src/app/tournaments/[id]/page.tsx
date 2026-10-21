@@ -607,7 +607,11 @@ async function DoublesTab({ d }: { d: Detail }) {
     const sorted = [...ms].sort((x, y) => (x.stage === y.stage ? 0 : x.stage === 'GROUP' ? -1 : 1) || (x.groupName ?? '').localeCompare(y.groupName ?? '', 'he', { numeric: true }) || +(x.scheduledStart ?? 0) - +(y.scheduledStart ?? 0));
     return {
       name,
-      tables: doublesTables(ms).map((g) => ({ group: groupLabel(g.group), rows: g.rows })),
+      tables: doublesTables(ms).map((g) => {
+        // where and when the group starts: its earliest match
+        const first = sorted.filter((m) => m.stage === 'GROUP' && (m.groupName ?? 'בית 1') === g.group && m.scheduledStart).sort((x, y) => +x.scheduledStart! - +y.scheduledStart!)[0];
+        return { group: groupLabel(g.group), info: first ? [first.court, matchWhen(first.scheduledStart, first.scheduleKind)].filter(Boolean).join(' · ') : undefined, rows: g.rows };
+      }),
       matches: sorted.map((m) => ({
         id: m.id, group: m.stage === 'GROUP' ? groupLabel(m.groupName ?? 'בית 1') : '', a: m.aName.split(' / '), b: m.bName.split(' / '), sets: m.status === 'SCHEDULED' ? [] : (m.sets as { a: number; b: number }[]), status: m.status,
         winner: (m.winner === 'a' || m.winner === 'b' ? m.winner : null) as 'a' | 'b' | null,

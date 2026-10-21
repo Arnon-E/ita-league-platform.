@@ -671,7 +671,14 @@ const DoublesBlock = memo(function DoublesBlock({ doubles, tables }: { doubles: 
       {tables.filter((t) => t.category === cat).map((t) => (
         <View key={t.group} style={{ gap: 10 }}>
         <View style={s.card}>
-          <Text style={s.cardT}>{groupLabel(t.group)}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
+            <Text style={s.cardT}>{groupLabel(t.group)}</Text>
+            {(() => {
+              // where and when the group starts: its earliest match
+              const first = ms.filter((m) => m.stage === 'GROUP' && (m.group ?? 'בית 1') === t.group && m.start).sort((x, y) => (x.start ?? '').localeCompare(y.start ?? ''))[0];
+              return first ? <Text style={s.muted}>{[first.court, matchWhen(first.start, first.kind)].filter(Boolean).join(' · ')}</Text> : null;
+            })()}
+          </View>
           {t.rows.map((r, i) => (
             <View key={r.pair} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8, borderTopWidth: i ? 1 : 0, borderColor: T.line }}>
               <Text style={[s.muted, { width: 18, textAlign: 'center' }]}>{r.rank}</Text>
@@ -683,7 +690,7 @@ const DoublesBlock = memo(function DoublesBlock({ doubles, tables }: { doubles: 
             </View>
           ))}
         </View>
-        {ms.filter((m) => m.stage === 'GROUP' && (m.group ?? 'בית 1') === t.group).map((m) => card(m))}
+        {ms.filter((m) => m.stage === 'GROUP' && (m.group ?? 'בית 1') === t.group && m.status !== 'SCHEDULED').map((m) => card(m))}
         </View>
       ))}
       {ms.filter((m) => m.stage !== 'GROUP').map((m) => card(m))}

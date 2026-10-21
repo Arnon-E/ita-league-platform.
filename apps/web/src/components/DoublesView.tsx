@@ -4,7 +4,7 @@ import { MatchScore } from '@/components/MatchScore';
 
 export interface DoublesViewCat {
   name: string;
-  tables: { group: string; rows: { pair: string; rank: number; played: number; wins: number; losses: number; setsFor: number; setsAgainst: number }[] }[];
+  tables: { group: string; info?: string; rows: { pair: string; rank: number; played: number; wins: number; losses: number; setsFor: number; setsAgainst: number }[] }[];
   matches: { id: string; a: string[]; b: string[]; sets: { a: number; b: number; superTb?: boolean }[]; status: string; winner: 'a' | 'b' | null; caption: string; when?: string; group: string }[];
 }
 export interface DoublesViewLabels { pair: string; played: string; wins: string; losses: string; sets: string; walkover: string; retired: string; void: string; live: string; won: string }
@@ -25,7 +25,7 @@ export function DoublesView({ cats, labels }: { cats: DoublesViewCat[]; labels: 
       {cat.tables.map((g) => (
         <section key={g.group} className="grid">
           <div className="card" style={{ overflow: 'auto' }}>
-            <strong>{g.group}</strong>
+            <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'wrap' }}><strong>{g.group}</strong>{g.info && <span className="muted" dir="auto">{g.info}</span>}</div>
             <table style={{ tableLayout: 'auto' }}><thead><tr><th style={{ width: 28 }}>#</th><th>{labels.pair}</th><th>{labels.played}</th><th>{labels.wins}</th><th>{labels.losses}</th><th>{labels.sets}</th></tr></thead><tbody>
               {g.rows.map((r) => (
                 <tr key={r.pair}>
@@ -37,7 +37,7 @@ export function DoublesView({ cats, labels }: { cats: DoublesViewCat[]; labels: 
               ))}
             </tbody></table>
           </div>
-          {cat.matches.filter((m) => m.group === g.group).map((m) => card(m))}
+          {cat.matches.filter((m) => m.group === g.group && m.status !== 'SCHEDULED').map((m) => card(m))}
         </section>
       ))}
       {/* matches outside the groups (knockout, qualifiers) */}
