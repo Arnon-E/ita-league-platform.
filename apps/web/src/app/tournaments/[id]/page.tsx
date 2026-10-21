@@ -6,7 +6,7 @@ import { db, schema } from '@/db';
 import { getActor } from '@/lib/session';
 import { Flash, Shell } from '@/components/Shell';
 import { FollowButton } from '@/components/FollowButton';
-import { MatchScore } from '@/components/MatchScore';
+import { MatchScore, matchWhen } from '@/components/MatchScore';
 import { eq } from 'drizzle-orm';
 import { Gallery } from './Gallery';
 import { listPhotos } from '@/services/gallery';
@@ -629,7 +629,7 @@ async function DoublesTab({ d, dc, tab, forId }: { d: Detail; dc: string; tab: s
           <MatchScore key={m.id} aName={m.aName.split(' / ')} bName={m.bName.split(' / ')} sets={m.status === 'SCHEDULED' ? [] : (m.sets as { a: number; b: number }[])} status={m.status}
             winner={m.winner === 'a' || m.winner === 'b' ? m.winner : null}
             caption={[m.stage === 'GROUP' ? groupLabel(m.groupName ?? 'בית 1') : tt('הדחה'), m.court].filter(Boolean).join(' · ')}
-            when={m.scheduledStart ? `${m.scheduleKind ? `${m.scheduleKind} ` : ''}${fmtTime(m.scheduledStart)}` : undefined}
+            when={matchWhen(m.scheduledStart, m.scheduleKind)}
             labels={{ walkover: tt('ווק-אובר'), retired: tt('פרישה'), void: tt('בוטל'), live: tt('חי'), won: tt('ניצח') }} />
         ))}
       </div>

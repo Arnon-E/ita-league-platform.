@@ -15,7 +15,7 @@ export const GENDER: Record<string, string> = { MALE: 'בנים/גברים', FEM
 export const MSTATUS: Record<string, string> = { SCHEDULED: 'טרם שוחק', COMPLETED: 'הסתיים', WALKOVER: 'ווק-אובר', RETIRED: 'פרישה', VOID: 'בוטל' };
 /** Dates are shown in Israel time on the server too, so a tournament never ends "a day earlier" in one place than another. */
 export const fmtDate = (d: Date) => d.toLocaleDateString('he-IL', { timeZone: 'Asia/Jerusalem' });
-export const fmtTime = (d: Date | null) => d ? d.toLocaleString('he-IL', { weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—';
+export const fmtTime = (d: Date | null) => d ? d.toLocaleString('he-IL', { weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem' }) : '—';
 
 /** Set scores always read left to right (6-4 3-2), even inside right-to-left pages. */
 export const fmtScore = (sets: { a: number; b: number }[], sep = ' ') => `\u2066${sets.map((x) => `${x.a}-${x.b}`).join(sep)}\u2069`;
