@@ -1,5 +1,5 @@
 import { randomInt } from 'node:crypto';
-import { eq, like, sql } from 'drizzle-orm';
+import { eq, inArray, like, or, sql } from 'drizzle-orm';
 import type { Db } from '@/db';
 import { schema } from '@/db';
 import { signUp } from './accounts';
@@ -28,7 +28,11 @@ export async function createTestUser(db: Db, role: 'PLAYER' | 'FEDERATION_ADMIN'
 
 /** Deletes every test account with everything it owns (profiles, entries, follows, notifications...). Safe to run repeatedly. */
 export async function removeTestUsers(db: Db) {
-  const users = await db.select({ id: schema.users.id }).from(schema.users).where(like(schema.users.email, `%${TEST_DOMAIN}`));
+  // a test parent's child logins live under the kid domain, so they are found through their [TEST] profile
+  const users = await db.select({ id: schema.users.id }).from(schema.users).where(or(
+    like(schema.users.email, `%${TEST_DOMAIN}`),
+    inArray(schema.users.id, db.select({ id: schema.players.accountId }).from(schema.players).where(like(schema.players.firstName, '[TEST]%')) as never),
+  ));
   if (!users.length) {
     await db.execute(sql`delete from clubs where name like 'ZZ TEST CLUB%' and not exists (select 1 from players p where p.club_id = clubs.id)`);
     return { users: 0, players: 0 };
