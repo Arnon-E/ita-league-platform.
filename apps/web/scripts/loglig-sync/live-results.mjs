@@ -64,7 +64,7 @@ for (const c of lists) {
     } catch { /* a category without a published page yet */ }
   }
   const matches = categories.reduce((n, k) => n + k.matches.length, 0);
-  console.log(`${t.name}: ${categories.length} categories with draws, ${matches} matches`);
+  console.log(`${t.name}: ${categories.length} categories with draws, ${matches} matches, ${doubles.length} doubles draws (${doubles.reduce((n, k) => n + k.matches.length, 0)} matches)`);
   if (!categories.length && !doubles.length) continue;
   const doc = { kind: 'competition', resultsOnly: true, name: t.name, start: String(t.startDate).slice(0, 10), end: String(t.endDate).slice(0, 10), feeShekel: 0, level: 'NATIONAL', venues: [], categories, doubles };
   if (!push) continue;

@@ -27,6 +27,7 @@ try {
   await sql`alter table tournaments add column if not exists register_url text`;
   await sql`alter table tournaments add column if not exists section text not null default 'YOUTH'`;
   await sql`alter table clubs add column if not exists info jsonb`;
+  await sql`alter table doubles_matches add column if not exists group_name text`;
   await sql`alter table users add column if not exists sessions_valid_after timestamptz`;
   await sql`alter table players add column if not exists loglig_user_id text unique`;
   await sql`alter table players add column if not exists photo text`;

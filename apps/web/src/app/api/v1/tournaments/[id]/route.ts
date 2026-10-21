@@ -2,6 +2,7 @@ import { db } from '@/db';
 import { handlePublic } from '@/lib/api';
 import { tournamentDetail } from '@/services/queries';
 import { effectiveMaxBirthYear } from '@/services/eligibility';
+import { doublesTables } from '@/services/doubles';
 import { photoUrl } from '@/lib/photos';
 
 export const GET = (_req: Request, ctx: { params: Promise<{ id: string }> }) => handlePublic(async () => {
@@ -17,5 +18,10 @@ export const GET = (_req: Request, ctx: { params: Promise<{ id: string }> }) => 
       a: { id: m.aEntryId, name: nm(m.aEntryId) }, b: { id: m.bEntryId, name: nm(m.bEntryId) },
       sets: m.sets, winnerEntryId: m.winnerEntryId, court: m.courtLabel, start: m.scheduledStart, notBefore: m.notBefore,
     })),
+    doubles: d.doubles.map((m) => ({
+      id: m.id, category: m.category, stage: m.stage, group: m.groupName, round: m.round, status: m.status,
+      a: m.aName.split(' / '), b: m.bName.split(' / '), sets: m.sets, winner: m.winner, court: m.court, start: m.scheduledStart, kind: m.scheduleKind,
+    })),
+    doublesTables: doublesTables(d.doubles),
   };
 });

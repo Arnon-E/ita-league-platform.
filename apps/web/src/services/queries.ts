@@ -24,7 +24,10 @@ export async function tournamentDetail(db: Db, id: string) {
   const ents = ids.length ? await db.select({ e: entries, p: players, club: clubs.name }).from(entries).innerJoin(players, eq(players.id, entries.playerId)).leftJoin(clubs, eq(clubs.id, players.clubId)).where(inArray(entries.categoryId, ids)) : [];
   const ms = ids.length ? await db.select().from(matches).where(inArray(matches.categoryId, ids)).orderBy(asc(matches.stage), asc(matches.round), asc(matches.index)) : [];
   const draws = ids.length ? await db.select().from(schema.draws).where(inArray(schema.draws.categoryId, ids)) : [];
-  return { t, cats, names, ents, ms, draws };
+  // doubles draws mirrored from Loglig (pairs; kept apart from the singles model)
+  const doubles = await db.select().from(schema.doublesMatches).where(eq(schema.doublesMatches.tournamentId, id))
+    .orderBy(asc(schema.doublesMatches.category), asc(schema.doublesMatches.stage), asc(schema.doublesMatches.groupName), asc(schema.doublesMatches.scheduledStart));
+  return { t, cats, names, ents, ms, draws, doubles };
 }
 
 export async function matchDetail(db: Db, id: string) {

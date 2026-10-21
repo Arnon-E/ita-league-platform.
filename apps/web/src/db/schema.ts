@@ -155,6 +155,7 @@ export const doublesMatches = pgTable('doubles_matches', {
   tournamentId: text('tournament_id').notNull().references(() => tournaments.id, { onDelete: 'cascade' }),
   category: text('category').notNull(),
   stage: text('stage').notNull(), // GROUP | KO
+  groupName: text('group_name'), // "בית 1" for a group match
   round: integer('round').notNull(),
   a1: text('a1').references(() => players.id, { onDelete: 'set null' }),
   a2: text('a2').references(() => players.id, { onDelete: 'set null' }),

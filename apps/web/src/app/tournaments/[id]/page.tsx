@@ -13,6 +13,7 @@ import { listPhotos } from '@/services/gallery';
 import { tr } from '@/lib/i18n';
 import { tournamentDetail, playersNotIn } from '@/services/queries';
 import { groupStandings } from '@/services/results';
+import { doublesTables } from '@/services/doubles';
 import { listCourtLabels } from '@/services/tournaments';
 import { formatOf } from '@/services/draws';
 import { bracketLayout, roundName } from '@/services/bracket';
@@ -28,9 +29,9 @@ import {
 } from '@/app/actions';
 
 type Detail = NonNullable<Awaited<ReturnType<typeof tournamentDetail>>>;
-const TABS: [string, string][] = [['overview', 'סקירה'], ['entries', 'משתתפים'], ['draw', 'הגרלה וטבלאות'], ['results', 'משחקים ותוצאות'], ['schedule', 'לוח משחקים'], ['gallery', 'גלריה']];
+const TABS: [string, string][] = [['overview', 'סקירה'], ['entries', 'משתתפים'], ['draw', 'הגרלה וטבלאות'], ['results', 'משחקים ותוצאות'], ['schedule', 'לוח משחקים'], ['doubles', 'זוגות'], ['gallery', 'גלריה']];
 
-export default async function TournamentPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ tab?: string; err?: string; ok?: string; cat?: string; g?: string; age?: string; for?: string; all?: string }> }) {
+export default async function TournamentPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ tab?: string; err?: string; ok?: string; cat?: string; dc?: string; g?: string; age?: string; for?: string; all?: string }> }) {
   const tt = await tr();
   const { id } = await params;
   const sp = await searchParams;
@@ -52,6 +53,7 @@ export default async function TournamentPage({ params, searchParams }: { params:
     draw: d.draws.some((x) => x.publishedAt),
     results: d.ms.some((m) => m.status !== 'SCHEDULED'),
     schedule: d.ms.some((m) => m.scheduledStart && m.aEntryId && m.bEntryId),
+    doubles: d.doubles.length > 0,
     gallery: photoCount > 0,
   };
   // A signed-in player or parent lands on their own player's category: the filters, the category and the tab are chosen for them.
@@ -65,7 +67,7 @@ export default async function TournamentPage({ params, searchParams }: { params:
     ? { g: focus!.cat.gender === 'MALE' || focus!.cat.gender === 'FEMALE' ? focus!.cat.gender : '', age: ageOf(focus!.cat.name) }
     : { g: g === 'MALE' || g === 'FEMALE' ? g : '', age: /^\d{2}$/.test(age) ? age : '' };
   const cat = sp.cat ?? (useFocus ? focus!.entries[0]?.e.categoryId ?? '' : '');
-  const tab = sp.tab ?? (useFocus && focus!.entries.length ? (hasContent.draw ? 'draw' : hasContent.results ? 'results' : 'overview') : 'overview');
+  const tab = sp.tab ?? (useFocus && focus!.entries.length ? (hasContent.draw ? 'draw' : hasContent.results ? 'results' : 'overview') : hasContent.doubles && !hasContent.draw && !hasContent.results ? 'doubles' : 'overview');
   const tabs = TABS.filter(([k]) => manage || k === tab || hasContent[k]);
   return (
     <Shell nav="home">
@@ -84,6 +86,7 @@ export default async function TournamentPage({ params, searchParams }: { params:
       {tab === 'draw' && <DrawTab d={sp.cat ? pick(narrow(d, flt), cat) : ageGroup(narrow(d, flt), cat)} manage={manage} hl={new Set((focus?.entries ?? []).map((x) => x.e.id))} />}
       {tab === 'results' && <Results d={pick(narrow(d, flt), cat)} scorer={scorer} hl={new Set((focus?.entries ?? []).map((x) => x.e.id))} />}
       {tab === 'schedule' && <Schedule d={pick(narrow(d, flt), cat)} manage={manage} />}
+      {tab === 'doubles' && <DoublesTab d={d} dc={sp.dc ?? ''} tab={tab} forId={sp.for} />}
       {tab === 'gallery' && <Gallery tournamentId={t.id} manage={scorer} />}
     </Shell>
   );
@@ -588,6 +591,41 @@ async function DrawTab({ d, manage, hl }: { d: Detail; manage: boolean; hl: Set<
           </section>
         );
       })}
+    </>
+  );
+}
+
+/** Doubles draws mirrored from Loglig: per category the group tables, then every match (group, then knockout) as the match card. */
+async function DoublesTab({ d, dc, tab, forId }: { d: Detail; dc: string; tab: string; forId?: string }) {
+  const tt = await tr();
+  const names = [...new Set(d.doubles.map((m) => m.category))].sort((x, y) => x.localeCompare(y, 'he', { numeric: true }));
+  const cat = names.includes(dc) ? dc : names[0];
+  const ms = d.doubles.filter((m) => m.category === cat);
+  const tables = doublesTables(ms);
+  const groupLabel = (g: string) => (tt('שלב הבתים') === 'שלב הבתים' ? g : g.replace(/^בית(?=\s*\d)/, 'Group'));
+  const sorted = [...ms].sort((x, y) => (x.stage === y.stage ? 0 : x.stage === 'GROUP' ? -1 : 1) || (x.groupName ?? '').localeCompare(y.groupName ?? '', 'he', { numeric: true }) || +(x.scheduledStart ?? 0) - +(y.scheduledStart ?? 0));
+  const href = (c: string) => `/tournaments/${d.t.id}?tab=${tab}&dc=${encodeURIComponent(c)}${forId ? `&for=${forId}` : ''}`;
+  return (
+    <>
+      <div className="row" style={{ flexWrap: 'wrap' }}>{names.map((c) => <Link key={c} href={href(c)} className={`btn small ${c === cat ? '' : 'ghost'}`}>{c}</Link>)}</div>
+      <h2>{cat}</h2>
+      {tables.map((g) => (
+        <div key={g.group} className="card" style={{ overflow: 'auto' }}>
+          <strong>{groupLabel(g.group)}</strong>
+          <table><thead><tr><th>#</th><th>{tt('זוג')}</th><th>{tt('מש׳')}</th><th>{tt('נצ׳')}</th><th>{tt('הפ׳')}</th><th>{tt('סטים')}</th><th>{tt('גיימים')}</th></tr></thead><tbody>
+            {g.rows.map((r) => <tr key={r.pair}><td>{r.rank}</td><td>{r.pair}</td><td>{r.played}</td><td>{r.wins}</td><td>{r.losses}</td><td>{r.setsFor}–{r.setsAgainst}</td><td>{r.gamesFor}–{r.gamesAgainst}</td></tr>)}
+          </tbody></table>
+        </div>
+      ))}
+      <div className="grid">
+        {sorted.map((m) => (
+          <MatchScore key={m.id} aName={m.aName.split(' / ')} bName={m.bName.split(' / ')} sets={m.status === 'SCHEDULED' ? [] : (m.sets as { a: number; b: number }[])} status={m.status}
+            winner={m.winner === 'a' || m.winner === 'b' ? m.winner : null}
+            caption={[m.stage === 'GROUP' ? groupLabel(m.groupName ?? 'בית 1') : tt('הדחה'), m.court].filter(Boolean).join(' · ')}
+            when={m.scheduledStart ? `${m.scheduleKind ? `${m.scheduleKind} ` : ''}${fmtTime(m.scheduledStart)}` : undefined}
+            labels={{ walkover: tt('ווק-אובר'), retired: tt('פרישה'), void: tt('בוטל'), live: tt('חי'), won: tt('ניצח') }} />
+        ))}
+      </div>
     </>
   );
 }

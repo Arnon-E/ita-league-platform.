@@ -228,6 +228,27 @@ describe('loglig competition mirror', () => {
     expect(() => addResultOverride(db, { tournament: 'x', playerA: 'a', playerB: 'b', winner: 'c' })).rejects.toThrow();
   });
 
+  it('a doubles-only competition counts as drawn, keeps the group of each match, and its group tables rank the pairs', async () => {
+    const { doublesTables } = await import('@/services/doubles');
+    const { tournamentDetail } = await import('@/services/queries');
+    const g = (o: object) => m({ stage: 'GROUP', group: 'בית 1', ...o });
+    const res = await importCompetition(db, validateCompetitionImport({
+      kind: 'competition', name: 'סבב זוגות בדיקה', start: '2026-10-16', end: '2026-10-26', feeShekel: 0, level: 'NATIONAL', venues: [], categories: [],
+      doubles: [{ name: 'בנים 12', source: '1', gender: 'MALE', age: 12, matches: [
+        g({ a: p('א א / ב ב'), b: p('ג ג / ד ד'), sets: [{ a: 6, b: 2 }, { a: 6, b: 3 }] }),
+        g({ a: p('א א / ב ב'), b: p('ה ה / ו ו'), done: false, start: '2026-10-23T07:00:00.000Z' }),
+        g({ a: p('ג ג / ד ד'), b: p('ה ה / ו ו'), done: false, start: '2026-10-24T07:00:00.000Z' }),
+      ] }],
+    }), new Date('2026-10-21'));
+    expect(res.doubles).toBe(3);
+    const [t] = await db.select().from(schema.tournaments).where(eq(schema.tournaments.name, 'סבב זוגות בדיקה'));
+    expect(t!.status).toBe('IN_PROGRESS'); // not stuck on REGISTRATION_CLOSED
+    const d = await tournamentDetail(db, t!.id);
+    expect(d!.doubles.map((x) => x.groupName)).toEqual(['בית 1', 'בית 1', 'בית 1']);
+    const [table] = doublesTables(d!.doubles);
+    expect(table!.rows.map((r) => [r.pair, r.rank, r.wins, r.played])).toEqual([['א א / ב ב', 1, 1, 1], ['ה ה / ו ו', 2, 0, 0], ['ג ג / ד ד', 3, 0, 1]]);
+  });
+
   it('boys/girls categories named נערים / נערות / ילדים reuse the ranked player instead of creating an OPEN twin', async () => {
     await importRankings(db, { gender: 'MALE', rows: [{ rank: 1, name: 'עומר תאום', birthYear: 2010, club: 'מועדון א', national: 10, international: 0, total: 10 }] });
     await importRankings(db, { gender: 'FEMALE', rows: [{ rank: 1, name: 'רוני תאומה', birthYear: 2010, club: 'מועדון א', national: 10, international: 0, total: 10 }] });

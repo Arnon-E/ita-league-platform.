@@ -82,7 +82,7 @@ export function validateCompetitionImport(x: unknown): CompetitionIn {
       const an = clean(m?.a?.name), bn = clean(m?.b?.name);
       if (!an.includes('/') || !bn.includes('/') || PLACEHOLDER_NAME.test(an) || PLACEHOLDER_NAME.test(bn) || Number.isNaN(Date.parse(m.start))) continue;
       ms.push({
-        stage: m.stage === 'GROUP' ? 'GROUP' : 'KO', round: Math.max(1, Math.min(12, Number(m.round) || 1)), place: Math.max(1, Number(m.place) || 1), order: Number(m.order) || 0,
+        stage: m.stage === 'GROUP' ? 'GROUP' : 'KO', ...(m.group ? { group: clean(m.group, 40) } : {}), round: Math.max(1, Math.min(12, Number(m.round) || 1)), place: Math.max(1, Number(m.place) || 1), order: Number(m.order) || 0,
         start: Date.parse(m.start) >= REAL_FROM ? new Date(m.start).toISOString() : `${b.start}T00:00:00.000Z`, kind: m.kind === 'NB' ? 'NB' : m.kind === 'St' ? 'St' : '', venue: clean(m.venue, 120), done: !!m.done,
         a: { name: an, club: clean(m.a.club, 120) }, b: { name: bn, club: clean(m.b.club, 120) },
         sets: (Array.isArray(m.sets) ? m.sets : []).slice(0, 5).map((s) => ({ a: Number(s.a) || 0, b: Number(s.b) || 0, ...(s.superTb ? { superTb: true } : {}) })),
@@ -122,7 +122,7 @@ export async function importCompetition(db: Db, input: CompetitionIn, now = new 
   const rule = await ensureDefaultRuleSet(db);
   const year = Number(input.start.slice(0, 4));
   const start = new Date(`${input.start}T00:00:00Z`), end = new Date(`${input.end}T23:59:59Z`);
-  const drawn = input.categories.some((c) => c.matches.length);
+  const drawn = input.categories.some((c) => c.matches.length) || !!input.doubles?.some((c) => c.matches.length);
   const closes = input.registrationCloses ? new Date(input.registrationCloses) : null;
   const status = end < now ? 'FINISHED' : !drawn ? (closes && closes > now ? 'REGISTRATION_OPEN' : 'REGISTRATION_CLOSED') : start <= now ? 'IN_PROGRESS' : 'DRAWN';
   const stats = { tournament: input.name, categories: 0, players: 0, newPlayers: 0, matches: 0, doubles: 0, unresolved: 0, skipped: false };
@@ -381,16 +381,16 @@ export async function importCompetition(db: Db, input: CompetitionIn, now = new 
             status = !winner ? 'VOID' : m.walkover || !m.sets.length ? 'WALKOVER' : m.retired || !regular(m.sets) ? 'RETIRED' : 'COMPLETED';
           }
           return {
-            id: randomUUID(), category: c.name, stage: m.stage, round: m.round, a1: a1 ?? null, a2: a2 ?? null, b1: b1 ?? null, b2: b2 ?? null,
+            id: randomUUID(), category: c.name, stage: m.stage, group: m.group ?? null, round: m.round, a1: a1 ?? null, a2: a2 ?? null, b1: b1 ?? null, b2: b2 ?? null,
             aName: m.a.name, bName: m.b.name, status, sets: m.sets, winner, kind: m.kind || null, start: m.start, court: m.venue || null,
           };
         });
         for (let i = 0; i < rows.length; i += 400) {
           await tx.execute(sql`
-            insert into doubles_matches (id, tournament_id, category, stage, round, a1, a2, b1, b2, a_name, b_name, status, sets, winner, schedule_kind, scheduled_start, court)
-            select t.id, ${tid}, t.category, t.stage, t.round, t.a1, t.a2, t.b1, t.b2, t."aName", t."bName", t.status, t.sets, t.winner, t.kind, t.start::timestamptz, t.court
+            insert into doubles_matches (id, tournament_id, category, stage, group_name, round, a1, a2, b1, b2, a_name, b_name, status, sets, winner, schedule_kind, scheduled_start, court)
+            select t.id, ${tid}, t.category, t.stage, t."group", t.round, t.a1, t.a2, t.b1, t.b2, t."aName", t."bName", t.status, t.sets, t.winner, t.kind, t.start::timestamptz, t.court
             from jsonb_to_recordset(${JSON.stringify(rows.slice(i, i + 400))}::jsonb)
-              as t(id text, category text, stage text, round int, a1 text, a2 text, b1 text, b2 text, "aName" text, "bName" text, status text, sets jsonb, winner text, kind text, start text, court text)`);
+              as t(id text, category text, stage text, "group" text, round int, a1 text, a2 text, b1 text, b2 text, "aName" text, "bName" text, status text, sets jsonb, winner text, kind text, start text, court text)`);
         }
         stats.doubles += rows.length;
       }

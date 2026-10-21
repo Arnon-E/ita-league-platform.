@@ -652,6 +652,38 @@ const TreesBlock = memo(function TreesBlock({ treeCats, koByCat, me, canScore, o
         );
 });
 
+/** Doubles draws of the competition (mirrored from Loglig): a chip per category, its group tables, then every match as the match card. */
+const DoublesBlock = memo(function DoublesBlock({ doubles, tables }: { doubles: api.DoublesMatch[]; tables: api.DoublesTable[] }) {
+  const names = useMemo(() => [...new Set(doubles.map((m) => m.category))].sort((x, y) => x.localeCompare(y, 'he', { numeric: true })), [doubles]);
+  const [sel, setSel] = useState('');
+  const cat = names.includes(sel) ? sel : names[0];
+  if (!cat) return null;
+  const ms = doubles.filter((m) => m.category === cat).sort((x, y) => (x.stage === y.stage ? 0 : x.stage === 'GROUP' ? -1 : 1) || (x.group ?? '').localeCompare(y.group ?? '', 'he', { numeric: true }) || (x.start ?? '').localeCompare(y.start ?? ''));
+  const groupLabel = (g: string) => (tr('שלב הבתים') === 'שלב הבתים' ? g : g.replace(/^בית(?=\s*\d)/, 'Group'));
+  return (
+    <View style={{ gap: 10 }}>
+      <Text style={s.h2}>{tr('זוגות')}</Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }} style={{ flexGrow: 0 }}>
+        {names.map((n) => <Pressable key={n} style={[s.chip, n === cat && s.chipOn]} onPress={() => setSel(n)}><Text style={n === cat ? s.chipOnT : s.b}>{n}</Text></Pressable>)}
+      </ScrollView>
+      {tables.filter((t) => t.category === cat).map((t) => (
+        <View key={t.group} style={s.card}>
+          <Text style={s.cardT}>{groupLabel(t.group)}</Text>
+          {t.rows.map((r) => (
+            <View key={r.pair} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 4 }}>
+              <Text style={[s.muted, { width: 18 }]}>{r.rank}</Text>
+              <Text style={[s.b, { flex: 1 }]} numberOfLines={2}>{r.pair}</Text>
+              <Text style={[s.muted, { direction: 'ltr' }]}>{`${r.wins}-${r.losses} · ${r.setsFor}-${r.setsAgainst}`}</Text>
+            </View>
+          ))}
+        </View>
+      ))}
+      {ms.map((m) => <MatchCard key={m.id} a={m.a} b={m.b} sets={m.status === 'SCHEDULED' ? [] : m.sets} status={m.status} winner={m.winner}
+        caption={[m.stage === 'GROUP' ? groupLabel(m.group ?? 'בית 1') : tr('הדחה'), m.court].filter(Boolean).join(' · ')} when={matchWhen(m.start, m.kind)} />)}
+    </View>
+  );
+});
+
 function Tournament({ id, focus, onBack, onGoAccount }: { id: string; focus?: Focus; onBack: () => void; onGoAccount: () => void }) {
   const nav = useNav();
   const canScore = api.canScore();
@@ -761,10 +793,11 @@ function Tournament({ id, focus, onBack, onGoAccount }: { id: string; focus?: Fo
             <Pressable style={s.btn} onPress={() => Linking.openURL(d.tournament.registerUrl!)}><Text style={s.btnT}>{tr('להרשמה')}</Text></Pressable>
           </View>
         : <RegisterBox tournamentName={d.tournament.name} categories={d.categories} onGoAccount={onGoAccount} />)}
-      {d && !d.matches.length && !(d.participants ?? []).some((x) => x.id === meId) && <Text style={s.muted}>{tr('לוח המשחקים והתוצאות יופיעו כאן אחרי ההגרלה.')}</Text>}
+      {d && !d.matches.length && !d.doubles?.length && !(d.participants ?? []).some((x) => x.id === meId) && <Text style={s.muted}>{tr('לוח המשחקים והתוצאות יופיעו כאן אחרי ההגרלה.')}</Text>}
       {(d?.categories.length ?? 0) > 1 && <CatFilters cats={d!.categories} fg={fg} fage={fage} fcat={fcat} setFg={setFg} setFage={setFage} setFcat={setFcat} setPicked={setPicked} />}
       <ParticipantsBlock participants={d?.participants ?? NO_PARTS} cats={d?.categories ?? NO_CATS} fg={fg} fage={fage} fcat={fcat} />
       <TreesBlock treeCats={treeCats} koByCat={koByCat} me={people.find((x) => x.id === meId)?.name ?? focus?.name} canScore={canScore} onScoreTap={onScoreTap} asList={asList} setAsList={setAsList} />
+      {!!d?.doubles?.length && <DoublesBlock doubles={d.doubles} tables={d.doublesTables ?? []} />}
       </View>}
         data={listData}
         keyExtractor={keyOfMatch} initialNumToRender={10} maxToRenderPerBatch={8} windowSize={5} removeClippedSubviews
