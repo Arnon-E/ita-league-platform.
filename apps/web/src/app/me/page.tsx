@@ -57,11 +57,10 @@ export default async function Me({ searchParams }: { searchParams: Promise<{ err
           {suggestions.map((s) => (
             <div key={s.id} className="row" style={{ justifyContent: 'space-between' }}>
               <span><strong>{s.player}</strong> {t('רוצה להירשם')}: {s.tournament} · {s.category}</span>
-              <form action={answerSuggestionAction} className="row">
-                <input type="hidden" name="id" value={s.id} />
-                <button name="answer" value="accept" className="btn small">{t('רישום')}</button>
-                <button name="answer" value="dismiss" className="btn small ghost">{t('לא עכשיו')}</button>
-              </form>
+              <span className="row">
+                <form action={answerSuggestionAction}><input type="hidden" name="id" value={s.id} /><input type="hidden" name="answer" value="accept" /><button className="btn small">{t('רישום')}</button></form>
+                <form action={answerSuggestionAction}><input type="hidden" name="id" value={s.id} /><input type="hidden" name="answer" value="dismiss" /><button className="btn small ghost">{t('לא עכשיו')}</button></form>
+              </span>
             </div>
           ))}
         </div>
