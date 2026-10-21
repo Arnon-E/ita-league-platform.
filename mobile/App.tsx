@@ -680,12 +680,15 @@ const DoublesBlock = memo(function DoublesBlock({ doubles, tables }: { doubles: 
         {names.map((n) => <Pressable key={n} style={[s.chip, n === cat && s.chipOn]} onPress={() => setSel(n)}><Text style={n === cat ? s.chipOnT : s.b}>{n}</Text></Pressable>)}
       </ScrollView>
       <TextInput style={[s.input, startAlign()]} placeholder={tr('חיפוש שחקן')} placeholderTextColor={T.muted} value={q} onChangeText={setQ} />
-      <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
-        {([['all', 'הכל'], ['open', 'טרם שוחקו'], ['done', 'הסתיימו']] as const).map(([k, l]) => <Pressable key={k} style={[s.chip, show === k && s.chipOn]} onPress={() => setShow(k)}><Text style={show === k ? s.chipOnT : s.b}>{tr(l)}</Text></Pressable>)}
-        {mine.length > 1 && !filtered && <>
-          <Pressable style={s.chip} onPress={() => setAll(true)}><Text style={s.b}>{tr('פתיחת הכל')}</Text></Pressable>
-          <Pressable style={s.chip} onPress={() => setAll(false)}><Text style={s.b}>{tr('סגירת הכל')}</Text></Pressable>
-        </>}
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+        <View style={{ flexDirection: 'row', borderWidth: 1, borderColor: T.line2, borderRadius: 999, padding: 3, backgroundColor: T.surface }}>
+          {([['all', 'הכל'], ['open', 'טרם שוחקו'], ['done', 'הסתיימו']] as const).map(([k, l]) => (
+            <Pressable key={k} onPress={() => setShow(k)} style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999, backgroundColor: show === k ? T.btn : 'transparent' }}>
+              <Text style={{ fontSize: 13.5, fontWeight: '600', color: show === k ? T.btnText : T.text }}>{tr(l)}</Text>
+            </Pressable>
+          ))}
+        </View>
+        {mine.length > 1 && !filtered && <Pressable onPress={() => setAll(closed.size > 0)} hitSlop={8}><Text style={{ fontSize: 13.5, fontWeight: '600', color: T.text, textDecorationLine: 'underline' }}>{tr(closed.size > 0 ? 'פתיחת הכל' : 'סגירת הכל')}</Text></Pressable>}
       </View>
       {mine.map((t) => {
         const gm = ms.filter((m) => m.stage === 'GROUP' && (m.group ?? 'בית 1') === t.group);
@@ -696,31 +699,35 @@ const DoublesBlock = memo(function DoublesBlock({ doubles, tables }: { doubles: 
         const doneCount = gm.filter((m) => m.status !== 'SCHEDULED').length;
         return (
           <View key={t.group} style={{ ...line, borderRadius: 14, overflow: 'hidden', backgroundColor: T.surface }}>
-            <Pressable onPress={() => toggle(t.group)} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, padding: 12, backgroundColor: T.line }}>
-              <Text style={[s.b, { flex: 1 }]}>{groupLabel(t.group)}</Text>
-              <Text style={[s.muted, { fontSize: 12.5 }]}>{`${first?.court ? `${first.court} · ` : ''}${doneCount} ${tr('מתוך')} ${gm.length}`}</Text>
+            <Pressable onPress={() => toggle(t.group)} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingVertical: 12, backgroundColor: T.line, borderBottomWidth: open ? 1 : 0, borderColor: T.line2 }}>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 17, fontWeight: '800', color: T.text }}>{groupLabel(t.group)}</Text>
+                {!!first && <Text style={[s.muted, { fontSize: 13 }]}>{[first.court, matchWhen(first.start, first.kind)].filter(Boolean).join(' · ')}</Text>}
+              </View>
+              <View style={{ borderWidth: 1, borderColor: T.line2, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 2, backgroundColor: doneCount === gm.length && gm.length ? T.okbg : T.surface }}><Text style={{ fontSize: 13, fontWeight: '700', color: T.text, direction: 'ltr' }}>{`${doneCount}/${gm.length}`}</Text></View>
               <Text style={{ color: T.muted, transform: [{ rotate: open ? '180deg' : '0deg' }] }}>⌄</Text>
             </Pressable>
             {open && <>
               {shown.map((m) => {
                 const done = m.status !== 'SCHEDULED' && m.status !== 'VOID';
                 const [dd, tt] = stamp(m);
+                const anyDone = shown.some((x) => x.status !== 'SCHEDULED' && x.status !== 'VOID');
                 const side = (sd: 'a' | 'b') => {
                   const won = done && m.winner === sd;
                   return (
                     <View style={{ flexDirection: 'row', alignItems: 'stretch' }}>
-                      <View style={{ flex: 1, justifyContent: 'center', paddingHorizontal: 8, paddingVertical: 6, borderTopWidth: sd === 'b' ? 1 : 0, borderColor: T.line2 }}>
-                        {(sd === 'a' ? m.a : m.b).map((n) => <Text key={n} numberOfLines={1} style={{ fontSize: 14, color: T.text, fontWeight: won ? '800' : '500', opacity: done && m.winner && !won ? 0.65 : 1 }}>{n}</Text>)}
+                      <View style={{ flex: 1, justifyContent: 'center', paddingHorizontal: 10, paddingVertical: 8, borderTopWidth: sd === 'b' ? 1 : 0, borderColor: T.line2 }}>
+                        {(sd === 'a' ? m.a : m.b).map((n) => <Text key={n} numberOfLines={1} style={{ fontSize: 15, lineHeight: 21, color: T.text, fontWeight: won ? '800' : '500', opacity: done && m.winner && !won ? 0.6 : 1 }}>{n}</Text>)}
                       </View>
-                      {m.sets.map((x, i) => { const my = sd === 'a' ? x.a : x.b, ot = sd === 'a' ? x.b : x.a; return <View key={i} style={{ width: 30, alignItems: 'center', justifyContent: 'center', borderStartWidth: 1, borderTopWidth: sd === 'b' ? 1 : 0, borderColor: T.line2 }}><Text style={{ direction: 'ltr', color: T.text, fontWeight: my > ot ? '800' : '400' }}>{done ? my : ''}</Text></View>; })}
-                      <View style={{ width: 26, alignItems: 'center', justifyContent: 'center', borderStartWidth: 1, borderTopWidth: sd === 'b' ? 1 : 0, borderColor: T.line2 }}><Text style={{ color: T.ok, fontWeight: '800' }}>{won ? '✓' : ''}</Text></View>
+                      {anyDone && m.sets.map((x, i) => { const my = sd === 'a' ? x.a : x.b, ot = sd === 'a' ? x.b : x.a; return <View key={i} style={{ width: 30, alignItems: 'center', justifyContent: 'center', borderStartWidth: 1, borderTopWidth: sd === 'b' ? 1 : 0, borderColor: T.line2 }}><Text style={{ direction: 'ltr', color: T.text, fontWeight: my > ot ? '800' : '400' }}>{done ? my : ''}</Text></View>; })}
+                      {anyDone && <View style={{ width: 26, alignItems: 'center', justifyContent: 'center', borderStartWidth: 1, borderTopWidth: sd === 'b' ? 1 : 0, borderColor: T.line2 }}><Text style={{ color: T.ok, fontWeight: '800' }}>{won ? '✓' : ''}</Text></View>}
                     </View>
                   );
                 };
                 const note = m.status === 'WALKOVER' ? tr('ווק-אובר') : m.status === 'RETIRED' ? tr('פרישה') : m.status === 'VOID' ? tr('בוטל') : '';
                 return (
                   <View key={m.id} style={{ flexDirection: 'row', borderTopWidth: 1, borderColor: T.line2 }}>
-                    <View style={{ width: 72, alignItems: 'center', justifyContent: 'center', padding: 4, borderEndWidth: 1, borderColor: T.line2 }}>
+                    <View style={{ width: 76, alignItems: 'center', justifyContent: 'center', padding: 6, borderEndWidth: 1, borderColor: T.line2, backgroundColor: T.line }}>
                       <Text style={[s.muted, { fontSize: 12 }]}>{dd}</Text><Text style={[s.b, { fontSize: 14 }]}>{tt}</Text>
                       {!!m.court && <Text style={[s.muted, { fontSize: 11 }]} numberOfLines={2}>{m.court}</Text>}
                       {!!note && <Text style={{ color: T.warn, fontSize: 11 }}>{note}</Text>}

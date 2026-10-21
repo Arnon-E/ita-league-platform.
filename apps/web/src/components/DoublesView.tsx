@@ -14,9 +14,9 @@ export interface DoublesViewLabels {
   search: string; all: string; upcoming: string; done: string; expandAll: string; collapseAll: string; of: string;
 }
 
-const LINE = '1px solid var(--line2, #cfd5cf)';
-const cell = { border: LINE, padding: '6px 8px' } as const;
-const head = { ...cell, background: 'var(--soft, #f3f4f1)', fontSize: 13, textAlign: 'center' } as const;
+const LINE = '1px solid var(--line, #e1e5df)';
+const cell = { border: LINE, padding: '8px 10px' } as const;
+const head = { ...cell, background: 'var(--surface2, #f5f6f1)', fontSize: 13, textAlign: 'center' } as const;
 
 /**
  * The doubles draws, one category at a time. Switching category, searching, filtering and opening a group all happen here in the
@@ -46,22 +46,35 @@ export function DoublesView({ cats, labels }: { cats: DoublesViewCat[]; labels: 
     <>
       <div className="row" style={{ flexWrap: 'wrap' }}>{cats.map((c) => <button key={c.name} type="button" className={`btn small ${c.name === cat.name ? '' : 'ghost'}`} onClick={() => setSel(c.name)}>{c.name}</button>)}</div>
       <h2>{cat.name}</h2>
-      <div className="row" style={{ flexWrap: 'wrap' }}>
-        <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={labels.search} style={{ flex: 1, minWidth: 160 }} />
-        {([['all', labels.all], ['open', labels.upcoming], ['done', labels.done]] as const).map(([k, l]) => <button key={k} type="button" className={`btn small ${show === k ? '' : 'ghost'}`} onClick={() => setShow(k)}>{l}</button>)}
+      <div style={{ display: 'grid', gap: 10 }}>
+        <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={labels.search} style={{ width: '100%' }} />
+        <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+          <div role="group" style={{ display: 'inline-flex', border: LINE, borderRadius: 999, padding: 3, background: 'var(--surface, #fff)' }}>
+            {([['all', labels.all], ['open', labels.upcoming], ['done', labels.done]] as const).map(([k, l]) => (
+              <button key={k} type="button" onClick={() => setShow(k)} aria-pressed={show === k}
+                style={{ all: 'unset', cursor: 'pointer', padding: '6px 14px', borderRadius: 999, fontSize: 14, fontWeight: 600, background: show === k ? 'var(--btn, #13306e)' : 'transparent', color: show === k ? 'var(--btn-text, #fff)' : 'inherit' }}>{l}</button>
+            ))}
+          </div>
+          {groups.length > 1 && !filtered && (
+            <button type="button" onClick={() => setAll(closed.size > 0)} style={{ all: 'unset', cursor: 'pointer', fontSize: 14, fontWeight: 600, textDecoration: 'underline', textUnderlineOffset: 3 }}>
+              {closed.size > 0 ? labels.expandAll : labels.collapseAll}
+            </button>
+          )}
+        </div>
       </div>
-      {groups.length > 1 && !filtered && (
-        <div className="row"><button type="button" className="btn small ghost" onClick={() => setAll(true)}>{labels.expandAll}</button><button type="button" className="btn small ghost" onClick={() => setAll(false)}>{labels.collapseAll}</button></div>
-      )}
       {visible.map(({ g, ms, shown }) => {
         const open = isOpen(g.group);
-        const maxSets = Math.max(1, ...shown.map((m) => m.sets.length));
+        const doneShown = shown.filter((m) => m.status !== 'SCHEDULED' && m.status !== 'VOID');
+        const maxSets = Math.max(0, ...doneShown.map((m) => m.sets.length)); // no set columns until something is played
         const doneCount = ms.filter((m) => m.status !== 'SCHEDULED').length;
         return (
           <div key={g.group} style={{ border: LINE, borderRadius: 14, overflow: 'hidden', background: 'var(--surface, #fff)' }}>
-            <button type="button" onClick={() => toggle(g.group)} aria-expanded={open} style={{ all: 'unset', boxSizing: 'border-box', width: '100%', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: 'var(--soft, #f3f4f1)' }}>
-              <strong style={{ flex: 1 }}>{g.group}</strong>
-              <span className="muted" style={{ fontSize: 13 }} dir="auto">{g.info ? `${g.info} · ` : ''}{doneCount} {labels.of} {ms.length}</span>
+            <button type="button" onClick={() => toggle(g.group)} aria-expanded={open} style={{ all: 'unset', boxSizing: 'border-box', width: '100%', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', background: 'var(--surface2, #f5f6f1)', borderBottom: open ? LINE : 'none' }}>
+              <span style={{ flex: 1, minWidth: 0 }}>
+                <strong style={{ fontSize: 17, display: 'block' }}>{g.group}</strong>
+                {g.info && <span className="muted" style={{ fontSize: 13 }} dir="auto">{g.info}</span>}
+              </span>
+              <span style={{ fontSize: 13, fontWeight: 700, padding: '3px 10px', borderRadius: 999, background: doneCount === ms.length && ms.length ? 'var(--okbg, #dcfce7)' : 'var(--surface, #fff)', border: LINE }} dir="ltr">{doneCount}/{ms.length}</span>
               <span aria-hidden style={{ transition: 'transform .15s', transform: open ? 'rotate(180deg)' : 'none' }}>⌄</span>
             </button>
             {open && (
@@ -75,20 +88,20 @@ export function DoublesView({ cats, labels }: { cats: DoublesViewCat[]; labels: 
                         const won = done && m.winner === s;
                         return (
                           <>
-                            <td style={{ ...cell, width: '100%', fontWeight: won ? 800 : 500, opacity: done && m.winner && !won ? 0.65 : 1 }}>{(s === 'a' ? m.a : m.b).map((n) => <div key={n}>{n}</div>)}</td>
+                            <td style={{ ...cell, width: '100%', fontSize: 15, lineHeight: 1.45, fontWeight: won ? 800 : 500, opacity: done && m.winner && !won ? 0.6 : 1 }}>{(s === 'a' ? m.a : m.b).map((n) => <div key={n}>{n}</div>)}</td>
                             {Array.from({ length: maxSets }, (_, i) => {
                               const x = m.sets[i];
                               const mine = x ? (s === 'a' ? x.a : x.b) : 0, other = x ? (s === 'a' ? x.b : x.a) : 0;
                               return <td key={i} dir="ltr" style={{ ...cell, textAlign: 'center', minWidth: 30, fontWeight: x && mine > other ? 800 : 400 }}>{done && x ? mine : ''}</td>;
                             })}
-                            <td style={{ ...cell, width: 28, textAlign: 'center', color: 'var(--ok, #15803d)', fontWeight: 800 }} aria-label={won ? labels.won : undefined}>{won ? '✓' : ''}</td>
+                            {maxSets > 0 && <td style={{ ...cell, width: 28, textAlign: 'center', color: 'var(--ok, #15803d)', fontWeight: 800 }} aria-label={won ? labels.won : undefined}>{won ? '✓' : ''}</td>}
                           </>
                         );
                       };
                       return (
                         <Fragment key={m.id}>
                           <tr>
-                            <td rowSpan={2} style={{ ...cell, whiteSpace: 'nowrap', textAlign: 'center', fontSize: 13, verticalAlign: 'middle' }} dir="auto">
+                            <td rowSpan={2} style={{ ...cell, whiteSpace: 'nowrap', textAlign: 'center', fontSize: 13, verticalAlign: 'middle', background: 'var(--surface2, #f5f6f1)', minWidth: 78 }} dir="auto">
                               <div>{m.slot?.[0]}</div><strong>{m.slot?.[1]}</strong>{m.court && <div className="muted">{m.court}</div>}{note && <div style={{ color: 'var(--warn, #b45309)' }}>{note}</div>}
                             </td>
                             {side('a')}
