@@ -625,7 +625,7 @@ async function DoublesTab({ d }: { d: Detail }) {
       })),
     };
   });
-  return <DoublesView cats={cats} labels={{ pair: tt('זוג'), played: tt('מש׳'), wins: tt('נצ׳'), losses: tt('הפ׳'), sets: tt('סטים'), walkover: tt('ווק-אובר'), retired: tt('פרישה'), void: tt('בוטל'), live: tt('חי'), won: tt('ניצח') }} />;
+  return <DoublesView cats={cats} labels={{ pair: tt('זוג'), played: tt('מש׳'), wins: tt('נצ׳'), losses: tt('הפ׳'), sets: tt('סטים'), walkover: tt('ווק-אובר'), retired: tt('פרישה'), void: tt('בוטל'), live: tt('חי'), won: tt('ניצח'), search: tt('חיפוש שחקן'), all: tt('הכל'), upcoming: tt('טרם שוחקו'), done: tt('הסתיימו'), expandAll: tt('פתיחת הכל'), collapseAll: tt('סגירת הכל'), of: tt('מתוך') }} />;
 }
 
 async function Results({ d, scorer, hl }: { d: Detail; scorer: boolean; hl: Set<string> }) {

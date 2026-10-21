@@ -656,42 +656,93 @@ const TreesBlock = memo(function TreesBlock({ treeCats, koByCat, me, canScore, o
 const DoublesBlock = memo(function DoublesBlock({ doubles, tables }: { doubles: api.DoublesMatch[]; tables: api.DoublesTable[] }) {
   const names = useMemo(() => [...new Set(doubles.map((m) => m.category))].sort((x, y) => x.localeCompare(y, 'he', { numeric: true })), [doubles]);
   const [sel, setSel] = useState('');
+  const [q, setQ] = useState('');
+  const [show, setShow] = useState<'all' | 'open' | 'done'>('all');
+  const [closed, setClosed] = useState<Set<string>>(() => new Set());
   const cat = names.includes(sel) ? sel : names[0];
   if (!cat) return null;
-  const ms = doubles.filter((m) => m.category === cat).sort((x, y) => (x.stage === y.stage ? 0 : x.stage === 'GROUP' ? -1 : 1) || (x.group ?? '').localeCompare(y.group ?? '', 'he', { numeric: true }) || (x.start ?? '').localeCompare(y.start ?? ''));
+  const needle = q.trim().toLowerCase();
+  const filtered = !!needle || show !== 'all';
+  const keep = (m: api.DoublesMatch) => (show === 'all' || (show === 'open') === (m.status === 'SCHEDULED')) && (!needle || [...m.a, ...m.b].some((n) => n.toLowerCase().includes(needle)));
+  const ms = doubles.filter((m) => m.category === cat).sort((x, y) => (x.start ?? '').localeCompare(y.start ?? ''));
   const groupLabel = (g: string) => (tr('שלב הבתים') === 'שלב הבתים' ? g : g.replace(/^בית(?=\s*\d)/, 'Group'));
-  const card = (m: api.DoublesMatch) => <MatchCard key={m.id} a={m.a} b={m.b} sets={m.status === 'SCHEDULED' ? [] : m.sets} status={m.status} winner={m.winner}
-    caption={[m.stage === 'GROUP' ? '' : tr('הדחה'), m.court].filter(Boolean).join(' · ')} when={matchWhen(m.start, m.kind)} />;
+  const mine = tables.filter((t) => t.category === cat);
+  const keyOf = (g: string) => `${cat}|${g}`;
+  const toggle = (g: string) => setClosed((c) => { const n = new Set(c); if (n.has(keyOf(g))) n.delete(keyOf(g)); else n.add(keyOf(g)); return n; });
+  const setAll = (open: boolean) => setClosed((c) => { const n = new Set(c); for (const t of mine) { if (open) n.delete(keyOf(t.group)); else n.add(keyOf(t.group)); } return n; });
+  const koCards = ms.filter((m) => m.stage !== 'GROUP' && keep(m));
+  const line = { borderWidth: 1, borderColor: T.line2 } as const;
+  const stamp = (m: api.DoublesMatch) => { const d = m.start ? new Date(m.start) : null; return d ? [d.toLocaleDateString(locale(), { day: '2-digit', month: '2-digit' }), d.toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' })] : ['', '']; };
   return (
     <View style={{ gap: 10 }}>
       <Text style={s.h2}>{tr('זוגות')}</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }} style={{ flexGrow: 0 }}>
         {names.map((n) => <Pressable key={n} style={[s.chip, n === cat && s.chipOn]} onPress={() => setSel(n)}><Text style={n === cat ? s.chipOnT : s.b}>{n}</Text></Pressable>)}
       </ScrollView>
-      {tables.filter((t) => t.category === cat).map((t) => {
+      <TextInput style={[s.input, startAlign()]} placeholder={tr('חיפוש שחקן')} placeholderTextColor={T.muted} value={q} onChangeText={setQ} />
+      <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+        {([['all', 'הכל'], ['open', 'טרם שוחקו'], ['done', 'הסתיימו']] as const).map(([k, l]) => <Pressable key={k} style={[s.chip, show === k && s.chipOn]} onPress={() => setShow(k)}><Text style={show === k ? s.chipOnT : s.b}>{tr(l)}</Text></Pressable>)}
+        {mine.length > 1 && !filtered && <>
+          <Pressable style={s.chip} onPress={() => setAll(true)}><Text style={s.b}>{tr('פתיחת הכל')}</Text></Pressable>
+          <Pressable style={s.chip} onPress={() => setAll(false)}><Text style={s.b}>{tr('סגירת הכל')}</Text></Pressable>
+        </>}
+      </View>
+      {mine.map((t) => {
         const gm = ms.filter((m) => m.stage === 'GROUP' && (m.group ?? 'בית 1') === t.group);
-        const played = t.rows.some((r) => r.played > 0);
+        const shown = gm.filter(keep);
+        if (filtered && !shown.length) return null;
+        const open = filtered || !closed.has(keyOf(t.group));
+        const first = gm.find((m) => m.start);
+        const doneCount = gm.filter((m) => m.status !== 'SCHEDULED').length;
         return (
-          <View key={t.group} style={{ gap: 10 }}>
-            <Text style={[s.h2, { fontSize: 18, marginTop: 6 }]}>{groupLabel(t.group)}</Text>
-            {gm.map((m) => card(m))}
-            {/* the standings only once there is something to rank */}
-            {played && <View style={s.card}>
-              {t.rows.map((r, i) => (
-                <View key={r.pair} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8, borderTopWidth: i ? 1 : 0, borderColor: T.line }}>
-                  <Text style={[s.muted, { width: 18, textAlign: 'center' }]}>{r.rank}</Text>
-                  <View style={{ flex: 1 }}>{r.pair.split(' / ').map((n) => <Text key={n} style={s.b} numberOfLines={1}>{n}</Text>)}</View>
-                  <View style={{ alignItems: 'center', minWidth: 54 }}>
-                    <Text style={[s.b, { direction: 'ltr' }]}>{`${r.wins}-${r.losses}`}</Text>
-                    <Text style={[s.muted, { fontSize: 12, direction: 'ltr' }]}>{`${tr('סטים')} ${r.setsFor}-${r.setsAgainst}`}</Text>
+          <View key={t.group} style={{ ...line, borderRadius: 14, overflow: 'hidden', backgroundColor: T.surface }}>
+            <Pressable onPress={() => toggle(t.group)} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, padding: 12, backgroundColor: T.line }}>
+              <Text style={[s.b, { flex: 1 }]}>{groupLabel(t.group)}</Text>
+              <Text style={[s.muted, { fontSize: 12.5 }]}>{`${first?.court ? `${first.court} · ` : ''}${doneCount} ${tr('מתוך')} ${gm.length}`}</Text>
+              <Text style={{ color: T.muted, transform: [{ rotate: open ? '180deg' : '0deg' }] }}>⌄</Text>
+            </Pressable>
+            {open && <>
+              {shown.map((m) => {
+                const done = m.status !== 'SCHEDULED' && m.status !== 'VOID';
+                const [dd, tt] = stamp(m);
+                const side = (sd: 'a' | 'b') => {
+                  const won = done && m.winner === sd;
+                  return (
+                    <View style={{ flexDirection: 'row', alignItems: 'stretch' }}>
+                      <View style={{ flex: 1, justifyContent: 'center', paddingHorizontal: 8, paddingVertical: 6, borderTopWidth: sd === 'b' ? 1 : 0, borderColor: T.line2 }}>
+                        {(sd === 'a' ? m.a : m.b).map((n) => <Text key={n} numberOfLines={1} style={{ fontSize: 14, color: T.text, fontWeight: won ? '800' : '500', opacity: done && m.winner && !won ? 0.65 : 1 }}>{n}</Text>)}
+                      </View>
+                      {m.sets.map((x, i) => { const my = sd === 'a' ? x.a : x.b, ot = sd === 'a' ? x.b : x.a; return <View key={i} style={{ width: 30, alignItems: 'center', justifyContent: 'center', borderStartWidth: 1, borderTopWidth: sd === 'b' ? 1 : 0, borderColor: T.line2 }}><Text style={{ direction: 'ltr', color: T.text, fontWeight: my > ot ? '800' : '400' }}>{done ? my : ''}</Text></View>; })}
+                      <View style={{ width: 26, alignItems: 'center', justifyContent: 'center', borderStartWidth: 1, borderTopWidth: sd === 'b' ? 1 : 0, borderColor: T.line2 }}><Text style={{ color: T.ok, fontWeight: '800' }}>{won ? '✓' : ''}</Text></View>
+                    </View>
+                  );
+                };
+                const note = m.status === 'WALKOVER' ? tr('ווק-אובר') : m.status === 'RETIRED' ? tr('פרישה') : m.status === 'VOID' ? tr('בוטל') : '';
+                return (
+                  <View key={m.id} style={{ flexDirection: 'row', borderTopWidth: 1, borderColor: T.line2 }}>
+                    <View style={{ width: 72, alignItems: 'center', justifyContent: 'center', padding: 4, borderEndWidth: 1, borderColor: T.line2 }}>
+                      <Text style={[s.muted, { fontSize: 12 }]}>{dd}</Text><Text style={[s.b, { fontSize: 14 }]}>{tt}</Text>
+                      {!!m.court && <Text style={[s.muted, { fontSize: 11 }]} numberOfLines={2}>{m.court}</Text>}
+                      {!!note && <Text style={{ color: T.warn, fontSize: 11 }}>{note}</Text>}
+                    </View>
+                    <View style={{ flex: 1 }}>{side('a')}{side('b')}</View>
                   </View>
+                );
+              })}
+              {/* the standings only once there is something to rank */}
+              {!filtered && t.rows.some((r) => r.played > 0) && t.rows.map((r) => (
+                <View key={r.pair} style={{ flexDirection: 'row', alignItems: 'center', borderTopWidth: 1, borderColor: T.line2 }}>
+                  <Text style={[s.muted, { width: 28, textAlign: 'center' }]}>{r.rank}</Text>
+                  <View style={{ flex: 1, paddingVertical: 6, paddingHorizontal: 6, borderStartWidth: 1, borderColor: T.line2 }}>{r.pair.split(' / ').map((n) => <Text key={n} style={{ fontSize: 13.5, color: T.text }} numberOfLines={1}>{n}</Text>)}</View>
+                  <Text style={[s.b, { width: 60, textAlign: 'center', direction: 'ltr' }]}>{`${r.wins}-${r.losses}`}</Text>
+                  <Text style={[s.muted, { width: 52, textAlign: 'center', direction: 'ltr' }]}>{`${r.setsFor}-${r.setsAgainst}`}</Text>
                 </View>
               ))}
-            </View>}
+            </>}
           </View>
         );
       })}
-      {ms.filter((m) => m.stage !== 'GROUP').map((m) => card(m))}
+      {koCards.map((m) => <MatchCard key={m.id} a={m.a} b={m.b} sets={m.status === 'SCHEDULED' ? [] : m.sets} status={m.status} winner={m.winner} caption={[tr('הדחה'), m.court].filter(Boolean).join(' · ')} when={matchWhen(m.start, m.kind)} />)}
     </View>
   );
 });

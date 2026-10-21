@@ -45,7 +45,7 @@ const EN: Record<string, string> = {
   'הגרלה וטבלאות': 'Draw & tables',
   'לוח משחקים': 'Schedule',
   'גלריה': 'Gallery',
-  'זוגות': 'Doubles', 'זוג': 'Pair',
+  'זוגות': 'Doubles', 'זוג': 'Pair', 'הכל': 'All', 'טרם שוחקו': 'Upcoming', 'הסתיימו': 'Played', 'פתיחת הכל': 'Expand all', 'סגירת הכל': 'Collapse all', 'מתוך': 'of',
   'דמי השתתפות': 'Entry fee',
   'מועד אחרון להרשמה': 'Registration deadline', 'הרשמה בלוגליג': 'Register on Loglig', 'עמוד התחרות באתר האיגוד': 'Competition page on the ITA site',
   'מתקיימת עכשיו': 'Live now', 'בקרוב': 'Upcoming', 'חיפוש לפי שם תחרות': 'Search by competition name',
