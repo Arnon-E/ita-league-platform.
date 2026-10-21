@@ -670,35 +670,24 @@ const DoublesBlock = memo(function DoublesBlock({ doubles, tables }: { doubles: 
       </ScrollView>
       {tables.filter((t) => t.category === cat).map((t) => {
         const gm = ms.filter((m) => m.stage === 'GROUP' && (m.group ?? 'בית 1') === t.group);
-        const first = gm.filter((m) => m.start).sort((x, y) => (x.start ?? '').localeCompare(y.start ?? ''))[0];
-        const key = (x: string[]) => x.join(' / ');
-        // the round-robin grid, as on Loglig: a row and a column per pair; the cell holds the result, or when the match is played
-        const cell = (row: string, col: string) => {
-          const m = gm.find((x) => (key(x.a) === row && key(x.b) === col) || (key(x.a) === col && key(x.b) === row));
-          if (!m) return <Text style={s.muted}>-</Text>;
-          const mine: 'a' | 'b' = key(m.a) === row ? 'a' : 'b';
-          if (m.status === 'SCHEDULED' || m.status === 'VOID') {
-            const d = m.start ? new Date(m.start) : null;
-            return d ? <Text style={[s.muted, { fontSize: 11.5, textAlign: 'center' }]}>{`${d.toLocaleDateString(locale(), { day: '2-digit', month: '2-digit' })}
-${d.toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' })}`}</Text> : <Text style={s.muted}>-</Text>;
-          }
-          if (m.status === 'WALKOVER' && !m.sets.length) return <Text style={s.b}>{tr(m.winner === mine ? 'ניצח' : 'ווק-אובר')}</Text>;
-          return <View>{m.sets.map((x, i) => <Text key={i} style={{ direction: 'ltr', fontSize: 13, textAlign: 'center', color: T.text, fontWeight: m.winner === mine ? '800' : '400' }}>{mine === 'a' ? `${x.a}-${x.b}` : `${x.b}-${x.a}`}</Text>)}</View>;
-        };
+        const played = t.rows.some((r) => r.played > 0);
         return (
-          <View key={t.group} style={s.card}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
-              <Text style={s.cardT}>{groupLabel(t.group)}</Text>
-              {first && <Text style={s.muted}>{[first.court, matchWhen(first.start, first.kind)].filter(Boolean).join(' · ')}</Text>}
-            </View>
-            {t.rows.map((r, i) => (
-              <View key={r.pair} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 6, borderTopWidth: i ? 1 : 0, borderColor: T.line }}>
-                <Text style={[s.muted, { width: 16, textAlign: 'center' }]}>{i + 1}</Text>
-                <View style={{ flex: 1, minWidth: 90 }}>{r.pair.split(' / ').map((n) => <Text key={n} style={{ fontSize: 13.5, fontWeight: '600', color: T.text }} numberOfLines={1}>{n}</Text>)}</View>
-                {t.rows.map((c, j) => <View key={j} style={{ width: 48, minHeight: 36, alignItems: 'center', justifyContent: 'center', backgroundColor: i === j ? T.line : undefined, borderRadius: 6 }}>{i === j ? null : cell(r.pair, c.pair)}</View>)}
-                <Text style={[s.b, { width: 18, textAlign: 'center' }]}>{r.wins}</Text>
-              </View>
-            ))}
+          <View key={t.group} style={{ gap: 10 }}>
+            <Text style={[s.h2, { fontSize: 18, marginTop: 6 }]}>{groupLabel(t.group)}</Text>
+            {gm.map((m) => card(m))}
+            {/* the standings only once there is something to rank */}
+            {played && <View style={s.card}>
+              {t.rows.map((r, i) => (
+                <View key={r.pair} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8, borderTopWidth: i ? 1 : 0, borderColor: T.line }}>
+                  <Text style={[s.muted, { width: 18, textAlign: 'center' }]}>{r.rank}</Text>
+                  <View style={{ flex: 1 }}>{r.pair.split(' / ').map((n) => <Text key={n} style={s.b} numberOfLines={1}>{n}</Text>)}</View>
+                  <View style={{ alignItems: 'center', minWidth: 54 }}>
+                    <Text style={[s.b, { direction: 'ltr' }]}>{`${r.wins}-${r.losses}`}</Text>
+                    <Text style={[s.muted, { fontSize: 12, direction: 'ltr' }]}>{`${tr('סטים')} ${r.setsFor}-${r.setsAgainst}`}</Text>
+                  </View>
+                </View>
+              ))}
+            </View>}
           </View>
         );
       })}

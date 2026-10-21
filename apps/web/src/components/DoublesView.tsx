@@ -24,31 +24,27 @@ export function DoublesView({ cats, labels }: { cats: DoublesViewCat[]; labels: 
       <h2>{cat.name}</h2>
       {cat.tables.map((g) => {
         const ms = cat.matches.filter((m) => m.group === g.group);
-        const key = (x: string[]) => x.join(' / ');
-        // the round-robin grid, as on Loglig: a row and a column per pair; the cell holds the result, or when the match is played
-        const cell = (row: string, col: string) => {
-          const m = ms.find((x) => (key(x.a) === row && key(x.b) === col) || (key(x.a) === col && key(x.b) === row));
-          if (!m) return <span className="muted">-</span>;
-          const mine: 'a' | 'b' = key(m.a) === row ? 'a' : 'b';
-          if (m.status === 'SCHEDULED' || m.status === 'VOID') return <span className="muted" style={{ fontSize: 12, lineHeight: 1.25, display: 'block' }}>{m.slot?.[0]}<br />{m.slot?.[1]}</span>;
-          if (m.status === 'WALKOVER' && !m.sets.length) return <strong>{m.winner === mine ? labels.won : labels.walkover}</strong>;
-          return <span dir="ltr" style={{ fontWeight: m.winner === mine ? 800 : 400, fontSize: 13, display: 'block', lineHeight: 1.3 }}>{m.sets.map((x, i) => <span key={i} style={{ display: 'block' }}>{mine === 'a' ? x.a : x.b}-{mine === 'a' ? x.b : x.a}</span>)}</span>;
-        };
-        const order = g.rows.map((r) => r.pair);
+        const played = g.rows.some((r) => r.played > 0);
         return (
-          <div key={g.group} className="card" style={{ overflow: 'auto' }}>
-            <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'wrap' }}><strong>{g.group}</strong>{g.info && <span className="muted" dir="auto">{g.info}</span>}</div>
-            <table style={{ tableLayout: 'auto', textAlign: 'center' }}><thead><tr><th style={{ width: 24 }}>#</th><th style={{ textAlign: 'start' }}>{labels.pair}</th>{order.map((_, i) => <th key={i}>{i + 1}</th>)}<th>{labels.wins}</th></tr></thead><tbody>
-              {g.rows.map((r, i) => (
-                <tr key={r.pair}>
-                  <td>{i + 1}</td>
-                  <td style={{ textAlign: 'start', minWidth: 120 }}>{r.pair.split(' / ').map((n) => <div key={n} style={{ whiteSpace: 'nowrap', fontSize: 14 }}>{n}</div>)}</td>
-                  {order.map((c, j) => <td key={j} style={i === j ? { background: 'var(--line, #e5e7eb)' } : { padding: '6px 8px' }}>{i === j ? '' : cell(r.pair, c)}</td>)}
-                  <td><strong>{r.wins}</strong></td>
-                </tr>
-              ))}
-            </tbody></table>
-          </div>
+          <section key={g.group} className="grid">
+            <h3 style={{ margin: '8px 0 0' }}>{g.group}</h3>
+            {ms.map((m) => card(m))}
+            {/* the standings only once there is something to rank */}
+            {played && (
+              <div className="card" style={{ overflow: 'auto' }}>
+                <table style={{ tableLayout: 'auto' }}><thead><tr><th style={{ width: 28 }}>#</th><th>{labels.pair}</th><th>{labels.played}</th><th>{labels.wins}</th><th>{labels.losses}</th><th>{labels.sets}</th></tr></thead><tbody>
+                  {g.rows.map((r) => (
+                    <tr key={r.pair}>
+                      <td>{r.rank}</td>
+                      <td style={{ width: '100%', minWidth: 150 }}>{r.pair.split(' / ').map((n) => <div key={n} style={{ whiteSpace: 'nowrap' }}>{n}</div>)}</td>
+                      <td>{r.played}</td><td>{r.wins}</td><td>{r.losses}</td>
+                      <td dir="ltr" style={{ whiteSpace: 'nowrap', textAlign: 'center' }}>{r.setsFor}-{r.setsAgainst}</td>
+                    </tr>
+                  ))}
+                </tbody></table>
+              </div>
+            )}
+          </section>
         );
       })}
       {/* matches outside the groups (knockout, qualifiers) */}
