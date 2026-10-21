@@ -14,7 +14,10 @@ const score = (sets: { a: number; b: number }[]) => `⁦${sets.map((x) => `${x.a
 export function MyHome({ authed, onOpen, onGoAccount, onAdmin }: { authed: boolean; onOpen: (tournamentId: string) => void; onGoAccount: () => void; onAdmin?: () => void }) {
   const nav = useNav();
   const [h, setH] = useState<Awaited<ReturnType<typeof api.myHome>> | null>(null);
-  useEffect(() => { if (authed) api.myHome().then(setH).catch(() => setH(null)); else setH(null); }, [authed]);
+  const [err, setErr] = useState('');
+  const load = () => { if (authed) api.myHome().then(setH).catch(() => setH(null)); else setH(null); };
+  useEffect(load, [authed]);
+  const answer = (id: string, accept: boolean) => api.answerSuggestion(id, accept).then(() => { setErr(''); load(); }).catch((e) => setErr(e.message));
   if (!h || (h.role === 'NONE' && !h.work)) return null;
   const w = h.work;
   return (
@@ -45,6 +48,22 @@ export function MyHome({ authed, onOpen, onGoAccount, onAdmin }: { authed: boole
               {w.club.top.map((p) => <View key={p.id} style={m.res}><Text style={m.b}>#{p.rank}</Text><Text style={[m.b, { flex: 1 }]} numberOfLines={1}>{p.name}</Text><Text style={m.muted}>{p.points}</Text></View>)}
             </View>
           )}
+        </View>
+      )}
+      {(h.suggestions ?? []).length > 0 && (
+        <View style={[m.card, { borderColor: T.volt, borderWidth: 1.5 }]}>
+          <Text style={m.name}>{tr('בקשות הרשמה מהילדים')}</Text>
+          {h.suggestions.map((x) => (
+            <View key={x.id} style={{ gap: 6 }}>
+              <Text style={m.b}>{x.player} {tr('רוצה להירשם')}</Text>
+              <Pressable onPress={() => onOpen(x.tournamentId)}><Text style={m.muted}>{x.tournament} · {x.category}</Text></Pressable>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <Pressable style={m.reg} onPress={() => answer(x.id, true)}><Text style={m.regT}>{tr('רישום')}</Text></Pressable>
+                <Pressable style={m.reg} onPress={() => answer(x.id, false)}><Text style={m.regT}>{tr('לא עכשיו')}</Text></Pressable>
+              </View>
+            </View>
+          ))}
+          {!!err && <Text style={{ color: T.bad }}>{err}</Text>}
         </View>
       )}
       {h.people.length > 0 && <Text style={m.h2}>{tr(h.role === 'PLAYER' ? 'הבית שלי' : h.role === 'PARENT' ? 'הילדים שלי' : 'אני והילדים')}</Text>}

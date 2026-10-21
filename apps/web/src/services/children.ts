@@ -73,6 +73,30 @@ export async function suggestEntry(db: Db, actor: Actor, categoryId: string) {
   if (why) throw new Error(why);
   const parents = await db.select({ userId: guardians.userId }).from(guardians).where(eq(guardians.playerId, p.id));
   if (!parents.length) throw new Error('אין הורה מקושר');
+  await db.insert(schema.entrySuggestions).values({ playerId: p.id, categoryId }).onConflictDoUpdate({ target: [schema.entrySuggestions.playerId, schema.entrySuggestions.categoryId], set: { status: 'PENDING' } });
   for (const g of parents) await notifyUser(db, g.userId, 'ENTRY_SUGGESTION', `${p.firstName} רוצה להירשם`, `${p.firstName} ${p.lastName} מבקש/ת להירשם ל${row.t.name} (${row.c.name}). אפשר לאשר דרך האזור שלי.`);
   return { ok: true as const };
+}
+
+/** What the children of this parent have asked for and the parent has not answered yet (cancelled and finished tournaments drop out). */
+export async function pendingSuggestions(db: Db, actor: Actor) {
+  const rows = await db.select({ s: schema.entrySuggestions, p: players, c: schema.categories, t: schema.tournaments }).from(schema.entrySuggestions)
+    .innerJoin(guardians, eq(guardians.playerId, schema.entrySuggestions.playerId))
+    .innerJoin(players, eq(players.id, schema.entrySuggestions.playerId))
+    .innerJoin(schema.categories, eq(schema.categories.id, schema.entrySuggestions.categoryId))
+    .innerJoin(schema.tournaments, eq(schema.tournaments.id, schema.categories.tournamentId))
+    .where(and(eq(guardians.userId, actor.id), eq(schema.entrySuggestions.status, 'PENDING')));
+  return rows.filter((r) => r.t.status === 'REGISTRATION_OPEN').map((r) => ({
+    id: r.s.id, playerId: r.p.id, player: `${r.p.firstName} ${r.p.lastName}`, categoryId: r.c.id, category: r.c.name, tournamentId: r.t.id, tournament: r.t.name, at: r.s.createdAt,
+  }));
+}
+
+/** The parent's answer: register the child (the usual rules apply) or dismiss the request. */
+export async function answerSuggestion(db: Db, actor: Actor, suggestionId: string, accept: boolean, register: (categoryId: string, playerId: string) => Promise<unknown>) {
+  const [s] = await db.select().from(schema.entrySuggestions).where(eq(schema.entrySuggestions.id, suggestionId));
+  if (!s) throw new Error('ההצעה לא נמצאה');
+  const [g] = await db.select().from(guardians).where(and(eq(guardians.playerId, s.playerId), eq(guardians.userId, actor.id)));
+  if (!g) throw new Error('אין הרשאה להצעה הזו');
+  if (accept) await register(s.categoryId, s.playerId);
+  await db.update(schema.entrySuggestions).set({ status: accept ? 'DONE' : 'DISMISSED' }).where(eq(schema.entrySuggestions.id, suggestionId));
 }

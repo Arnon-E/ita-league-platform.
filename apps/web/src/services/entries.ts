@@ -9,6 +9,8 @@ import { audit } from './audit';
 import { scopeFor } from './tournaments';
 import { notifyPlayer } from './notifications';
 
+const DOC_LABEL: Record<string, string> = { ID_PHOTO: 'תמונת ת״ז', MEDICAL_CERTIFICATE: 'אישור רפואי', PARENT_CONSENT: 'אישור הורים' };
+
 const { entries, categories, tournaments, players, documents, groupMembers, guardians } = schema;
 
 export async function ownedPlayerIds(db: Db, actor: Actor): Promise<string[]> {
@@ -70,7 +72,7 @@ export async function confirmEntry(db: Db, actor: Actor | null, entryId: string,
   if (opts.override) assertCan(actor as Actor, 'entry.manage', await scopeFor(db, actor as Actor, t.id));
   if (!opts.override) {
     const docs = await checkDocuments(db, e.playerId, t.endDate);
-    if (!docs.ok) throw new Error(`חסרים מסמכים: ${docs.missing.join(', ')}`);
+    if (!docs.ok) throw new Error(`חסרים מסמכים: ${docs.missing.map((m) => DOC_LABEL[m] ?? m).join(', ')}`);
     if (t.feeAgorot > 0 && e.paymentStatus !== 'PAID') throw new Error('התשלום טרם התקבל');
   }
   const confirmed = await db.select().from(entries).where(and(eq(entries.categoryId, c.id), eq(entries.status, 'CONFIRMED')));

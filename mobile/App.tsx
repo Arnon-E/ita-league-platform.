@@ -177,6 +177,7 @@ function Status({ err, busy, empty }: { err: string; busy: boolean; empty?: stri
   return empty ? <Text style={s.muted}>{empty}</Text> : null;
 }
 
+const dead = (e: { status: string; tournamentStatus: string }) => e.status === 'WITHDRAWN' || e.status === 'REJECTED' || e.tournamentStatus === 'CANCELLED';
 const STATUS_HE: Record<string, string> = { DRAFT: 'טיוטה', REGISTRATION_OPEN: 'הרשמה פתוחה', REGISTRATION_CLOSED: 'הרשמה סגורה', DRAWN: 'הוגרלה', IN_PROGRESS: 'מתקיימת', FINISHED: 'הסתיימה', CANCELLED: 'בוטלה' };
 
 /** The registration that closes next, as on the website's home: name, dates, a countdown and the button. Only competitions that can apply to the user. */
@@ -200,7 +201,7 @@ function Featured({ data, onOpen }: { data: { id: string; name: string; status: 
 }
 
 /** The website's four quick tiles: open registrations, matches, ranking and clubs. */
-function Tiles({ data, go, onOpenStatus }: { data: { status: string; relevant?: boolean }[] | null; go: Go; onOpenStatus: () => void }) {
+function Tiles({ data, go, onOpenStatus, staff }: { data: { status: string; relevant?: boolean }[] | null; go: Go; onOpenStatus: () => void; staff?: boolean }) {
   const stats = useLoad(api.stats); const feed = useLoad(api.live); const clubs = useLoad(api.clubs);
   const open = (data ?? []).filter((x) => x.status === 'REGISTRATION_OPEN' && x.relevant !== false).length;
   const liveNow = feed.data?.live.length ?? 0;
@@ -213,7 +214,9 @@ function Tiles({ data, go, onOpenStatus }: { data: { status: string; relevant?: 
   );
   return (
     <View style={s.tiles}>
-      {tile(open, tr('להירשם לתחרות'), open ? tr('פתוחות עכשיו') : tr('אין הרשמה פתוחה'), onOpenStatus, true)}
+      {staff
+        ? tile('+', tr('תחרות חדשה'), open ? tr('{n} פתוחות להרשמה', { n: open }) : tr('יצירת תחרות'), () => Linking.openURL(api.webUrl('/tournaments/new')), true)
+        : tile(open, tr('להירשם לתחרות'), open ? tr('פתוחות עכשיו') : tr('אין הרשמה פתוחה'), onOpenStatus, true)}
       {tile(liveNow, tr('משחקים ותוצאות'), liveNow ? tr('משחקים חיים עכשיו') : tr('לוחות ותוצאות'), () => go('live'))}
       {tile(stats.data?.totals.players.toLocaleString(locale()) ?? '–', tr('דירוג'), tr('שחקנים רשומים'), () => go('rank'))}
       {tile(clubs.data?.length ?? '–', tr('מועדונים'), tr('מועדונים עם שחקנים'), () => go('more', 'clubs'))}
@@ -225,6 +228,9 @@ function TournamentList({ onOpen, authed, onGoAccount, go }: { onOpen: (id: stri
   const nav = useNav();
   const [hq, setHq] = useState('');
   const { data, err, busy, reload } = useLoad(api.tournaments);
+  // people who run tournaments manage rather than register
+  const [staff, setStaff] = useState(false);
+  useEffect(() => { if (authed) api.me().then((m) => setStaff(m.canCreate)).catch(() => setStaff(false)); else setStaff(false); }, [authed]);
   const [level, setLevel] = useState('');
   const [sec, setSec] = useState('');
   const [season, setSeason] = useState('');
@@ -251,8 +257,8 @@ function TournamentList({ onOpen, authed, onGoAccount, go }: { onOpen: (id: stri
           <Pressable style={s.hsearchBtn} onPress={() => go('search', hq.trim())}><Text style={s.hsearchBtnT}>{tr('חיפוש')}</Text></Pressable>
         </View>
       </View>
-      <Featured data={data} onOpen={onOpen} />
-      <Tiles data={data} go={go} onOpenStatus={() => setSt('open')} />
+      {!staff && <Featured data={data} onOpen={onOpen} />}
+      <Tiles data={data} go={go} onOpenStatus={() => setSt('open')} staff={staff} />
       <MyHome authed={authed} onOpen={onOpen} onGoAccount={onGoAccount} onAdmin={nav.admin} />
       <Text style={s.h2}>{tr('תחרויות')}</Text>
       <TextInput style={[s.input, startAlign()]} placeholder={tr('חיפוש לפי שם תחרות')} placeholderTextColor={T.muted} value={q} onChangeText={setQ} />
@@ -981,13 +987,13 @@ function MyArea({ onLogout, preset, onLogoutAll, onOpenTournament }: { onLogout:
       ))}
       <Following onOpenTournament={onOpenTournament} />
       <Text style={s.h2}>{tr('ההרשמות שלי')}</Text>
-      {!!d && !d.entries.some((e) => e.status !== 'WITHDRAWN' && e.status !== 'REJECTED') && <Text style={s.muted}>{tr('אין הרשמות פעילות.')}</Text>}
-      {d?.entries.filter((e) => e.status !== 'WITHDRAWN' && e.status !== 'REJECTED').map((e) => (
+      {!!d && !d.entries.some((e) => !dead(e)) && <Text style={s.muted}>{tr('אין הרשמות פעילות.')}</Text>}
+      {d?.entries.filter((e) => !dead(e)).map((e) => (
         <View key={e.id} style={s.card}><Text style={s.b}>{e.tournament} · {e.category}</Text><Text>{tr(ENTRY_HE[e.status] ?? e.status)} · {tr(PAY_HE[e.payment] ?? e.payment)}</Text>
           {e.payment === 'UNPAID' && !child && <Pressable style={s.link} onPress={() => pay(e.id)}><Text style={s.linkT}>{tr('לתשלום')}</Text></Pressable>}
           {!child && e.status !== 'WITHDRAWN' && e.status !== 'REJECTED' && e.payment === 'UNPAID' && <Pressable style={s.link} onPress={() => Alert.alert(tr('ביטול הרשמה'), tr('לבטל את ההרשמה של {player} ל{tournament} ({category})?', { player: e.player, tournament: e.tournament, category: e.category }), [{ text: tr('לא'), style: 'cancel' }, { text: tr('ביטול הרשמה'), style: 'destructive', onPress: () => api.cancelEntry(e.id).then(() => { setMsg(tr('ההרשמה בוטלה')); load(); }).catch((x) => setErr(x.message)) }])}><Text style={[s.linkT, { color: T.bad }]}>{tr('ביטול הרשמה')}</Text></Pressable>}</View>
       ))}
-      {!!d && d.entries.some((e) => e.status === 'WITHDRAWN' || e.status === 'REJECTED') && <Text style={s.muted}>{tr('הרשמות שבוטלו: {n}', { n: d.entries.filter((e) => e.status === 'WITHDRAWN' || e.status === 'REJECTED').length })}</Text>}
+      {!!d && d.entries.some(dead) && <Text style={s.muted}>{tr('הרשמות שבוטלו: {n}', { n: d.entries.filter(dead).length })}</Text>}
       <Text style={s.h2}>{tr('התראות')}</Text>
       {!!d && !d.notifications.length && <Text style={s.muted}>{tr('אין התראות חדשות.')}</Text>}
       {d?.notifications.map((n) => <View key={n.id} style={s.card}><Text style={s.b}>{n.title}</Text><Text>{n.body}</Text></View>)}

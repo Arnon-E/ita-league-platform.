@@ -8,7 +8,10 @@ export const NEXT: Record<string, [string, string][]> = {
   REGISTRATION_CLOSED: [['REGISTRATION_OPEN', 'פתיחה מחדש']],
   DRAWN: [['IN_PROGRESS', 'תחילת תחרות']],
   IN_PROGRESS: [['FINISHED', 'סיום תחרות']],
+  CANCELLED: [['DRAFT', 'שחזור תחרות']],
 };
+/** Points tables as people read them (the keys are internal). */
+export const POINTS_TABLE_LABEL: Record<string, string> = { NATIONAL_GRADE1: 'ארצית דרגה א׳ (עד 1000 נקודות)', NATIONAL_GRADE2: 'ארצית דרגה ב׳ (עד 750 נקודות)' };
 export const LEVEL: Record<string, string> = { NATIONAL: 'ארצית', REGIONAL: 'אזורית', INTERNATIONAL: 'בינלאומית', CIRCUIT: 'סבב' };
 export const FORMAT: Record<string, string> = { KNOCKOUT: 'הדחה', GROUPS_KNOCKOUT: 'בתים + הדחה', ROUND_ROBIN: 'ליגה (כולם נגד כולם)' };
 export const GENDER: Record<string, string> = { MALE: 'בנים/גברים', FEMALE: 'בנות/נשים', OPEN: 'פתוח' };

@@ -244,6 +244,15 @@ export const entries = pgTable('entries', {
   createdAt: createdAt(),
 }, (t) => [uniqueIndex('entry_uq').on(t.categoryId, t.playerId)]);
 
+/** A child's request to join a category. The parent sees it on their home and either registers (DONE) or dismisses it. */
+export const entrySuggestions = pgTable('entry_suggestions', {
+  id: id(),
+  playerId: text('player_id').notNull().references(() => players.id, { onDelete: 'cascade' }),
+  categoryId: text('category_id').notNull().references(() => categories.id, { onDelete: 'cascade' }),
+  status: text('status').notNull().default('PENDING'),
+  createdAt: createdAt(),
+}, (t) => [uniqueIndex('entry_suggestion_uq').on(t.playerId, t.categoryId)]);
+
 export const draws = pgTable('draws', {
   id: id(),
   categoryId: text('category_id').notNull().unique().references(() => categories.id, { onDelete: 'cascade' }),
