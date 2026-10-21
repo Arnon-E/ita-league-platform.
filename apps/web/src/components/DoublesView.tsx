@@ -27,6 +27,7 @@ export function DoublesView({ cats, labels }: { cats: DoublesViewCat[]; labels: 
   const [q, setQ] = useState('');
   const [show, setShow] = useState<'all' | 'open' | 'done'>('all');
   const [closed, setClosed] = useState<Set<string>>(() => new Set());
+  const [lastAll, setLastAll] = useState<'open' | 'closed'>('open'); // what the all-groups button did last
   const cat = cats.find((c) => c.name === sel) ?? cats[0];
   const needle = q.trim().toLowerCase();
   const keep = (m: DoublesViewMatch) =>
@@ -38,7 +39,10 @@ export function DoublesView({ cats, labels }: { cats: DoublesViewCat[]; labels: 
   const keyOf = (name: string) => `${cat.name}|${name}`;
   const isOpen = (name: string) => filtered || !closed.has(keyOf(name));
   const toggle = (name: string) => setClosed((s) => { const n = new Set(s); if (n.has(keyOf(name))) n.delete(keyOf(name)); else n.add(keyOf(name)); return n; });
-  const setAll = (open: boolean) => setClosed((s) => { const n = new Set(s); for (const x of groups) { if (open) n.delete(keyOf(x.g.group)); else n.add(keyOf(x.g.group)); } return n; });
+  const setAll = (open: boolean) => { setLastAll(open ? 'open' : 'closed'); setClosed((s) => { const n = new Set(s); for (const x of groups) { if (open) n.delete(keyOf(x.g.group)); else n.add(keyOf(x.g.group)); } return n; }); };
+  // the button offers the opposite of the state: all open -> close all, all closed -> open all, mixed -> the opposite of the last press
+  const nClosed = groups.filter((x) => closed.has(keyOf(x.g.group))).length;
+  const offerOpen = nClosed === groups.length ? true : nClosed === 0 ? false : lastAll === 'closed';
   const koCards = cat.matches.filter((m) => !m.group && keep(m));
   const lab = { walkover: labels.walkover, retired: labels.retired, void: labels.void, live: labels.live, won: labels.won };
 
@@ -56,8 +60,8 @@ export function DoublesView({ cats, labels }: { cats: DoublesViewCat[]; labels: 
             ))}
           </div>
           {groups.length > 1 && !filtered && (
-            <button type="button" onClick={() => setAll(closed.size > 0)} style={{ all: 'unset', cursor: 'pointer', fontSize: 14, fontWeight: 600, textDecoration: 'underline', textUnderlineOffset: 3 }}>
-              {closed.size > 0 ? labels.expandAll : labels.collapseAll}
+            <button type="button" onClick={() => setAll(offerOpen)} style={{ all: 'unset', cursor: 'pointer', fontSize: 14, fontWeight: 600, textDecoration: 'underline', textUnderlineOffset: 3 }}>
+              {offerOpen ? labels.expandAll : labels.collapseAll}
             </button>
           )}
         </div>

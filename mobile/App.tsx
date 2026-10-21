@@ -659,6 +659,7 @@ const DoublesBlock = memo(function DoublesBlock({ doubles, tables }: { doubles: 
   const [q, setQ] = useState('');
   const [show, setShow] = useState<'all' | 'open' | 'done'>('all');
   const [closed, setClosed] = useState<Set<string>>(() => new Set());
+  const [lastAll, setLastAll] = useState<'open' | 'closed'>('open'); // what the all-groups button did last
   const cat = names.includes(sel) ? sel : names[0];
   if (!cat) return null;
   const needle = q.trim().toLowerCase();
@@ -669,7 +670,10 @@ const DoublesBlock = memo(function DoublesBlock({ doubles, tables }: { doubles: 
   const mine = tables.filter((t) => t.category === cat);
   const keyOf = (g: string) => `${cat}|${g}`;
   const toggle = (g: string) => setClosed((c) => { const n = new Set(c); if (n.has(keyOf(g))) n.delete(keyOf(g)); else n.add(keyOf(g)); return n; });
-  const setAll = (open: boolean) => setClosed((c) => { const n = new Set(c); for (const t of mine) { if (open) n.delete(keyOf(t.group)); else n.add(keyOf(t.group)); } return n; });
+  const setAll = (open: boolean) => { setLastAll(open ? 'open' : 'closed'); setClosed((c) => { const n = new Set(c); for (const t of mine) { if (open) n.delete(keyOf(t.group)); else n.add(keyOf(t.group)); } return n; }); };
+  // the button offers the opposite of the state: all open -> close all, all closed -> open all, mixed -> the opposite of the last press
+  const nClosed = mine.filter((t) => closed.has(keyOf(t.group))).length;
+  const offerOpen = nClosed === mine.length ? true : nClosed === 0 ? false : lastAll === 'closed';
   const koCards = ms.filter((m) => m.stage !== 'GROUP' && keep(m));
   const line = { borderWidth: 1, borderColor: T.line2 } as const;
   const stamp = (m: api.DoublesMatch) => { const d = m.start ? new Date(m.start) : null; return d ? [d.toLocaleDateString(locale(), { day: '2-digit', month: '2-digit' }), d.toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' })] : ['', '']; };
@@ -688,7 +692,7 @@ const DoublesBlock = memo(function DoublesBlock({ doubles, tables }: { doubles: 
             </Pressable>
           ))}
         </View>
-        {mine.length > 1 && !filtered && <Pressable onPress={() => setAll(closed.size > 0)} hitSlop={8}><Text style={{ fontSize: 13.5, fontWeight: '600', color: T.text, textDecorationLine: 'underline' }}>{tr(closed.size > 0 ? 'פתיחת הכל' : 'סגירת הכל')}</Text></Pressable>}
+        {mine.length > 1 && !filtered && <Pressable onPress={() => setAll(offerOpen)} hitSlop={8}><Text style={{ fontSize: 13.5, fontWeight: '600', color: T.text, textDecorationLine: 'underline' }}>{tr(offerOpen ? 'פתיחת הכל' : 'סגירת הכל')}</Text></Pressable>}
       </View>
       {mine.map((t) => {
         const gm = ms.filter((m) => m.stage === 'GROUP' && (m.group ?? 'בית 1') === t.group);
