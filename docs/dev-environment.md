@@ -1,0 +1,38 @@
+# סביבת פיתוח
+
+**למה:** האתר החי רץ על מסד נתונים אחד ב-Neon (תוכנית חינמית: 5GB העברת נתונים ו-100 שעות חישוב בחודש). בדיקות עומס שרצו מול הפרודקשן גמרו את המכסה והפילו את האתר.
+הכלל: **שום בדיקה, ניסוי או בדיקת עומס לא רצים על הפרודקשן.** לכל זה יש סביבה נפרדת עם מסד נתונים משלה.
+
+| | ענף ב-git | מסד נתונים | כתובת |
+|---|---|---|---|
+| **פרודקשן** | `main` | `ita-league-db` (Neon) | `ita-league-platform-jpgi.vercel.app` |
+| **פיתוח** (Vercel Preview) | `dev` | `ita-league-dev-db` (Neon, חינמי, נפרד) | כתובת ה-Preview של הענף `dev` |
+| **מקומי** | כל ענף | Postgres מקומי (`ita`, `ita_test`) | `localhost:3000` |
+
+בכל אתר שאינו פרודקשן מופיעה תווית כתומה "סביבת פיתוח" בפינה, והוא לא נכנס למנועי חיפוש.
+
+## הקמה חד-פעמית (בלוחות של Vercel ו-Neon)
+
+1. **מסד נתונים נפרד.** ב-Vercel ← הפרויקט `ita-league-platform-jpgi` ← **Storage** ← Create ← Neon (Free), בשם `ita-league-dev-db`.
+   בחלון החיבור סמנו את הסביבות **Preview ו-Development בלבד**, בלי Production.
+2. **לנתק את מסד הפרודקשן מ-Preview.** ב-**Settings ← Environment Variables** לכל המשתנים של `ita-league-db` (`DATABASE_URL` וחבריו) לבחור סביבת **Production בלבד**.
+   בדיקה: משתנה `DATABASE_URL` צריך להופיע פעמיים, פעם לפרודקשן ופעם ל-Preview, עם כתובות שונות.
+3. **ענף `dev`:** `git checkout -b dev && git push -u origin dev`. Vercel בונה Preview לענף; הבנייה (`scripts/db-init.mjs`) יוצרת את כל הטבלאות במסד הריק.
+   מנהל ראשון: להגדיר `ADMIN_EMAIL` ו-`ADMIN_PASSWORD` ב-Environment Variables לסביבת **Preview בלבד**.
+4. **Deployment Protection נשאר דלוק** ל-Preview: רק מי שמחובר ל-Vercel (או עם מפתח) נכנס. לבדיקות אוטומטיות: **Settings ← Deployment Protection ← Protection Bypass for Automation**, ומעבירים את המפתח ב-`--bypass`.
+5. **נתוני בדיקה:** `DATABASE_URL=<כתובת מסד הפיתוח> pnpm db:seed` (משתמשי דמו), ואם צריך נתוני Loglig: סקריפטי הסנכרון עם `--url <כתובת ה-Preview>` ועם `CRON_SECRET` של סביבת Preview.
+
+## עבודה יומיומית
+
+- עובדים על `dev`, בודקים ב-Preview, וממזגים ל-`main` רק מה שנבדק. כל push ל-`main` עולה לפרודקשן.
+- סקריפטי העזר (`apps/web/scripts/test-user.mjs`, `merge-clubs.mjs`, `loglig-sync/*`) פונים כברירת מחדל לכתובת מ-`.env.production.local`. לסביבת פיתוח מעבירים תמיד `--url <כתובת הפיתוח>`.
+- **בדיקת עומס** רק על פיתוח:
+  `node scripts/loadtest.mjs --url https://<dev> --bypass <מפתח> --steps 10,50,100`
+  הסקריפט מסרב לרוץ על הפרודקשן אלא אם מעבירים `--allow-production` במפורש.
+- **אפליקציית אנדרואיד לפיתוח:** `$env:ITA_API_URL = "https://<dev>"` ואז בנייה רגילה (`gradlew :app:assembleRelease`). ההתקנה מחליפה את האפליקציה הרגילה במכשיר (אותו שם חבילה), ולכן לא מתקינים אותה על מכשיר עם משתמש אמיתי. לבנייה לפרודקשן לא מגדירים את המשתנה.
+
+## מעקב ומכסות
+
+- ב-Neon להגדיר התראה לפני שמכסת העברת הנתונים נגמרת, לא אחרי.
+- המכסה היא **לפרויקט**: ענף (branch) של Neon לא נותן מכסה נוספת. מסד פיתוח נפרד הוא פרויקט נפרד.
+- סיבות הצריכה העיקריות: עמודים שלא נשמרים ב-cache ושאילתות רחבות. עיינו ב-`src/lib/memo.ts` ובשירותים שמשתמשים בו לפני שמוסיפים עמוד שפונה למסד בכל כניסה.

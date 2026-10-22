@@ -4,11 +4,19 @@
 const arg = (k, d) => { const i = process.argv.indexOf(`--${k}`); return i > 0 ? process.argv[i + 1] : d; };
 const base = (arg('url', '') || '').replace(/\/$/, '');
 if (!base) { console.error('--url is required'); process.exit(1); }
+// Never aim this at the live site by accident: it spends the production database's data-transfer quota (that is how the site went down once).
+const LIVE_HOSTS = ['ita-league-platform-jpgi.vercel.app'];
+if (LIVE_HOSTS.some((h) => base.includes(h)) && !process.argv.includes('--allow-production')) {
+  console.error('Refusing to load-test the LIVE site. Use the development environment (docs/dev-environment.md), or pass --allow-production if you really mean it.');
+  process.exit(2);
+}
 const steps = arg('steps', '10,50,100,250,500,1000').split(',').map(Number);
 const secs = Number(arg('secs', '15'));
 const paths = arg('paths', '/,/api/v1/tournaments,/rankings,/api/v1/public/live,/live').split(',');
 const think = Number(arg('think', '300'));
 const header = arg('header', '');
+// a Vercel preview is behind Deployment Protection: pass its "Protection Bypass for Automation" secret
+const bypass = arg('bypass', '');
 
 const pct = (a, p) => (a.length ? a[Math.min(a.length - 1, Math.floor((p / 100) * a.length))] : 0);
 
@@ -21,7 +29,7 @@ async function step(users) {
       const p = paths[Math.floor(Math.random() * paths.length)];
       const t0 = performance.now();
       try {
-        const res = await fetch(base + p, { signal: AbortSignal.timeout(30000), headers: header ? { cookie: header } : {} });
+        const res = await fetch(base + p, { signal: AbortSignal.timeout(30000), headers: { ...(header ? { cookie: header } : {}), ...(bypass ? { 'x-vercel-protection-bypass': bypass } : {}) } });
         await res.arrayBuffer();
         lat.push(performance.now() - t0);
         codes[res.status] = (codes[res.status] ?? 0) + 1;

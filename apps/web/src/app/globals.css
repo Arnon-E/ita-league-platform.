@@ -541,3 +541,6 @@ html[dir=rtl] .pside{align-items:flex-start}
 .cs-list li.all{color:var(--muted)}
 .cs-list li.none{color:var(--muted);cursor:default}
 .pselects .cs-in{width:100%;min-width:0;border-radius:999px;border-color:var(--line);background-color:var(--surface2);font-weight:500;font-size:15px;text-overflow:ellipsis}
+
+/* shown on every page of a development / preview deployment, so it is never mistaken for the live site */
+.envbadge{position:fixed;top:3px;inset-inline-start:3px;z-index:100;background:#F59E0B;color:#1c1407;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;pointer-events:none}

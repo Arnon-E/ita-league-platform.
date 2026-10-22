@@ -62,6 +62,10 @@ npx tsc --noEmit # typecheck
 
 משתמשי דמו: `super@ita.test`, `fed@ita.test`, `manager@ita.test`, `ref@ita.test`.
 
+## סביבת פיתוח
+
+בדיקות, ניסויים ובדיקות עומס רצים על סביבה נפרדת עם מסד נתונים משלה, לא על הפרודקשן. ההקמה והכללים ב-`docs/dev-environment.md`.
+
 ## פריסה
 
 כל push ל-`main` נפרס אוטומטית ל-Vercel. סקריפטי הסנכרון רצים במחשב (Windows Task Scheduler) ושולחים לאתר דרך `/api/sync/loglig` עם `CRON_SECRET`:
