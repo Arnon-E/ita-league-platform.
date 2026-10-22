@@ -14,8 +14,8 @@
 ## הקמה חד-פעמית (בלוחות של Vercel ו-Neon)
 
 1. **מסד נתונים נפרד.** ב-Vercel ← הפרויקט `ita-league-platform-jpgi` ← **Storage** ← Create ← Neon (Free), בשם `ita-league-dev-db`.
-   בחלון החיבור סמנו את הסביבות **Preview ו-Development בלבד**, בלי Production.
-2. **לנתק את מסד הפרודקשן מ-Preview.** ב-**Settings ← Environment Variables** לכל המשתנים של `ita-league-db` (`DATABASE_URL` וחבריו) לבחור סביבת **Production בלבד**.
+   בחלון החיבור סמנו את הסביבות **Preview ו-Development בלבד**, בלי Production, ובשדה **Custom Prefix** הקלידו `DEV`, כדי שהמשתנים ייקראו `DEV_DATABASE_URL` ועוד.
+2. **(לא חובה, הקוד כבר מגן)** Preview משתמש בקוד **רק** במשתנה `DEV_DATABASE_URL` ולעולם לא ב-`DATABASE_URL`, גם אם הוא מוגדר ל-Preview. אפשר בכל זאת לנתק את מסד הפרודקשן מ-Preview. ב-**Settings ← Environment Variables** לכל המשתנים של `ita-league-db` (`DATABASE_URL` וחבריו) לבחור סביבת **Production בלבד**.
    בדיקה: משתנה `DATABASE_URL` צריך להופיע פעמיים, פעם לפרודקשן ופעם ל-Preview, עם כתובות שונות.
 3. **ענף `dev`:** `git checkout -b dev && git push -u origin dev`. Vercel בונה Preview לענף; הבנייה (`scripts/db-init.mjs`) יוצרת את כל הטבלאות במסד הריק.
    מנהל ראשון: להגדיר `ADMIN_EMAIL` ו-`ADMIN_PASSWORD` ב-Environment Variables לסביבת **Preview בלבד**.

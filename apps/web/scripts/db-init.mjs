@@ -5,7 +5,9 @@ import { spawnSync } from 'node:child_process';
 import postgres from 'postgres';
 import bcrypt from 'bcryptjs';
 
-const url = process.env.DATABASE_URL_UNPOOLED || process.env.DATABASE_URL;
+// Same rule as src/db/index.ts: a Vercel Preview build only ever touches the development database.
+const preview = process.env.VERCEL_ENV === 'preview';
+const url = preview ? process.env.DEV_DATABASE_URL_UNPOOLED || process.env.DEV_DATABASE_URL : process.env.DATABASE_URL_UNPOOLED || process.env.DATABASE_URL;
 if (!url || /localhost|127\.0\.0\.1/.test(url)) {
   console.log('[db-init] no remote DATABASE_URL, skipping');
   process.exit(0);

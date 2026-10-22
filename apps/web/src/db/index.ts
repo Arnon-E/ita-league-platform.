@@ -2,7 +2,12 @@ import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import * as schema from './schema';
 
-const url = process.env.DATABASE_URL ?? 'postgresql://postgres@localhost:5432/ita';
+// A Vercel Preview (the development site) uses ONLY the separate development database (DEV_DATABASE_URL), never DATABASE_URL,
+// even if that variable happens to be shared with Preview. Without DEV_DATABASE_URL a preview cannot reach any database.
+const preview = process.env.VERCEL_ENV === 'preview';
+const url = preview
+  ? process.env.DEV_DATABASE_URL ?? 'postgresql://invalid:invalid@preview-has-no-dev-database.invalid:5432/none'
+  : process.env.DATABASE_URL ?? 'postgresql://postgres@localhost:5432/ita';
 const g = globalThis as unknown as { __sql?: ReturnType<typeof postgres> };
 // Serverless hosts start many short-lived instances, so each keeps one connection (use the provider's pooled URL).
 const max = Number(process.env.DB_POOL_MAX) || (process.env.VERCEL ? 1 : 10);
