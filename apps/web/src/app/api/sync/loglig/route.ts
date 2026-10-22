@@ -1,5 +1,6 @@
 import { timingSafeEqual } from 'node:crypto';
 import { mergeClubs } from '@/services/clubs';
+import { devSeed, devStats } from '@/services/devtools';
 import { db } from '@/db';
 import { addResultOverride, dedupeMirror, importCompetition, removePairPlayers, removeTournament, validateCompetitionImport } from '@/services/loglig-competitions';
 import { importClubs, importSiteInfo, validateClubsImport, validateSiteInfoImport } from '@/services/loglig-app';
@@ -28,6 +29,8 @@ export async function POST(req: Request) {
     if (body?.kind === 'test-user-create') return Response.json(await createTestUser(db, body.role === 'FEDERATION_ADMIN' ? 'FEDERATION_ADMIN' : 'PLAYER'));
     if (body?.kind === 'test-user-delete') return Response.json(await removeTestUsers(db));
     if (body?.kind === 'cleanup-pairs') return Response.json(await removePairPlayers(db));
+    if (body?.kind === 'dev-seed') return Response.json(await devSeed(db, { players: Number(body.players) || undefined, tournaments: Number(body.tournaments) || undefined, reset: body.reset === true }));
+    if (body?.kind === 'dev-stats') return Response.json(await devStats(db, body.action === 'reset' ? 'reset' : 'snapshot'));
     if (body?.kind === 'merge-clubs') return Response.json(await mergeClubs(db, { dryRun: body.apply !== true }));
     if (body?.kind === 'dedupe') return Response.json(await dedupeMirror(db));
     if (body?.kind === 'override') return Response.json(await addResultOverride(db, body));
