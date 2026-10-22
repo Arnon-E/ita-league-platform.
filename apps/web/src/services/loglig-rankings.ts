@@ -1,4 +1,5 @@
 import { sql } from 'drizzle-orm';
+import { canonicalClub } from './clubs';
 import type { Db } from '@/db';
 
 export interface RankingRow {
@@ -39,7 +40,7 @@ export function validateRankingImport(x: unknown): RankingImport {
     const bd = typeof r.birthDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(r.birthDate) && Number(r.birthDate.slice(0, 4)) === birthYear ? r.birthDate : undefined;
     rows.push({
       ...(userId ? { userId } : {}), ...(bd ? { birthDate: bd } : {}),
-      rank: Number(r.rank) || 0, name, birthYear, club: String(r.club ?? '').trim().slice(0, 120),
+      rank: Number(r.rank) || 0, name, birthYear, club: canonicalClub(String(r.club ?? '').trim().slice(0, 120)),
       national: Number(r.national) || 0, international: Number(r.international) || 0, total: Number(r.total) || 0,
     });
   }

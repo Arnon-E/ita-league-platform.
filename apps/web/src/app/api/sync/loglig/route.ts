@@ -1,4 +1,5 @@
 import { timingSafeEqual } from 'node:crypto';
+import { mergeClubs } from '@/services/clubs';
 import { db } from '@/db';
 import { addResultOverride, dedupeMirror, importCompetition, removePairPlayers, removeTournament, validateCompetitionImport } from '@/services/loglig-competitions';
 import { importClubs, importSiteInfo, validateClubsImport, validateSiteInfoImport } from '@/services/loglig-app';
@@ -27,6 +28,7 @@ export async function POST(req: Request) {
     if (body?.kind === 'test-user-create') return Response.json(await createTestUser(db, body.role === 'FEDERATION_ADMIN' ? 'FEDERATION_ADMIN' : 'PLAYER'));
     if (body?.kind === 'test-user-delete') return Response.json(await removeTestUsers(db));
     if (body?.kind === 'cleanup-pairs') return Response.json(await removePairPlayers(db));
+    if (body?.kind === 'merge-clubs') return Response.json(await mergeClubs(db, { dryRun: body.apply !== true }));
     if (body?.kind === 'dedupe') return Response.json(await dedupeMirror(db));
     if (body?.kind === 'override') return Response.json(await addResultOverride(db, body));
     if (body?.kind === 'remove-tournament' && typeof body.name === 'string' && body.name.trim()) return Response.json(await removeTournament(db, body.name.trim()));

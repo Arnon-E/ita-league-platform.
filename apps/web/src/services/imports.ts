@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { canonicalClub } from './clubs';
 import { eq } from 'drizzle-orm';
 import type { Db } from '@/db';
 import { schema } from '@/db';
@@ -64,7 +65,7 @@ export async function importPlayerRows(db: Db, actor: Actor, rows: Record<string
     const logligId = pick(r, 'loglig_id', 'מזהה לוגליג') || null;
     const idRaw = pick(r, 'id_number', 'תעודת זהות');
     const idHash = idRaw ? hashNationalId(idRaw) : null;
-    const clubName = pick(r, 'club', 'מועדון');
+    const clubName = canonicalClub(pick(r, 'club', 'מועדון') ?? '');
     if (opts.dryRun) { rep.created++; continue; }
     let clubId: string | null = null;
     if (clubName) {

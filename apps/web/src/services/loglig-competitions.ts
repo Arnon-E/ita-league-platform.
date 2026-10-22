@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { canonicalClub } from './clubs';
 import { and, eq, inArray, sql, notInArray } from 'drizzle-orm';
 import { resolveCompleted, BEST_OF_3_SUPER_TB } from '@ita/rules-engine';
 import { schema, type Db } from '@/db';
@@ -61,7 +62,7 @@ export function validateCompetitionImport(x: unknown): CompetitionIn {
         stage: m.stage === 'GROUP' ? 'GROUP' : 'KO', ...(m.group ? { group: clean(m.group, 40) } : {}),
         round: Math.max(1, Math.min(12, Number(m.round) || 1)), place: Math.max(1, Number(m.place) || 1), order: Number(m.order) || 0,
         start: Date.parse(m.start) >= REAL_FROM ? new Date(m.start).toISOString() : `${b.start}T00:00:00.000Z`, kind: m.kind === 'NB' ? 'NB' : m.kind === 'St' ? 'St' : '', venue: clean(m.venue, 120), done: !!m.done,
-        a: { name: an, club: clean(m.a.club, 120) }, b: { name: bn, club: clean(m.b.club, 120) },
+        a: { name: an, club: canonicalClub(clean(m.a.club, 120)) }, b: { name: bn, club: canonicalClub(clean(m.b.club, 120)) },
         sets: (Array.isArray(m.sets) ? m.sets : []).slice(0, 5).map((s) => ({ a: Number(s.a) || 0, b: Number(s.b) || 0, ...(s.superTb ? { superTb: true } : {}) })),
         retired: !!m.retired, walkover: !!m.walkover,
       });
@@ -84,7 +85,7 @@ export function validateCompetitionImport(x: unknown): CompetitionIn {
       ms.push({
         stage: m.stage === 'GROUP' ? 'GROUP' : 'KO', ...(m.group ? { group: clean(m.group, 40) } : {}), round: Math.max(1, Math.min(12, Number(m.round) || 1)), place: Math.max(1, Number(m.place) || 1), order: Number(m.order) || 0,
         start: Date.parse(m.start) >= REAL_FROM ? new Date(m.start).toISOString() : `${b.start}T00:00:00.000Z`, kind: m.kind === 'NB' ? 'NB' : m.kind === 'St' ? 'St' : '', venue: clean(m.venue, 120), done: !!m.done,
-        a: { name: an, club: clean(m.a.club, 120) }, b: { name: bn, club: clean(m.b.club, 120) },
+        a: { name: an, club: canonicalClub(clean(m.a.club, 120)) }, b: { name: bn, club: canonicalClub(clean(m.b.club, 120)) },
         sets: (Array.isArray(m.sets) ? m.sets : []).slice(0, 5).map((s) => ({ a: Number(s.a) || 0, b: Number(s.b) || 0, ...(s.superTb ? { superTb: true } : {}) })),
         retired: !!m.retired, walkover: !!m.walkover,
       });
