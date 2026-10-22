@@ -40,3 +40,7 @@
 ## אומת בפועל
 - מסד הפיתוח `ita-league-dev-db` מחובר לפרויקט לסביבות Preview ו-Development בלבד, עם הקידומת `DEV`. המשתנים: `DEV_DATABASE_URL`, `DEV_DATABASE_URL_UNPOOLED` ועוד.
 - ה-Preview (`src/db/index.ts`, `scripts/db-init.mjs`) קורא רק אותם, ולעולם לא את `DATABASE_URL` של הפרודקשן.
+
+## משתנים נפרדים ל-Preview
+ל-Preview יש `SESSION_SECRET`, `CRON_SECRET`, `ID_HASH_SALT` ו-`PUBLIC_URL` משלו (לא של הפרודקשן), `STORAGE_DIR=/tmp/ita-storage` לקבצים זמניים, ואין `RESEND_API_KEY` (לא נשלחים מיילים אמיתיים) ואין `BLOB_STORE_ID` (לא נוגעים באחסון של הפרודקשן).
+העתק מקומי של `CRON_SECRET` ו-`PUBLIC_URL` של הפיתוח: `apps/web/.env.development.local` (לא עולה ל-git).
