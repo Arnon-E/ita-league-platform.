@@ -27,9 +27,10 @@ export default async function Rankings({ searchParams }: { searchParams: Promise
       <div className="row" style={{ marginBottom: 14 }}>
         <Link scroll={false} href={href({ age: '' })} className={`pill ${!ageN ? 'lime' : ''}`}>{t('כללי')}</Link>
         {AGE_GROUPS.map((a) => <Link scroll={false} key={a} href={href({ age: String(a) })} className={`pill ${ageN === a ? 'lime' : ''}`}>{t('עד גיל')} {a}</Link>)}
-        <GetForm className="row" style={{ marginInlineStart: 'auto' }}>
+        {/* its own row, aligned with the rest of the page: beside the pills it wrapped and hung off the far edge */}
+        <GetForm style={{ flexBasis: '100%', maxWidth: 380 }}>
           <input type="hidden" name="g" value={gender} /><input type="hidden" name="age" value={age} />
-          <AutoSelect name="club" defaultValue={club}><option value="">{t('כל המועדונים')}</option>{clubs.map(({ c }) => <option key={c.id} value={c.id}>{t(c.name)}</option>)}</AutoSelect>
+          <AutoSelect name="club" defaultValue={club} aria-label={t('כל המועדונים')} style={{ width: '100%' }}><option value="">{t('כל המועדונים')}</option>{clubs.map(({ c }) => <option key={c.id} value={c.id}>{t(c.name)}</option>)}</AutoSelect>
         </GetForm>
       </div>
       {all.length >= 3 && (
