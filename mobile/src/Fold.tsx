@@ -6,7 +6,7 @@ export function FoldHeader({ title, open, onPress, style }: { title: string; ope
   return (
     <Pressable onPress={onPress} accessibilityRole="button" accessibilityState={{ expanded: open }} accessibilityLabel={title}
       style={({ pressed }) => [{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8, opacity: pressed ? 0.7 : 1 }, style]}>
-      <Text style={{ fontSize: 22, fontWeight: '700', color: T.text, letterSpacing: -0.4, flexShrink: 1 }}>{title}</Text>
+      <Text style={{ fontSize: 22, fontWeight: '700', color: T.text, letterSpacing: -0.4, flex: 1 }}>{title}</Text>
       <View style={{ width: 28, height: 28, borderRadius: 14, borderWidth: 1, borderColor: T.line2, backgroundColor: T.surface, alignItems: 'center', justifyContent: 'center' }}>
         <View style={{ width: 8, height: 8, borderRightWidth: 2, borderBottomWidth: 2, borderColor: T.text, transform: [{ translateY: open ? 2 : -2 }, { rotate: open ? '-135deg' : '45deg' }] }} />
       </View>
