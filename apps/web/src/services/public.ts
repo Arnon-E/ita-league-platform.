@@ -148,13 +148,8 @@ export async function rankingTable(db: Db, o: { gender: 'MALE' | 'FEMALE'; age?:
   return out;
 }
 
-let countsMemo: { at: number; p: Promise<unknown> } | null = null;
 /** The three counters on the home page; they move slowly, so one query per minute per instance is plenty. */
 export function homeCounts(db: Db) {
-  if (countsMemo && Date.now() - countsMemo.at < 60000) return countsMemo.p;
-  const p = db.execute(sql`select (select count(*) from players)::int as players, (select count(*) from clubs c where exists (select 1 from players p where p.club_id = c.id) and not (c.name like '%,%' and (select count(*) from players p where p.club_id = c.id) <= 2))::int as clubs,
-      (select count(*) from matches where live and status = 'SCHEDULED')::int as live`);
-  countsMemo = { at: Date.now(), p };
-  p.catch(() => { countsMemo = null; });
-  return p;
+  return memo('home-counts', 60_000, () => db.execute(sql`select (select count(*) from players)::int as players, (select count(*) from clubs c where exists (select 1 from players p where p.club_id = c.id) and not (c.name like '%,%' and (select count(*) from players p where p.club_id = c.id) <= 2))::int as clubs,
+      (select count(*) from matches where live and status = 'SCHEDULED')::int as live`));
 }
