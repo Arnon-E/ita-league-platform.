@@ -9,6 +9,8 @@ export async function getLang(): Promise<Lang> {
 
 /** Hebrew is the source language; English is looked up by the exact Hebrew string, and falls back to Hebrew. */
 const EN: Record<string, string> = {
+  // install hint for iPhone
+  'התקנה על מסך הבית': 'Install on your home screen', 'סגירה': 'Close', 'לחצו על {share} בתחתית Safari ובחרו ״הוספה למסך הבית״': 'Tap {share} at the bottom of Safari, then "Add to Home Screen"',
   // requests from children, cancelled tournaments, new-tournament form
   'בקשות הרשמה מהילדים': "Children's registration requests", 'רוצה להירשם': 'wants to register', 'רישום': 'Register',
   'התחרות בוטלה': 'Tournament cancelled', 'יצירת תחרות': 'Create a tournament', 'פתוחות להרשמה': 'open for registration',

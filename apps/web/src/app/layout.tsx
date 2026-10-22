@@ -2,6 +2,7 @@ import './globals.css';
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import { getLang, tr } from '@/lib/i18n';
+import { InstallHint } from '@/components/InstallHint';
 
 export const dynamic = 'force-dynamic';
 export async function generateMetadata(): Promise<Metadata> {
@@ -11,6 +12,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function Root({ children }: { children: ReactNode }) {
   const lang = await getLang();
+  const t = await tr();
   return (
     <html lang={lang} dir={lang === 'en' ? 'ltr' : 'rtl'}>
       <head>
@@ -23,9 +25,13 @@ export default async function Root({ children }: { children: ReactNode }) {
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
         <meta name="theme-color" content="#EEF0EA" media="(prefers-color-scheme: light)" />
         <meta name="theme-color" content="#070A09" media="(prefers-color-scheme: dark)" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-title" content="ITA" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
       </head>
-      <body>{children}</body>
+      <body>{children}<InstallHint l={{ title: t('התקנה על מסך הבית'), step: t('לחצו על {share} בתחתית Safari ובחרו ״הוספה למסך הבית״'), close: t('סגירה') }} /></body>
     </html>
   );
 }
