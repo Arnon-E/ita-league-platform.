@@ -6,6 +6,7 @@ import { addCategory, createTournament, setStatus } from '@/services/tournaments
 import { registerEntry } from '@/services/entries';
 import { answerSuggestion, pendingSuggestions, setChildLogin, suggestEntry } from '@/services/children';
 import { login } from '@/lib/auth';
+import { inbox } from '@/services/notifications';
 import { myHome } from '@/services/home';
 
 beforeAll(resetDb);
@@ -49,6 +50,8 @@ describe("a child's request", () => {
     const pending = await pendingSuggestions(db, parent);
     expect(pending.map((x) => x.player)).toHaveLength(1);
     expect((await myHome(db, parent)).suggestions).toHaveLength(1);
+    // the open request is a card with buttons, not a repeated line in the notification list
+    expect((await inbox(db, parent.id)).some((n) => n.kind === 'ENTRY_SUGGESTION')).toBe(false);
 
     await answerSuggestion(db, parent, pending[0]!.id, true, (categoryId, playerId) => registerEntry(db, parent, categoryId, playerId));
     expect(await pendingSuggestions(db, parent)).toHaveLength(0);

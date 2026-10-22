@@ -13,9 +13,9 @@ export const GET = (req: Request) => handlePublic(async () => {
     db.select({ tid: schema.categories.tournamentId, gender: schema.categories.gender, minBirthYear: schema.categories.minBirthYear, maxBirthYear: schema.categories.maxBirthYear }).from(schema.categories),
     db.selectDistinct({ tid: schema.categories.tournamentId }).from(schema.entries).innerJoin(schema.categories, eq(schema.categories.id, schema.entries.categoryId)),
   ]);
-  // a cancelled competition nobody entered is not shown to the public; staff still see it (to restore it)
+  // drafts and cancelled competitions nobody entered are not shown to the public; staff still see them (to publish or restore)
   const entered = new Set(withEntries.map((x) => x.tid));
-  const ts = actor && can(actor, 'tournament.create') ? allTs : allTs.filter((t) => t.status !== 'CANCELLED' || entered.has(t.id));
+  const ts = actor && can(actor, 'tournament.create') ? allTs : allTs.filter((t) => t.status !== 'DRAFT' && (t.status !== 'CANCELLED' || entered.has(t.id)));
   const mine = await myPlayersForRelevance(db, actor);
   return ts.map((t) => ({
     id: t.id, name: t.name, status: t.status, format: t.format, startDate: t.startDate, endDate: t.endDate, registrationCloses: t.registrationCloses, feeAgorot: t.feeAgorot, level: t.level, section: t.section,

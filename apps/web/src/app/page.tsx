@@ -35,9 +35,9 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ l
   ]);
   // people who run tournaments manage rather than register; they also get to see (and restore) cancelled ones
   const staff = !!actor && can(actor, 'tournament.create');
-  // a cancelled competition nobody had entered is not history worth showing to the public
+  // drafts are still being prepared, and a cancelled competition nobody had entered is not history worth showing: the public sees neither
   const entered = new Set(withEntries.map((x) => x.tid));
-  const ts = staff ? allTs : allTs.filter((x) => x.status !== 'CANCELLED' || entered.has(x.id));
+  const ts = staff ? allTs : allTs.filter((x) => x.status !== 'DRAFT' && (x.status !== 'CANCELLED' || entered.has(x.id)));
   const catsOf = new Map<string, { gender: string; age: number | null }[]>();
   for (const c of cats) {
     const a = c.name.match(/(\d{2})/);

@@ -1,4 +1,4 @@
-import { and, eq, inArray, lt } from 'drizzle-orm';
+import { and, eq, inArray, lt, ne } from 'drizzle-orm';
 import type { Db } from '@/db';
 import { schema } from '@/db';
 
@@ -58,8 +58,9 @@ export async function setPref(db: Db, userId: string, channel: Channel, kind: st
   });
 }
 
+/** What the person sees as their notifications. A child's registration request is shown as a card with its own buttons while it is open, so its (push/email) notice is not repeated here once answered. */
 export async function inbox(db: Db, userId: string) {
-  return db.select().from(notifications).where(and(eq(notifications.userId, userId), eq(notifications.channel, 'PUSH'))).orderBy(notifications.createdAt);
+  return db.select().from(notifications).where(and(eq(notifications.userId, userId), eq(notifications.channel, 'PUSH'), ne(notifications.kind, 'ENTRY_SUGGESTION'))).orderBy(notifications.createdAt);
 }
 
 export { inArray };
