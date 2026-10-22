@@ -44,3 +44,5 @@
 ## משתנים נפרדים ל-Preview
 ל-Preview יש `SESSION_SECRET`, `CRON_SECRET`, `ID_HASH_SALT` ו-`PUBLIC_URL` משלו (לא של הפרודקשן), `STORAGE_DIR=/tmp/ita-storage` לקבצים זמניים, ואין `RESEND_API_KEY` (לא נשלחים מיילים אמיתיים) ואין `BLOB_STORE_ID` (לא נוגעים באחסון של הפרודקשן).
 העתק מקומי של `CRON_SECRET` ו-`PUBLIC_URL` של הפיתוח: `apps/web/.env.development.local` (לא עולה ל-git).
+
+(נבדק: אחרי מחיקת הפרויקט הכפול נבנה רק `ita-league-platform-jpgi`.)
