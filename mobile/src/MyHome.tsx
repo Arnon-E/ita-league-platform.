@@ -59,7 +59,7 @@ export function MyHome({ authed, onOpen, onGoAccount, onAdmin }: { authed: boole
               <Pressable onPress={() => onOpen(x.tournamentId)}><Text style={m.muted}>{x.tournament} · {x.category}</Text></Pressable>
               <View style={{ flexDirection: 'row', gap: 8 }}>
                 <Pressable style={m.reg} onPress={() => answer(x.id, true)}><Text style={m.regT}>{tr('רישום')}</Text></Pressable>
-                <Pressable style={m.regOff} onPress={() => answer(x.id, false)}><Text style={m.regOffT}>{tr('לא לרשום')}</Text></Pressable>
+                <Pressable style={m.regOff} onPress={() => answer(x.id, false)}><Text style={m.regOffT}>{tr('דחייה')}</Text></Pressable>
               </View>
             </View>
           ))}

@@ -75,7 +75,7 @@ const en: Record<string, string> = {
 
   // home
   'ההרשמה פתוחה': 'Registration open',
-  'בקשות הרשמה מהילדים': "Children's registration requests", 'רוצה להירשם': 'wants to register', 'רישום': 'Register', 'לא לרשום': "Don't register",
+  'בקשות הרשמה מהילדים': "Children's registration requests", 'רוצה להירשם': 'wants to register', 'רישום': 'Register',
   'תחרות חדשה': 'New tournament', 'יצירת תחרות': 'Create a tournament', '{n} פתוחות להרשמה': '{n} open for registration',
   'ימים': 'Days',
   'שעות': 'Hours',

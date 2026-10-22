@@ -59,7 +59,7 @@ export default async function Me({ searchParams }: { searchParams: Promise<{ err
               <span><strong>{s.player}</strong> {t('רוצה להירשם')}: {s.tournament} · {s.category}</span>
               <span className="row">
                 <form action={answerSuggestionAction}><input type="hidden" name="id" value={s.id} /><input type="hidden" name="answer" value="accept" /><button className="btn small">{t('רישום')}</button></form>
-                <form action={answerSuggestionAction}><input type="hidden" name="id" value={s.id} /><input type="hidden" name="answer" value="dismiss" /><button className="btn small ghost">{t('לא לרשום')}</button></form>
+                <form action={answerSuggestionAction}><input type="hidden" name="id" value={s.id} /><input type="hidden" name="answer" value="dismiss" /><button className="btn small ghost">{t('דחייה')}</button></form>
               </span>
             </div>
           ))}

@@ -99,4 +99,10 @@ export async function answerSuggestion(db: Db, actor: Actor, suggestionId: strin
   if (!g) throw new Error('אין הרשאה להצעה הזו');
   if (accept) await register(s.categoryId, s.playerId);
   await db.update(schema.entrySuggestions).set({ status: accept ? 'DONE' : 'DISMISSED' }).where(eq(schema.entrySuggestions.id, suggestionId));
+  // the child asked, so the child hears the answer
+  const [row] = await db.select({ c: schema.categories.name, t: schema.tournaments.name, accountId: players.accountId }).from(schema.categories)
+    .innerJoin(schema.tournaments, eq(schema.tournaments.id, schema.categories.tournamentId)).innerJoin(players, eq(players.id, s.playerId)).where(eq(schema.categories.id, s.categoryId));
+  if (row?.accountId) {
+    await notifyUser(db, row.accountId, 'ENTRY_SUGGESTION_ANSWER', accept ? 'ההורה רשם אותך' : 'ההורה דחה את הבקשה', `${row.t} (${row.c})${accept ? '' : '. אפשר לדבר עם ההורה ולשלוח בקשה חדשה.'}`);
+  }
 }

@@ -112,6 +112,7 @@ export async function answerSuggestionAction(fd: FormData) {
   const accept = s(fd, 'answer') === 'accept';
   await guarded('/me', async () => {
     await answerSuggestion(db, a, s(fd, 'id'), accept, (category, player) => registerEntry(db, a, category, player));
+    await flushNotifications(db);
     return accept ? 'הילד/ה נרשם/ה לקטגוריה' : 'ההצעה נדחתה';
   });
 }

@@ -56,5 +56,14 @@ describe("a child's request", () => {
     await answerSuggestion(db, parent, pending[0]!.id, true, (categoryId, playerId) => registerEntry(db, parent, categoryId, playerId));
     expect(await pendingSuggestions(db, parent)).toHaveLength(0);
     expect((await db.select().from(schema.entries).where(eq(schema.entries.playerId, kid.id))).length).toBe(1);
+
+    // the child hears the answer, whichever way it went
+    const heard = async () => (await db.select().from(schema.notifications).where(eq(schema.notifications.userId, child.id))).filter((n) => n.kind === 'ENTRY_SUGGESTION_ANSWER');
+    expect((await heard()).some((n) => n.title === 'ההורה רשם אותך')).toBe(true);
+    const cat2 = await addCategory(db, fed, (await db.select().from(schema.categories).where(eq(schema.categories.id, cat.id)))[0]!.tournamentId, { name: 'U16', gender: 'MALE' });
+    await suggestEntry(db, child, cat2.id);
+    const again = (await pendingSuggestions(db, parent))[0]!;
+    await answerSuggestion(db, parent, again.id, false, async () => {});
+    expect((await heard()).some((n) => n.title === 'ההורה דחה את הבקשה')).toBe(true);
   });
 });
