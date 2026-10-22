@@ -59,7 +59,7 @@ export function MyHome({ authed, onOpen, onGoAccount, onAdmin }: { authed: boole
               <Pressable onPress={() => onOpen(x.tournamentId)}><Text style={m.muted}>{x.tournament} · {x.category}</Text></Pressable>
               <View style={{ flexDirection: 'row', gap: 8 }}>
                 <Pressable style={m.reg} onPress={() => answer(x.id, true)}><Text style={m.regT}>{tr('רישום')}</Text></Pressable>
-                <Pressable style={m.reg} onPress={() => answer(x.id, false)}><Text style={m.regT}>{tr('לא עכשיו')}</Text></Pressable>
+                <Pressable style={m.regOff} onPress={() => answer(x.id, false)}><Text style={m.regOffT}>{tr('לא לרשום')}</Text></Pressable>
               </View>
             </View>
           ))}
@@ -124,4 +124,5 @@ const m = StyleSheet.create({
   sec: { gap: 2, paddingTop: 10, borderTopWidth: 1, borderColor: T.line }, label: { color: T.muted, fontSize: 12.5 },
   res: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 3 }, pill: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 999 },
   reg: { alignSelf: 'flex-start', backgroundColor: T.volt, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 8, maxWidth: '100%' }, regT: { color: T.ink, fontWeight: '700', fontSize: 14 },
+  regOff: { alignSelf: 'flex-start', borderRadius: 999, paddingHorizontal: 14, paddingVertical: 8, borderWidth: 1, borderColor: T.line }, regOffT: { color: T.muted, fontWeight: '600', fontSize: 14 },
 });

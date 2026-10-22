@@ -10,7 +10,7 @@ export async function getLang(): Promise<Lang> {
 /** Hebrew is the source language; English is looked up by the exact Hebrew string, and falls back to Hebrew. */
 const EN: Record<string, string> = {
   // requests from children, cancelled tournaments, new-tournament form
-  'בקשות הרשמה מהילדים': "Children's registration requests", 'רוצה להירשם': 'wants to register', 'רישום': 'Register', 'לא עכשיו': 'Not now',
+  'בקשות הרשמה מהילדים': "Children's registration requests", 'רוצה להירשם': 'wants to register', 'רישום': 'Register', 'לא לרשום': "Don't register",
   'התחרות בוטלה': 'Tournament cancelled', 'יצירת תחרות': 'Create a tournament', 'פתוחות להרשמה': 'open for registration',
   'ארצית דרגה א׳ (עד 1000 נקודות)': 'National grade 1 (up to 1000 points)', 'ארצית דרגה ב׳ (עד 750 נקודות)': 'National grade 2 (up to 750 points)',
   // navigation
