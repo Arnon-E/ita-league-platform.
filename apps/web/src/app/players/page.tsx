@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { AutoSelect } from '@/components/AutoSelect';
+import { ClubSearch } from '@/components/ClubSearch';
 import { GetForm } from '@/components/GetForm';
 import { db } from '@/db';
 import { Shell } from '@/components/Shell';
@@ -35,7 +36,7 @@ export default async function Players({ searchParams }: { searchParams: Promise<
         <div className="pselects">
           <AutoSelect name="g" defaultValue={g} aria-label={t('בנים ובנות')}><option value="">{t('בנים ובנות')}</option><option value="MALE">{t('בנים')}</option><option value="FEMALE">{t('בנות')}</option></AutoSelect>
           <AutoSelect name="age" defaultValue={age} aria-label={t('כל הגילאים')}><option value="">{t('כל הגילאים')}</option>{[10, 12, 14, 16, 18].map((a) => <option key={a} value={a}>{t('עד גיל')} {a}</option>)}</AutoSelect>
-          <AutoSelect name="club" defaultValue={club} aria-label={t('כל המועדונים')}><option value="">{t('כל המועדונים')}</option>{clubs.map(({ c }) => <option key={c.id} value={c.id}>{t(c.name)}</option>)}</AutoSelect>
+          <ClubSearch name="club" defaultValue={club} clubs={clubs.map(({ c }) => ({ id: c.id, name: t(c.name) }))} l={{ all: t('כל המועדונים'), placeholder: t('חיפוש מועדון'), none: t('לא נמצא מועדון'), clear: t('ניקוי') }} />
         </div>
       </GetForm>
       <div className="pstatus">

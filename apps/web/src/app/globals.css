@@ -530,3 +530,14 @@ html[dir=rtl] .pside{align-items:flex-start}
 .installhint{position:fixed;inset-inline:10px;bottom:calc(86px + env(safe-area-inset-bottom));z-index:25;display:flex;align-items:flex-start;gap:10px;justify-content:space-between;background:var(--surface);border:1px solid var(--line2);border-radius:18px;padding:10px 14px;box-shadow:var(--shadow-lg);font-size:14px}
 .installhint>div{display:flex;flex-direction:column;gap:2px}
 .installhint button{flex:none;width:28px;height:28px;border-radius:999px;border:1px solid var(--line2);background:var(--surface);color:var(--text);font-size:18px;line-height:1;cursor:pointer}
+
+/* club search with autocomplete (components/ClubSearch.tsx) */
+.cs{position:relative;width:100%}
+.cs-in{width:100%;padding-inline-end:40px}
+.cs-x{position:absolute;inset-inline-end:8px;top:50%;transform:translateY(-50%);width:26px;height:26px;border-radius:999px;border:0;background:var(--surface2);color:var(--muted);font-size:17px;line-height:1;cursor:pointer}
+.cs-list{position:absolute;inset-inline:0;top:calc(100% + 6px);z-index:40;margin:0;padding:6px;list-style:none;max-height:320px;overflow-y:auto;background:var(--surface);border:1px solid var(--line2);border-radius:16px;box-shadow:var(--shadow-lg)}
+.cs-list li{padding:10px 12px;border-radius:10px;cursor:pointer;font-size:15px}
+.cs-list li.on{background:var(--surface2)}
+.cs-list li.all{color:var(--muted)}
+.cs-list li.none{color:var(--muted);cursor:default}
+.pselects .cs-in{width:100%;min-width:0;border-radius:999px;border-color:var(--line);background-color:var(--surface2);font-weight:500;font-size:15px;text-overflow:ellipsis}

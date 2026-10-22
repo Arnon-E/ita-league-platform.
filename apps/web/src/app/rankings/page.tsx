@@ -4,7 +4,7 @@ import { Shell } from '@/components/Shell';
 import Link from 'next/link';
 import { tr } from '@/lib/i18n';
 import { AGE_GROUPS, listClubs, rankingTable } from '@/services/public';
-import { AutoSelect } from '@/components/AutoSelect';
+import { ClubSearch } from '@/components/ClubSearch';
 import { RankingRows } from '@/components/InfiniteRows';
 
 const PAGE = 60;
@@ -30,7 +30,7 @@ export default async function Rankings({ searchParams }: { searchParams: Promise
         {/* its own row, aligned with the rest of the page: beside the pills it wrapped and hung off the far edge */}
         <GetForm style={{ flexBasis: '100%', maxWidth: 380 }}>
           <input type="hidden" name="g" value={gender} /><input type="hidden" name="age" value={age} />
-          <AutoSelect name="club" defaultValue={club} aria-label={t('כל המועדונים')} style={{ width: '100%' }}><option value="">{t('כל המועדונים')}</option>{clubs.map(({ c }) => <option key={c.id} value={c.id}>{t(c.name)}</option>)}</AutoSelect>
+          <ClubSearch name="club" defaultValue={club} clubs={clubs.map(({ c }) => ({ id: c.id, name: t(c.name) }))} l={{ all: t('כל המועדונים'), placeholder: t('חיפוש מועדון'), none: t('לא נמצא מועדון'), clear: t('ניקוי') }} />
         </GetForm>
       </div>
       {all.length >= 3 && (
