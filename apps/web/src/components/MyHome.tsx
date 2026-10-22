@@ -2,6 +2,7 @@ import Link from 'next/link';
 import type { myHome } from '@/services/home';
 import { fmtDate, fmtTime } from '@/components/labels';
 import { MatchScore, matchWhen } from '@/components/MatchScore';
+import { Fold } from '@/components/Fold';
 import { answerSuggestionAction } from '@/app/actions2';
 
 type Home = Awaited<ReturnType<typeof myHome>>;
@@ -41,7 +42,7 @@ export function MyHome({ home, t }: { home: Home; t: (s: string) => string }) {
           ))}
         </div>
       )}
-      {home.people.length > 0 && <h2 style={{ marginTop: work ? 18 : 0 }}>{t(home.role === 'PLAYER' ? 'הבית שלי' : home.role === 'PARENT' ? 'הילדים שלי' : 'אני והילדים')}</h2>}
+      {home.people.length > 0 && <Fold title={t(home.role === 'PLAYER' ? 'הבית שלי' : home.role === 'PARENT' ? 'הילדים שלי' : 'אני והילדים')}>
       <div className="grid cols">
         {home.people.map((p) => (
           <article key={p.id} className="card mh">
@@ -91,6 +92,7 @@ export function MyHome({ home, t }: { home: Home; t: (s: string) => string }) {
           </article>
         ))}
       </div>
+      </Fold>}
     </section>
   );
 }
@@ -98,8 +100,7 @@ export function MyHome({ home, t }: { home: Home; t: (s: string) => string }) {
 type WorkT = NonNullable<Home['work']>;
 function Work({ work, t }: { work: WorkT; t: (s: string) => string }) {
   return (
-    <div>
-      <h2 style={{ marginTop: 0 }}>{t(work.kind === 'ADMIN' ? 'מה מחכה לטיפול' : work.kind === 'CLUB' ? 'המועדון שלי' : 'התחרויות שלי')}</h2>
+    <Fold title={t(work.kind === 'ADMIN' ? 'מה מחכה לטיפול' : work.kind === 'CLUB' ? 'המועדון שלי' : 'התחרויות שלי')}>
       {work.admin && (
         <div className="mh-stats">
           <Link href="/admin/documents"><b>{work.admin.pendingDocs}</b><small>{t('מסמכים לאישור')}</small></Link>
@@ -130,6 +131,6 @@ function Work({ work, t }: { work: WorkT; t: (s: string) => string }) {
           {work.club.top.length > 0 && <div className="mh-row"><small className="muted">{t('המדורגים במועדון')}</small>{work.club.top.map((p) => <Link key={p.id} href={`/players/${p.id}`} className="mh-res"><b>#{p.rank}</b><span>{p.name}</span><span className="muted">{p.points}</span></Link>)}</div>}
         </div>
       )}
-    </div>
+    </Fold>
   );
 }

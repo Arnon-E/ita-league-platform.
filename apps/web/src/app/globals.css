@@ -516,3 +516,12 @@ html[dir=rtl] .pside{align-items:flex-start}
   .pav{width:40px;height:40px}
   .pside .muted{font-size:12px}
 }
+
+/* foldable sections on the home page (components/Fold.tsx) */
+.fold>summary{list-style:none;display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:pointer;margin:18px 0 10px;-webkit-tap-highlight-color:transparent}
+.fold>summary::-webkit-details-marker{display:none}
+.fold>summary h2{margin:0}
+.fold .chev{width:28px;height:28px;flex:none;display:inline-flex;align-items:center;justify-content:center;border-radius:999px;border:1px solid var(--line2);background:var(--surface)}
+.fold .chev svg{transition:transform .2s}
+.fold[open]>summary .chev svg{transform:rotate(180deg)}
+.fold>summary:hover .chev{border-color:var(--text)}

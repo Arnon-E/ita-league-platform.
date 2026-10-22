@@ -11,6 +11,7 @@ import { fmtDate, LEVEL, STATUS } from '@/components/labels';
 import { tr } from '@/lib/i18n';
 import { InfiniteCards } from '@/components/InfiniteCards';
 import { Court } from '@/components/Brand';
+import { Fold } from '@/components/Fold';
 import { myHome, myPlayersForRelevance } from '@/services/home';
 import { homeCounts } from '@/services/public';
 import { MyHome } from '@/components/MyHome';
@@ -123,10 +124,8 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ l
         <Link href="/clubs"><span className="n">{c.clubs.toLocaleString('he-IL')}</span><b>{t('מועדונים')}</b><small>{t('מועדונים עם שחקנים')}</small></Link>
       </nav>
       {home && <MyHome home={home} t={t} />}
-      <div className="row" style={{ justifyContent: 'space-between' }}>
-        <h2 id="list" style={{ margin: 0 }}>{t('תחרויות')}</h2>
-        {actor && can(actor, 'tournament.create') && <Link className="btn" href="/tournaments/new">{t('תחרות חדשה')}</Link>}
-      </div>
+      <Fold id="list" title={t('תחרויות')}>
+      {actor && can(actor, 'tournament.create') && <div className="row"><Link className="btn" href="/tournaments/new">{t('תחרות חדשה')}</Link></div>}
       <div className="row" style={{ marginTop: 12 }}>
         {Object.entries(ST).map(([k, v]) => (
           <Link scroll={false} key={k} href={href({ st: k })} className={`pill ${mode === k ? 'lime' : ''}`}>{t(v)}{k === 'up' ? ` ${counts2.up}` : k === 'done' ? ` ${counts2.done}` : ''}</Link>
@@ -170,6 +169,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ l
             : actor && can(actor, 'tournament.create') ? t('אין עדיין תחרויות. צרו תחרות חדשה כדי להתחיל.') : t('אין תחרויות להצגה.')}
         </div>
       )}
+      </Fold>
     </Shell>
   );
 }

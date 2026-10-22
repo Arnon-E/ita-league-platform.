@@ -8,6 +8,7 @@ import { Platform } from 'react-native';
 import * as api from './src/api';
 import { More } from './src/More';
 import { MyHome } from './src/MyHome';
+import { FoldHeader } from './src/Fold';
 import { Bracket } from './src/Bracket';
 import { MatchCard, matchWhen } from './src/MatchCard';
 import { AdminScreen, ClubScreen, MatchScreen, NavCtx, PlayerScreen, useNav, type Focus, type Nav } from './src/Detail';
@@ -238,6 +239,7 @@ function TournamentList({ onOpen, authed, onGoAccount, go }: { onOpen: (id: stri
   const [q, setQ] = useState('');
   const [more, setMore] = useState(false);
   const [mineOnly, setMineOnly] = useState(true);
+  const [listOpen, setListOpen] = useState(true);
   const isDone = (x: { status: string; endDate: string }) => x.status === 'FINISHED' || x.status === 'CANCELLED' || +new Date(x.endDate) < Date.now();
   // open registration, then running, then upcoming soonest first, then finished latest first
   const rank = (x: { status: string; endDate: string }) => (x.status === 'REGISTRATION_OPEN' ? 0 : x.status === 'IN_PROGRESS' ? 1 : isDone(x) ? 3 : 2);
@@ -260,7 +262,8 @@ function TournamentList({ onOpen, authed, onGoAccount, go }: { onOpen: (id: stri
       {!staff && <Featured data={data} onOpen={onOpen} />}
       <Tiles data={data} go={go} onOpenStatus={() => setSt('open')} staff={staff} />
       <MyHome authed={authed} onOpen={onOpen} onGoAccount={onGoAccount} onAdmin={nav.admin} />
-      <Text style={s.h2}>{tr('תחרויות')}</Text>
+      <FoldHeader title={tr('תחרויות')} open={listOpen} onPress={() => setListOpen(!listOpen)} />
+      {listOpen && <>
       <TextInput style={[s.input, startAlign()]} placeholder={tr('חיפוש לפי שם תחרות')} placeholderTextColor={T.muted} value={q} onChangeText={setQ} />
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
         {([['up', tr('קרובות')], ['open', tr('הרשמה פתוחה')], ['live', tr('מתקיימת')], ['done', tr('הסתיימה')], ['all', tr('הכול')]] as const).map(([k, l]) => <Pressable key={k} style={[s.chip, st === k && s.chipOn]} onPress={() => setSt(k)}><Text style={st === k ? s.chipOnT : s.b}>{l}</Text></Pressable>)}
@@ -279,7 +282,8 @@ function TournamentList({ onOpen, authed, onGoAccount, go }: { onOpen: (id: stri
         </View>
       </>}
       <Status err={err} busy={busy} empty={!!data && !shown.length && tr('אין תחרויות לפי הסינון')} />
-      </View>} data={shown} keyExtractor={(t) => t.id} onRefresh={reload} refreshing={false} renderItem={({ item }) => (
+      </>}
+      </View>} data={listOpen ? shown : []} keyExtractor={(t) => t.id} onRefresh={reload} refreshing={false} renderItem={({ item }) => (
         <Pressable style={({ pressed }) => [s.card, pressed && s.pressed]} onPress={() => onOpen(item.id)}>
           <View style={[s.chip2, item.status === 'REGISTRATION_OPEN' ? s.chipOk : item.status === 'IN_PROGRESS' ? s.chipLive : null]}><Text style={s.chip2T}>{tr(STATUS_HE[item.status] ?? item.status)}</Text></View>
           <Text style={s.cardT}>{item.name}</Text>

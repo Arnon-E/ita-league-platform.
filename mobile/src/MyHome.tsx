@@ -5,6 +5,7 @@ import { T } from './theme';
 import { locale, tr } from './i18n';
 import { MatchCard, matchWhen } from './MatchCard';
 import { useNav } from './Detail';
+import { FoldHeader } from './Fold';
 
 const DOC: Record<string, string> = { ID_PHOTO: 'תמונת ת״ז', PARENT_CONSENT: 'אישור הורים', MEDICAL_CERTIFICATE: 'אישור רפואי', OTHER: 'אחר' };
 const when = (iso: string | null) => (iso ? new Date(iso).toLocaleString(locale(), { weekday: 'short', day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' }) : '');
@@ -15,6 +16,7 @@ export function MyHome({ authed, onOpen, onGoAccount, onAdmin }: { authed: boole
   const nav = useNav();
   const [h, setH] = useState<Awaited<ReturnType<typeof api.myHome>> | null>(null);
   const [err, setErr] = useState('');
+  const [workOpen, setWorkOpen] = useState(true), [peopleOpen, setPeopleOpen] = useState(true);
   const load = () => { if (authed) api.myHome().then(setH).catch(() => setH(null)); else setH(null); };
   useEffect(load, [authed]);
   const answer = (id: string, accept: boolean) => api.answerSuggestion(id, accept).then(() => { setErr(''); load(); }).catch((e) => setErr(e.message));
@@ -24,7 +26,8 @@ export function MyHome({ authed, onOpen, onGoAccount, onAdmin }: { authed: boole
     <View style={{ gap: 10 }}>
       {w && (
         <View style={{ gap: 10 }}>
-          <Text style={m.h2}>{tr(w.kind === 'ADMIN' ? 'מה מחכה לטיפול' : w.kind === 'CLUB' ? 'המועדון שלי' : 'התחרויות שלי')}</Text>
+          <FoldHeader title={tr(w.kind === 'ADMIN' ? 'מה מחכה לטיפול' : w.kind === 'CLUB' ? 'המועדון שלי' : 'התחרויות שלי')} open={workOpen} onPress={() => setWorkOpen(!workOpen)} />
+          {workOpen && <>
           {w.admin && <View style={m.stats}>{([['מסמכים לאישור', w.admin.pendingDocs], ['בקשות שיוך', w.admin.pendingClaims], ['הרשמה פתוחה', w.admin.openRegistration], ['מתקיימות', w.admin.inProgress]] as const).map(([l, n]) => <View key={l} style={m.stat}><Text style={m.statN}>{n}</Text><Text style={m.muted}>{tr(l)}</Text></View>)}</View>}
           {w.admin && !!onAdmin && <Pressable style={m.card} onPress={onAdmin}><Text style={{ fontWeight: '700', color: T.text, fontSize: 16 }}>{tr('לטיפול: מסמכים ובקשות שיוך')} ›</Text></Pressable>}
           {w.tournaments.map((x) => (
@@ -48,6 +51,7 @@ export function MyHome({ authed, onOpen, onGoAccount, onAdmin }: { authed: boole
               {w.club.top.map((p) => <View key={p.id} style={m.res}><Text style={m.b}>#{p.rank}</Text><Text style={[m.b, { flex: 1 }]} numberOfLines={1}>{p.name}</Text><Text style={m.muted}>{p.points}</Text></View>)}
             </View>
           )}
+          </>}
         </View>
       )}
       {(h.suggestions ?? []).length > 0 && (
@@ -66,8 +70,8 @@ export function MyHome({ authed, onOpen, onGoAccount, onAdmin }: { authed: boole
           {!!err && <Text style={{ color: T.bad }}>{err}</Text>}
         </View>
       )}
-      {h.people.length > 0 && <Text style={m.h2}>{tr(h.role === 'PLAYER' ? 'הבית שלי' : h.role === 'PARENT' ? 'הילדים שלי' : 'אני והילדים')}</Text>}
-      {h.people.map((p) => (
+      {h.people.length > 0 && <FoldHeader title={tr(h.role === 'PLAYER' ? 'הבית שלי' : h.role === 'PARENT' ? 'הילדים שלי' : 'אני והילדים')} open={peopleOpen} onPress={() => setPeopleOpen(!peopleOpen)} />}
+      {peopleOpen && h.people.map((p) => (
         <View key={p.id} style={m.card}>
           <Pressable style={({ pressed }) => [m.head, pressed && { opacity: 0.7 }]} onPress={() => nav.player(p.id)} accessibilityRole="link">
             <View style={m.av}><Text style={m.avT}>{p.name.split(' ').map((w) => w[0]).slice(0, 2).join('')}</Text></View>
