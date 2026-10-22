@@ -4,7 +4,7 @@ import { eq, sql } from 'drizzle-orm';
 import { schema } from '@/db';
 import { db } from '@/db';
 import { Shell } from '@/components/Shell';
-import { listTournaments } from '@/services/queries';
+import { categoryBriefs, listTournaments, tournamentsWithEntries } from '@/services/queries';
 import { getActor } from '@/lib/session';
 import { can } from '@/lib/permissions';
 import { fmtDate, LEVEL, STATUS } from '@/components/labels';
@@ -31,8 +31,8 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ l
     listTournaments(db),
     getActor(),
     homeCounts(db),
-    db.select({ tid: schema.categories.tournamentId, gender: schema.categories.gender, name: schema.categories.name, minBirthYear: schema.categories.minBirthYear, maxBirthYear: schema.categories.maxBirthYear }).from(schema.categories),
-    db.selectDistinct({ tid: schema.categories.tournamentId }).from(schema.entries).innerJoin(schema.categories, eq(schema.categories.id, schema.entries.categoryId)),
+    categoryBriefs(db),
+    tournamentsWithEntries(db),
   ]);
   // people who run tournaments manage rather than register; they also get to see (and restore) cancelled ones
   const staff = !!actor && can(actor, 'tournament.create');

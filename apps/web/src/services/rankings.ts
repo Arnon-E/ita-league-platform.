@@ -1,4 +1,4 @@
-import { eq, gte } from 'drizzle-orm';
+import { and, eq, gte } from 'drizzle-orm';
 import { computeRanking, type RankingRow, type RuleSet } from '@ita/rules-engine';
 import type { Db } from '@/db';
 import { schema } from '@/db';
@@ -7,8 +7,9 @@ const { pointsAwards, players } = schema;
 
 export async function rankingFor(db: Db, gender: 'MALE' | 'FEMALE' | 'OPEN', asOf: Date, rules: RuleSet): Promise<RankingRow[]> {
   const from = new Date(asOf.getTime() - rules.ranking.windowWeeks * 7 * 86400000);
-  const rows = await db.select({ a: pointsAwards, g: players.gender }).from(pointsAwards)
-    .innerJoin(players, eq(players.id, pointsAwards.playerId)).where(gte(pointsAwards.date, from));
+  // only the columns the computation needs, and only this gender's rows: this runs over every award of the window
+  const rows = await db.select({ a: { playerId: pointsAwards.playerId, tournamentId: pointsAwards.tournamentId, date: pointsAwards.date, points: pointsAwards.points, multiplier: pointsAwards.multiplier, kind: pointsAwards.kind }, g: players.gender }).from(pointsAwards)
+    .innerJoin(players, eq(players.id, pointsAwards.playerId)).where(gender === 'OPEN' ? gte(pointsAwards.date, from) : and(gte(pointsAwards.date, from), eq(players.gender, gender)));
   const results = rows.filter((r) => gender === 'OPEN' || r.g === gender).map(({ a }) => ({
     playerId: a.playerId, tournamentId: a.tournamentId ?? '', date: a.date, points: a.points,
     multiplier: a.multiplier, kind: (a.kind === 'doubles' ? 'doubles' : 'singles') as 'singles' | 'doubles',

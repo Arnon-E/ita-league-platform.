@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm';
 import { db, schema } from '@/db';
 import { apiActor, handlePublic } from '@/lib/api';
-import { listTournaments } from '@/services/queries';
+import { categoryBriefs, listTournaments, tournamentsWithEntries } from '@/services/queries';
 import { relevantFor } from '@/services/eligibility';
 import { myPlayersForRelevance } from '@/services/home';
 import { can } from '@/lib/permissions';
@@ -10,8 +10,8 @@ import { can } from '@/lib/permissions';
 export const GET = (req: Request) => handlePublic(async () => {
   const [allTs, actor, cats, withEntries] = await Promise.all([
     listTournaments(db), apiActor(req),
-    db.select({ tid: schema.categories.tournamentId, gender: schema.categories.gender, minBirthYear: schema.categories.minBirthYear, maxBirthYear: schema.categories.maxBirthYear }).from(schema.categories),
-    db.selectDistinct({ tid: schema.categories.tournamentId }).from(schema.entries).innerJoin(schema.categories, eq(schema.categories.id, schema.entries.categoryId)),
+    categoryBriefs(db),
+    tournamentsWithEntries(db),
   ]);
   // drafts and cancelled competitions nobody entered are not shown to the public; staff still see them (to publish or restore)
   const entered = new Set(withEntries.map((x) => x.tid));

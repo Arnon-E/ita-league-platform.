@@ -70,6 +70,13 @@ try {
       on conflict (email) do nothing returning id`;
     console.log(res.length ? '[db-init] first super admin created' : '[db-init] admin account already exists, left unchanged');
   }
+} catch (e) {
+  // A database that cannot be reached right now (over its plan's quota, suspended, a network blip) must not block shipping code that needs no schema change.
+  // Anything else (a failing migration, bad credentials) still fails the build.
+  const msg = String(e?.message ?? e);
+  if (/quota|ECONNREFUSED|ETIMEDOUT|ENOTFOUND|CONNECT_TIMEOUT|terminating connection|too many connections/i.test(msg)) {
+    console.warn('[db-init] database not reachable, skipping schema checks for this build:', msg.slice(0, 200));
+  } else throw e;
 } finally {
-  await sql.end();
+  await sql.end({ timeout: 5 }).catch(() => {});
 }

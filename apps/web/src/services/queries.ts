@@ -1,4 +1,5 @@
 import { and, asc, desc, eq, inArray } from 'drizzle-orm';
+import { memo } from '@/lib/memo';
 import type { Db } from '@/db';
 import { schema } from '@/db';
 
@@ -12,7 +13,8 @@ export async function entryNames(db: Db, categoryIds: string[]): Promise<Map<str
 }
 
 export async function listTournaments(db: Db) {
-  return db.select().from(tournaments).orderBy(desc(tournaments.startDate));
+  // the home page and the app list read this on every visit; a few seconds of sharing is invisible and saves most of the traffic
+  return memo('tournaments', 20_000, () => db.select().from(tournaments).orderBy(desc(tournaments.startDate)));
 }
 
 export async function tournamentDetail(db: Db, id: string) {
@@ -45,3 +47,13 @@ export async function playersNotIn(db: Db, categoryId: string, gender: string) {
 }
 
 export { and };
+
+/** Every category's tournament, gender, name and birth-year limits: what the home page and the app use to say which competitions fit someone. */
+export function categoryBriefs(db: Db) {
+  return memo('category-briefs', 20_000, () => db.select({ tid: categories.tournamentId, gender: categories.gender, name: categories.name, minBirthYear: categories.minBirthYear, maxBirthYear: categories.maxBirthYear }).from(categories));
+}
+
+/** Ids of tournaments that have at least one entry. */
+export function tournamentsWithEntries(db: Db) {
+  return memo('tournaments-with-entries', 20_000, () => db.selectDistinct({ tid: categories.tournamentId }).from(entries).innerJoin(categories, eq(categories.id, entries.categoryId)));
+}

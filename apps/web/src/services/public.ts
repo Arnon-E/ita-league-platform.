@@ -3,6 +3,7 @@ import type { Db } from '@/db';
 import { schema } from '@/db';
 import { PLACEHOLDER_SQL } from '@/lib/placeholders';
 import { entryNames } from './queries';
+import { memo } from '@/lib/memo';
 import { rankingFor } from './rankings';
 import { ensureDefaultRuleSet, loadRuleSet } from './rules';
 
@@ -38,8 +39,9 @@ export async function searchPlayers(db: Db, q: string, clubId?: string, limit = 
 }
 
 export async function listClubs(db: Db) {
-  return db.select({ c: clubs, n: sql<number>`count(${players.id})::int` }).from(clubs).leftJoin(players, eq(players.clubId, clubs.id))
-    .groupBy(clubs.id).orderBy(asc(clubs.name));
+  // every club with its player count; clubs change rarely, so one query a minute per instance is enough
+  return memo('clubs', 60_000, () => db.select({ c: clubs, n: sql<number>`count(${players.id})::int` }).from(clubs).leftJoin(players, eq(players.clubId, clubs.id))
+    .groupBy(clubs.id).orderBy(asc(clubs.name)));
 }
 
 /** A player's career: entries with tournament, matches played and ranking-point awards. */
@@ -114,21 +116,34 @@ export function inAgeGroup(birth: Date, group: number | undefined, asOf = new Da
 
 export interface RankingTableRow { rank: number; playerId: string; name: string; club: string | null; points: number; counted: number }
 
+interface BaseRow { playerId: string; name: string; club: string | null; clubId: string | null; birth: Date; points: number; counted: number }
+
+/** Everyone ranked in a gender with the few columns the table needs. Cached for a few minutes: it is computed over thousands of rows and moves only when results are imported. */
+function rankingBase(db: Db, gender: 'MALE' | 'FEMALE'): Promise<BaseRow[]> {
+  return memo(`ranking:${gender}`, 5 * 60_000, async () => {
+    const rs = await ensureDefaultRuleSet(db);
+    const rows = await rankingFor(db, gender, new Date(), await loadRuleSet(db, rs.id));
+    if (!rows.length) return [];
+    const ps = await db.select({ id: players.id, first: players.firstName, last: players.lastName, birth: players.birthDate, clubId: players.clubId, club: clubs.name })
+      .from(players).leftJoin(clubs, eq(clubs.id, players.clubId)).where(inArray(players.id, rows.map((r) => r.playerId)));
+    const byId = new Map(ps.map((x) => [x.id, x]));
+    const out: BaseRow[] = [];
+    for (const r of rows) {
+      const x = byId.get(r.playerId);
+      if (x) out.push({ playerId: r.playerId, name: `${x.first} ${x.last}`, club: x.club, clubId: x.clubId, birth: x.birth, points: r.points, counted: r.counted.length });
+    }
+    return out;
+  });
+}
+
 /** National ranking, optionally narrowed to an age group and/or a club. Ranks are renumbered inside the narrowed list. */
 export async function rankingTable(db: Db, o: { gender: 'MALE' | 'FEMALE'; age?: number; clubId?: string }): Promise<RankingTableRow[]> {
-  const rs = await ensureDefaultRuleSet(db);
   const asOf = new Date();
-  const rows = await rankingFor(db, o.gender, asOf, await loadRuleSet(db, rs.id));
-  if (!rows.length) return [];
-  const ps = await db.select({ p: players, club: clubs.name }).from(players).leftJoin(clubs, eq(clubs.id, players.clubId)).where(inArray(players.id, rows.map((r) => r.playerId)));
-  const byId = new Map(ps.map((x) => [x.p.id, x]));
   const out: RankingTableRow[] = [];
-  for (const r of rows) {
-    const x = byId.get(r.playerId);
-    if (!x) continue;
-    if (!inAgeGroup(x.p.birthDate, o.age, asOf)) continue;
-    if (o.clubId && x.p.clubId !== o.clubId) continue;
-    out.push({ rank: out.length + 1, playerId: r.playerId, name: `${x.p.firstName} ${x.p.lastName}`, club: x.club, points: r.points, counted: r.counted.length });
+  for (const r of await rankingBase(db, o.gender)) {
+    if (!inAgeGroup(r.birth, o.age, asOf)) continue;
+    if (o.clubId && r.clubId !== o.clubId) continue;
+    out.push({ rank: out.length + 1, playerId: r.playerId, name: r.name, club: r.club, points: r.points, counted: r.counted });
   }
   return out;
 }
