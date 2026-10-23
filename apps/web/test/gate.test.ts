@@ -45,6 +45,11 @@ describe('10-minute sync gate', () => {
     expect(shouldSync(at('2026-10-23T07:00:00Z'), [{ name: 'x' }, null, { start: '2026-10-23' }])).toMatchObject({ run: false });
   });
 
+  it('an unknown list runs inside the hours only', () => {
+    expect(shouldSync(at('2026-10-23T07:00:00Z'), null).run).toBe(true);
+    expect(shouldSync(at('2026-10-23T01:00:00Z'), null).run).toBe(false); // 04:00 at night
+  });
+
   it('a missing or old saved list means "run", never silence', () => {
     const dir = mkdtempSync(path.join(tmpdir(), 'gate-'));
     expect(readCompetitions(dir)).toBeNull();
