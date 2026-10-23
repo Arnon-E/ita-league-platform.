@@ -91,7 +91,7 @@ export function DoublesView({ cats, labels }: { cats: DoublesViewCat[]; labels: 
         const maxSets = Math.max(0, ...doneShown.map((m) => m.sets.length)); // no set columns until something is played
         const doneCount = ms.filter((m) => m.status !== 'SCHEDULED').length;
         return (
-          <div key={g.group} style={{ border: LINE, borderRadius: 14, overflow: 'hidden', background: 'var(--surface, #fff)' }}>
+          <div key={g.group} className="dgrp" style={{ border: LINE, borderRadius: 14, overflow: 'hidden', background: 'var(--surface, #fff)' }}>
             <button type="button" onClick={() => toggle(g.group)} aria-expanded={open} style={{ all: 'unset', boxSizing: 'border-box', width: '100%', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', background: 'var(--surface2, #f5f6f1)', borderBottom: open ? LINE : 'none' }}>
               <span style={{ flex: 1, minWidth: 0 }}>
                 <strong style={{ fontSize: 17, display: 'block' }}>{g.group}</strong>
@@ -145,9 +145,9 @@ export function DoublesView({ cats, labels }: { cats: DoublesViewCat[]; labels: 
                       {g.rows.map((r) => (
                         <tr key={r.pair}>
                           <td style={{ ...cell, textAlign: 'center' }}>{r.rank}</td>
-                          <td style={{ ...cell, width: '100%' }}>{r.pair.split(' / ').map((n) => <div key={n} style={{ whiteSpace: 'nowrap' }}>{n}</div>)}</td>
-                          <td style={{ ...cell, textAlign: 'center', minWidth: 48 }}>{r.played}</td><td style={{ ...cell, textAlign: 'center', minWidth: 48 }}>{r.wins}</td><td style={{ ...cell, textAlign: 'center', minWidth: 48 }}>{r.losses}</td>
-                          <td dir="ltr" style={{ ...cell, textAlign: 'center', whiteSpace: 'nowrap', minWidth: 56 }}>{r.setsFor}-{r.setsAgainst}</td>
+                          <td style={cell}>{r.pair.split(' / ').map((n) => <div key={n} style={{ whiteSpace: 'nowrap' }}>{n}</div>)}</td>
+                          <td style={{ ...cell, textAlign: 'center', width: '13%' }}>{r.played}</td><td style={{ ...cell, textAlign: 'center', width: '13%' }}>{r.wins}</td><td style={{ ...cell, textAlign: 'center', width: '13%' }}>{r.losses}</td>
+                          <td dir="ltr" style={{ ...cell, textAlign: 'center', whiteSpace: 'nowrap', width: '15%' }}>{r.setsFor}-{r.setsAgainst}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -159,7 +159,7 @@ export function DoublesView({ cats, labels }: { cats: DoublesViewCat[]; labels: 
         );
       })}
       {/* matches outside the groups (knockout, qualifiers) */}
-      {koCards.length > 0 && <div className="grid">{koCards.map((m) => <MatchScore key={m.id} aName={m.a} bName={m.b} sets={m.status === 'SCHEDULED' ? [] : m.sets} status={m.status} winner={m.winner} caption={m.caption} when={m.when} labels={lab} />)}</div>}
+      {koCards.length > 0 && <div className="grid dgrp">{koCards.map((m) => <MatchScore key={m.id} aName={m.a} bName={m.b} sets={m.status === 'SCHEDULED' ? [] : m.sets} status={m.status} winner={m.winner} caption={m.caption} when={m.when} labels={lab} />)}</div>}
       {!visible.length && !koCards.length && !cat.bracket && <div className="card muted">—</div>}
     </div>
   );
