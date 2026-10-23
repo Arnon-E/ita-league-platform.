@@ -1,6 +1,7 @@
 'use client';
 import { Fragment, useMemo, useState } from 'react';
 import { MatchScore } from '@/components/MatchScore';
+import { DoublesBracket, type BracketTree } from '@/components/DoublesBracket';
 
 type SetScore = { a: number; b: number; superTb?: boolean };
 export interface DoublesViewMatch { id: string; a: string[]; b: string[]; sets: SetScore[]; status: string; winner: 'a' | 'b' | null; caption: string; when?: string; group: string; court?: string; slot?: [string, string] }
@@ -8,10 +9,11 @@ export interface DoublesViewCat {
   name: string;
   tables: { group: string; info?: string; rows: { pair: string; rank: number; played: number; wins: number; losses: number; setsFor: number; setsAgainst: number }[] }[];
   matches: DoublesViewMatch[];
+  bracket?: BracketTree;
 }
 export interface DoublesViewLabels {
   pair: string; played: string; wins: string; losses: string; sets: string; walkover: string; retired: string; void: string; live: string; won: string;
-  search: string; all: string; upcoming: string; done: string; expandAll: string; collapseAll: string; of: string;
+  bracket: string; search: string; all: string; upcoming: string; done: string; expandAll: string; collapseAll: string; of: string;
 }
 
 const LINE = '1px solid var(--line, #e1e5df)';
@@ -139,9 +141,16 @@ export function DoublesView({ cats, labels }: { cats: DoublesViewCat[]; labels: 
           </div>
         );
       })}
+      {/* the knockout tree, as soon as Loglig publishes it (before any knockout match has a time) */}
+      {cat.bracket && !filtered && (
+        <div style={{ border: LINE, borderRadius: 14, background: 'var(--surface, #fff)', padding: '12px 14px' }}>
+          <strong style={{ fontSize: 17, display: 'block', marginBottom: 10 }}>{labels.bracket}</strong>
+          <DoublesBracket tree={cat.bracket} />
+        </div>
+      )}
       {/* matches outside the groups (knockout, qualifiers) */}
       {koCards.length > 0 && <div className="grid">{koCards.map((m) => <MatchScore key={m.id} aName={m.a} bName={m.b} sets={m.status === 'SCHEDULED' ? [] : m.sets} status={m.status} winner={m.winner} caption={m.caption} when={m.when} labels={lab} />)}</div>}
-      {!visible.length && !koCards.length && <div className="card muted">—</div>}
+      {!visible.length && !koCards.length && !cat.bracket && <div className="card muted">—</div>}
     </>
   );
 }

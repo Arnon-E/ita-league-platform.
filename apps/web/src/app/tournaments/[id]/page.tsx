@@ -7,6 +7,7 @@ import { getActor } from '@/lib/session';
 import { Flash, Shell } from '@/components/Shell';
 import { FollowButton } from '@/components/FollowButton';
 import { DoublesView } from '@/components/DoublesView';
+import type { BracketTree } from '@/components/DoublesBracket';
 import { MatchScore, matchWhen } from '@/components/MatchScore';
 import { eq } from 'drizzle-orm';
 import { Gallery } from './Gallery';
@@ -54,7 +55,7 @@ export default async function TournamentPage({ params, searchParams }: { params:
     draw: d.draws.some((x) => x.publishedAt),
     results: d.ms.some((m) => m.status !== 'SCHEDULED'),
     schedule: d.ms.some((m) => m.scheduledStart && m.aEntryId && m.bEntryId),
-    doubles: d.doubles.length > 0,
+    doubles: d.doubles.length > 0 || d.doublesBrackets.length > 0,
     gallery: photoCount > 0,
   };
   // A signed-in player or parent lands on their own player's category: the filters, the category and the tab are chosen for them.
@@ -606,13 +607,14 @@ const slotOf = (d: Date): [string, string] => [
 async function DoublesTab({ d }: { d: Detail }) {
   const tt = await tr();
   const groupLabel = (g: string) => (tt('שלב הבתים') === 'שלב הבתים' ? g : g.replace(/^בית(?=\s*\d)/, 'Group'));
-  const names = [...new Set(d.doubles.map((m) => m.category))].sort((x, y) => x.localeCompare(y, 'he', { numeric: true }));
+  const names = [...new Set([...d.doubles.map((m) => m.category), ...d.doublesBrackets.map((b) => b.category)])].sort((x, y) => x.localeCompare(y, 'he', { numeric: true }));
   // every category goes to the browser at once, so switching between them does not reload the page
   const cats = names.map((name) => {
     const ms = d.doubles.filter((m) => m.category === name);
     const sorted = [...ms].sort((x, y) => (x.stage === y.stage ? 0 : x.stage === 'GROUP' ? -1 : 1) || (x.groupName ?? '').localeCompare(y.groupName ?? '', 'he', { numeric: true }) || +(x.scheduledStart ?? 0) - +(y.scheduledStart ?? 0));
     return {
       name,
+      bracket: d.doublesBrackets.find((b) => b.category === name)?.tree as BracketTree | undefined,
       tables: doublesTables(ms).map((g) => {
         // where and when the group starts: its earliest match
         const first = sorted.filter((m) => m.stage === 'GROUP' && (m.groupName ?? 'בית 1') === g.group && m.scheduledStart).sort((x, y) => +x.scheduledStart! - +y.scheduledStart!)[0];
@@ -625,7 +627,7 @@ async function DoublesTab({ d }: { d: Detail }) {
       })),
     };
   });
-  return <DoublesView cats={cats} labels={{ pair: tt('זוג'), played: tt('מש׳'), wins: tt('נצ׳'), losses: tt('הפ׳'), sets: tt('סטים'), walkover: tt('ווק-אובר'), retired: tt('פרישה'), void: tt('בוטל'), live: tt('חי'), won: tt('ניצח'), search: tt('חיפוש שחקן'), all: tt('הכל'), upcoming: tt('טרם שוחקו'), done: tt('הסתיימו'), expandAll: tt('פתיחת הכל'), collapseAll: tt('סגירת הכל'), of: tt('מתוך') }} />;
+  return <DoublesView cats={cats} labels={{ bracket: tt('עץ'), pair: tt('זוג'), played: tt('מש׳'), wins: tt('נצ׳'), losses: tt('הפ׳'), sets: tt('סטים'), walkover: tt('ווק-אובר'), retired: tt('פרישה'), void: tt('בוטל'), live: tt('חי'), won: tt('ניצח'), search: tt('חיפוש שחקן'), all: tt('הכל'), upcoming: tt('טרם שוחקו'), done: tt('הסתיימו'), expandAll: tt('פתיחת הכל'), collapseAll: tt('סגירת הכל'), of: tt('מתוך') }} />;
 }
 
 async function Results({ d, scorer, hl }: { d: Detail; scorer: boolean; hl: Set<string> }) {

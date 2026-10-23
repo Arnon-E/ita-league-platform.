@@ -17,7 +17,16 @@ export interface MatchIn {
 }
 export interface CategoryIn { name: string; source: string; gender: Gender; age: number | null; format: 'KNOCKOUT' | 'GROUPS_KNOCKOUT'; matches: MatchIn[] }
 /** A doubles draw ("בנים 12 זוגות"): each side is a pair, "A / B". */
-export interface DoublesIn { name: string; source: string; gender: Gender; age: number | null; matches: MatchIn[] }
+export interface BracketNode { n: string; c: BracketNode[] }
+export interface DoublesIn { name: string; source: string; gender: Gender; age: number | null; matches: MatchIn[]; bracket?: BracketNode }
+
+/** The knockout tree from the sync, cleaned: names trimmed, at most two children, depth and size limited. */
+function cleanBracket(x: unknown, depth = 0, count = { n: 0 }): BracketNode | null {
+  const o = x as { n?: unknown; c?: unknown } | null;
+  if (!o || typeof o !== 'object' || depth > 7 || ++count.n > 300) return null;
+  const kids = (Array.isArray(o.c) ? o.c : []).slice(0, 2).map((k) => cleanBracket(k, depth + 1, count));
+  return { n: clean(o.n, 120), c: kids.filter((k): k is BracketNode => !!k) };
+}
 export interface CompetitionIn {
   kind: 'competition'; name: string; start: string; end: string; feeShekel: number; level: 'NATIONAL' | 'REGIONAL' | 'INTERNATIONAL' | 'CIRCUIT';
   section?: 'YOUTH' | 'ADULTS' | 'MASTERS' | 'OTHER'; sourceUrl?: string; registerUrl?: string; registrationCloses?: string | null; venues: { club: string; address: string }[]; categories: CategoryIn[];
@@ -91,7 +100,9 @@ export function validateCompetitionImport(x: unknown): CompetitionIn {
       });
     }
     total += ms.length;
-    doubles.push({ name: cname, source: clean(c.source, 40), gender: c.gender === 'FEMALE' ? 'FEMALE' : c.gender === 'MALE' ? 'MALE' : genderOfName(cname) ?? 'OPEN', age: Number.isInteger(c.age) ? (c.age as number) : null, matches: ms });
+    const bracket = cleanBracket(c.bracket);
+    if (!ms.length && !bracket?.c.length) continue;
+    doubles.push({ name: cname, source: clean(c.source, 40), gender: c.gender === 'FEMALE' ? 'FEMALE' : c.gender === 'MALE' ? 'MALE' : genderOfName(cname) ?? 'OPEN', age: Number.isInteger(c.age) ? (c.age as number) : null, matches: ms, ...(bracket?.c.length ? { bracket } : {}) });
   }
   if (total > MAX_MATCHES) throw new Error('too many matches');
   return {
@@ -378,8 +389,11 @@ export async function importCompetition(db: Db, input: CompetitionIn, now = new 
     if (input.doubles?.length) {
       const names = input.doubles.map((c) => c.name);
       await tx.execute(sql`delete from doubles_matches where tournament_id = ${tid} and category in (select jsonb_array_elements_text(${JSON.stringify(names)}::jsonb))`);
+      await tx.execute(sql`delete from doubles_brackets where tournament_id = ${tid} and category in (select jsonb_array_elements_text(${JSON.stringify(names)}::jsonb))`);
+      for (const c of input.doubles) if (c.bracket) await tx.execute(sql`insert into doubles_brackets (tournament_id, category, tree) values (${tid}, ${c.name}, ${JSON.stringify(c.bracket)}::jsonb)`);
       if (input.doubles.some((c) => c.matches.length)) {
         await tx.execute(sql`delete from doubles_matches where tournament_id = ${tid} and category not in (select jsonb_array_elements_text(${JSON.stringify(names)}::jsonb))`);
+        await tx.execute(sql`delete from doubles_brackets where tournament_id = ${tid} and category not in (select jsonb_array_elements_text(${JSON.stringify(names)}::jsonb))`);
       }
       for (const c of input.doubles) {
         const pid = (name: string) => pick(c.gender, name, c.age) ?? null;

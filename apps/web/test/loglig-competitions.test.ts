@@ -249,6 +249,28 @@ describe('loglig competition mirror', () => {
     expect(table!.rows.map((r) => [r.pair, r.rank, r.wins, r.played])).toEqual([['א א / ב ב', 1, 1, 1], ['ה ה / ו ו', 2, 0, 0], ['ג ג / ד ד', 3, 0, 1]]);
   });
 
+  it('keeps the knockout tree of a doubles category (even before it has matches), replaces it on the next import and shows it in the detail', async () => {
+    const { tournamentDetail } = await import('@/services/queries');
+    const tree = (w: string) => ({ n: w, c: [{ n: 'א א / ב ב', c: [] }, { n: 'ג ג / ד ד', c: [] }] });
+    const run = (bracket: unknown, matches: object[] = []) => importCompetition(db, validateCompetitionImport({
+      kind: 'competition', name: 'סבב עץ זוגות', start: '2026-10-16', end: '2026-10-26', feeShekel: 0, level: 'NATIONAL', venues: [], categories: [],
+      doubles: [{ name: 'בנים 14', source: '9', gender: 'MALE', age: 14, matches, bracket }],
+    }), new Date('2026-10-21'));
+    await run(tree(''));
+    const [t] = await db.select().from(schema.tournaments).where(eq(schema.tournaments.name, 'סבב עץ זוגות'));
+    let d = await tournamentDetail(db, t!.id);
+    expect(d!.doubles).toEqual([]);
+    expect(d!.doublesBrackets.map((b) => [b.category, b.tree])).toEqual([['בנים 14', tree('')]]);
+    await run(tree('א א / ב ב'), [m({ stage: 'KO', round: 1, a: p('א א / ב ב'), b: p('ג ג / ד ד'), sets: [{ a: 6, b: 1 }, { a: 6, b: 2 }] })]);
+    d = await tournamentDetail(db, t!.id);
+    expect(d!.doublesBrackets).toHaveLength(1); // replaced, not duplicated
+    expect(d!.doublesBrackets[0]!.tree).toEqual(tree('א א / ב ב'));
+    expect(d!.doubles).toHaveLength(1);
+    await run(null, []); // a tree-less, match-less document is ignored: nothing is wiped by an empty page
+    expect((await tournamentDetail(db, t!.id))!.doublesBrackets).toHaveLength(1);
+    expect(() => validateCompetitionImport({ kind: 'competition', name: 'x', start: '2026-10-16', end: '2026-10-26', venues: [], categories: [], doubles: [{ name: 'ב', source: '1', gender: 'MALE', age: 14, matches: [], bracket: { n: 'x', c: Array.from({ length: 5 }, () => ({ n: 'y', c: [] })) } }] })).not.toThrow(); // extra children are cut to two
+  });
+
   it('boys/girls categories named נערים / נערות / ילדים reuse the ranked player instead of creating an OPEN twin', async () => {
     await importRankings(db, { gender: 'MALE', rows: [{ rank: 1, name: 'עומר תאום', birthYear: 2010, club: 'מועדון א', national: 10, international: 0, total: 10 }] });
     await importRankings(db, { gender: 'FEMALE', rows: [{ rank: 1, name: 'רוני תאומה', birthYear: 2010, club: 'מועדון א', national: 10, international: 0, total: 10 }] });

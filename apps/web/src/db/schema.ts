@@ -171,6 +171,13 @@ export const doublesMatches = pgTable('doubles_matches', {
   court: text('court'),
 }, (t) => [index('doubles_tournament_idx').on(t.tournamentId), index('doubles_a1_idx').on(t.a1), index('doubles_a2_idx').on(t.a2), index('doubles_b1_idx').on(t.b1), index('doubles_b2_idx').on(t.b2)]);
 
+/** The knockout tree of a doubles category as Loglig draws it: { n: pair or winner's name ('' until decided), c: [two children] }. Rebuilt with the doubles. */
+export const doublesBrackets = pgTable('doubles_brackets', {
+  tournamentId: text('tournament_id').notNull().references(() => tournaments.id, { onDelete: 'cascade' }),
+  category: text('category').notNull(),
+  tree: jsonb('tree').notNull(),
+}, (t) => [primaryKey({ columns: [t.tournamentId, t.category] })]);
+
 /**
  * A result corrected by hand where the federation's page cannot tell it (a match retired at a tied score, "6-6 Ret"). Matched by
  * competition and the two players' names, and re-applied on every import so the sync never undoes it.

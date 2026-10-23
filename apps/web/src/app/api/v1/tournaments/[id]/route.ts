@@ -23,5 +23,6 @@ export const GET = (_req: Request, ctx: { params: Promise<{ id: string }> }) => 
       a: m.aName.split(' / '), b: m.bName.split(' / '), sets: m.sets, winner: m.winner, court: m.court, start: m.scheduledStart, kind: m.scheduleKind,
     })),
     doublesTables: doublesTables(d.doubles),
+    doublesBrackets: d.doublesBrackets.map((b) => ({ category: b.category, tree: b.tree })),
   };
 });

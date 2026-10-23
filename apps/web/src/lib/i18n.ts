@@ -190,6 +190,7 @@ const EN: Record<string, string> = {
   'בית': 'Home', 'שלב הבתים': 'Group stage', 'ללא הכרעה': 'Undecided',
   'מחזור': 'Round',
   'הדחה': 'Knockout',
+  'עץ': 'Bracket',
   'סטטוס': 'Status',
   'הלוח טרם פורסם.': 'The schedule has not been published yet.',
   'גרסה להדפסה': 'Print version',

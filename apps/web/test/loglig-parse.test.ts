@@ -1,5 +1,43 @@
 import { describe, expect, it } from 'vitest';
-import { ageOf, genderOf, israelToUtc, koRound, parseCategoryPage, parseCompetitionPage, parseDateRange, parsePlayer, parseScore } from '../scripts/loglig-sync/parse.mjs';
+import { ageOf, buildDoubles, genderOf, israelToUtc, koRound, parseBracket, parseCategoryPage, parseCompetitionPage, parseDateRange, parsePlayer, parseScore } from '../scripts/loglig-sync/parse.mjs';
+
+const leaf = (name: string) => ({ text: { name, desc: '.' }, HTMLclass: 'first-draw', children: null });
+const inner = (name: string, kids: object[]) => ({ text: { name: name ? name : 'Winner', desc: '-' }, HTMLclass: null, children: kids });
+/** What Loglig's schedule page carries: the main draw first, then a tiny third-place tree. */
+const pageWithTree = (tree: object) => `<html><script>
+  $(document).ready(function () {
+    tree_structure.chart.container = "#WinnerDiv_1";
+    tree_structure.nodeStructure = ${JSON.stringify(tree)};
+    new Treant(tree_structure);
+    tree_structure.chart.container = "#ThirdPlaceDiv_1";
+    tree_structure.nodeStructure = ${JSON.stringify(inner('', [leaf('Loser'), leaf('Loser')]))};
+  });</script></html>`;
+
+describe('loglig knockout tree', () => {
+  it('reads the main draw: pairs on the leaves, "" for a round not played yet, the winner\'s name once it is', () => {
+    const tree = inner('', [
+      inner('אבי לוי / בני כהן', [leaf('אבי לוי / בני כהן'), leaf('גדי שמש / דני ברק')]),
+      inner('', [leaf('הלל אב / ויקי גל'), leaf('Bye')]),
+    ]);
+    expect(parseBracket(pageWithTree(tree))).toEqual({ n: '', c: [
+      { n: 'אבי לוי / בני כהן', c: [{ n: 'אבי לוי / בני כהן', c: [] }, { n: 'גדי שמש / דני ברק', c: [] }] },
+      { n: '', c: [{ n: 'הלל אב / ויקי גל', c: [] }, { n: '', c: [] }] },
+    ] });
+  });
+
+  it('is null without a tree, or when the JSON is broken', () => {
+    expect(parseBracket('<html><script>var x = 1;</script></html>')).toBeNull();
+    expect(parseBracket('<script>tree_structure.chart.container = "#WinnerDiv_1"; tree_structure.nodeStructure = {not json};</script>')).toBeNull();
+  });
+
+  it('a category with a tree and no matches yet still becomes a doubles document that carries the tree', () => {
+    const bracket = parseBracket(pageWithTree(inner('', [leaf('א א / ב ב'), leaf('ג ג / ד ד')])));
+    const doc = buildDoubles({ competition: 'סבב', category: 'בנים 14', matches: [], bracket }, '', 7);
+    expect(doc).toMatchObject({ name: 'בנים 14', source: '7', gender: 'MALE', age: 14, matches: [] });
+    expect(doc!.bracket).toEqual(bracket);
+    expect(buildDoubles({ competition: 'סבב', category: 'בנים 14', matches: [], bracket: null }, '', 7)).toBeNull();
+  });
+});
 
 describe('loglig page parsing', () => {
   it('reads Hebrew date ranges', () => {

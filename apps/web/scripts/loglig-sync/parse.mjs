@@ -162,7 +162,7 @@ export function parseCategoryPage(html) {
       a: parsePlayer(c[7]), b: parsePlayer(c[9]), score: c[11] ?? '', ...sc,
     });
   }
-  return { competition: tm?.[1] ?? '', category: tm?.[2] ?? title, matches };
+  return { competition: tm?.[1] ?? '', category: tm?.[2] ?? title, matches, bracket: parseBracket(html) };
 }
 
 /** Round number for a knockout slot label "a - b": b is the round size (2 = final). a > 1 is a classification match. */
@@ -191,7 +191,35 @@ export function buildCategory(page, label, source) {
 
 /** The doubles of a category page ("בנים 12 זוגות"): matches whose two sides are pairs, "A / B". Same shape as buildCategory. */
 export function buildDoubles(page, label, source) {
-  return build(page, label, source, page.matches.filter((m) => m.a.name.includes('/') && m.b.name.includes('/')));
+  const doc = build(page, label, source, page.matches.filter((m) => m.a.name.includes('/') && m.b.name.includes('/')));
+  if (!page.bracket) return doc;
+  // the draw tree is published before any knockout match is: a category can have a tree and nothing else yet
+  const base = doc ?? { name: label && !page.category.includes(label) ? `${page.category} · ${label}` : page.category, source: String(source), gender: genderOf(page.category), age: ageOf(page.category), format: 'KNOCKOUT', matches: [] };
+  return { ...base, bracket: page.bracket };
+}
+
+/**
+ * The knockout tree of a category page. Loglig draws it in the browser from JSON inside a script ("tree_structure.nodeStructure = {...}"):
+ * leaves are the pairs of the first round, every inner node is "Winner" until that match is played, then the winner's name.
+ * Returns { n: name or '' (not decided yet), c: [children] } for the main draw, or null when the page has no tree.
+ */
+export function parseBracket(html) {
+  for (const sc of html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/gi)) {
+    const body = sc[1];
+    const at = body.search(/tree_structure\.chart\.container\s*=\s*"#WinnerDiv/);
+    if (at < 0) continue;
+    const m = body.slice(at).match(/tree_structure\.nodeStructure\s*=\s*(\{[^\n]*\});?/);
+    if (!m) continue;
+    let root; try { root = JSON.parse(m[1]); } catch { continue; }
+    const conv = (n, depth) => {
+      if (!n || typeof n !== 'object' || depth > 8) return { n: '', c: [] };
+      const raw = n.text?.name; const name = strip(String(typeof raw === 'object' && raw ? raw.val ?? '' : raw ?? ''));
+      return { n: /^(winner|loser|bye)?$/i.test(name) ? '' : name, c: (Array.isArray(n.children) ? n.children : []).slice(0, 2).map((x) => conv(x, depth + 1)) };
+    };
+    const tree = conv(root, 0);
+    return tree.c.length ? tree : null;
+  }
+  return null;
 }
 
 function build(page, label, source, matchesIn) {
