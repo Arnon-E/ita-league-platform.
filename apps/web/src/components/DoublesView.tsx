@@ -73,7 +73,7 @@ export function DoublesView({ cats, labels }: { cats: DoublesViewCat[]; labels: 
         <section>
           <h2>{labels.bracket}</h2>
           <DoublesBracket tree={cat.bracket} pending={labels.pending} tt={(s) => labels.rounds[s] ?? s}
-            results={cat.matches.filter((m) => !m.group).map((m) => ({ a: m.a, b: m.b, sets: m.sets, status: m.status, winner: m.winner }))} />
+            results={cat.matches.filter((m) => !m.group).map((m) => ({ a: m.a, b: m.b, sets: m.sets, status: m.status, winner: m.winner, meta: [m.when, m.court].filter(Boolean).join(' · ') }))} />
         </section>
       )}
       {visible.map(({ g, ms, shown }) => {

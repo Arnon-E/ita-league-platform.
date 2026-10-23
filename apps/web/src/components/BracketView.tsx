@@ -5,7 +5,7 @@ import { roundName } from '@/services/bracket';
 /** One side of a bracket box: the name(s) (a pair has two), the sets from this side's point of view, and whether it won / is the viewer's own. */
 export interface BracketSide { names: string[]; sets: ReactNode; win?: boolean; me?: boolean }
 /** A match box; `href` makes it a link (singles open the match page). */
-export interface BracketCell { href?: string; a: BracketSide; b: BracketSide }
+export interface BracketCell { href?: string; a: BracketSide; b: BracketSide; /** when and where, e.g. "St 25.10.2026 10:00 · מרה"ט חיפה" */ meta?: string }
 
 /**
  * The knockout tree used by every competition, singles and doubles: columns from the first round to the final (cols[0] is the first round,
@@ -19,6 +19,7 @@ export function BracketView({ cols, tt, pending }: { cols: (BracketCell | null)[
       <span className="sc" dir="ltr">{s.sets}</span>
     </div>
   );
+  const meta = (c: BracketCell) => (c.meta ? <div className="meta" dir="auto">{c.meta}</div> : null);
   return (
     <div className="card tree-card">
       <div className="tree">
@@ -27,7 +28,7 @@ export function BracketView({ cols, tt, pending }: { cols: (BracketCell | null)[
           const box = (c: BracketCell | null, key: number) => (
             <div key={key} className="tcell">
               {c
-                ? c.href ? <Link href={c.href} className="tm">{side(c.a)}{side(c.b)}</Link> : <div className="tm">{side(c.a)}{side(c.b)}</div>
+                ? c.href ? <Link href={c.href} className="tm">{side(c.a)}{side(c.b)}{meta(c)}</Link> : <div className="tm">{side(c.a)}{side(c.b)}{meta(c)}</div>
                 : <div className={`tm empty ${k ? '' : 'bye'}`} />}
             </div>
           );

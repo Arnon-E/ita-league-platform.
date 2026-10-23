@@ -3,7 +3,7 @@ import { BracketView, type BracketCell, type BracketSide } from '@/components/Br
 /** A knockout tree as the importer stores it: the leaves are the first-round pairs, an inner node holds the winner's name ('' until it is played). */
 export interface BracketTree { n: string; c: BracketTree[] }
 /** A played or scheduled knockout match of the category, to put its sets in the tree. */
-export interface BracketResult { a: string[]; b: string[]; sets: { a: number; b: number }[]; status: string; winner: 'a' | 'b' | null }
+export interface BracketResult { a: string[]; b: string[]; sets: { a: number; b: number }[]; status: string; winner: 'a' | 'b' | null; meta?: string }
 
 const key = (names: string[]) => names.join(' / ').toLowerCase().replace(/\s+/g, ' ').trim();
 const nameOf = (n: BracketTree) => n.n;
@@ -33,7 +33,7 @@ export function DoublesBracket({ tree, results, tt, pending }: { tree: BracketTr
         sets: !found || !done ? null : found.status === 'WALKOVER' && !found.sets.length ? (found.winner === m ? 'W/O' : '') : found.sets.map((s, k) => <b key={k}>{m === 'a' ? s.a : s.b}</b>),
       };
     };
-    cols[d]![i] = { a: mk(an, 'a'), b: mk(bn, 'b') };
+    cols[d]![i] = { a: mk(an, 'a'), b: mk(bn, 'b'), meta: found?.meta || undefined };
     put(x, d + 1, 2 * i);
     if (y) put(y, d + 1, 2 * i + 1);
   };

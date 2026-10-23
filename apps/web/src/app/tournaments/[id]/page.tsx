@@ -501,7 +501,7 @@ function Bracket({ d, categoryId, hl, tt }: { d: Detail; categoryId: string; hl:
     win: !!e && m.winnerEntryId === e, me: !!e && hl.has(e),
     sets: m.status === 'WALKOVER' ? (e && m.winnerEntryId === e ? 'W/O' : '') : ((m.sets ?? []) as { a: number; b: number }[]).map((s, i) => <b key={i}>{mine(s)}</b>),
   });
-  const cols = tree.cols.map((col) => col.map((m): BracketCell | null => (m ? { href: `/matches/${m.id}`, a: side(m, m.aEntryId, (s) => s.a), b: side(m, m.bEntryId, (s) => s.b) } : null)));
+  const cols = tree.cols.map((col) => col.map((m): BracketCell | null => (m ? { href: `/matches/${m.id}`, a: side(m, m.aEntryId, (s) => s.a), b: side(m, m.bEntryId, (s) => s.b), meta: [matchWhen(m.scheduledStart, m.scheduleKind), m.courtLabel].filter(Boolean).join(' · ') || undefined } : null)));
   return <BracketView cols={cols} tt={tt} pending={tt('טרם נקבע')} />;
 }
 
