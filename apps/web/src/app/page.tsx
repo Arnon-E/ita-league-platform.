@@ -4,7 +4,7 @@ import { eq, sql } from 'drizzle-orm';
 import { schema } from '@/db';
 import { db } from '@/db';
 import { Shell } from '@/components/Shell';
-import { categoryBriefs, listTournaments, tournamentsWithEntries } from '@/services/queries';
+import { homeCatalog } from '@/services/catalog';
 import { getActor } from '@/lib/session';
 import { can } from '@/lib/permissions';
 import { fmtDate, LEVEL, STATUS } from '@/components/labels';
@@ -27,31 +27,17 @@ const stGroup = (x: { status: string; endDate: Date }) =>
 export default async function Home({ searchParams }: { searchParams: Promise<{ level?: string; season?: string; q?: string; g?: string; age?: string; st?: string; sec?: string; rel?: string }> }) {
   const t = await tr();
   const { level = '', season = '', q = '', g = '', age = '', st = '', sec = '', rel = '' } = await searchParams;
-  const [allTs, actor, counts, cats, withEntries] = await Promise.all([
-    listTournaments(db),
-    getActor(),
-    homeCounts(db),
-    categoryBriefs(db),
-    tournamentsWithEntries(db),
-  ]);
+  const [allTs, actor, counts] = await Promise.all([homeCatalog(db), getActor(), homeCounts(db)]);
   // people who run tournaments manage rather than register; they also get to see (and restore) cancelled ones
   const staff = !!actor && can(actor, 'tournament.create');
   // drafts are still being prepared, and a cancelled competition nobody had entered is not history worth showing: the public sees neither
-  const entered = new Set(withEntries.map((x) => x.tid));
-  const ts = staff ? allTs : allTs.filter((x) => x.status !== 'DRAFT' && (x.status !== 'CANCELLED' || entered.has(x.id)));
-  const catsOf = new Map<string, { gender: string; age: number | null }[]>();
-  for (const c of cats) {
-    const a = c.name.match(/(\d{2})/);
-    const list = catsOf.get(c.tid) ?? [];
-    list.push({ gender: c.gender, age: a ? Number(a[1]) : null });
-    catsOf.set(c.tid, list);
-  }
+  const ts = staff ? allTs : allTs.filter((x) => x.status !== 'DRAFT' && (x.status !== 'CANCELLED' || x.hasEntries));
   // Signed-in players and parents get a personal home: their standing, next match, results and what needs doing.
   const home = actor ? await myHome(db, actor).catch(() => null) : null;
   // a player or parent sees the competitions that can apply to them; "show all" is one tap away
   const mine = await myPlayersForRelevance(db, actor).catch(() => []);
   const relevantOnly = mine.length > 0 && rel !== 'all';
-  const relevantIds = new Set(ts.filter((x) => !mine.length || mine.some((p) => relevantFor(p, x, cats.filter((c) => c.tid === x.id)))).map((x) => x.id));
+  const relevantIds = new Set(ts.filter((x) => !mine.length || mine.some((p) => relevantFor(p, x, x.cats))).map((x) => x.id));
   const needle = q.trim().toLowerCase();
   // Default view is what a visitor can act on: open, in progress and upcoming. Searching or picking a season looks at everything.
   const mode = st || (needle || season ? 'all' : 'up');
@@ -66,7 +52,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ l
     // searching by name looks at everything, whatever the player's age
     if (relevantOnly && !(needle || level || sec || season || g || age) && !relevantIds.has(x.id)) return false;
     if (g || age) {
-      const cs = catsOf.get(x.id) ?? [];
+      const cs = x.cats;
       if (!cs.some((c) => (!g || c.gender === g) && (!age || c.age === Number(age)))) return false;
     }
     return true;
