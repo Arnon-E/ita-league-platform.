@@ -160,6 +160,7 @@ const en: Record<string, string> = {
   'גיל {n}': 'Age {n}',
   'משתתפים ({n})': 'Participants ({n})',
   'טרם נקבע': 'TBD',
+  'מקומות 3-4': 'Places 3-4', 'עץ': 'Bracket',
   'טרם שובץ': 'Not scheduled yet',
 
   // registrations, payments, documents

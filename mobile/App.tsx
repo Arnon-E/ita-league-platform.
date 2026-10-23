@@ -9,7 +9,7 @@ import * as api from './src/api';
 import { More } from './src/More';
 import { MyHome } from './src/MyHome';
 import { FoldHeader } from './src/Fold';
-import { Bracket } from './src/Bracket';
+import { Bracket, DoublesBracket } from './src/Bracket';
 import { MatchCard, matchWhen } from './src/MatchCard';
 import { AdminScreen, ClubScreen, MatchScreen, NavCtx, PlayerScreen, useNav, type Focus, type Nav } from './src/Detail';
 import { useFonts } from 'expo-font';
@@ -663,8 +663,8 @@ const TreesBlock = memo(function TreesBlock({ treeCats, koByCat, me, canScore, o
 });
 
 /** Doubles draws of the competition (mirrored from Loglig): a chip per category, its group tables, then every match as the match card. */
-const DoublesBlock = memo(function DoublesBlock({ doubles, tables }: { doubles: api.DoublesMatch[]; tables: api.DoublesTable[] }) {
-  const names = useMemo(() => [...new Set(doubles.map((m) => m.category))].sort((x, y) => x.localeCompare(y, 'he', { numeric: true })), [doubles]);
+const DoublesBlock = memo(function DoublesBlock({ doubles, tables, brackets }: { doubles: api.DoublesMatch[]; tables: api.DoublesTable[]; brackets: { category: string; tree: api.BracketTree }[] }) {
+  const names = useMemo(() => [...new Set([...doubles.map((m) => m.category), ...brackets.map((x) => x.category)])].sort((x, y) => x.localeCompare(y, 'he', { numeric: true })), [doubles, brackets]);
   const [sel, setSel] = useState('');
   const [q, setQ] = useState('');
   const [show, setShow] = useState<'all' | 'open' | 'done'>('all');
@@ -680,11 +680,14 @@ const DoublesBlock = memo(function DoublesBlock({ doubles, tables }: { doubles: 
   const mine = tables.filter((t) => t.category === cat);
   const keyOf = (g: string) => `${cat}|${g}`;
   const toggle = (g: string) => setClosed((c) => { const n = new Set(c); if (n.has(keyOf(g))) n.delete(keyOf(g)); else n.add(keyOf(g)); return n; });
-  const setAll = (open: boolean) => { setLastAll(open ? 'open' : 'closed'); setClosed((c) => { const n = new Set(c); for (const t of mine) { if (open) n.delete(keyOf(t.group)); else n.add(keyOf(t.group)); } return n; }); };
+  const tree = brackets.find((x) => x.category === cat)?.tree; // Loglig's knockout tree, shown first (before any knockout match has a time)
+  const foldables = [...(tree ? ['::tree'] : []), ...mine.map((t) => t.group)]; // everything the all-button folds: the tree and the groups
+  const setAll = (open: boolean) => { setLastAll(open ? 'open' : 'closed'); setClosed((c) => { const n = new Set(c); for (const g of foldables) { if (open) n.delete(keyOf(g)); else n.add(keyOf(g)); } return n; }); };
   // the button offers the opposite of the state: all open -> close all, all closed -> open all, mixed -> the opposite of the last press
-  const nClosed = mine.filter((t) => closed.has(keyOf(t.group))).length;
-  const offerOpen = nClosed === mine.length ? true : nClosed === 0 ? false : lastAll === 'closed';
-  const koCards = ms.filter((m) => m.stage !== 'GROUP' && keep(m));
+  const nClosed = foldables.filter((g) => closed.has(keyOf(g))).length;
+  const offerOpen = nClosed === foldables.length ? true : nClosed === 0 ? false : lastAll === 'closed';
+  // with a tree, the knockout matches are in it (with their time and court): no separate cards below
+  const koCards = tree ? [] : ms.filter((m) => m.stage !== 'GROUP' && keep(m));
   const line = { borderWidth: 1, borderColor: T.line2 } as const;
   const stamp = (m: api.DoublesMatch) => { const d = m.start ? new Date(m.start) : null; return d ? [d.toLocaleDateString(locale(), { day: '2-digit', month: '2-digit' }), d.toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' })] : ['', '']; };
   return (
@@ -702,8 +705,23 @@ const DoublesBlock = memo(function DoublesBlock({ doubles, tables }: { doubles: 
             </Pressable>
           ))}
         </View>
-        {mine.length > 1 && !filtered && <Pressable onPress={() => setAll(offerOpen)} hitSlop={8}><Text style={{ fontSize: 13.5, fontWeight: '600', color: T.text, textDecorationLine: 'underline' }}>{tr(offerOpen ? 'פתיחת הכל' : 'סגירת הכל')}</Text></Pressable>}
+        {foldables.length > 1 && !filtered && <Pressable onPress={() => setAll(offerOpen)} hitSlop={8}><Text style={{ fontSize: 13.5, fontWeight: '600', color: T.text, textDecorationLine: 'underline' }}>{tr(offerOpen ? 'פתיחת הכל' : 'סגירת הכל')}</Text></Pressable>}
       </View>
+      {tree && (
+        <View style={{ ...line, borderRadius: 14, overflow: 'hidden', backgroundColor: T.surface }}>
+          <Pressable onPress={() => toggle('::tree')} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingVertical: 12, backgroundColor: T.line, borderBottomWidth: closed.has(keyOf('::tree')) ? 0 : 1, borderColor: T.line2 }}>
+            <Text style={{ flex: 1, fontSize: 17, fontWeight: '800', color: T.text }}>{tr('עץ')}</Text>
+            <View style={{ width: 28, height: 28, borderRadius: 14, borderWidth: 1, borderColor: T.line2, backgroundColor: T.surface, alignItems: 'center', justifyContent: 'center' }}>
+              <View style={{ width: 8, height: 8, borderRightWidth: 2, borderBottomWidth: 2, borderColor: T.text, transform: [{ translateY: closed.has(keyOf('::tree')) ? -2 : 2 }, { rotate: closed.has(keyOf('::tree')) ? '45deg' : '-135deg' }] }} />
+            </View>
+          </Pressable>
+          {!closed.has(keyOf('::tree')) && (
+            <View style={{ padding: 8 }}>
+              <DoublesBracket tree={tree} results={ms.filter((m) => m.stage !== 'GROUP').map((m) => ({ a: m.a, b: m.b, sets: m.sets, status: m.status, winner: m.winner, meta: [matchWhen(m.start, m.kind), m.court].filter(Boolean).join(' · ') }))} />
+            </View>
+          )}
+        </View>
+      )}
       {mine.map((t) => {
         const gm = ms.filter((m) => m.stage === 'GROUP' && (m.group ?? 'בית 1') === t.group);
         const shown = gm.filter(keep);
@@ -884,7 +902,7 @@ function Tournament({ id, focus, onBack, onGoAccount }: { id: string; focus?: Fo
       {(d?.categories.length ?? 0) > 1 && <CatFilters cats={d!.categories} fg={fg} fage={fage} fcat={fcat} setFg={setFg} setFage={setFage} setFcat={setFcat} setPicked={setPicked} />}
       <ParticipantsBlock participants={d?.participants ?? NO_PARTS} cats={d?.categories ?? NO_CATS} fg={fg} fage={fage} fcat={fcat} />
       <TreesBlock treeCats={treeCats} koByCat={koByCat} me={people.find((x) => x.id === meId)?.name ?? focus?.name} canScore={canScore} onScoreTap={onScoreTap} asList={asList} setAsList={setAsList} />
-      {!!d?.doubles?.length && <DoublesBlock doubles={d.doubles} tables={d.doublesTables ?? []} />}
+      {!!(d?.doubles?.length || d?.doublesBrackets?.length) && <DoublesBlock doubles={d.doubles ?? []} tables={d.doublesTables ?? []} brackets={d.doublesBrackets ?? []} />}
       </View>}
         data={listData}
         keyExtractor={keyOfMatch} initialNumToRender={10} maxToRenderPerBatch={8} windowSize={5} removeClippedSubviews

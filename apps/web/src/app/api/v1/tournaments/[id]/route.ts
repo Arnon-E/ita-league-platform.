@@ -16,7 +16,7 @@ export const GET = (_req: Request, ctx: { params: Promise<{ id: string }> }) => 
     matches: d.ms.map((m) => ({
       id: m.id, categoryId: m.categoryId, stage: m.stage, round: m.round, index: m.index, status: m.status,
       a: { id: m.aEntryId, name: nm(m.aEntryId) }, b: { id: m.bEntryId, name: nm(m.bEntryId) },
-      sets: m.sets, winnerEntryId: m.winnerEntryId, court: m.courtLabel, start: m.scheduledStart, notBefore: m.notBefore,
+      sets: m.sets, winnerEntryId: m.winnerEntryId, court: m.courtLabel, start: m.scheduledStart, kind: m.scheduleKind, notBefore: m.notBefore,
     })),
     doubles: d.doubles.map((m) => ({
       id: m.id, category: m.category, stage: m.stage, group: m.groupName, round: m.round, status: m.status,
