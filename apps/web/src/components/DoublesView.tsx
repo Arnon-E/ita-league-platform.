@@ -51,7 +51,7 @@ export function DoublesView({ cats, labels }: { cats: DoublesViewCat[]; labels: 
   const lab = { walkover: labels.walkover, retired: labels.retired, void: labels.void, live: labels.live, won: labels.won };
 
   return (
-    <>
+    <div className="dview">
       <div className="row" style={{ flexWrap: 'wrap' }}>{cats.map((c) => <button key={c.name} type="button" className={`btn small ${c.name === cat.name ? '' : 'ghost'}`} onClick={() => setSel(c.name)}>{c.name}</button>)}</div>
       <h2>{cat.name}</h2>
       <div style={{ display: 'grid', gap: 10 }}>
@@ -146,8 +146,8 @@ export function DoublesView({ cats, labels }: { cats: DoublesViewCat[]; labels: 
                         <tr key={r.pair}>
                           <td style={{ ...cell, textAlign: 'center' }}>{r.rank}</td>
                           <td style={{ ...cell, width: '100%' }}>{r.pair.split(' / ').map((n) => <div key={n} style={{ whiteSpace: 'nowrap' }}>{n}</div>)}</td>
-                          <td style={{ ...cell, textAlign: 'center' }}>{r.played}</td><td style={{ ...cell, textAlign: 'center' }}>{r.wins}</td><td style={{ ...cell, textAlign: 'center' }}>{r.losses}</td>
-                          <td dir="ltr" style={{ ...cell, textAlign: 'center', whiteSpace: 'nowrap' }}>{r.setsFor}-{r.setsAgainst}</td>
+                          <td style={{ ...cell, textAlign: 'center', minWidth: 48 }}>{r.played}</td><td style={{ ...cell, textAlign: 'center', minWidth: 48 }}>{r.wins}</td><td style={{ ...cell, textAlign: 'center', minWidth: 48 }}>{r.losses}</td>
+                          <td dir="ltr" style={{ ...cell, textAlign: 'center', whiteSpace: 'nowrap', minWidth: 56 }}>{r.setsFor}-{r.setsAgainst}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -161,6 +161,6 @@ export function DoublesView({ cats, labels }: { cats: DoublesViewCat[]; labels: 
       {/* matches outside the groups (knockout, qualifiers) */}
       {koCards.length > 0 && <div className="grid">{koCards.map((m) => <MatchScore key={m.id} aName={m.a} bName={m.b} sets={m.status === 'SCHEDULED' ? [] : m.sets} status={m.status} winner={m.winner} caption={m.caption} when={m.when} labels={lab} />)}</div>}
       {!visible.length && !koCards.length && !cat.bracket && <div className="card muted">—</div>}
-    </>
+    </div>
   );
 }

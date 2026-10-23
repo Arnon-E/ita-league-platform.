@@ -65,6 +65,9 @@ h2{font-size:22px;font-weight:700;letter-spacing:-.02em;line-height:1.2;margin:4
 a.card:hover{border-color:var(--line2);transform:translateY(-3px);box-shadow:var(--shadow-lg)}
 a.card:active{transform:translateY(0) scale(.99)}
 .grid{display:grid;gap:14px}
+.dview{display:flex;flex-direction:column;gap:12px;max-width:700px;margin-inline:auto}.dview>h2{margin:16px 0 0}
+/* a phone in "desktop site" mode: the floating header would cover rows while reading the tournament */
+@media(max-width:1100px){body:has(.dview) header.top{position:static}}
 .cols{grid-template-columns:repeat(auto-fill,minmax(290px,1fr))}
 .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .muted{color:var(--muted);font-size:14px}

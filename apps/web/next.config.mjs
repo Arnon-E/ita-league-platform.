@@ -7,5 +7,6 @@ export default {
     config.resolve.extensionAlias = { '.js': ['.ts', '.tsx', '.js'] };
     return config;
   },
+  devIndicators: false, // the floating Next.js dev button covered the match rows on a phone
   typescript: { ignoreBuildErrors: false },
 };
