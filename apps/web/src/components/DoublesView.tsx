@@ -68,6 +68,14 @@ export function DoublesView({ cats, labels }: { cats: DoublesViewCat[]; labels: 
           )}
         </div>
       </div>
+      {/* the knockout tree, as soon as Loglig publishes it (before any knockout match has a time) */}
+      {cat.bracket && !filtered && (
+        <section>
+          <h2>{labels.bracket}</h2>
+          <DoublesBracket tree={cat.bracket} pending={labels.pending} tt={(s) => labels.rounds[s] ?? s}
+            results={cat.matches.filter((m) => !m.group).map((m) => ({ a: m.a, b: m.b, sets: m.sets, status: m.status, winner: m.winner }))} />
+        </section>
+      )}
       {visible.map(({ g, ms, shown }) => {
         const open = isOpen(g.group);
         const doneShown = shown.filter((m) => m.status !== 'SCHEDULED' && m.status !== 'VOID');
@@ -141,14 +149,6 @@ export function DoublesView({ cats, labels }: { cats: DoublesViewCat[]; labels: 
           </div>
         );
       })}
-      {/* the knockout tree, as soon as Loglig publishes it (before any knockout match has a time) */}
-      {cat.bracket && !filtered && (
-        <section>
-          <h2>{labels.bracket}</h2>
-          <DoublesBracket tree={cat.bracket} pending={labels.pending} tt={(s) => labels.rounds[s] ?? s}
-            results={cat.matches.filter((m) => !m.group).map((m) => ({ a: m.a, b: m.b, sets: m.sets, status: m.status, winner: m.winner }))} />
-        </section>
-      )}
       {/* matches outside the groups (knockout, qualifiers) */}
       {koCards.length > 0 && <div className="grid">{koCards.map((m) => <MatchScore key={m.id} aName={m.a} bName={m.b} sets={m.status === 'SCHEDULED' ? [] : m.sets} status={m.status} winner={m.winner} caption={m.caption} when={m.when} labels={lab} />)}</div>}
       {!visible.length && !koCards.length && !cat.bracket && <div className="card muted">—</div>}
