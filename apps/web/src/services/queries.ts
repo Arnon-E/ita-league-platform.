@@ -23,7 +23,8 @@ export async function tournamentDetail(db: Db, id: string) {
   // doubles draws mirrored from Loglig (pairs; kept apart from the singles model)
   const doubles = await db.select().from(schema.doublesMatches).where(eq(schema.doublesMatches.tournamentId, id))
     .orderBy(asc(schema.doublesMatches.category), asc(schema.doublesMatches.stage), asc(schema.doublesMatches.groupName), asc(schema.doublesMatches.scheduledStart));
-  const doublesBrackets = await db.select().from(schema.doublesBrackets).where(eq(schema.doublesBrackets.tournamentId, id));
+  // the tree table is created by the next build's db-init; until it exists the page simply has no tree instead of failing
+  const doublesBrackets = await db.select().from(schema.doublesBrackets).where(eq(schema.doublesBrackets.tournamentId, id)).catch(() => []);
   return { t, cats, names, ents, ms, draws, doubles, doublesBrackets };
 }
 
