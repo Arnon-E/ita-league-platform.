@@ -103,3 +103,15 @@ export async function devStats(db: Db, action: 'reset' | 'snapshot') {
     from pg_stat_statements where ${mine} order by rows desc limit 8`)) as unknown as { calls: number; rows: number; rows_per_call: number; q: string }[];
   return { calls: total[0]?.calls ?? 0, rows: total[0]?.rows ?? 0, top };
 }
+
+/**
+ * Empties every table of the development database (synthetic data, earlier imports, test accounts) except the rule sets, so real data can be
+ * imported into it from scratch. Development only; the production database cannot be reached by this.
+ */
+export async function devWipe(db: Db) {
+  guard();
+  const rows = (await db.execute(sql`select tablename from pg_tables where schemaname = 'public' and tablename <> 'rule_sets'`)) as unknown as { tablename: string }[];
+  if (!rows.length) return { tables: 0 };
+  await db.execute(sql.raw(`truncate table ${rows.map((r) => `"${r.tablename}"`).join(', ')} restart identity cascade`));
+  return { tables: rows.length };
+}

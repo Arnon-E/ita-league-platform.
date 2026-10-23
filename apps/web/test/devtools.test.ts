@@ -47,3 +47,18 @@ describe('development seed', () => {
     expect(devAllowed()).toBe(true);
   });
 });
+
+describe('development wipe', () => {
+  it('empties the data tables but keeps the rule sets, and refuses on the live site', async () => {
+    const { devWipe } = await import('@/services/devtools');
+    await devSeed(db, { players: 30, tournaments: 3, reset: true });
+    expect(await count('players')).toBeGreaterThan(0);
+    const rules = await count('rule_sets');
+    expect((await devWipe(db)).tables).toBeGreaterThan(10);
+    expect([await count('players'), await count('tournaments'), await count('clubs'), await count('points_awards'), await count('ranking_snapshot')]).toEqual([0, 0, 0, 0, 0]);
+    expect(await count('rule_sets')).toBe(rules);
+    vi.stubEnv('VITEST', '');
+    vi.stubEnv('VERCEL_ENV', 'production');
+    await expect(devWipe(db)).rejects.toThrow('development');
+  });
+});
