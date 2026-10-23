@@ -1,7 +1,8 @@
 import { db } from '@/db';
 import { handlePublic } from '@/lib/api';
 import { photoUrl } from '@/lib/photos';
-import { rankLookup, searchPlayers } from '@/services/public';
+import { searchPlayers } from '@/services/public';
+import { playerRanks } from '@/services/ranking-sql';
 
 /** ?q=<name> &club=<id> &g=MALE|FEMALE &age=10|12|14|16|18 &offset=<n> &limit=<1..100>. */
 export const GET = (req: Request) => handlePublic(async () => {
@@ -16,6 +17,6 @@ export const GET = (req: Request) => handlePublic(async () => {
     offset,
     activeOnly: p.get('show') !== 'all',
   });
-  const rk = await rankLookup(db);
-  return rows.map(({ p: pl, club }) => ({ id: pl.id, name: `${pl.firstName} ${pl.lastName}`, club, gender: pl.gender, birthYear: pl.birthDate.getUTCFullYear(), age: Math.floor((Date.now() - pl.birthDate.getTime()) / (365.25 * 864e5)), photo: photoUrl(pl.photo), rank: rk.get(pl.id) ?? null }));
+  const rk = await playerRanks(db, rows.map((x) => x.p.id));
+  return rows.map(({ p: pl, club }) => ({ id: pl.id, name: `${pl.firstName} ${pl.lastName}`, club, gender: pl.gender, birthYear: pl.birthDate.getUTCFullYear(), age: Math.floor((Date.now() - pl.birthDate.getTime()) / (365.25 * 864e5)), photo: photoUrl(pl.photo), rank: rk.get(pl.id)?.rank ?? null }));
 });

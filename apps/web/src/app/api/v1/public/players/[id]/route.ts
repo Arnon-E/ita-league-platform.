@@ -2,16 +2,14 @@ import { db } from '@/db';
 import { handlePublic } from '@/lib/api';
 import { photoUrl } from '@/lib/photos';
 import { playerProfile } from '@/services/public';
-import { ensureDefaultRuleSet, loadRuleSet } from '@/services/rules';
-import { rankingFor } from '@/services/rankings';
+import { playerRanks } from '@/services/ranking-sql';
 
 /** A player's public profile, as the website's player page: rank, record, recent form, next tournament, tournaments, matches, points history. */
 export const GET = (_req: Request, ctx: { params: Promise<{ id: string }> }) => handlePublic(async () => {
   const d = await playerProfile(db, (await ctx.params).id);
   if (!d) throw new Error('not found');
   const { p, club, ents, names, matches, awards, wins, losses, entryIds } = d;
-  const rs = await ensureDefaultRuleSet(db);
-  const mine = (await rankingFor(db, p.gender, new Date(), await loadRuleSet(db, rs.id))).find((r) => r.playerId === p.id);
+  const mine = (await playerRanks(db, [p.id])).get(p.id);
   const catOf = new Map(ents.map((x) => [x.c.id, x]));
   const played = matches.filter((m) => m.status !== 'SCHEDULED' && m.status !== 'VOID' && m.winnerEntryId)
     .sort((a, b) => (b.scheduledStart?.getTime() ?? 0) - (a.scheduledStart?.getTime() ?? 0));

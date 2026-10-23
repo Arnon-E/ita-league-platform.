@@ -3,8 +3,7 @@ import type { Db } from '@/db';
 import { schema } from '@/db';
 import { notifyUser } from './notifications';
 import { entryNames } from './queries';
-import { rankingFor } from './rankings';
-import { ensureDefaultRuleSet, loadRuleSet } from './rules';
+import { playerRanks } from './ranking-sql';
 
 const { follows, players, guardians } = schema;
 export type FollowKind = 'PLAYER' | 'CLUB' | 'TOURNAMENT';
@@ -70,12 +69,8 @@ export async function followedOverview(db: Db, userId: string) {
   const { clubs, tournaments, entries, categories, matches } = schema;
 
   const ps = pIds.length ? await db.select({ p: players, club: clubs.name }).from(players).leftJoin(clubs, eq(clubs.id, players.clubId)).where(inArray(players.id, pIds)) : [];
-  const rs = await ensureDefaultRuleSet(db);
-  const rules = await loadRuleSet(db, rs.id);
   const rankBy = new Map<string, { rank: number; points: number }>();
-  for (const g of new Set(ps.map((x) => x.p.gender))) {
-    for (const r of await rankingFor(db, g, new Date(), rules)) rankBy.set(r.playerId, { rank: r.rank, points: r.points });
-  }
+  for (const [id, r] of await playerRanks(db, ps.map((x) => x.p.id))) rankBy.set(id, { rank: r.rank, points: r.points });
 
   const ents = pIds.length ? await db.select({ e: entries, c: categories }).from(entries).innerJoin(categories, eq(categories.id, entries.categoryId))
     .where(and(inArray(entries.playerId, pIds), eq(entries.status, 'CONFIRMED'))) : [];

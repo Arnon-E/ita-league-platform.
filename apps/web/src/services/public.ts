@@ -4,22 +4,8 @@ import { schema } from '@/db';
 import { PLACEHOLDER_SQL } from '@/lib/placeholders';
 import { entryNames } from './queries';
 import { memo } from '@/lib/memo';
-import { rankingFor } from './rankings';
-import { ensureDefaultRuleSet, loadRuleSet } from './rules';
 
 const { players, clubs, entries, categories, matches, tournaments, pointsAwards } = schema;
-
-let rankCache: { at: number; map: Map<string, number> } | null = null;
-/** Current ranking position of every ranked player (both genders), cached for a minute. */
-export async function rankLookup(db: Db): Promise<Map<string, number>> {
-  if (rankCache && Date.now() - rankCache.at < 60_000) return rankCache.map;
-  const rs = await ensureDefaultRuleSet(db);
-  const rules = await loadRuleSet(db, rs.id);
-  const map = new Map<string, number>();
-  for (const g of ['MALE', 'FEMALE'] as const) for (const r of await rankingFor(db, g, new Date(), rules)) map.set(r.playerId, r.rank);
-  rankCache = { at: Date.now(), map };
-  return map;
-}
 
 export async function searchPlayers(db: Db, q: string, clubId?: string, limit = 100, opts: { gender?: 'MALE' | 'FEMALE'; age?: number; offset?: number; activeOnly?: boolean } = {}) {
   const conds: (SQL | undefined)[] = [sql`not ((${players.firstName} || ' ' || ${players.lastName}) ~* ${PLACEHOLDER_SQL})`];
@@ -112,40 +98,6 @@ export const AGE_GROUPS = [12, 14, 16, 18] as const;
 export function inAgeGroup(birth: Date, group: number | undefined, asOf = new Date()): boolean {
   if (!group) return true;
   return asOf.getFullYear() - birth.getFullYear() <= group;
-}
-
-export interface RankingTableRow { rank: number; playerId: string; name: string; club: string | null; points: number; counted: number }
-
-interface BaseRow { playerId: string; name: string; club: string | null; clubId: string | null; birth: Date; points: number; counted: number }
-
-/** Everyone ranked in a gender with the few columns the table needs. Cached for a few minutes: it is computed over thousands of rows and moves only when results are imported. */
-function rankingBase(db: Db, gender: 'MALE' | 'FEMALE'): Promise<BaseRow[]> {
-  return memo(`ranking:${gender}`, 5 * 60_000, async () => {
-    const rs = await ensureDefaultRuleSet(db);
-    const rows = await rankingFor(db, gender, new Date(), await loadRuleSet(db, rs.id));
-    if (!rows.length) return [];
-    const ps = await db.select({ id: players.id, first: players.firstName, last: players.lastName, birth: players.birthDate, clubId: players.clubId, club: clubs.name })
-      .from(players).leftJoin(clubs, eq(clubs.id, players.clubId)).where(inArray(players.id, rows.map((r) => r.playerId)));
-    const byId = new Map(ps.map((x) => [x.id, x]));
-    const out: BaseRow[] = [];
-    for (const r of rows) {
-      const x = byId.get(r.playerId);
-      if (x) out.push({ playerId: r.playerId, name: `${x.first} ${x.last}`, club: x.club, clubId: x.clubId, birth: x.birth, points: r.points, counted: r.counted.length });
-    }
-    return out;
-  });
-}
-
-/** National ranking, optionally narrowed to an age group and/or a club. Ranks are renumbered inside the narrowed list. */
-export async function rankingTable(db: Db, o: { gender: 'MALE' | 'FEMALE'; age?: number; clubId?: string }): Promise<RankingTableRow[]> {
-  const asOf = new Date();
-  const out: RankingTableRow[] = [];
-  for (const r of await rankingBase(db, o.gender)) {
-    if (!inAgeGroup(r.birth, o.age, asOf)) continue;
-    if (o.clubId && r.clubId !== o.clubId) continue;
-    out.push({ rank: out.length + 1, playerId: r.playerId, name: r.name, club: r.club, points: r.points, counted: r.counted });
-  }
-  return out;
 }
 
 /** The three counters on the home page; they move slowly, so one query per minute per instance is plenty. */

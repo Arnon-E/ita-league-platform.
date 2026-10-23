@@ -5,8 +5,7 @@ import { db } from '@/db';
 import { Shell } from '@/components/Shell';
 import { FollowButton } from '@/components/FollowButton';
 import { playerProfile } from '@/services/public';
-import { ensureDefaultRuleSet, loadRuleSet } from '@/services/rules';
-import { rankingFor } from '@/services/rankings';
+import { playerRanks } from '@/services/ranking-sql';
 import { fmtDate, fmtTime, GENDER, MSTATUS, fmtScore } from '@/components/labels';
 import { tr } from '@/lib/i18n';
 
@@ -16,9 +15,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
   const d = await playerProfile(db, id);
   if (!d) notFound();
   const { p, club, ents, names, matches, awards, wins, losses, entryIds } = d;
-  const rs = await ensureDefaultRuleSet(db);
-  const ranking = await rankingFor(db, p.gender, new Date(), await loadRuleSet(db, rs.id));
-  const mine = ranking.find((r) => r.playerId === p.id);
+  const mine = (await playerRanks(db, [p.id])).get(p.id);
   const age = Math.floor((Date.now() - p.birthDate.getTime()) / (365.25 * 864e5));
   const catOf = new Map(ents.map((x) => [x.c.id, x]));
   const recent = matches

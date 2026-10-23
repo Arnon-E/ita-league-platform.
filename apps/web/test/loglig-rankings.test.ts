@@ -2,7 +2,10 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { db, schema } from '@/db';
 import { resetDb } from './helpers';
 import { importRankings, splitName, validateRankingImport, rankKey } from '@/services/loglig-rankings';
-import { rankingTable } from '@/services/public';
+import { rankingPage } from '@/services/ranking-sql';
+
+/** The whole ranking list for these filters (the old rankingTable), from the SQL ranking. */
+const rankingTable = async (d: typeof import('@/db').db, o: { gender: 'MALE' | 'FEMALE'; age?: number; clubId?: string }) => (await rankingPage(d, { ...o, limit: 500 })).rows;
 
 beforeAll(resetDb);
 

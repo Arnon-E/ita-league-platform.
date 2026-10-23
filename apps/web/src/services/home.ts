@@ -5,8 +5,7 @@ import { checkDocuments, ownedPlayerIds } from '@/services/entries';
 import { childLoginName, isChildActor, pendingSuggestions } from '@/services/children';
 import { playerProfile } from '@/services/public';
 import { ineligibleReason } from '@/services/eligibility';
-import { rankingFor } from '@/services/rankings';
-import { ensureDefaultRuleSet, loadRuleSet } from '@/services/rules';
+import { playerRanks } from '@/services/ranking-sql';
 
 const { players, guardians, categories, tournaments, entries, matches, documents, claimRequests, tournamentStaff, users } = schema;
 
@@ -53,10 +52,8 @@ async function workHome(db: Db, actor: Actor) {
     if (!u?.clubId) return null;
     const [club] = await db.select().from(schema.clubs).where(eq(schema.clubs.id, u.clubId));
     const ps = await db.select().from(players).where(eq(players.clubId, u.clubId));
-    const tables = new Map<string, Awaited<ReturnType<typeof rankingFor>>>();
-    const rules = await loadRuleSet(db, (await ensureDefaultRuleSet(db)).id);
-    for (const g of new Set(ps.map((x) => x.gender))) tables.set(g, await rankingFor(db, g, now, rules));
-    const ranked = ps.map((p) => ({ id: p.id, name: `${p.firstName} ${p.lastName}`, rank: tables.get(p.gender)?.find((r) => r.playerId === p.id)?.rank ?? null, points: tables.get(p.gender)?.find((r) => r.playerId === p.id)?.points ?? 0 }))
+    const ranks = await playerRanks(db, ps.map((x) => x.id)); // the club's players only, not the national table
+    const ranked = ps.map((p) => ({ id: p.id, name: `${p.firstName} ${p.lastName}`, rank: ranks.get(p.id)?.rank ?? null, points: ranks.get(p.id)?.points ?? 0 }))
       .filter((x) => x.rank).sort((a, b) => a.rank! - b.rank!).slice(0, 5);
     const ids = ps.map((p) => p.id);
     const upcoming = ids.length ? await db.select({ n: sql<number>`count(distinct ${entries.id})::int` }).from(entries).innerJoin(categories, eq(categories.id, entries.categoryId)).innerJoin(tournaments, eq(tournaments.id, categories.tournamentId)).where(and(inArray(entries.playerId, ids), gte(tournaments.endDate, now), lt(tournaments.startDate, new Date(now.getTime() + 90 * 86400000)))) : [];
@@ -72,9 +69,7 @@ async function myPeople(db: Db, actor: Actor) {
   if (!mine.length) return { role: 'NONE' as const, people: [], suggestions: [] as Awaited<ReturnType<typeof pendingSuggestions>> };
 
   const now = new Date();
-  const rules = await loadRuleSet(db, (await ensureDefaultRuleSet(db)).id);
-  const tables = new Map<string, Awaited<ReturnType<typeof rankingFor>>>();
-  for (const g of new Set(mine.map((x) => x.p.gender))) tables.set(g, await rankingFor(db, g, now, rules));
+  const ranks = await playerRanks(db, mine.map((x) => x.p.id));
 
   const open = await db.select({ c: categories, t: tournaments }).from(categories)
     .innerJoin(tournaments, eq(tournaments.id, categories.tournamentId)).where(eq(tournaments.status, 'REGISTRATION_OPEN'));
@@ -84,7 +79,7 @@ async function myPeople(db: Db, actor: Actor) {
 
   const people = await Promise.all(mine.map(async ({ p, relation }) => {
     const d = await playerProfile(db, p.id);
-    const row = tables.get(p.gender)?.find((r) => r.playerId === p.id);
+    const row = ranks.get(p.id);
     const by = p.birthDate.getUTCFullYear();
     const nameOf = (id: string | null) => (id ? d?.names.get(id) ?? null : null);
     const mineEntry = (id: string | null) => !!id && !!d?.entryIds.includes(id);

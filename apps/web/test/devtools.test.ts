@@ -3,7 +3,10 @@ import { sql } from 'drizzle-orm';
 import { db } from '@/db';
 import { resetDb } from './helpers';
 import { devAllowed, devSeed, devSeedReset } from '@/services/devtools';
-import { rankingTable } from '@/services/public';
+import { rankingPage } from '@/services/ranking-sql';
+
+/** The whole ranking list for these filters (the old rankingTable), from the SQL ranking. */
+const rankingTable = async (d: typeof import('@/db').db, o: { gender: 'MALE' | 'FEMALE'; age?: number; clubId?: string }) => (await rankingPage(d, { ...o, limit: 500 })).rows;
 import { liveFeed } from '@/services/public';
 
 beforeAll(resetDb);
