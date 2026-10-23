@@ -15,7 +15,7 @@ import { fileURLToPath } from 'node:url';
 import { ageOf, buildCategory, buildDoubles, genderOf, israelToUtc, koRound, parseCategoryPage, parseCompetitionPage } from './parse.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const OUT = path.resolve(here, '../../.loglig-dump');
+const OUT = process.env.LOGLIG_DUMP_DIR ? path.resolve(process.env.LOGLIG_DUMP_DIR) : path.resolve(here, '../../.loglig-dump'); // LOGLIG_DUMP_DIR: where the development syncs keep their data
 const slug = (s) => 'https://ita.co.il/' + encodeURI(s) + '/';
 // every competition listing on ita.co.il: key -> { url, level, section }
 const LISTS = {
