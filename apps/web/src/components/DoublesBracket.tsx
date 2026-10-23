@@ -1,52 +1,42 @@
-import type { CSSProperties } from 'react';
+import { BracketView, type BracketCell, type BracketSide } from '@/components/BracketView';
 
 /** A knockout tree as the importer stores it: the leaves are the first-round pairs, an inner node holds the winner's name ('' until it is played). */
 export interface BracketTree { n: string; c: BracketTree[] }
+/** A played or scheduled knockout match of the category, to put its sets in the tree. */
+export interface BracketResult { a: string[]; b: string[]; sets: { a: number; b: number }[]; status: string; winner: 'a' | 'b' | null }
 
-const LINE = '2px solid var(--line, #cfd6cc)';
-const ARM = 16;
+const key = (names: string[]) => names.join(' / ').toLowerCase().replace(/\s+/g, ' ').trim();
+const nameOf = (n: BracketTree) => n.n;
 
-function Box({ node, leaf, root }: { node: BracketTree; leaf: boolean; root: boolean }) {
-  const names = node.n ? node.n.split(' / ') : [];
-  const style: CSSProperties = {
-    border: '1px solid var(--line, #e1e5df)', borderRadius: 8, padding: '5px 9px', minWidth: 150, background: leaf ? 'var(--surface, #fff)' : 'var(--surface2, #f5f6f1)',
-    fontSize: 14, lineHeight: 1.35, fontWeight: leaf ? 500 : 800, textAlign: 'start',
-    ...(root && names.length ? { borderColor: 'var(--ok, #15803d)', background: 'var(--okbg, #dcfce7)' } : {}),
+/** The depth of the deepest match (an inner node is a match; a leaf is a first-round pair). */
+const depthOf = (n: BracketTree): number => (n.c.length ? 1 + Math.max(...n.c.map(depthOf)) : 0);
+
+/**
+ * The doubles knockout tree drawn exactly like the singles one (same columns, boxes and lines): every inner node of Loglig's tree is a match
+ * between what its two children hold (a pair on a leaf, the winner of that match above it). The sets come from the matches already imported.
+ */
+export function DoublesBracket({ tree, results, tt, pending }: { tree: BracketTree; results: BracketResult[]; tt: (s: string) => string; pending: string }) {
+  const depth = depthOf(tree); // number of columns
+  const cols: (BracketCell | null)[][] = Array.from({ length: depth }, (_, d) => Array<BracketCell | null>(2 ** d).fill(null)); // cols[0] = the final
+  const put = (n: BracketTree, d: number, i: number) => {
+    if (!n.c.length) return;
+    const [x, y] = n.c as [BracketTree, BracketTree | undefined];
+    const an = nameOf(x), bn = y ? nameOf(y) : '';
+    const found = an && bn ? results.find((r) => (key(r.a) === key([an]) && key(r.b) === key([bn])) || (key(r.a) === key([bn]) && key(r.b) === key([an]))) : undefined;
+    const flipped = !!found && key(found.a) !== key([an]);
+    const mk = (name: string, mine: 'a' | 'b'): BracketSide => {
+      const m = found && (flipped ? (mine === 'a' ? 'b' : 'a') : mine);
+      const done = !!found && found.status !== 'SCHEDULED' && found.status !== 'VOID';
+      return {
+        names: name ? name.split(' / ') : [],
+        win: !!name && (n.n === name || (!!found && done && found.winner === m)),
+        sets: !found || !done ? null : found.status === 'WALKOVER' && !found.sets.length ? (found.winner === m ? 'W/O' : '') : found.sets.map((s, k) => <b key={k}>{m === 'a' ? s.a : s.b}</b>),
+      };
+    };
+    cols[d]![i] = { a: mk(an, 'a'), b: mk(bn, 'b') };
+    put(x, d + 1, 2 * i);
+    if (y) put(y, d + 1, 2 * i + 1);
   };
-  return (
-    <div style={style} dir="auto">
-      {names.length ? names.map((x) => <div key={x} style={{ whiteSpace: 'nowrap' }}>{x}</div>) : <span className="muted">—</span>}
-    </div>
-  );
-}
-
-/** One node with its two children on the left, joined by elbow lines (the tree always grows towards the final on the right). */
-function Node({ node, root }: { node: BracketTree; root: boolean }) {
-  if (!node.c.length) return <Box node={node} leaf root={false} />;
-  return (
-    <div style={{ display: 'flex', alignItems: 'stretch' }}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, justifyContent: 'space-around' }}>
-        {node.c.map((k, i) => (
-          <div key={i} style={{ display: 'flex', alignItems: 'stretch', flex: 1 }}>
-            <div style={{ display: 'flex', alignItems: 'center' }}><Node node={k} root={false} /></div>
-            <div style={{ width: ARM, display: 'flex', flexDirection: 'column' }}>
-              <div style={{ flex: 1, ...(i === 0 ? {} : { borderBottom: LINE, borderRight: LINE }) }} />
-              <div style={{ flex: 1, ...(i === 0 ? { borderTop: LINE, borderRight: LINE } : {}) }} />
-            </div>
-          </div>
-        ))}
-      </div>
-      <div style={{ width: ARM, alignSelf: 'center', borderTop: LINE }} />
-      <div style={{ display: 'flex', alignItems: 'center' }}><Box node={node} leaf={false} root={root} /></div>
-    </div>
-  );
-}
-
-/** The knockout tree of a doubles category. Scrolls sideways on a narrow screen; the names keep their own direction inside the boxes. */
-export function DoublesBracket({ tree }: { tree: BracketTree }) {
-  return (
-    <div dir="ltr" style={{ overflowX: 'auto', padding: '4px 2px 10px' }}>
-      <Node node={tree} root />
-    </div>
-  );
+  put(tree, 0, 0);
+  return <BracketView cols={cols.reverse()} tt={tt} pending={pending} />;
 }

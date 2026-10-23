@@ -8,6 +8,7 @@ import { Flash, Shell } from '@/components/Shell';
 import { FollowButton } from '@/components/FollowButton';
 import { DoublesView } from '@/components/DoublesView';
 import type { BracketTree } from '@/components/DoublesBracket';
+import { BracketView, type BracketCell } from '@/components/BracketView';
 import { MatchScore, matchWhen } from '@/components/MatchScore';
 import { eq } from 'drizzle-orm';
 import { Gallery } from './Gallery';
@@ -18,7 +19,7 @@ import { groupStandings } from '@/services/results';
 import { doublesTables } from '@/services/doubles';
 import { listCourtLabels } from '@/services/tournaments';
 import { formatOf } from '@/services/draws';
-import { bracketLayout, roundName } from '@/services/bracket';
+import { bracketLayout } from '@/services/bracket';
 import { loadRuleSet } from '@/services/rules';
 import { myPlayerRows } from '@/services/home';
 import { ineligibleReason, relevantFor } from '@/services/eligibility';
@@ -495,35 +496,13 @@ async function Entries({ d, manage }: { d: Detail; manage: boolean }) {
 function Bracket({ d, categoryId, hl, tt }: { d: Detail; categoryId: string; hl: Set<string>; tt: (s: string) => string }) {
   const tree = bracketLayout(d.ms.filter((m) => m.categoryId === categoryId && m.stage === 'KO'));
   if (!tree) return null;
-  const { cols } = tree;
-  const side = (m: (typeof d.ms)[number], e: string | null, mine: (s: { a: number; b: number }) => number) => (
-    <div className={[e && m.winnerEntryId === e ? 'w' : '', e && hl.has(e) ? 'me' : ''].join(' ')}>
-      <span className="nm">{e ? d.names.get(e) ?? '?' : tt('טרם נקבע')}</span>
-      <span className="sc" dir="ltr">{m.status === 'WALKOVER' ? (e && m.winnerEntryId === e ? 'W/O' : '') : ((m.sets ?? []) as { a: number; b: number }[]).map((s, i) => <b key={i}>{mine(s)}</b>)}</span>
-    </div>
-  );
-  return (
-    <div className="card tree-card">
-      <div className="tree">
-        {cols.map((col, k) => {
-          const title = roundName(cols.length - 1 - k);
-          const box = (m: (typeof col)[number], key: number) => (
-            <div key={key} className="tcell">
-              {m ? <Link href={`/matches/${m.id}`} className="tm">{side(m, m.aEntryId, (s) => s.a)}{side(m, m.bEntryId, (s) => s.b)}</Link> : <div className={`tm empty ${k ? '' : 'bye'}`} />}
-            </div>
-          );
-          return (
-            <div key={k} className="tcol">
-              <h3>{title ? tt(title) : `${tt('סיבוב')} ${k + 1}`}</h3>
-              <div className="tcells">
-                {col.length === 1 ? box(col[0]!, 0) : Array.from({ length: col.length / 2 }, (_, j) => <div key={j} className="tpair">{box(col[2 * j]!, 0)}{box(col[2 * j + 1]!, 1)}</div>)}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
+  const side = (m: (typeof d.ms)[number], e: string | null, mine: (s: { a: number; b: number }) => number) => ({
+    names: e ? [d.names.get(e) ?? '?'] : [],
+    win: !!e && m.winnerEntryId === e, me: !!e && hl.has(e),
+    sets: m.status === 'WALKOVER' ? (e && m.winnerEntryId === e ? 'W/O' : '') : ((m.sets ?? []) as { a: number; b: number }[]).map((s, i) => <b key={i}>{mine(s)}</b>),
+  });
+  const cols = tree.cols.map((col) => col.map((m): BracketCell | null => (m ? { href: `/matches/${m.id}`, a: side(m, m.aEntryId, (s) => s.a), b: side(m, m.bEntryId, (s) => s.b) } : null)));
+  return <BracketView cols={cols} tt={tt} pending={tt('טרם נקבע')} />;
 }
 
 async function DrawTab({ d, manage, hl }: { d: Detail; manage: boolean; hl: Set<string> }) {
@@ -627,7 +606,7 @@ async function DoublesTab({ d }: { d: Detail }) {
       })),
     };
   });
-  return <DoublesView cats={cats} labels={{ bracket: tt('עץ'), pair: tt('זוג'), played: tt('מש׳'), wins: tt('נצ׳'), losses: tt('הפ׳'), sets: tt('סטים'), walkover: tt('ווק-אובר'), retired: tt('פרישה'), void: tt('בוטל'), live: tt('חי'), won: tt('ניצח'), search: tt('חיפוש שחקן'), all: tt('הכל'), upcoming: tt('טרם שוחקו'), done: tt('הסתיימו'), expandAll: tt('פתיחת הכל'), collapseAll: tt('סגירת הכל'), of: tt('מתוך') }} />;
+  return <DoublesView cats={cats} labels={{ bracket: tt('עץ'), pending: tt('טרם נקבע'), rounds: Object.fromEntries(['גמר', 'חצי גמר', 'רבע גמר', 'שמינית גמר', 'סיבוב'].map((x) => [x, tt(x)])), pair: tt('זוג'), played: tt('מש׳'), wins: tt('נצ׳'), losses: tt('הפ׳'), sets: tt('סטים'), walkover: tt('ווק-אובר'), retired: tt('פרישה'), void: tt('בוטל'), live: tt('חי'), won: tt('ניצח'), search: tt('חיפוש שחקן'), all: tt('הכל'), upcoming: tt('טרם שוחקו'), done: tt('הסתיימו'), expandAll: tt('פתיחת הכל'), collapseAll: tt('סגירת הכל'), of: tt('מתוך') }} />;
 }
 
 async function Results({ d, scorer, hl }: { d: Detail; scorer: boolean; hl: Set<string> }) {

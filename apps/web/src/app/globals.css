@@ -154,6 +154,7 @@ a.tm:hover{border-color:var(--blue2);transform:translateY(-1px)}
 .tm>div{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 10px;min-height:32px}
 .tm>div+div{border-top:1px solid var(--line)}
 .tm .nm{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tm .nm.pair{white-space:normal;line-height:1.3}
 .tm .sc{display:flex;gap:6px;flex:0 0 auto;font-variant-numeric:tabular-nums;color:var(--muted)}
 .tm .sc b{font-weight:500;min-width:1ch;text-align:center}
 .tm .w{font-weight:700}

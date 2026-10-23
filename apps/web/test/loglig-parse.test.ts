@@ -33,8 +33,7 @@ describe('loglig knockout tree', () => {
   it('a category with a tree and no matches yet still becomes a doubles document that carries the tree', () => {
     const bracket = parseBracket(pageWithTree(inner('', [leaf('א א / ב ב'), leaf('ג ג / ד ד')])));
     const doc = buildDoubles({ competition: 'סבב', category: 'בנים 14', matches: [], bracket }, '', 7);
-    expect(doc).toMatchObject({ name: 'בנים 14', source: '7', gender: 'MALE', age: 14, matches: [] });
-    expect(doc!.bracket).toEqual(bracket);
+    expect(doc).toMatchObject({ name: 'בנים 14', source: '7', gender: 'MALE', age: 14, matches: [], bracket });
     expect(buildDoubles({ competition: 'סבב', category: 'בנים 14', matches: [], bracket: null }, '', 7)).toBeNull();
   });
 });

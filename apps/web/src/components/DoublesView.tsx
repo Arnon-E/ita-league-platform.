@@ -13,7 +13,7 @@ export interface DoublesViewCat {
 }
 export interface DoublesViewLabels {
   pair: string; played: string; wins: string; losses: string; sets: string; walkover: string; retired: string; void: string; live: string; won: string;
-  bracket: string; search: string; all: string; upcoming: string; done: string; expandAll: string; collapseAll: string; of: string;
+  bracket: string; pending: string; rounds: Record<string, string>; search: string; all: string; upcoming: string; done: string; expandAll: string; collapseAll: string; of: string;
 }
 
 const LINE = '1px solid var(--line, #e1e5df)';
@@ -143,10 +143,11 @@ export function DoublesView({ cats, labels }: { cats: DoublesViewCat[]; labels: 
       })}
       {/* the knockout tree, as soon as Loglig publishes it (before any knockout match has a time) */}
       {cat.bracket && !filtered && (
-        <div style={{ border: LINE, borderRadius: 14, background: 'var(--surface, #fff)', padding: '12px 14px' }}>
-          <strong style={{ fontSize: 17, display: 'block', marginBottom: 10 }}>{labels.bracket}</strong>
-          <DoublesBracket tree={cat.bracket} />
-        </div>
+        <section>
+          <h2>{labels.bracket}</h2>
+          <DoublesBracket tree={cat.bracket} pending={labels.pending} tt={(s) => labels.rounds[s] ?? s}
+            results={cat.matches.filter((m) => !m.group).map((m) => ({ a: m.a, b: m.b, sets: m.sets, status: m.status, winner: m.winner }))} />
+        </section>
       )}
       {/* matches outside the groups (knockout, qualifiers) */}
       {koCards.length > 0 && <div className="grid">{koCards.map((m) => <MatchScore key={m.id} aName={m.a} bName={m.b} sets={m.status === 'SCHEDULED' ? [] : m.sets} status={m.status} winner={m.winner} caption={m.caption} when={m.when} labels={lab} />)}</div>}
