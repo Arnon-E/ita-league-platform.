@@ -1,4 +1,5 @@
 import { sql } from 'drizzle-orm';
+import { refreshRankingSnapshot } from './ranking-sql';
 import type { Db } from '@/db';
 import { ensureDefaultRuleSet } from './rules';
 
@@ -23,6 +24,7 @@ export async function devSeedReset(db: Db) {
   await db.execute(sql`delete from tournaments where name like 'DEV %'`); // categories, entries and matches go with them
   await db.execute(sql`delete from players where loglig_id like 'seed:%'`);
   await db.execute(sql`delete from clubs where name like 'DEV %'`);
+  await refreshRankingSnapshot(db);
 }
 
 /** Players, clubs, tournaments, categories, entries, matches and ranking points, shaped like the live data (default 5,600 players, 300 tournaments). */
@@ -86,6 +88,7 @@ export async function devSeed(db: Db, o: { players?: number; tournaments?: numbe
   const n = (await db.execute(sql`select (select count(*) from players where loglig_id like 'seed:%')::int as players, (select count(*) from clubs where name like 'DEV %')::int as clubs,
     (select count(*) from tournaments where name like 'DEV %')::int as tournaments, (select count(*) from entries e join categories c on c.id = e.category_id join tournaments t on t.id = c.tournament_id where t.name like 'DEV %')::int as entries,
     (select count(*) from points_awards where loglig_key like 'seed:%')::int as awards`)) as unknown as Record<string, number>[];
+  await refreshRankingSnapshot(db);
   return { seeded: true, ...n[0] };
 }
 

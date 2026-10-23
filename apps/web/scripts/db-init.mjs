@@ -57,6 +57,12 @@ try {
     id text primary key, player_id text not null references players(id) on delete cascade, category_id text not null references categories(id) on delete cascade,
     status text not null default 'PENDING', created_at timestamptz not null default now())`;
   await sql`create unique index if not exists entry_suggestion_uq on entry_suggestions (player_id, category_id)`;
+  await sql`create table if not exists ranking_snapshot (
+    gender gender not null, player_id text not null references players(id) on delete cascade, rank integer not null,
+    points_cents integer not null, best_cents integer not null, counted integer not null, primary key (gender, player_id))`;
+  await sql`create index if not exists ranking_snapshot_rank_idx on ranking_snapshot (gender, rank)`;
+  await sql`create index if not exists ranking_snapshot_player_idx on ranking_snapshot (player_id)`;
+  await sql`create table if not exists ranking_snapshot_meta (id integer primary key, computed_at timestamptz not null)`;
   await sql`create table if not exists result_overrides (
     id text primary key, tournament text not null, player_a text not null, player_b text not null, winner text not null, note text,
     created_at timestamptz not null default now())`;

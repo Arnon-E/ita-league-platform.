@@ -5,7 +5,8 @@ import { resetDb } from './helpers';
 import { devSeed } from '@/services/devtools';
 import { rankingFor } from '@/services/rankings';
 import { ensureDefaultRuleSet, loadRuleSet } from '@/services/rules';
-import { playerRanks, rankingPage } from '@/services/ranking-sql';
+import { playerRanks, rankingPage, refreshRankingSnapshot } from '@/services/ranking-sql';
+import { sql } from 'drizzle-orm';
 
 const { players, clubs } = schema;
 let rules: Awaited<ReturnType<typeof loadRuleSet>>;
@@ -44,7 +45,7 @@ async function expected(gender: 'MALE' | 'FEMALE', f: { age?: number; clubId?: s
 const brief = (rows: { rank: number; playerId: string; points: number; counted: number }[]) => rows.map((r) => ({ rank: r.rank, playerId: r.playerId, points: +r.points.toFixed(2), counted: r.counted }));
 
 describe('ranking computed in SQL equals the JavaScript ranking', () => {
-  beforeAll(addUnusualAwards);
+  beforeAll(async () => { await addUnusualAwards(); await refreshRankingSnapshot(db); });
 
   it('whole table, both genders, including ties and the counted results', async () => {
     for (const gender of ['MALE', 'FEMALE'] as const) {
@@ -91,5 +92,33 @@ describe('ranking computed in SQL equals the JavaScript ranking', () => {
     expect(top.name).toBe(`${p.firstName} ${p.lastName}`);
     const c = p.clubId ? (await db.select().from(clubs).where(inArray(clubs.id, [p.clubId])))[0]!.name : null;
     expect(top.club).toBe(c);
+  });
+});
+
+describe('the stored ranking', () => {
+  it('holds boys and girls in one table, one row per ranked player', async () => {
+    const rows = (await db.execute(sql`select gender, count(*)::int as n, count(distinct player_id)::int as d, min(rank)::int as lo, max(rank)::int as hi from ranking_snapshot group by gender order by gender`)) as unknown as { gender: string; n: number; d: number; lo: number; hi: number }[];
+    expect(rows.map((r) => r.gender).sort()).toEqual(['FEMALE', 'MALE']);
+    for (const r of rows) expect([r.n, r.lo, r.hi]).toEqual([r.d, 1, r.n]); // ranks run 1..n inside each gender, nobody twice
+  });
+
+  it('rebuilds itself when it is missing, and when it is a day old', async () => {
+    const before = await rankingPage(db, { gender: 'MALE', limit: 5 });
+    await db.execute(sql`delete from ranking_snapshot`);
+    await db.execute(sql`delete from ranking_snapshot_meta`);
+    expect(await rankingPage(db, { gender: 'MALE', limit: 5 })).toEqual(before); // empty table, no meta: rebuilt on the read
+
+    // a change that nobody refreshed after: the day-old snapshot is rebuilt by the next read
+    const top = before.rows[0]!;
+    await db.execute(sql`delete from points_awards where player_id = ${top.playerId}`);
+    expect((await rankingPage(db, { gender: 'MALE', limit: 1 })).rows[0]!.playerId).toBe(top.playerId); // still fresh: not yet rebuilt
+    await db.execute(sql`update ranking_snapshot_meta set computed_at = now() - interval '25 hours'`);
+    expect((await rankingPage(db, { gender: 'MALE', limit: 1 })).rows[0]!.playerId).not.toBe(top.playerId);
+  });
+
+  it('refreshing twice at once is safe', async () => {
+    await Promise.all([refreshRankingSnapshot(db), refreshRankingSnapshot(db), refreshRankingSnapshot(db)]);
+    const n = ((await db.execute(sql`select count(*)::int as n, count(distinct (gender, player_id))::int as d from ranking_snapshot`)) as unknown as { n: number; d: number }[])[0]!;
+    expect(n.n).toBe(n.d);
   });
 });

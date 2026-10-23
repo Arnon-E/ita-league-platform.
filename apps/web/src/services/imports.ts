@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { refreshRankingSnapshot } from './ranking-sql';
 import { canonicalClub } from './clubs';
 import { eq } from 'drizzle-orm';
 import type { Db } from '@/db';
@@ -112,6 +113,9 @@ export async function importPointRows(db: Db, actor: Actor, rows: Record<string,
     await db.insert(pointsAwards).values({ playerId: p.id, points, multiplier: mult, kind, date, logligKey: key }).onConflictDoUpdate({ target: pointsAwards.logligKey, set: { points, multiplier: mult, date } });
     if (ex.length) rep.updated++; else rep.created++;
   }
-  if (!opts.dryRun) await audit(db, actor, 'import.points', 'import', undefined, { ...rep, errors: rep.errors.length });
+  if (!opts.dryRun) {
+    await refreshRankingSnapshot(db); // the stored ranking follows the points that were just written
+    await audit(db, actor, 'import.points', 'import', undefined, { ...rep, errors: rep.errors.length });
+  }
   return rep;
 }

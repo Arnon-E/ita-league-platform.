@@ -1,4 +1,5 @@
 import { and, eq, gte, inArray, sql } from 'drizzle-orm';
+import { refreshRankingSnapshot } from './ranking-sql';
 import {
   advancers, computeStandings, resolveCompleted, roundName,
   type MatchFormat, type MatchResult, type SetScore, type Standing, type GroupConfig,
@@ -256,6 +257,7 @@ export async function awardPoints(db: Db, actor: Actor, categoryId: string, tabl
     awarded++;
   }
   await audit(db, actor, 'points.award', 'category', categoryId, { awarded, noShowPlayers: flagged.map((e) => entryPlayer.get(e)) });
+  await refreshRankingSnapshot(db); // the stored ranking follows the points that were just written
   return { awarded };
 }
 

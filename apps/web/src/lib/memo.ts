@@ -17,5 +17,8 @@ export function memo<T>(key: string, ttlMs: number, fn: () => PromiseLike<T> | P
   return p;
 }
 
+/** Forget the cached results whose key starts with this (after the data behind them changed on this instance). */
+export function memoDelete(prefix: string) { for (const k of [...store.keys()]) if (k.startsWith(prefix)) store.delete(k); }
+
 /** Test helper: forget everything cached. */
 export function memoClear() { store.clear(); }

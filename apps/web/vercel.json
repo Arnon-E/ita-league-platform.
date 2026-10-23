@@ -4,5 +4,5 @@
   "installCommand": "cd ../.. && pnpm install --frozen-lockfile",
   "buildCommand": "node scripts/db-init.mjs && pnpm build",
   "regions": ["fra1"],
-  "crons": [{ "path": "/api/cron/notifications", "schedule": "0 6 * * *" }]
+  "crons": [{ "path": "/api/cron/notifications", "schedule": "0 6 * * *" }, { "path": "/api/cron/ranking", "schedule": "10 3 * * *" }]
 }

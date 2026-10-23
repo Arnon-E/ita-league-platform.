@@ -1,4 +1,5 @@
 import { sql } from 'drizzle-orm';
+import { refreshRankingSnapshot } from './ranking-sql';
 import { canonicalClub } from './clubs';
 import type { Db } from '@/db';
 
@@ -94,5 +95,6 @@ export async function importRankings(db: Db, input: RankingImport, now = new Dat
     join players p on p.loglig_id = t.key
     where t.points > 0`);
 
+  await refreshRankingSnapshot(db); // the stored ranking follows the points that were just written
   return { players: rows.length, clubs: clubCount, awards: rows.filter((r) => r.total > 0).length };
 }

@@ -1,6 +1,6 @@
 import { relations } from 'drizzle-orm';
 import {
-  boolean, doublePrecision, index, integer, jsonb, pgEnum, pgTable, text, timestamp, uniqueIndex,
+  boolean, doublePrecision, index, integer, jsonb, pgEnum, pgTable, primaryKey, text, timestamp, uniqueIndex,
 } from 'drizzle-orm/pg-core';
 
 const id = () => text('id').primaryKey().$defaultFn(() => crypto.randomUUID());
@@ -379,6 +379,25 @@ export const follows = pgTable('follows', {
   targetId: text('target_id').notNull(),
   createdAt: createdAt(),
 }, (t) => [uniqueIndex('follow_uq').on(t.userId, t.kind, t.targetId), index('follow_target_idx').on(t.kind, t.targetId)]);
+
+/**
+ * The national ranking, computed ahead of time (services/ranking-sql.ts refreshRankingSnapshot): one row per ranked player, boys and girls in
+ * the same table (the gender column and its index keep them apart). It is rebuilt after anything that changes ranking points and once a day,
+ * because the 52-week window slides. Pages read it instead of adding up every award of the season on each visit.
+ */
+export const rankingSnapshot = pgTable('ranking_snapshot', {
+  gender: genderEnum('gender').notNull(),
+  playerId: text('player_id').notNull().references(() => players.id, { onDelete: 'cascade' }),
+  /** National rank inside the gender. */
+  rank: integer('rank').notNull(),
+  /** Whole cents (points x 100), so sums and ties are exact. */
+  pointsCents: integer('points_cents').notNull(),
+  bestCents: integer('best_cents').notNull(),
+  counted: integer('counted').notNull(),
+}, (t) => [primaryKey({ columns: [t.gender, t.playerId] }), index('ranking_snapshot_rank_idx').on(t.gender, t.rank), index('ranking_snapshot_player_idx').on(t.playerId)]);
+
+/** When the snapshot was last rebuilt (one row), so a stale or missing snapshot rebuilds itself on the next read. */
+export const rankingSnapshotMeta = pgTable('ranking_snapshot_meta', { id: integer('id').primaryKey(), computedAt: timestamp('computed_at', { withTimezone: true }).notNull() });
 
 export const notifications = pgTable('notifications', {
   id: id(),
