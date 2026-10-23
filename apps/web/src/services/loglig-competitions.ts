@@ -176,10 +176,24 @@ export async function importCompetition(db: Db, input: CompetitionIn, now = new 
     const overrideFor = (a: string, b: string) => overrides.find((o) => (o.playerA === a && o.playerB === b) || (o.playerA === b && o.playerB === a));
 
     // players already known from the ranking mirror: key rk:<G>:<birthYear>:<name> (and cp:<G>:<name> for ones created here)
+    // Only the players whose name appears in this competition: a live refresh runs every few minutes and used to read the whole players table
+    // (thousands of rows) just to find a few dozen names. Every string in the payload counts as a possible name (and each side of a "A / B" pair),
+    // so a name that is looked up is never missing from the answer; extra strings only add nothing.
+    const wanted = new Set<string>();
+    const collect = (v: unknown) => {
+      if (typeof v === 'string') {
+        const t = v.replace(/\s+/g, ' ').trim();
+        if (t && t.length < 120) { wanted.add(t); if (t.includes('/')) for (const part of t.split('/')) { const q = part.replace(/\s+/g, ' ').trim(); if (q) wanted.add(q); } }
+      } else if (Array.isArray(v)) for (const x of v) collect(x);
+      else if (v && typeof v === 'object') for (const x of Object.values(v)) collect(x);
+    };
+    collect(input.categories); collect(input.doubles);
+    const names = JSON.stringify([...wanted]);
     const known = await tx.select({
       id: schema.players.id, key: schema.players.logligId, first: schema.players.firstName, last: schema.players.lastName,
       gender: schema.players.gender, birth: schema.players.birthDate,
-    }).from(schema.players).where(sql`${schema.players.logligId} like 'rk:%' or ${schema.players.logligId} like 'cp:%' or ${schema.players.logligId} like 'll:%' or ${schema.players.logligId} like 'lu:%'`);
+    }).from(schema.players).where(sql`(${schema.players.logligId} like 'rk:%' or ${schema.players.logligId} like 'cp:%' or ${schema.players.logligId} like 'll:%' or ${schema.players.logligId} like 'lu:%')
+      and regexp_replace(${schema.players.firstName} || ' ' || ${schema.players.lastName}, '\\s+', ' ', 'g') in (select jsonb_array_elements_text(${names}::jsonb))`);
     const byName = new Map<string, { id: string; by: number | null }[]>();
     for (const k of known) {
       const nm = `${k.first} ${k.last}`.replace(/\s+/g, ' ').trim();
