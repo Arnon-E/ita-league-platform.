@@ -12,7 +12,7 @@ export interface BracketCell { href?: string; a: BracketSide; b: BracketSide; /*
  * each column with half the slots of the one before; a null cell is a bye or a round not played yet). Layout and look come from the
  * `.tree` styles in globals.css.
  */
-export function BracketView({ cols, tt, pending }: { cols: (BracketCell | null)[][]; tt: (s: string) => string; pending: string }) {
+export function BracketView({ cols, tt, pending, extra = [] }: { cols: (BracketCell | null)[][]; tt: (s: string) => string; pending: string; extra?: { title: string; cell: BracketCell }[] }) {
   const side = (s: BracketSide) => (
     <div className={[s.win ? 'w' : '', s.me ? 'me' : ''].join(' ')}>
       <span className={s.names.length > 1 ? 'nm pair' : 'nm'}>{s.names.length ? s.names.map((n) => <span key={n} style={{ display: 'block' }}>{n}</span>) : pending}</span>
@@ -42,6 +42,17 @@ export function BracketView({ cols, tt, pending }: { cols: (BracketCell | null)[
           );
         })}
       </div>
+      {/* matches outside the tree: the losers of the semifinals play for places 3-4 */}
+      {extra.length > 0 && (
+        <div className="tree" style={{ paddingTop: 0 }}>
+          {extra.map((x, i) => (
+            <div key={i} className="tcol">
+              <h3>{x.title}</h3>
+              <div className="tcell">{x.cell.href ? <Link href={x.cell.href} className="tm">{side(x.cell.a)}{side(x.cell.b)}{meta(x.cell)}</Link> : <div className="tm">{side(x.cell.a)}{side(x.cell.b)}{meta(x.cell)}</div>}</div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

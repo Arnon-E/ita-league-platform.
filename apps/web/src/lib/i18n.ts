@@ -191,6 +191,7 @@ const EN: Record<string, string> = {
   'מחזור': 'Round',
   'הדחה': 'Knockout',
   'עץ': 'Bracket',
+  'מקומות 3-4': 'Places 3-4',
   'סטטוס': 'Status',
   'הלוח טרם פורסם.': 'The schedule has not been published yet.',
   'גרסה להדפסה': 'Print version',

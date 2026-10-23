@@ -251,7 +251,7 @@ describe('loglig competition mirror', () => {
 
   it('keeps the knockout tree of a doubles category (even before it has matches), replaces it on the next import and shows it in the detail', async () => {
     const { tournamentDetail } = await import('@/services/queries');
-    const tree = (w: string) => ({ n: w, c: [{ n: 'א א / ב ב', c: [] }, { n: 'ג ג / ד ד', c: [] }] });
+    const tree = (w: string) => ({ n: w, t: true, c: [{ n: 'א א / ב ב', c: [] }, { n: 'ג ג / ד ד', c: [] }] });
     const run = (bracket: unknown, matches: object[] = []) => importCompetition(db, validateCompetitionImport({
       kind: 'competition', name: 'סבב עץ זוגות', start: '2026-10-16', end: '2026-10-26', feeShekel: 0, level: 'NATIONAL', venues: [], categories: [],
       doubles: [{ name: 'בנים 14', source: '9', gender: 'MALE', age: 14, matches, bracket }],

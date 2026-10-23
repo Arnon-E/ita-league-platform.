@@ -502,7 +502,13 @@ function Bracket({ d, categoryId, hl, tt }: { d: Detail; categoryId: string; hl:
     sets: m.status === 'WALKOVER' ? (e && m.winnerEntryId === e ? 'W/O' : '') : ((m.sets ?? []) as { a: number; b: number }[]).map((s, i) => <b key={i}>{mine(s)}</b>),
   });
   const cols = tree.cols.map((col) => col.map((m): BracketCell | null => (m ? { href: `/matches/${m.id}`, a: side(m, m.aEntryId, (s) => s.a), b: side(m, m.bEntryId, (s) => s.b), meta: [matchWhen(m.scheduledStart, m.scheduleKind), m.courtLabel].filter(Boolean).join(' · ') || undefined } : null)));
-  return <BracketView cols={cols} tt={tt} pending={tt('טרם נקבע')} />;
+  // classification matches (places 3-4) are not part of the tree: they get their own box under it
+  const inTree = new Set(tree.cols.flat().map((m) => m?.id));
+  const extra = d.ms.filter((m) => m.categoryId === categoryId && m.stage === 'KO' && !inTree.has(m.id)).map((m) => ({
+    title: tt('מקומות 3-4'),
+    cell: { href: `/matches/${m.id}`, a: side(m, m.aEntryId, (s) => s.a), b: side(m, m.bEntryId, (s) => s.b), meta: [matchWhen(m.scheduledStart, m.scheduleKind), m.courtLabel].filter(Boolean).join(' · ') || undefined },
+  }));
+  return <BracketView cols={cols} tt={tt} pending={tt('טרם נקבע')} extra={extra} />;
 }
 
 async function DrawTab({ d, manage, hl }: { d: Detail; manage: boolean; hl: Set<string> }) {
@@ -606,7 +612,7 @@ async function DoublesTab({ d }: { d: Detail }) {
       })),
     };
   });
-  return <DoublesView cats={cats} labels={{ bracket: tt('עץ'), pending: tt('טרם נקבע'), rounds: Object.fromEntries(['גמר', 'חצי גמר', 'רבע גמר', 'שמינית גמר', 'סיבוב'].map((x) => [x, tt(x)])), pair: tt('זוג'), played: tt('מש׳'), wins: tt('נצ׳'), losses: tt('הפ׳'), sets: tt('סטים'), walkover: tt('ווק-אובר'), retired: tt('פרישה'), void: tt('בוטל'), live: tt('חי'), won: tt('ניצח'), search: tt('חיפוש שחקן'), all: tt('הכל'), upcoming: tt('טרם שוחקו'), done: tt('הסתיימו'), expandAll: tt('פתיחת הכל'), collapseAll: tt('סגירת הכל'), of: tt('מתוך') }} />;
+  return <DoublesView cats={cats} labels={{ bracket: tt('עץ'), pending: tt('טרם נקבע'), rounds: Object.fromEntries(['גמר', 'חצי גמר', 'רבע גמר', 'שמינית גמר', 'סיבוב', 'מקומות 3-4'].map((x) => [x, tt(x)])), pair: tt('זוג'), played: tt('מש׳'), wins: tt('נצ׳'), losses: tt('הפ׳'), sets: tt('סטים'), walkover: tt('ווק-אובר'), retired: tt('פרישה'), void: tt('בוטל'), live: tt('חי'), won: tt('ניצח'), search: tt('חיפוש שחקן'), all: tt('הכל'), upcoming: tt('טרם שוחקו'), done: tt('הסתיימו'), expandAll: tt('פתיחת הכל'), collapseAll: tt('סגירת הכל'), of: tt('מתוך') }} />;
 }
 
 async function Results({ d, scorer, hl }: { d: Detail; scorer: boolean; hl: Set<string> }) {

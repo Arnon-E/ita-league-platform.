@@ -1,7 +1,7 @@
 import { BracketView, type BracketCell, type BracketSide } from '@/components/BracketView';
 
 /** A knockout tree as the importer stores it: the leaves are the first-round pairs, an inner node holds the winner's name ('' until it is played). */
-export interface BracketTree { n: string; c: BracketTree[] }
+export interface BracketTree { n: string; c: BracketTree[]; t?: boolean }
 /** A played or scheduled knockout match of the category, to put its sets in the tree. */
 export interface BracketResult { a: string[]; b: string[]; sets: { a: number; b: number }[]; status: string; winner: 'a' | 'b' | null; meta?: string }
 
@@ -17,6 +17,7 @@ const depthOf = (n: BracketTree): number => (n.c.length ? 1 + Math.max(...n.c.ma
  */
 export function DoublesBracket({ tree, results, tt, pending }: { tree: BracketTree; results: BracketResult[]; tt: (s: string) => string; pending: string }) {
   const depth = depthOf(tree); // number of columns
+  const used = new Set<BracketResult>();
   const cols: (BracketCell | null)[][] = Array.from({ length: depth }, (_, d) => Array<BracketCell | null>(2 ** d).fill(null)); // cols[0] = the final
   const put = (n: BracketTree, d: number, i: number) => {
     if (!n.c.length) return;
@@ -33,10 +34,22 @@ export function DoublesBracket({ tree, results, tt, pending }: { tree: BracketTr
         sets: !found || !done ? null : found.status === 'WALKOVER' && !found.sets.length ? (found.winner === m ? 'W/O' : '') : found.sets.map((s, k) => <b key={k}>{m === 'a' ? s.a : s.b}</b>),
       };
     };
+    if (found) used.add(found);
     cols[d]![i] = { a: mk(an, 'a'), b: mk(bn, 'b'), meta: found?.meta || undefined };
     put(x, d + 1, 2 * i);
     if (y) put(y, d + 1, 2 * i + 1);
   };
   put(tree, 0, 0);
-  return <BracketView cols={cols.reverse()} tt={tt} pending={pending} />;
+  // places 3-4: a knockout match that is not in the tree (or, once the tree has the box, the empty one waiting for the semifinal losers)
+  const semis = depth >= 2 ? tree.c.flatMap((x) => x.c.map(nameOf)).filter(Boolean) : [];
+  const third = results.find((r) => !used.has(r) && semis.length > 0 && [key(r.a), key(r.b)].every((k) => semis.some((s) => key([s]) === k)));
+  const extra: { title: string; cell: BracketCell }[] = [];
+  if (third || (tree.t && depth >= 2)) {
+    const side = (names: string[], me: 'a' | 'b'): BracketSide => ({
+      names, win: !!third && third.status !== 'SCHEDULED' && third.status !== 'VOID' && third.winner === me,
+      sets: !third || third.status === 'SCHEDULED' || third.status === 'VOID' ? null : third.sets.map((s, k) => <b key={k}>{me === 'a' ? s.a : s.b}</b>),
+    });
+    extra.push({ title: tt('מקומות 3-4'), cell: { a: side(third?.a ?? [], 'a'), b: side(third?.b ?? [], 'b'), meta: third?.meta || undefined } });
+  }
+  return <BracketView cols={cols.reverse()} tt={tt} pending={pending} extra={extra} />;
 }

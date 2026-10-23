@@ -17,7 +17,7 @@ export interface MatchIn {
 }
 export interface CategoryIn { name: string; source: string; gender: Gender; age: number | null; format: 'KNOCKOUT' | 'GROUPS_KNOCKOUT'; matches: MatchIn[] }
 /** A doubles draw ("בנים 12 זוגות"): each side is a pair, "A / B". */
-export interface BracketNode { n: string; c: BracketNode[] }
+export interface BracketNode { n: string; c: BracketNode[]; t?: boolean }
 export interface DoublesIn { name: string; source: string; gender: Gender; age: number | null; matches: MatchIn[]; bracket?: BracketNode }
 
 /** The knockout tree from the sync, cleaned: names trimmed, at most two children, depth and size limited. */
@@ -25,7 +25,7 @@ function cleanBracket(x: unknown, depth = 0, count = { n: 0 }): BracketNode | nu
   const o = x as { n?: unknown; c?: unknown } | null;
   if (!o || typeof o !== 'object' || depth > 7 || ++count.n > 300) return null;
   const kids = (Array.isArray(o.c) ? o.c : []).slice(0, 2).map((k) => cleanBracket(k, depth + 1, count));
-  return { n: clean(o.n, 120), c: kids.filter((k): k is BracketNode => !!k) };
+  return { n: clean(o.n, 120), c: kids.filter((k): k is BracketNode => !!k), ...(depth === 0 && (o as { t?: unknown }).t ? { t: true } : {}) };
 }
 export interface CompetitionIn {
   kind: 'competition'; name: string; start: string; end: string; feeShekel: number; level: 'NATIONAL' | 'REGIONAL' | 'INTERNATIONAL' | 'CIRCUIT';

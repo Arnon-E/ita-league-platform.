@@ -201,7 +201,7 @@ export function buildDoubles(page, label, source) {
 /**
  * The knockout tree of a category page. Loglig draws it in the browser from JSON inside a script ("tree_structure.nodeStructure = {...}"):
  * leaves are the pairs of the first round, every inner node is "Winner" until that match is played, then the winner's name.
- * Returns { n: name or '' (not decided yet), c: [children] } for the main draw, or null when the page has no tree.
+ * Returns { n: name or '' (not decided yet), c: [children], t?: true when there is a third-place match } for the main draw, or null when the page has no tree.
  */
 export function parseBracket(html) {
   for (const sc of html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/gi)) {
@@ -217,7 +217,8 @@ export function parseBracket(html) {
       return { n: /^(winner|loser|bye)?$/i.test(name) ? '' : name, c: (Array.isArray(n.children) ? n.children : []).slice(0, 2).map((x) => conv(x, depth + 1)) };
     };
     const tree = conv(root, 0);
-    return tree.c.length ? tree : null;
+    // Loglig draws a second small tree for the match between the two semifinal losers (places 3-4); t marks that the draw has it
+    return tree.c.length ? { ...tree, ...(/#ThirdPlaceDiv/.test(body) ? { t: true } : {}) } : null;
   }
   return null;
 }

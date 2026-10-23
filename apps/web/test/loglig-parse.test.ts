@@ -19,7 +19,7 @@ describe('loglig knockout tree', () => {
       inner('אבי לוי / בני כהן', [leaf('אבי לוי / בני כהן'), leaf('גדי שמש / דני ברק')]),
       inner('', [leaf('הלל אב / ויקי גל'), leaf('Bye')]),
     ]);
-    expect(parseBracket(pageWithTree(tree))).toEqual({ n: '', c: [
+    expect(parseBracket(pageWithTree(tree))).toEqual({ t: true, n: '', c: [
       { n: 'אבי לוי / בני כהן', c: [{ n: 'אבי לוי / בני כהן', c: [] }, { n: 'גדי שמש / דני ברק', c: [] }] },
       { n: '', c: [{ n: 'הלל אב / ויקי גל', c: [] }, { n: '', c: [] }] },
     ] });
