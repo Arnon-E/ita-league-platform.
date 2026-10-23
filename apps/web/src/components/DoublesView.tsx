@@ -41,10 +41,11 @@ export function DoublesView({ cats, labels }: { cats: DoublesViewCat[]; labels: 
   const keyOf = (name: string) => `${cat.name}|${name}`;
   const isOpen = (name: string) => filtered || !closed.has(keyOf(name));
   const toggle = (name: string) => setClosed((s) => { const n = new Set(s); if (n.has(keyOf(name))) n.delete(keyOf(name)); else n.add(keyOf(name)); return n; });
-  const setAll = (open: boolean) => { setLastAll(open ? 'open' : 'closed'); setClosed((s) => { const n = new Set(s); for (const x of groups) { if (open) n.delete(keyOf(x.g.group)); else n.add(keyOf(x.g.group)); } return n; }); };
+  const foldables = [...(cat.bracket ? ['::tree'] : []), ...groups.map((x) => x.g.group)]; // everything the all-button folds: the tree and the groups
+  const setAll = (open: boolean) => { setLastAll(open ? 'open' : 'closed'); setClosed((s) => { const n = new Set(s); for (const name of foldables) { if (open) n.delete(keyOf(name)); else n.add(keyOf(name)); } return n; }); };
   // the button offers the opposite of the state: all open -> close all, all closed -> open all, mixed -> the opposite of the last press
-  const nClosed = groups.filter((x) => closed.has(keyOf(x.g.group))).length;
-  const offerOpen = nClosed === groups.length ? true : nClosed === 0 ? false : lastAll === 'closed';
+  const nClosed = foldables.filter((name) => closed.has(keyOf(name))).length;
+  const offerOpen = nClosed === foldables.length ? true : nClosed === 0 ? false : lastAll === 'closed';
   // with a tree, the knockout matches are in it (with their time and court): no separate cards below
   const koCards = cat.bracket ? [] : cat.matches.filter((m) => !m.group && keep(m));
   const lab = { walkover: labels.walkover, retired: labels.retired, void: labels.void, live: labels.live, won: labels.won };
@@ -62,7 +63,7 @@ export function DoublesView({ cats, labels }: { cats: DoublesViewCat[]; labels: 
                 style={{ all: 'unset', cursor: 'pointer', padding: '6px 14px', borderRadius: 999, fontSize: 14, fontWeight: 600, background: show === k ? 'var(--btn, #13306e)' : 'transparent', color: show === k ? 'var(--btn-text, #fff)' : 'inherit' }}>{l}</button>
             ))}
           </div>
-          {groups.length > 1 && !filtered && (
+          {foldables.length > 1 && !filtered && (
             <button type="button" onClick={() => setAll(offerOpen)} style={{ all: 'unset', cursor: 'pointer', fontSize: 14, fontWeight: 600, textDecoration: 'underline', textUnderlineOffset: 3 }}>
               {offerOpen ? labels.expandAll : labels.collapseAll}
             </button>
