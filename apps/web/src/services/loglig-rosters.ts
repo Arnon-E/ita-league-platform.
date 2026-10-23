@@ -67,30 +67,58 @@ export async function importRosters(db: Db, input: RosterImport) {
       }
       stats.categories++;
       const keep: string[] = [];
-      for (const rp of rc.players) {
+      // One read of everything this category's roster needs (three queries), then the matching happens in memory and the writes go out as batches.
+      // It used to ask the database about each player in turn (several queries per player, hundreds per refresh).
+      const gender = want.gender === 'OPEN' ? 'MALE' : want.gender;
+      const rows = rc.players.filter((rp, i, a) => a.findIndex((x) => x.userId === rp.userId) === i);
+      const uids = rows.map((rp) => String(rp.userId));
+      const byUser = new Map<string, typeof players.$inferSelect>();
+      for (const x of uids.length ? await db.select().from(players).where(inArray(players.logligUserId, uids)) : []) byUser.set(x.logligUserId!, x);
+      const rest = uids.filter((u) => !byUser.has(u));
+      const byKey = new Map<string, typeof players.$inferSelect>();
+      for (const x of rest.length ? await db.select().from(players).where(inArray(players.logligId, rest.map((u) => `ll:${u}`))) : []) byKey.set(x.logligId!, x);
+      // players we only know by name: read those names once; a name match is only used for someone not yet linked to a Loglig user
+      const unknownNames = [...new Set(rows.filter((rp) => !byUser.has(String(rp.userId)) && !byKey.has(`ll:${rp.userId}`)).map((rp) => { const n = splitName(rp.name); return `${n.first} ${n.last}`.toLowerCase(); }))];
+      const byName = new Map<string, (typeof players.$inferSelect)[]>();
+      if (unknownNames.length) {
+        const found = await db.select().from(players).where(and(eq(players.gender, gender), sql`lower(${players.firstName} || ' ' || ${players.lastName}) in (select jsonb_array_elements_text(${JSON.stringify(unknownNames)}::jsonb))`));
+        for (const x of found) { const k = `${x.firstName} ${x.lastName}`.toLowerCase(); byName.set(k, [...(byName.get(k) ?? []), x]); }
+      }
+      const linked = new Set<string>(); // players taken during this roster: like before, one player is never matched twice by name
+      const changes: { id: string; uid: string; photo: string | null }[] = [];
+      const fresh: { rp: RosterPlayerIn; first: string; last: string }[] = [];
+      const picked: ({ id: string } | null)[] = [];
+      for (const rp of rows) {
+        const uid = String(rp.userId);
         const { first, last } = splitName(rp.name);
-        let [p] = await db.select().from(players).where(eq(players.logligUserId, String(rp.userId)));
-        if (!p) [p] = await db.select().from(players).where(eq(players.logligId, `ll:${rp.userId}`)); // ranked players are keyed by Loglig user id
+        let p: typeof players.$inferSelect | undefined = byUser.get(uid) ?? byKey.get(`ll:${rp.userId}`);
         if (!p) {
-          const named = (await db.select().from(players).where(and(eq(players.gender, want.gender === 'OPEN' ? 'MALE' : want.gender), sql`lower(${players.firstName} || ' ' || ${players.lastName}) = ${`${first} ${last}`.toLowerCase()}`)))
-            .filter((x) => !x.logligUserId);
+          const named = (byName.get(`${first} ${last}`.toLowerCase()) ?? []).filter((x) => !x.logligUserId && !linked.has(x.id));
           const fits = want.age ? named.filter((x) => { const age = year - x.birthDate.getUTCFullYear(); return age <= want.age! && age >= want.age! - 3; }) : named;
           p = (fits.length ? fits : named.length === 1 ? named : [])[0];
         }
-        if (!p) {
-          [p] = await db.insert(players).values({
-            firstName: first, lastName: last, gender: want.gender === 'OPEN' ? 'MALE' : want.gender, birthDate: new Date(Date.UTC(year - (want.age ?? 14), 6, 1)), logligId: `lu:${rp.userId}`,
-          }).returning();
-          stats.newPlayers++;
-        }
-        if (p!.logligUserId !== String(rp.userId) || p!.photo !== rp.image) {
-          await db.update(players).set({ logligUserId: String(rp.userId), photo: rp.image }).where(eq(players.id, p!.id));
-        }
-        stats.players++;
-        keep.push(p!.id);
-        const [had] = await db.select({ id: entries.id }).from(entries).where(and(eq(entries.categoryId, cat!.id), eq(entries.playerId, p!.id)));
-        if (!had) { await db.insert(entries).values({ categoryId: cat!.id, playerId: p!.id, status: 'CONFIRMED', source: 'loglig' }); stats.entriesAdded++; }
+        if (p) {
+          if (p.logligUserId !== uid || p.photo !== rp.image) changes.push({ id: p.id, uid, photo: rp.image });
+          linked.add(p.id);
+          picked.push(p);
+        } else { fresh.push({ rp, first, last }); picked.push(null); }
       }
+      stats.players += rc.players.length;
+      // people we did not know: created in one statement
+      const made = fresh.length ? await db.insert(players).values(fresh.map((f) => ({
+        firstName: f.first, lastName: f.last, gender, birthDate: new Date(Date.UTC(year - (want.age ?? 14), 6, 1)), logligId: `lu:${f.rp.userId}`, logligUserId: String(f.rp.userId), photo: f.rp.image,
+      }))).returning({ id: players.id, key: players.logligId }) : [];
+      stats.newPlayers += made.length;
+      const madeBy = new Map(made.map((m) => [m.key, m.id]));
+      // Loglig user id and photo of the known players that changed, in one statement
+      if (changes.length) {
+        await db.execute(sql`update players pl set loglig_user_id = t.uid, photo = t.photo from jsonb_to_recordset(${JSON.stringify(changes)}::jsonb) as t(id text, uid text, photo text) where pl.id = t.id`);
+      }
+      for (let i = 0; i < rows.length; i++) keep.push(picked[i] ? picked[i]!.id : madeBy.get(`lu:${rows[i]!.userId}`)!);
+      // registrations that are missing, in one statement
+      const has = new Set((keep.length ? await db.select({ id: entries.playerId }).from(entries).where(and(eq(entries.categoryId, cat!.id), inArray(entries.playerId, keep))) : []).map((x) => x.id));
+      const add = [...new Set(keep.filter((id) => !has.has(id)))];
+      if (add.length) { await db.insert(entries).values(add.map((id) => ({ categoryId: cat!.id, playerId: id, status: 'CONFIRMED' as const, source: 'loglig' }))); stats.entriesAdded += add.length; }
       // people who left Loglig's list are no longer registered there; entries made inside this app are never touched
       const gone = await db.select({ id: entries.id }).from(entries).where(and(eq(entries.categoryId, cat!.id), eq(entries.source, 'loglig'), keep.length ? notInArray(entries.playerId, keep) : undefined));
       if (gone.length && rc.players.length) {
