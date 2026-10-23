@@ -24,10 +24,17 @@ export async function searchPlayers(db: Db, q: string, clubId?: string, limit = 
     .where(conds.length ? and(...conds) : undefined).orderBy(asc(players.lastName), asc(players.firstName)).limit(limit).offset(opts.offset ?? 0);
 }
 
+/**
+ * Every club with its player count, for the lists and the club pickers. A club's `info` (roster, officials, teams) can be large and these lists
+ * only show the phone number from it, so only that is read; the club's own page reads the whole thing. Clubs change rarely, so one query a minute
+ * per instance is plenty.
+ */
 export async function listClubs(db: Db) {
-  // every club with its player count; clubs change rarely, so one query a minute per instance is enough
-  return memo('clubs', 60_000, () => db.select({ c: clubs, n: sql<number>`count(${players.id})::int` }).from(clubs).leftJoin(players, eq(players.clubId, clubs.id))
-    .groupBy(clubs.id).orderBy(asc(clubs.name)));
+  return memo('clubs', 60_000, async () => {
+    const rows = await db.select({ id: clubs.id, name: clubs.name, city: clubs.city, phone: sql<string | null>`${clubs.info}->>'phone'`, n: sql<number>`count(${players.id})::int` })
+      .from(clubs).leftJoin(players, eq(players.clubId, clubs.id)).groupBy(clubs.id).orderBy(asc(clubs.name));
+    return rows.map(({ phone, n, ...c }) => ({ c: { ...c, info: phone ? ({ phone } as Record<string, unknown>) : null }, n }));
+  });
 }
 
 /** A player's career: entries with tournament, matches played and ranking-point awards. */
