@@ -3,6 +3,9 @@ import * as SecureStore from 'expo-secure-store';
 import { tr } from './i18n';
 
 const BASE = (Constants.expoConfig?.extra as { apiUrl: string }).apiUrl;
+/** Only a development build has this: the development site sits behind Vercel's Deployment Protection and needs the key on every request. */
+const BYPASS = (Constants.expoConfig?.extra as { apiBypass?: string }).apiBypass;
+const bypass: Record<string, string> = BYPASS ? { 'x-vercel-protection-bypass': BYPASS } : {};
 let token: string | null = null;
 
 let role: string | null = null;
@@ -61,7 +64,7 @@ function call<T>(path: string, init: RequestInit = {}): Promise<T> {
 }
 
 async function rawCall<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const res = await fetch(`${BASE}/api/v1${path}`, { ...init, headers: { 'content-type': 'application/json', ...(token ? { authorization: `Bearer ${token}` } : {}), ...(init.headers ?? {}) } });
+  const res = await fetch(`${BASE}/api/v1${path}`, { ...init, headers: { 'content-type': 'application/json', ...bypass, ...(token ? { authorization: `Bearer ${token}` } : {}), ...(init.headers ?? {}) } });
   const body = await res.json().catch(() => ({}));
   if (res.status === 401 && token) { await logout(); onAuthLost?.(); }
   if (!res.ok) throw new Error(heMessage(body.error, res.status));
@@ -108,7 +111,7 @@ export async function uploadDocument(playerId: string, type: string, file: { uri
   const fd = new FormData();
   fd.append('player', playerId); fd.append('type', type);
   fd.append('file', { uri: file.uri, name: file.name, type: file.mime } as unknown as Blob);
-  const res = await fetch(`${BASE}/api/v1/documents`, { method: 'POST', headers: token ? { authorization: `Bearer ${token}` } : {}, body: fd });
+  const res = await fetch(`${BASE}/api/v1/documents`, { method: 'POST', headers: { ...bypass, ...(token ? { authorization: `Bearer ${token}` } : {}) }, body: fd });
   const body = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(body.error ?? `HTTP ${res.status}`);
   return body;
