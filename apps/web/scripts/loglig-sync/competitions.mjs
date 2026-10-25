@@ -14,6 +14,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ageOf, buildCategory, buildDoubles, genderOf, israelToUtc, koRound, parseCategoryPage, parseCompetitionPage } from './parse.mjs';
 
+import { ORG_URL, buildTsCompetition, parseOrgList, readTournament, session as tsSession } from './tournamentsoftware.mjs';
+
 const here = path.dirname(fileURLToPath(import.meta.url));
 const OUT = process.env.LOGLIG_DUMP_DIR ? path.resolve(process.env.LOGLIG_DUMP_DIR) : path.resolve(here, '../../.loglig-dump'); // LOGLIG_DUMP_DIR: where the development syncs keep their data
 const slug = (s) => 'https://ita.co.il/' + encodeURI(s) + '/';
@@ -246,6 +248,56 @@ async function mergeAppCompetitions(docs) {
 }
 
 if (listArg === 'all' || args.includes('--app')) await mergeAppCompetitions(docs);
+// 4) Masters competitions: their draws, schedules and results live on tournamentsoftware.com (the Israel Masters Tennis Tour), not on Loglig.
+//    Each tournament there is matched to its ita.co.il page by city and year, so the name, dates, venue and links stay the ita.co.il ones.
+const TS_CITIES = [['Akko', 'עכו'], ['Jerusalem', 'ירושלים'], ['Kiryat Motzkin', 'מוצקין'], ['Eilat', 'אילת'], ['Ashkelon', 'אשקלון'], ['Raanana', 'רעננה'], ['Finals', 'סוף שנה'], ['Maccabiah', 'מכביה']];
+const yearsOf = (name) => name.match(/20\d\d/g) ?? [];
+let itaMasters = null; // lazily read: the newest national Masters competitions of ita.co.il, as documents without draws
+async function itaMastersIndex() {
+  if (itaMasters) return itaMasters;
+  itaMasters = [];
+  for (const { url } of (await listCompetitions('masters-national')).slice(0, 16)) {
+    try {
+      const c = parseCompetitionPage(await get(url), url);
+      if (c.name && c.start && c.end) itaMasters.push({ kind: 'competition', name: c.name, start: c.start, end: c.end, feeShekel: c.feeShekel, level: 'NATIONAL', section: 'MASTERS', sourceUrl: url, registerUrl: c.registerUrl, registrationCloses: c.registrationCloses ? israelToUtc(c.registrationCloses) : null, isDoubles: false, venues: c.venues, contacts: c.contacts, categories: [], doubles: [] });
+    } catch (e) { console.warn('  ita masters page failed', decodeURI(url), String(e.message).slice(0, 60)); }
+  }
+  return itaMasters;
+}
+
+async function mergeTournamentSoftware(docs) {
+  const since = Number(opt('--ts-since', 2025));
+  const ts = tsSession();
+  const org = parseOrgList(await ts.get(ORG_URL)).filter((t) => Number(t.end.slice(0, 4)) >= since && daysAgo(t.end) <= recentDays);
+  console.log(`
+Tournamentsoftware: ${org.length} Masters tournament(s) since ${since}`);
+  let filled = 0;
+  for (const t of org) {
+    try {
+      const city = TS_CITIES.find(([en]) => t.name.includes(en))?.[1];
+      const years = yearsOf(t.name);
+      const same = (n) => (!city || n.includes(city)) && years.every((y) => n.includes(y)) && (t.name.includes('Open') === /פתוח|Open/.test(n));
+      let doc = docs.find((d) => d.section === 'MASTERS' && same(d.name));
+      if (!doc && only.length && !only.some((o) => t.name.includes(o))) continue;
+      const data = await readTournament(ts, t.id);
+      const { categories, doubles } = buildTsCompetition(data.raw, data.draws);
+      if (!categories.length && !doubles.length) { console.log(`- no matches yet: ${t.name}`); continue; }
+      if (!doc) {
+        const ita = (await itaMastersIndex()).find((d) => same(d.name));
+        doc = ita ? { ...ita } : { kind: 'competition', name: t.name, start: t.start, end: t.end, feeShekel: 0, level: 'NATIONAL', section: 'MASTERS', sourceUrl: '', registerUrl: '', registrationCloses: null, isDoubles: false, venues: [], contacts: [], categories: [], doubles: [] };
+        docs.push(doc);
+      }
+      doc.section = 'MASTERS';
+      doc.categories = categories; doc.doubles = doubles;
+      filled++;
+      console.log(`- + from tournamentsoftware: ${doc.name} <- ${t.name}  ${categories.length} categories, ${doubles.length} doubles, ${data.raw.length} matches`);
+    } catch (e) { console.warn('  tournamentsoftware failed', t.name, String(e.message).slice(0, 80)); }
+  }
+  console.log(`Tournamentsoftware: ${filled} filled
+`);
+}
+
+if (listArg === 'all' || args.includes('--ts')) await mergeTournamentSoftware(docs);
 writeFileSync(path.join(OUT, 'competitions.json'), JSON.stringify(docs), 'utf8');
 console.log(`\nSaved ${docs.length} competition(s) to ${OUT}\\competitions.json`);
 if (!push) { console.log('Dry run (nothing sent). Add --push --url <site> to import.'); process.exit(0); }

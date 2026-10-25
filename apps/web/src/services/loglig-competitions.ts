@@ -14,6 +14,8 @@ export interface MatchIn {
   stage: 'GROUP' | 'KO'; group?: string; round: number; place: number; order: number;
   start: string; kind: 'St' | 'NB' | ''; venue: string; done: boolean;
   a: PersonIn; b: PersonIn; sets: SetIn[]; retired: boolean; walkover: boolean;
+  /** Who the source says won, when the score cannot tell (a walkover, a retirement): the Masters pages mark the winner. */
+  winner?: 'a' | 'b';
 }
 export interface CategoryIn { name: string; source: string; gender: Gender; age: number | null; format: 'KNOCKOUT' | 'GROUPS_KNOCKOUT'; matches: MatchIn[] }
 /** A doubles draw ("בנים 12 זוגות"): each side is a pair, "A / B". */
@@ -77,7 +79,7 @@ export function validateCompetitionImport(x: unknown): CompetitionIn {
         start: Date.parse(m.start) >= REAL_FROM ? new Date(m.start).toISOString() : `${b.start}T00:00:00.000Z`, kind: m.kind === 'NB' ? 'NB' : m.kind === 'St' ? 'St' : '', venue: clean(m.venue, 120), done: !!m.done,
         a: { name: an, club: canonicalClub(clean(m.a.club, 120)) }, b: { name: bn, club: canonicalClub(clean(m.b.club, 120)) },
         sets: (Array.isArray(m.sets) ? m.sets : []).slice(0, 5).map((s) => ({ a: Number(s.a) || 0, b: Number(s.b) || 0, ...(s.superTb ? { superTb: true } : {}) })),
-        retired: !!m.retired, walkover: !!m.walkover,
+        retired: !!m.retired, walkover: !!m.walkover, ...(m.winner === 'a' || m.winner === 'b' ? { winner: m.winner } : {}),
       });
     }
     total += matches.length;
@@ -100,7 +102,7 @@ export function validateCompetitionImport(x: unknown): CompetitionIn {
         start: Date.parse(m.start) >= REAL_FROM ? new Date(m.start).toISOString() : `${b.start}T00:00:00.000Z`, kind: m.kind === 'NB' ? 'NB' : m.kind === 'St' ? 'St' : '', venue: clean(m.venue, 120), done: !!m.done,
         a: { name: an, club: canonicalClub(clean(m.a.club, 120)) }, b: { name: bn, club: canonicalClub(clean(m.b.club, 120)) },
         sets: (Array.isArray(m.sets) ? m.sets : []).slice(0, 5).map((s) => ({ a: Number(s.a) || 0, b: Number(s.b) || 0, ...(s.superTb ? { superTb: true } : {}) })),
-        retired: !!m.retired, walkover: !!m.walkover,
+        retired: !!m.retired, walkover: !!m.walkover, ...(m.winner === 'a' || m.winner === 'b' ? { winner: m.winner } : {}),
       });
     }
     total += ms.length;
@@ -205,11 +207,13 @@ export async function importCompetition(db: Db, input: CompetitionIn, now = new 
     // Only the players whose name appears in this competition: a live refresh runs every few minutes and used to read the whole players table
     // (thousands of rows) just to find a few dozen names. Every string in the payload counts as a possible name (and each side of a "A / B" pair),
     // so a name that is looked up is never missing from the answer; extra strings only add nothing.
+    // a two-word name typed the other way round finds the same known player (the Masters page shows first and last name swapped for some players)
+    const flip = (n: string) => (n.split(' ').length === 2 ? n.split(' ').reverse().join(' ') : n);
     const wanted = new Set<string>();
     const collect = (v: unknown) => {
       if (typeof v === 'string') {
         const t = v.replace(/\s+/g, ' ').trim();
-        if (t && t.length < 120) { wanted.add(t); if (t.includes('/')) for (const part of t.split('/')) { const q = part.replace(/\s+/g, ' ').trim(); if (q) wanted.add(q); } }
+        if (t && t.length < 120) { wanted.add(t); wanted.add(flip(t)); if (t.includes('/')) for (const part of t.split('/')) { const q = part.replace(/\s+/g, ' ').trim(); if (q) { wanted.add(q); wanted.add(flip(q)); } } }
       } else if (Array.isArray(v)) for (const x of v) collect(x);
       else if (v && typeof v === 'object') for (const x of Object.values(v)) collect(x);
     };
@@ -228,7 +232,7 @@ export async function importCompetition(db: Db, input: CompetitionIn, now = new 
       list.push({ id: k.id, by });
       byName.set(`${k.gender}|${nm}`, list);
     }
-    const pick = (gender: Gender, name: string, age: number | null) => {
+    const pickExact = (gender: Gender, name: string, age: number | null) => {
       // an open category ("A", "פתוח 30") is played by the boys and girls already known under their own gender
       const list = gender === 'OPEN' ? (['MALE', 'FEMALE', 'OPEN'] as const).map((g) => byName.get(`${g}|${name}`)).find((l) => l?.length) : byName.get(`${gender}|${name}`);
       if (!list?.length) return null;
@@ -236,6 +240,7 @@ export async function importCompetition(db: Db, input: CompetitionIn, now = new 
       const ok = list.find((x) => x.by != null && year - x.by <= age);
       return (ok ?? list[0]!).id;
     };
+    const pick = (gender: Gender, name: string, age: number | null) => pickExact(gender, name, age) ?? (flip(name) !== name ? pickExact(gender, flip(name), age) : null);
 
     // create missing players and clubs (one batch for the whole competition)
     const missing = new Map<string, { key: string; first: string; last: string; by: number; gender: Gender; club: string }>();
@@ -347,7 +352,8 @@ export async function importCompetition(db: Db, input: CompetitionIn, now = new 
         if (m.done) {
           const w = wonSets(m.sets);
           const g = games(m.sets);
-          if (m.sets.length && w.a !== w.b) winner = w.a > w.b ? x.a : x.b;
+          if (m.winner) winner = m.winner === 'a' ? x.a : x.b;
+          else if (m.sets.length && w.a !== w.b) winner = w.a > w.b ? x.a : x.b;
           else if (m.sets.length && g.a !== g.b) winner = g.a > g.b ? x.a : x.b;
           else if (later(x, x.a) !== later(x, x.b)) winner = later(x, x.a) ? x.a : x.b;
           if (m.walkover || (!m.sets.length)) {
@@ -419,7 +425,8 @@ export async function importCompetition(db: Db, input: CompetitionIn, now = new 
           let status = 'SCHEDULED', winner: 'a' | 'b' | null = null;
           if (m.done) {
             const w = wonSets(m.sets), g = games(m.sets);
-            if (m.sets.length && w.a !== w.b) winner = w.a > w.b ? 'a' : 'b';
+            if (m.winner) winner = m.winner;
+            else if (m.sets.length && w.a !== w.b) winner = w.a > w.b ? 'a' : 'b';
             else if (m.sets.length && g.a !== g.b) winner = g.a > g.b ? 'a' : 'b';
             else if (laterPair(m, m.a.name) !== laterPair(m, m.b.name)) winner = laterPair(m, m.a.name) ? 'a' : 'b';
             status = !winner ? 'VOID' : m.walkover || !m.sets.length ? 'WALKOVER' : m.retired || !regular(m.sets) ? 'RETIRED' : 'COMPLETED';

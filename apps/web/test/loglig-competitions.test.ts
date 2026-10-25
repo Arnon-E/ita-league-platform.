@@ -366,4 +366,18 @@ describe('loglig competition mirror', () => {
     const [l] = await db.select().from(schema.tournaments).where(eq(schema.tournaments.name, 'אזורית חיה'));
     expect(l?.status).toBe('IN_PROGRESS');
   });
+  it('finds a known player when the Masters page shows first and last name the other way round, and creates nobody twice', async () => {
+    await importRankings(db, { gender: 'MALE', rows: [{ rank: 5, name: 'אילן בבושקין', birthYear: 1980, club: 'מועדון א', national: 50, international: 0, total: 50 }] });
+    const before = (await db.select().from(schema.players)).length;
+    const masters = {
+      kind: 'competition', name: 'מאסטרס היפוך שמות', start: '2026-05-29', end: '2026-06-13', feeShekel: 0, level: 'NATIONAL', section: 'MASTERS', venues: [],
+      categories: [{ name: 'גברים 40 (B)', source: 'ts:MS 40 (B)', gender: 'MALE', age: null, format: 'KNOCKOUT', matches: [
+        m({ a: p('בבושקין אילן'), b: p('ינון סגל'), sets: [{ a: 6, b: 3 }, { a: 6, b: 4 }] }),
+      ] }],
+    };
+    await importCompetition(db, validateCompetitionImport(masters), new Date('2026-07-01'));
+    const all = await db.select().from(schema.players);
+    expect(all.length).toBe(before + 1); // only ינון סגל is new: בבושקין אילן is the ranked אילן בבושקין
+    expect(all.filter((x) => x.firstName === 'בבושקין' && x.lastName === 'אילן')).toHaveLength(0);
+  });
 });
