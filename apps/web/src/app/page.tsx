@@ -13,7 +13,7 @@ import { InfiniteCards } from '@/components/InfiniteCards';
 import { Court } from '@/components/Brand';
 import { Fold } from '@/components/Fold';
 import { myHome, myPlayersForRelevance } from '@/services/home';
-import { homeCounts } from '@/services/public';
+import { homeCounts, sectionOfBirthYear } from '@/services/public';
 import { MyHome } from '@/components/MyHome';
 import { relevantFor } from '@/services/eligibility';
 
@@ -39,12 +39,14 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ l
   const relevantOnly = mine.length > 0 && rel !== 'all';
   const relevantIds = new Set(ts.filter((x) => !mine.length || mine.some((p) => relevantFor(p, x, x.cats))).map((x) => x.id));
   const needle = q.trim().toLowerCase();
+  // The section tabs (youth / adults / masters / all): the chosen one; a search by name looks at everything; otherwise the signed-in player's own section, else youth.
+  const secKey = sec === 'ALL' || Object.keys(SEC).includes(sec) ? sec : needle ? 'ALL' : mine.length ? sectionOfBirthYear(Math.max(...mine.map((p) => p.birthDate.getUTCFullYear()))) : 'YOUTH';
   // Default view is what a visitor can act on: open, in progress and upcoming. Searching or picking a season looks at everything.
   const mode = st || (needle || season ? 'all' : 'up');
   const seasons = [...new Set(ts.map((x) => x.startDate.getFullYear()))].filter((y) => y >= 2000).sort((a, b) => b - a);
   const shown = ts.filter((x) => {
     if (level && x.level !== level) return false;
-    if (sec && x.section !== sec) return false;
+    if (secKey !== 'ALL' && x.section !== secKey) return false;
     if (season && String(x.startDate.getFullYear()) !== season) return false;
     const grp = stGroup(x);
     if (mode === 'up' ? grp === 'done' : mode !== 'all' && grp !== mode) return false;
@@ -64,15 +66,17 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ l
     if (ga === 'done') return b.startDate.getTime() - a.startDate.getTime();
     return a.startDate.getTime() - b.startDate.getTime();
   });
-  const filtered = !!(level || season || needle || g || age || sec);
+  const filtered = !!(level || season || needle || g || age);
   // the featured registration, the counters and the tab counts follow the same relevance as the list
   const visibleTs = relevantOnly ? ts.filter((x) => relevantIds.has(x.id)) : ts;
   const nextOpen = visibleTs.filter((x) => x.status === 'REGISTRATION_OPEN').sort((a, b) => (a.registrationCloses?.getTime() ?? a.startDate.getTime()) - (b.registrationCloses?.getTime() ?? b.startDate.getTime()))[0];
   const closes = nextOpen ? (nextOpen.registrationCloses ?? nextOpen.startDate) : null;
   const left = closes ? Math.max(0, closes.getTime() - Date.now()) : 0;
-  const counts2 = { up: visibleTs.filter((x) => stGroup(x) !== 'done').length, done: visibleTs.filter((x) => stGroup(x) === 'done').length };
+  const inSec = visibleTs.filter((x) => secKey === 'ALL' || x.section === secKey);
+  const counts2 = { up: inSec.filter((x) => stGroup(x) !== 'done').length, done: inSec.filter((x) => stGroup(x) === 'done').length };
   const dayMonth = (d: Date) => d.toLocaleDateString('he-IL', { day: 'numeric', month: 'short', timeZone: 'Asia/Jerusalem' });
-  const href = (o: { st?: string }) => `/?${new URLSearchParams({ level, season, q, g, age, sec, st: o.st ?? st }).toString()}`;
+  const href = (o: { st?: string }) => `/?${new URLSearchParams({ level, season, q, g, age, sec: sec || secKey, st: o.st ?? st }).toString()}`;
+  const secHref = (k: string) => `/?${new URLSearchParams({ level, season, q, g, age, sec: k, st }).toString()}#list`;
   const openCount = visibleTs.filter((x) => x.status === 'REGISTRATION_OPEN').length;
   const c = (counts as unknown as { players: number; clubs: number; live: number }[])[0]!;
   return (
@@ -112,6 +116,9 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ l
       {home && <MyHome home={home} t={t} />}
       <Fold id="list" title={t('תחרויות')}>
       {actor && can(actor, 'tournament.create') && <div className="row"><Link className="btn" href="/tournaments/new">{t('תחרות חדשה')}</Link></div>}
+      <nav className="tabs" style={{ margin: '12px 0 0' }} aria-label={t('מקטע')}>
+        {([['YOUTH', 'נוער'], ['ADULTS', 'בוגרים'], ['MASTERS', 'מאסטרס'], ['ALL', 'הכול']] as const).map(([k, label]) => <Link key={k} scroll={false} href={secHref(k)} className={secKey === k ? 'on' : ''}>{t(label)}</Link>)}
+      </nav>
       <div className="row" style={{ marginTop: 12 }}>
         {Object.entries(ST).map(([k, v]) => (
           <Link scroll={false} key={k} href={href({ st: k })} className={`pill ${mode === k ? 'lime' : ''}`}>{t(v)}{k === 'up' ? ` ${counts2.up}` : k === 'done' ? ` ${counts2.done}` : ''}</Link>
@@ -124,10 +131,10 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ l
         </p>
       )}
       <details className="filters" open={filtered}>
-      <summary>{t('סינון')}{filtered ? ` · ${[level, season, needle, g, age, sec].filter(Boolean).length}` : ''}</summary>
+      <summary>{t('סינון')}{filtered ? ` · ${[level, season, needle, g, age].filter(Boolean).length}` : ''}</summary>
       <GetForm className="card row" style={{ marginTop: 8 }}>
         <input type="hidden" name="st" value={mode} />
-        <select name="sec" defaultValue={sec}><option value="">{t('כל הקטגוריות')}</option>{Object.entries(SEC).map(([k, v]) => <option key={k} value={k}>{t(v)}</option>)}</select>
+        <select name="sec" defaultValue={secKey}><option value="ALL">{t('כל הקטגוריות')}</option>{Object.entries(SEC).map(([k, v]) => <option key={k} value={k}>{t(v)}</option>)}</select>
         <input name="q" defaultValue={q} placeholder={t('חיפוש לפי שם תחרות')} style={{ flex: 1, minWidth: 180 }} />
         <select name="g" defaultValue={g}><option value="">{t('בנים ובנות')}</option><option value="MALE">{t('בנים')}</option><option value="FEMALE">{t('בנות')}</option></select>
         <select name="age" defaultValue={age}><option value="">{t('כל הגילאים')}</option>{AGES.map((a) => <option key={a} value={a}>{t('גיל')} {a}</option>)}</select>
