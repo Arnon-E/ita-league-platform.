@@ -900,7 +900,7 @@ function Tournament({ id, focus, onBack, onGoAccount }: { id: string; focus?: Fo
         : <RegisterBox tournamentName={d.tournament.name} categories={d.categories} onGoAccount={onGoAccount} />)}
       {!!d?.tournament.contacts?.length && (
         <View style={s.card}>
-          <Text style={s.cardT}>{tr('מנהל התחרות')}</Text>
+          <Text style={s.cardT}>{tr('שופט ראשי')}</Text>
           {d.tournament.contacts.map((c, i) => (
             <Pressable key={i} disabled={!c.phone} onPress={() => Linking.openURL(`tel:${c.phone.replace(/[^\d+]/g, '')}`)}>
               <Text style={s.muted}>{[c.area, c.name].filter(Boolean).join(' · ')}{c.phone ? ` · ${c.phone}` : ''}</Text>

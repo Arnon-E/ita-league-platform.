@@ -150,7 +150,7 @@ const en: Record<string, string> = {
   '★ במעקב': '★ Following',
   '☆ מעקב': '☆ Follow',
   'הרשמה לתחרות': 'Register for the tournament',
-  'מנהל התחרות': 'Tournament director',
+  'שופט ראשי': 'Chief referee',
   'ההרשמה מתבצעת באתר Loglig ונפתחת בדפדפן.': 'Registration takes place on the Loglig site and opens in the browser.',
   'נסגרת ב-{date}.': 'Closes on {date}.',
   'לוח המשחקים והתוצאות יופיעו כאן אחרי ההגרלה.': 'The schedule and results will appear here after the draw.',

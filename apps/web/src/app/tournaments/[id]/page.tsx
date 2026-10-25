@@ -254,7 +254,7 @@ async function Overview({ d, manage, compact = false, registered = false }: { d:
     ['סוג', `${tt(LEVEL[t.level] ?? '')} · ${tt(FORMAT[t.format] ?? '')}`],
     ...(t.feeAgorot > 0 ? [['דמי השתתפות', `₪${(t.feeAgorot / 100).toFixed(0)}`] as [string, string]] : []),
     ['קטגוריות', `${cats.length}${confirmed ? ` · ${confirmed} ${tt('משתתפים מאושרים')}` : ''}`],
-    ...(contacts.length ? [['מנהל התחרות', (
+    ...(contacts.length ? [['שופט ראשי', (
       <div className="grid" style={{ gap: 4 }}>
         {contacts.map((c, i) => (
           <span key={i}>
