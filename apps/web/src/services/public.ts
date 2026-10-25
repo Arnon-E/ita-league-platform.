@@ -7,7 +7,14 @@ import { memo } from '@/lib/memo';
 
 const { players, clubs, entries, categories, matches, tournaments, pointsAwards } = schema;
 
-export async function searchPlayers(db: Db, q: string, clubId?: string, limit = 100, opts: { gender?: 'MALE' | 'FEMALE'; age?: number; offset?: number; activeOnly?: boolean } = {}) {
+export type PlayerSection = 'YOUTH' | 'ADULTS' | 'MASTERS';
+/** The federation's three sections by age this year: youth up to 18, adults 19-29, masters 30 and over. */
+export const sectionOfBirthYear = (birthYear: number, now = new Date()): PlayerSection => {
+  const age = now.getFullYear() - birthYear;
+  return age <= 18 ? 'YOUTH' : age < 30 ? 'ADULTS' : 'MASTERS';
+};
+
+export async function searchPlayers(db: Db, q: string, clubId?: string, limit = 100, opts: { gender?: 'MALE' | 'FEMALE'; age?: number; offset?: number; activeOnly?: boolean; section?: PlayerSection } = {}) {
   const conds: (SQL | undefined)[] = [sql`not ((${players.firstName} || ' ' || ${players.lastName}) ~* ${PLACEHOLDER_SQL})`];
   // Active = has an account, ranking points from the last 18 months, or an entry in a competition that ended within the last 12 months.
   if (opts.activeOnly) {
@@ -17,6 +24,11 @@ export async function searchPlayers(db: Db, q: string, clubId?: string, limit = 
                  where e.player_id = ${players.id} and t.end_date >= now() - interval '12 months'))`);
   }
   if (opts.gender) conds.push(eq(players.gender, opts.gender));
+  if (opts.section) {
+    const y = new Date().getFullYear();
+    const from = (age: number) => sql`make_date(${y - age}, 1, 1)::timestamptz`;
+    conds.push(opts.section === 'YOUTH' ? sql`${players.birthDate} >= ${from(18)}` : opts.section === 'ADULTS' ? sql`${players.birthDate} < ${from(18)} and ${players.birthDate} >= ${from(29)}` : sql`${players.birthDate} < ${from(29)}`);
+  }
   if (opts.age) conds.push(sql`${players.birthDate} >= make_date(${new Date().getFullYear() - opts.age}, 1, 1)::timestamptz`);
   for (const w of q.trim().split(/\s+/).filter(Boolean)) conds.push(or(ilike(players.firstName, `%${w}%`), ilike(players.lastName, `%${w}%`)));
   if (clubId) conds.push(eq(players.clubId, clubId));
