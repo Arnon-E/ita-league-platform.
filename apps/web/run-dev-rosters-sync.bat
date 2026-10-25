@@ -16,3 +16,5 @@ node scripts\loglig-sync\gate.mjs >> "%DEVDIR%\rosters-sync.log" 2>&1
 if errorlevel 10 exit /b 0
 %RUN% scripts\loglig-sync\rosters.mjs --push --url %URL% >> "%DEVDIR%\rosters-sync.log" 2>&1
 %RUN% scripts\loglig-sync\live-results.mjs --push --url %URL% >> "%DEVDIR%\rosters-sync.log" 2>&1
+rem Masters (tournamentsoftware.com): reads only today's match day, and only about once an hour (it keeps its own stamp)
+%RUN% scripts\loglig-sync\masters-live.mjs --push --url %URL% >> "%DEVDIR%\rosters-sync.log" 2>&1

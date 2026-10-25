@@ -150,17 +150,38 @@ export function session() {
   };
 }
 
-/** Every match of one tournament (one POST per match day) and its draws: { raw, draws, days }. */
+/** The matches scheduled on one day (YYYY-MM-DD) of a tournament: the page's own date picker posts the day. */
+export async function readDay(ts, id, ymd) {
+  const d = ymd.replace(/-/g, '');
+  const body = new URLSearchParams({ Date: d });
+  const html = await ts.get(`/tournament/${id.toLowerCase()}/Matches/MatchesInDay`, { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded', 'x-requested-with': 'XMLHttpRequest' }, body });
+  return parseDayMatches(html, ymd);
+}
+
+/** The draws of a tournament: [{ name, size, type }]. */
+export async function readDraws(ts, id) {
+  return parseDraws(await ts.get(`/sport/draws.aspx?id=${id.toLowerCase()}`));
+}
+
+/** Every match of one tournament (one request per match day) and its draws: { raw, draws, days }. */
 export async function readTournament(ts, id) {
-  const gid = id.toLowerCase();
-  const page = await ts.get(`/tournament/${gid}/Matches`);
+  const page = await ts.get(`/tournament/${id.toLowerCase()}/Matches`);
   const days = [...page.matchAll(/<option[^>]*value="(\d{8})"/g)].map((m) => m[1]);
   const raw = [];
-  for (const d of days) {
-    const body = new URLSearchParams({ Date: d });
-    const html = await ts.get(`/tournament/${gid}/Matches/MatchesInDay`, { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded', 'x-requested-with': 'XMLHttpRequest' }, body });
-    raw.push(...parseDayMatches(html, `${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6)}`));
-  }
-  const draws = parseDraws(await ts.get(`/sport/draws.aspx?id=${gid}`));
-  return { raw, draws, days };
+  for (const d of days) raw.push(...(await readDay(ts, id, `${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6)}`)));
+  return { raw, draws: await readDraws(ts, id), days };
+}
+
+/** City of a Masters tournament, English on tournamentsoftware.com and Hebrew on ita.co.il. */
+export const TS_CITIES = [['Akko', 'עכו'], ['Jerusalem', 'ירושלים'], ['Kiryat Motzkin', 'מוצקין'], ['Eilat', 'אילת'], ['Ashkelon', 'אשקלון'], ['Raanana', 'רעננה'], ['Finals', 'סוף שנה'], ['Maccabiah', 'מכביה']];
+/** Is this ita.co.il competition (or its name on the site) the tournamentsoftware.com tournament `tsName`? Same city, same years, and "Open" only with "Open". */
+export function sameMasters(tsName, itaName) {
+  const city = TS_CITIES.find(([en]) => tsName.includes(en))?.[1];
+  const years = tsName.match(/20\d\d/g) ?? [];
+  return (!city || itaName.includes(city)) && years.every((y) => itaName.includes(y)) && tsName.includes('Open') === /פתוח|Open/.test(itaName);
+}
+
+/** The cached matches of a tournament with one day replaced by what the page shows now (the hourly refresh reads only the current day). */
+export function replaceDay(raw, day, fresh) {
+  return [...raw.filter((r) => r.day !== day), ...fresh];
 }

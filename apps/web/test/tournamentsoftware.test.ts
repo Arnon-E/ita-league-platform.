@@ -68,3 +68,21 @@ describe('tournamentsoftware (Israel Masters Tennis Tour)', () => {
     expect(doubles[0]!.matches[0]).toMatchObject({ a: { name: 'יריב ברוכיאן / מוחמד רשואן' }, b: { name: 'ניב קורן / תומר שלום' }, walkover: true, done: true, winner: 'b' });
   });
 });
+
+describe('hourly refresh of the current day', () => {
+  it('replaces only that day in the cached matches', async () => {
+    const { replaceDay } = await import('../scripts/loglig-sync/tournamentsoftware.mjs');
+    const raw = [{ day: '2026-10-24', n: 1 }, { day: '2026-10-25', n: 2 }, { day: '2026-10-26', n: 3 }];
+    expect(replaceDay(raw, '2026-10-25', [{ day: '2026-10-25', n: 9 }, { day: '2026-10-25', n: 10 }])).toEqual([{ day: '2026-10-24', n: 1 }, { day: '2026-10-26', n: 3 }, { day: '2026-10-25', n: 9 }, { day: '2026-10-25', n: 10 }]);
+    expect(replaceDay(raw, '2026-10-27', [])).toEqual(raw);
+  });
+
+  it('matches a tournamentsoftware name with the ita.co.il one by city and year', async () => {
+    const { sameMasters } = await import('../scripts/loglig-sync/tournamentsoftware.mjs');
+    expect(sameMasters('Masters Akko 2026', 'תחרות מאסטרס לאומית עכו 2026')).toBe(true);
+    expect(sameMasters('Masters Akko 2025', 'תחרות מאסטרס לאומית עכו 2026')).toBe(false);
+    expect(sameMasters('Masters Akko 2026', 'תחרות מאסטרס לאומית ירושלים 2026')).toBe(false);
+    expect(sameMasters('Israel Masters Finals 2025', 'מאסטרס סוף שנה 2025')).toBe(true);
+    expect(sameMasters('Maccabiah 2026 - Open', 'Maccabiah 2026 - Masters')).toBe(false);
+  });
+});

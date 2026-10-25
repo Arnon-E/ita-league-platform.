@@ -14,7 +14,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ageOf, buildCategory, buildDoubles, genderOf, israelToUtc, koRound, parseCategoryPage, parseCompetitionPage } from './parse.mjs';
 
-import { ORG_URL, buildTsCompetition, parseOrgList, readTournament, session as tsSession } from './tournamentsoftware.mjs';
+import { ORG_URL, buildTsCompetition, parseOrgList, readTournament, sameMasters, session as tsSession } from './tournamentsoftware.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const OUT = process.env.LOGLIG_DUMP_DIR ? path.resolve(process.env.LOGLIG_DUMP_DIR) : path.resolve(here, '../../.loglig-dump'); // LOGLIG_DUMP_DIR: where the development syncs keep their data
@@ -250,8 +250,6 @@ async function mergeAppCompetitions(docs) {
 if (listArg === 'all' || args.includes('--app')) await mergeAppCompetitions(docs);
 // 4) Masters competitions: their draws, schedules and results live on tournamentsoftware.com (the Israel Masters Tennis Tour), not on Loglig.
 //    Each tournament there is matched to its ita.co.il page by city and year, so the name, dates, venue and links stay the ita.co.il ones.
-const TS_CITIES = [['Akko', 'עכו'], ['Jerusalem', 'ירושלים'], ['Kiryat Motzkin', 'מוצקין'], ['Eilat', 'אילת'], ['Ashkelon', 'אשקלון'], ['Raanana', 'רעננה'], ['Finals', 'סוף שנה'], ['Maccabiah', 'מכביה']];
-const yearsOf = (name) => name.match(/20\d\d/g) ?? [];
 let itaMasters = null; // lazily read: the newest national Masters competitions of ita.co.il, as documents without draws
 async function itaMastersIndex() {
   if (itaMasters) return itaMasters;
@@ -274,13 +272,14 @@ Tournamentsoftware: ${org.length} Masters tournament(s) since ${since}`);
   let filled = 0;
   for (const t of org) {
     try {
-      const city = TS_CITIES.find(([en]) => t.name.includes(en))?.[1];
-      const years = yearsOf(t.name);
-      const same = (n) => (!city || n.includes(city)) && years.every((y) => n.includes(y)) && (t.name.includes('Open') === /פתוח|Open/.test(n));
+      const same = (n) => sameMasters(t.name, n);
       let doc = docs.find((d) => d.section === 'MASTERS' && same(d.name));
       if (!doc && only.length && !only.some((o) => t.name.includes(o))) continue;
       const data = await readTournament(ts, t.id);
       const { categories, doubles } = buildTsCompetition(data.raw, data.draws);
+      // what the hourly refresh (masters-live.mjs) starts from: it then re-reads only the current day
+      mkdirSync(path.join(OUT, 'ts-cache'), { recursive: true });
+      writeFileSync(path.join(OUT, 'ts-cache', `${t.id}.json`), JSON.stringify({ at: Date.now(), raw: data.raw, draws: data.draws }), 'utf8');
       if (!categories.length && !doubles.length) { console.log(`- no matches yet: ${t.name}`); continue; }
       if (!doc) {
         const ita = (await itaMastersIndex()).find((d) => same(d.name));
