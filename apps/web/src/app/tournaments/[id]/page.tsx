@@ -161,7 +161,7 @@ async function MyPlayerCard({ d, focus, mine, showAll }: { d: Detail; focus: Non
         <div className="row">{mine.map((x) => <Link scroll={false} key={x.id} href={`/tournaments/${d.t.id}?for=${x.id}`} className={`pill ${x.id === p.id ? 'lime' : ''}`}>{x.firstName}</Link>)}</div>
       )}
       {next && (
-        <div className="muted"><strong style={{ color: 'var(--text)' }}>{tt('המשחק הבא')}:</strong> {opp(next) || tt('יתברר')}{next.scheduledStart ? ` · ${fmtTime(next.scheduledStart)}` : ''}{next.courtLabel ? ` · ${tt('מגרש')} ${next.courtLabel}` : ''}</div>
+        <div className="muted"><strong style={{ color: 'var(--text)' }}>{tt('המשחק הבא')}:</strong> {opp(next) || tt('יתברר')}{next.scheduledStart ? ` · ${fmtTime(next.scheduledStart)}` : ''}{next.courtLabel ? ` · ${tt('מגרש')} ${courtNo(next.courtLabel)}` : ''}</div>
       )}
       {played.length > 0 && (
         <div className="grid" style={{ gap: 4 }}>
@@ -235,6 +235,9 @@ async function CatFilter({ d, tab, cat, flt, withCats }: { d: Detail; tab: strin
     </div>
   );
 }
+
+/** A court label is the bare number ("3") for hand-made tournaments and "מגרש 3" for mirrored ones: always show it once. */
+const courtNo = (l: string) => l.replace(/^מגרש\s*/, '');
 
 const STEPS = ['הרשמה', 'הגרלה', 'משחקים', 'סיום'];
 const STEP_OF: Record<string, number> = { DRAFT: 0, REGISTRATION_OPEN: 0, REGISTRATION_CLOSED: 1, DRAWN: 2, IN_PROGRESS: 2, FINISHED: 3 };
@@ -644,7 +647,7 @@ async function Results({ d, scorer, hl }: { d: Detail; scorer: boolean; hl: Set<
                       winner={m.winnerEntryId ? (m.winnerEntryId === m.aEntryId ? 'a' : m.winnerEntryId === m.bEntryId ? 'b' : null) : null}
                       caption={m.status === 'SCHEDULED' ? tt(MSTATUS.SCHEDULED ?? '') : undefined}
                       labels={{ walkover: tt('ווק-אובר'), retired: tt('פרישה'), void: tt('בוטל'), live: tt('חי'), won: tt('ניצח') }} />
-                    {(m.courtLabel || m.scheduledStart || m.notBefore) && <div className="muted" style={{ marginTop: 4 }}>{[m.courtLabel ? `${tt('מגרש')} ${m.courtLabel}` : '', m.scheduledStart ? fmtTime(m.scheduledStart) : m.notBefore ? `${tt('לא לפני')} ${fmtTime(m.notBefore)}` : ''].filter(Boolean).join(' · ')}</div>}
+                    {(m.courtLabel || m.scheduledStart || m.notBefore) && <div className="muted" style={{ marginTop: 4 }}>{[m.courtLabel ? `${tt('מגרש')} ${courtNo(m.courtLabel)}` : '', m.scheduledStart ? fmtTime(m.scheduledStart) : m.notBefore ? `${tt('לא לפני')} ${fmtTime(m.notBefore)}` : ''].filter(Boolean).join(' · ')}</div>}
                   </td>
                   <td>{m.aEntryId && m.bEntryId && <Link className="btn small ghost" href={`/matches/${m.id}`}>{scorer ? (m.status === 'SCHEDULED' ? 'הזנת תוצאה' : 'עריכה') : 'פרטים'}</Link>}</td>
                 </tr>
@@ -701,7 +704,7 @@ async function Schedule({ d, manage }: { d: Detail; manage: boolean }) {
           {open.map((m) => (
             <tr key={m.id}>
               <td>{nm(m.aEntryId)} – {nm(m.bEntryId)}</td>
-              <td>{m.courtLabel ? `מגרש ${m.courtLabel} · ${fmtTime(m.scheduledStart)}${m.scheduleKind === 'EXACT' ? ' (קבוע)' : ''}` : m.notBefore ? `לא לפני ${fmtTime(m.notBefore)}` : '—'}</td>
+              <td>{m.courtLabel ? `מגרש ${courtNo(m.courtLabel)} · ${fmtTime(m.scheduledStart)}${m.scheduleKind === 'EXACT' ? ' (קבוע)' : ''}` : m.notBefore ? `לא לפני ${fmtTime(m.notBefore)}` : '—'}</td>
               <td>
                 <form action={slotAction} className="row">
                   <input type="hidden" name="id" value={t.id} /><input type="hidden" name="match" value={m.id} />
