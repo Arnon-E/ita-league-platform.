@@ -512,12 +512,12 @@ function Bracket({ d, categoryId, hl, tt }: { d: Detail; categoryId: string; hl:
     win: !!e && m.winnerEntryId === e, me: !!e && hl.has(e),
     sets: m.status === 'WALKOVER' ? (e && m.winnerEntryId === e ? 'W/O' : '') : ((m.sets ?? []) as { a: number; b: number }[]).map((s, i) => <b key={i}>{mine(s)}</b>),
   });
-  const cols = tree.cols.map((col) => col.map((m): BracketCell | null => (m ? { href: `/matches/${m.id}`, a: side(m, m.aEntryId, (s) => s.a), b: side(m, m.bEntryId, (s) => s.b), meta: [matchWhen(m.scheduledStart, m.scheduleKind), m.courtLabel].filter(Boolean).join(' · ') || undefined } : null)));
+  const cols = tree.cols.map((col) => col.map((m): BracketCell | null => (m ? { href: `/matches/${m.id}`, a: side(m, m.aEntryId, (s) => s.a), b: side(m, m.bEntryId, (s) => s.b), meta: [m.scheduledStart ? matchWhen(m.scheduledStart, m.scheduleKind) : matchWhen(m.notBefore, tt('לא לפני')), m.courtLabel].filter(Boolean).join(' · ') || undefined } : null)));
   // classification matches (places 3-4) are not part of the tree: they get their own box under it
   const inTree = new Set(tree.cols.flat().map((m) => m?.id));
   const extra = d.ms.filter((m) => m.categoryId === categoryId && m.stage === 'KO' && !inTree.has(m.id)).map((m) => ({
     title: tt('מקומות 3-4'),
-    cell: { href: `/matches/${m.id}`, a: side(m, m.aEntryId, (s) => s.a), b: side(m, m.bEntryId, (s) => s.b), meta: [matchWhen(m.scheduledStart, m.scheduleKind), m.courtLabel].filter(Boolean).join(' · ') || undefined },
+    cell: { href: `/matches/${m.id}`, a: side(m, m.aEntryId, (s) => s.a), b: side(m, m.bEntryId, (s) => s.b), meta: [m.scheduledStart ? matchWhen(m.scheduledStart, m.scheduleKind) : matchWhen(m.notBefore, tt('לא לפני')), m.courtLabel].filter(Boolean).join(' · ') || undefined },
   }));
   return <BracketView cols={cols} tt={tt} pending={tt('טרם נקבע')} extra={extra} />;
 }
@@ -635,7 +635,7 @@ async function Results({ d, scorer, hl }: { d: Detail; scorer: boolean; hl: Set<
         <section key={c.id}>
           <h2>{c.name}</h2>
           <div className="card" style={{ overflow: 'auto' }}>
-            <table><thead><tr><th>{tt('שלב')}</th><th>{tt('משחק')}</th><th>{tt('תוצאה')}</th><th>{tt('מגרש / שעה')}</th><th /></tr></thead><tbody>
+            <table><thead><tr><th>{tt('שלב')}</th><th>{tt('משחק')}</th><th>{tt('תוצאה')}</th><th /></tr></thead><tbody>
               {d.ms.filter((m) => m.categoryId === c.id).map((m) => (
                 <tr key={m.id} style={(m.aEntryId && hl.has(m.aEntryId)) || (m.bEntryId && hl.has(m.bEntryId)) ? { background: 'var(--limebg, rgba(190,242,100,.18))' } : undefined}>
                   <td>{m.stage === 'GROUP' ? `${tt('שלב הבתים')} · ${tt('מחזור')} ${m.round}` : `${tt('הדחה')} · ${tt('סיבוב')} ${m.round}`}</td>
@@ -644,8 +644,8 @@ async function Results({ d, scorer, hl }: { d: Detail; scorer: boolean; hl: Set<
                       winner={m.winnerEntryId ? (m.winnerEntryId === m.aEntryId ? 'a' : m.winnerEntryId === m.bEntryId ? 'b' : null) : null}
                       caption={m.status === 'SCHEDULED' ? tt(MSTATUS.SCHEDULED ?? '') : undefined}
                       labels={{ walkover: tt('ווק-אובר'), retired: tt('פרישה'), void: tt('בוטל'), live: tt('חי'), won: tt('ניצח') }} />
+                    {(m.courtLabel || m.scheduledStart || m.notBefore) && <div className="muted" style={{ marginTop: 4 }}>{[m.courtLabel ? `${tt('מגרש')} ${m.courtLabel}` : '', m.scheduledStart ? fmtTime(m.scheduledStart) : m.notBefore ? `${tt('לא לפני')} ${fmtTime(m.notBefore)}` : ''].filter(Boolean).join(' · ')}</div>}
                   </td>
-                  <td>{m.courtLabel ? `מגרש ${m.courtLabel} · ${fmtTime(m.scheduledStart)}` : '—'}</td>
                   <td>{m.aEntryId && m.bEntryId && <Link className="btn small ghost" href={`/matches/${m.id}`}>{scorer ? (m.status === 'SCHEDULED' ? 'הזנת תוצאה' : 'עריכה') : 'פרטים'}</Link>}</td>
                 </tr>
               ))}
