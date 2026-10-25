@@ -68,6 +68,16 @@ describe('loglig page parsing', () => {
     expect(israelToUtc('2026-12-01T10:00')).toBe('2026-12-01T08:00:00.000Z'); // UTC+2
   });
 
+  it('reads the tournament director of each venue, restoring the dropped leading 0 of a mobile number', () => {
+    const page = '<h1>אזורית בדיקה</h1><p>מועדי המשחקים: 28 בספטמבר - 3 באוקטובר 2026</p>'
+      + '<p>קטגורית גיל: אזור צפון - כל הגילאים</p><p>שם המועדון: מרכז הטניס חיפה</p><p>כתובת: חיפה</p><p>פרטי יצירת קשר: אתי לוי 54-459-9089</p>'
+      + '<p>קטגורית גיל: בנים 14</p><p>שם המועדון: הפועל רמת אליהו</p><p>פרטי יצירת קשר: אמנון סלמה 054-4722070</p>';
+    expect(parseCompetitionPage(page).contacts).toEqual([
+      { area: 'אזור צפון - כל הגילאים', club: 'מרכז הטניס חיפה', name: 'אתי לוי', phone: '054-4599089' },
+      { area: 'בנים 14', club: 'הפועל רמת אליהו', name: 'אמנון סלמה', phone: '054-4722070' },
+    ]);
+  });
+
   it('parses a competition page and a category page', () => {
     const page = `<h1>אליפות בדיקה 2026</h1><div>מוקדמות</div><p>מועדי המשחקים: 18 - 20 בספטמבר 2026</p><p>דמי השתתפות: 180 ש"ח</p>
       <p>שם המועדון: מועדון הטניס רעננה</p><p>כתובת: רח' יאיר שטרן 3 רעננה</p>

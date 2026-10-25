@@ -898,6 +898,16 @@ function Tournament({ id, focus, onBack, onGoAccount }: { id: string; focus?: Fo
             <Pressable style={s.btn} onPress={() => Linking.openURL(d.tournament.registerUrl!)}><Text style={s.btnT}>{tr('להרשמה')}</Text></Pressable>
           </View>
         : <RegisterBox tournamentName={d.tournament.name} categories={d.categories} onGoAccount={onGoAccount} />)}
+      {!!d?.tournament.contacts?.length && (
+        <View style={s.card}>
+          <Text style={s.cardT}>{tr('מנהל התחרות')}</Text>
+          {d.tournament.contacts.map((c, i) => (
+            <Pressable key={i} disabled={!c.phone} onPress={() => Linking.openURL(`tel:${c.phone.replace(/[^\d+]/g, '')}`)}>
+              <Text style={s.muted}>{[c.area, c.name].filter(Boolean).join(' · ')}{c.phone ? ` · ${c.phone}` : ''}</Text>
+            </Pressable>
+          ))}
+        </View>
+      )}
       {d && !d.matches.length && !d.doubles?.length && !(d.participants ?? []).some((x) => x.id === meId) && <Text style={s.muted}>{tr('לוח המשחקים והתוצאות יופיעו כאן אחרי ההגרלה.')}</Text>}
       {(d?.categories.length ?? 0) > 1 && <CatFilters cats={d!.categories} fg={fg} fage={fage} fcat={fcat} setFg={setFg} setFage={setFage} setFcat={setFcat} setPicked={setPicked} />}
       <ParticipantsBlock participants={d?.participants ?? NO_PARTS} cats={d?.categories ?? NO_CATS} fg={fg} fage={fage} fcat={fcat} />

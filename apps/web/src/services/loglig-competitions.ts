@@ -27,11 +27,15 @@ function cleanBracket(x: unknown, depth = 0, count = { n: 0 }): BracketNode | nu
   const kids = (Array.isArray(o.c) ? o.c : []).slice(0, 2).map((k) => cleanBracket(k, depth + 1, count));
   return { n: clean(o.n, 120), c: kids.filter((k): k is BracketNode => !!k), ...(depth === 0 && (o as { t?: unknown }).t ? { t: true } : {}) };
 }
+/** `area` is the region or age group the venue serves ("אזור צפון"), `club` the venue. */
+export interface ContactIn { area: string; club: string; name: string; phone: string }
 export interface CompetitionIn {
   kind: 'competition'; name: string; start: string; end: string; feeShekel: number; level: 'NATIONAL' | 'REGIONAL' | 'INTERNATIONAL' | 'CIRCUIT';
   section?: 'YOUTH' | 'ADULTS' | 'MASTERS' | 'OTHER'; sourceUrl?: string; registerUrl?: string; registrationCloses?: string | null; venues: { club: string; address: string }[]; categories: CategoryIn[];
   /** Live refresh: only matches and results are updated, for a tournament that already exists; its fee, venue, links and deadline stay as they are. */
   resultsOnly?: boolean;
+  /** Who to call at each venue ("פרטי יצירת קשר" on the federation's page): the tournament director. */
+  contacts?: ContactIn[];
   doubles?: DoublesIn[];
 }
 
@@ -105,6 +109,9 @@ export function validateCompetitionImport(x: unknown): CompetitionIn {
     doubles.push({ name: cname, source: clean(c.source, 40), gender: c.gender === 'FEMALE' ? 'FEMALE' : c.gender === 'MALE' ? 'MALE' : genderOfName(cname) ?? 'OPEN', age: Number.isInteger(c.age) ? (c.age as number) : null, matches: ms, ...(bracket?.c.length ? { bracket } : {}) });
   }
   if (total > MAX_MATCHES) throw new Error('too many matches');
+  const contacts: ContactIn[] = (Array.isArray(b.contacts) ? b.contacts : []).slice(0, 30)
+    .map((c) => ({ area: clean(c?.area, 80), club: clean(c?.club, 120), name: clean(c?.name, 80), phone: clean(c?.phone, 30).replace(/[^\d+\-\s]/g, '').trim() }))
+    .filter((c) => c.name || c.phone);
   return {
     kind: 'competition', name, start: b.start as string, end: b.end as string,
     feeShekel: Math.max(0, Number(b.feeShekel) || 0),
@@ -114,6 +121,7 @@ export function validateCompetitionImport(x: unknown): CompetitionIn {
     registrationCloses: typeof b.registrationCloses === 'string' && !Number.isNaN(Date.parse(b.registrationCloses)) ? new Date(b.registrationCloses).toISOString() : null,
     venues: (Array.isArray(b.venues) ? b.venues : []).slice(0, 20).map((v) => ({ club: clean(v?.club, 120), address: clean(v?.address, 200) })).filter((v) => v.club),
     categories: cats,
+    ...(contacts.length ? { contacts } : {}),
     ...(doubles.length ? { doubles } : {}),
     ...(b.resultsOnly ? { resultsOnly: true } : {}),
   };
@@ -136,7 +144,12 @@ export async function importCompetition(db: Db, input: CompetitionIn, now = new 
   const start = new Date(`${input.start}T00:00:00Z`), end = new Date(`${input.end}T23:59:59Z`);
   const drawn = input.categories.some((c) => c.matches.length) || !!input.doubles?.some((c) => c.matches.length);
   const closes = input.registrationCloses ? new Date(input.registrationCloses) : null;
-  const status = end < now ? 'FINISHED' : !drawn ? (closes && closes > now ? 'REGISTRATION_OPEN' : 'REGISTRATION_CLOSED') : start <= now ? 'IN_PROGRESS' : 'DRAWN';
+  // "in progress" needs something still to play (or just played): the end date alone can be stretched by one mistyped match date,
+  // and a competition whose remaining matches all lie in the past is over
+  const dayAgo = now.getTime() - 864e5, dayAhead = now.getTime() + 864e5;
+  const everyMatch = [...input.categories.flatMap((c) => c.matches), ...(input.doubles ?? []).flatMap((c) => c.matches)];
+  const active = everyMatch.some((m) => { const at = Date.parse(m.start); return m.done ? at >= dayAgo && at <= dayAhead : at >= dayAgo; });
+  const status = end < now ? 'FINISHED' : !drawn ? (closes && closes > now ? 'REGISTRATION_OPEN' : 'REGISTRATION_CLOSED') : start > now ? 'DRAWN' : active ? 'IN_PROGRESS' : 'FINISHED';
   const stats = { tournament: input.name, categories: 0, players: 0, newPlayers: 0, matches: 0, doubles: 0, unresolved: 0, skipped: false };
 
   await (db as unknown as { transaction: <T>(f: (tx: Db) => Promise<T>) => Promise<T> }).transaction(async (tx) => {
@@ -157,6 +170,8 @@ export async function importCompetition(db: Db, input: CompetitionIn, now = new 
     const fields = {
       endDate: end, status: status as 'FINISHED', level: input.level, section: input.section ?? 'YOUTH', feeAgorot: Math.round(input.feeShekel * 100), venueId,
       sourceUrl: input.sourceUrl || null, registerUrl: input.registerUrl || null, registrationCloses: closes,
+      // the app's lists carry no contacts: never blank what the federation's page gave
+      ...(input.contacts?.length ? { contacts: input.contacts } : {}),
     };
     let tid: string;
     if (input.resultsOnly && !existing) { stats.skipped = true; return; }

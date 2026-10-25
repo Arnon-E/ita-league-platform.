@@ -345,4 +345,25 @@ describe('loglig competition mirror', () => {
     expect(unknown.skipped).toBe(true);
     expect((await db.select().from(schema.tournaments).where(eq(schema.tournaments.name, 'לא קיימת'))).length).toBe(0);
   });
+  it('a competition whose only later match is a mistyped date is finished, not in progress; contacts are kept', async () => {
+    const stray = {
+      kind: 'competition', name: 'אזורית תאריך שגוי', start: '2026-09-28', end: '2026-10-30', feeShekel: 0, level: 'REGIONAL', venues: [],
+      contacts: [{ area: 'אזור צפון', club: 'מרכז הטניס חיפה', name: 'אתי לוי', phone: '054-4599089' }, { area: '', club: '', name: '', phone: '' }],
+      categories: [{ name: 'בנים 14', source: '9', gender: 'MALE', age: 14, format: 'KNOCKOUT', matches: [
+        m({ a: p('שחקן א'), b: p('שחקן ב'), sets: [{ a: 6, b: 1 }, { a: 6, b: 1 }], start: '2026-10-02T07:00:00.000Z' }),
+        m({ a: p('שחקן ג'), b: p('שחקן ד'), done: false, start: '2026-10-03T07:00:00.000Z' }),
+        m({ round: 2, a: p('שחקן א'), b: p('שחקן ג'), sets: [{ a: 6, b: 1 }, { a: 6, b: 1 }], start: '2026-10-30T07:00:00.000Z' }),
+      ] }],
+    };
+    await importCompetition(db, validateCompetitionImport(stray), new Date('2026-10-25T08:00:00Z'));
+    const [t] = await db.select().from(schema.tournaments).where(eq(schema.tournaments.name, 'אזורית תאריך שגוי'));
+    expect(t?.status).toBe('FINISHED');
+    expect(t?.contacts).toEqual([{ area: 'אזור צפון', club: 'מרכז הטניס חיפה', name: 'אתי לוי', phone: '054-4599089' }]);
+
+    // the same competition with a match still to play is in progress
+    const live = { ...stray, name: 'אזורית חיה', categories: [{ ...stray.categories[0]!, matches: [m({ a: p('שחקן א'), b: p('שחקן ב'), done: false, start: '2026-10-26T07:00:00.000Z' })] }] };
+    await importCompetition(db, validateCompetitionImport(live), new Date('2026-10-25T08:00:00Z'));
+    const [l] = await db.select().from(schema.tournaments).where(eq(schema.tournaments.name, 'אזורית חיה'));
+    expect(l?.status).toBe('IN_PROGRESS');
+  });
 });

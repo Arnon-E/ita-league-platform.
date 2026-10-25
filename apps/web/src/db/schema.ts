@@ -136,6 +136,8 @@ export const tournaments = pgTable('tournaments', {
   section: text('section').notNull().default('YOUTH'),
   sourceUrl: text('source_url'),
   registerUrl: text('register_url'),
+  /** Tournament director(s) per venue, from the federation's page. */
+  contacts: jsonb('contacts').$type<{ area: string; club: string; name: string; phone: string }[]>(),
   createdAt: createdAt(),
 });
 

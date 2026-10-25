@@ -121,7 +121,7 @@ async function readCompetition({ url, list }) {
   return {
     kind: 'competition', name: c.name, start: c.start, end: c.end, feeShekel: c.feeShekel, level: levelOf(list, c.name), section: LISTS[list]?.section ?? 'YOUTH', sourceUrl: url,
     registerUrl: c.registerUrl, registrationCloses: c.registrationCloses ? israelToUtc(c.registrationCloses) : null,
-    isDoubles: c.isDoubles, venues: c.venues, categories: cats, doubles,
+    isDoubles: c.isDoubles, venues: c.venues, contacts: c.contacts, categories: cats, doubles,
   };
 }
 
@@ -167,6 +167,15 @@ async function readAppCompetitions(seasonIds) {
     }
   }
   return [...byTitle.values()];
+}
+
+/** Sorted ISO dates without stragglers: from each end, dates separated from the next by more than 14 days are cut. */
+function trimOutliers(dates) {
+  const gap = (a, b) => (Date.parse(b) - Date.parse(a)) / 86400000;
+  let lo = 0, hi = dates.length - 1;
+  while (hi - lo >= 2 && gap(dates[hi - 1], dates[hi]) > 14) hi--;
+  while (hi - lo >= 2 && gap(dates[lo], dates[lo + 1]) > 14) lo++;
+  return dates.slice(lo, hi + 1);
 }
 
 async function mergeAppCompetitions(docs) {
@@ -221,7 +230,8 @@ async function mergeAppCompetitions(docs) {
         continue;
       }
       // Loglig's empty date (01/01/1753) is not a date; an app-only competition that ended long ago is history, same as on the ita.co.il path
-      const all = [...cats, ...dbls].flatMap((c) => c.matches.map((m) => m.start)).filter((d) => d >= '2000').sort();
+      // one mistyped match date (a month after everything else) must not stretch the competition: dates cut off by a gap of over 14 days are dropped
+      const all = trimOutliers([...cats, ...dbls].flatMap((c) => c.matches.map((m) => m.start)).filter((d) => d >= '2000').sort());
       if (!all.length) { console.log(`- app only, no dates yet: ${a.title}`); continue; }
       if (daysAgo(all[all.length - 1].slice(0, 10)) > recentDays) continue;
       docs.push({

@@ -247,12 +247,23 @@ async function Overview({ d, manage, compact = false, registered = false }: { d:
   const confirmed = ents.filter((x) => x.e.status === 'CONFIRMED').length;
   const closesIn = t.status === 'REGISTRATION_OPEN' && t.registrationCloses ? Math.ceil((+t.registrationCloses - Date.now()) / 864e5) : null;
   const step = STEP_OF[t.status];
-  const facts: [string, string][] = [
+  const contacts = t.contacts ?? [];
+  const facts: [string, React.ReactNode][] = [
     ['תאריכים', `${fmtDate(t.startDate)} – ${fmtDate(t.endDate)} · ${days} ${tt('ימים')}`],
     ...(venue ? [['מקום', [venue.name, venue.city].filter(Boolean).join(', ')] as [string, string]] : []),
     ['סוג', `${tt(LEVEL[t.level] ?? '')} · ${tt(FORMAT[t.format] ?? '')}`],
     ...(t.feeAgorot > 0 ? [['דמי השתתפות', `₪${(t.feeAgorot / 100).toFixed(0)}`] as [string, string]] : []),
     ['קטגוריות', `${cats.length}${confirmed ? ` · ${confirmed} ${tt('משתתפים מאושרים')}` : ''}`],
+    ...(contacts.length ? [['מנהל התחרות', (
+      <div className="grid" style={{ gap: 4 }}>
+        {contacts.map((c, i) => (
+          <span key={i}>
+            {[c.area, c.name].filter(Boolean).join(' · ')}
+            {c.phone && <> · <a href={`tel:${c.phone.replace(/[^\d+]/g, '')}`} dir="ltr"><u>{c.phone}</u></a></>}
+          </span>
+        ))}
+      </div>
+    )] as [string, React.ReactNode]] : []),
   ];
   return (
     <>

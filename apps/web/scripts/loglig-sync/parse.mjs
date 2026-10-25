@@ -31,6 +31,17 @@ export function parseDateRange(text) {
   return null;
 }
 
+/** "אתי לוי 54-459-9089" -> { name: 'אתי לוי', phone: '054-4599089' }; the page often drops the leading 0 of a mobile number. */
+export function parseContact(text) {
+  const t = text.replace(/\s+/g, ' ').trim();
+  const m = t.match(/(\+?\d[\d\- ]{6,}\d)\s*$/);
+  const name = (m ? t.slice(0, m.index) : t).replace(/[-:,\s]+$/, '').trim();
+  let digits = m ? m[1].replace(/\D/g, '') : '';
+  if (/^5\d{8}$/.test(digits)) digits = '0' + digits;
+  const phone = /^0\d{9}$/.test(digits) ? `${digits.slice(0, 3)}-${digits.slice(3)}` : m ? m[1].trim() : '';
+  return name || phone ? { name, phone } : null;
+}
+
 /** Competition page -> details and the list of public category pages (with the section they sit in). */
 export function parseCompetitionPage(html, url = '') {
   const lines = toLines(html);
@@ -44,6 +55,17 @@ export function parseCompetitionPage(html, url = '') {
   for (let i = 0; i < lines.length; i++) {
     if (/^שם המועדון\s*:/.test(lines[i])) {
       venues.push({ club: lines[i].replace(/^[^:]*:\s*/, ''), address: (lines[i + 1] ?? '').replace(/^כתובת\s*:\s*/, '') });
+    }
+  }
+  // tournament directors: "פרטי יצירת קשר : אתי לוי 54-459-9089" under each venue block (the area / age group, the club, then the contact)
+  const contacts = [];
+  let area = '', club = '';
+  for (const l of lines) {
+    if (/^קטגור(?:יה|ית|יית) גיל\s*:/.test(l)) area = l.replace(/^[^:]*:\s*/, '');
+    else if (/^שם המועדון\s*:/.test(l)) club = l.replace(/^[^:]*:\s*/, '');
+    else if (/^פרטי יצירת קשר\s*:/.test(l)) {
+      const c = parseContact(l.replace(/^[^:]*:\s*/, ''));
+      if (c) contacts.push({ area, club, ...c });
     }
   }
   // category pages and the heading they sit under
@@ -81,7 +103,7 @@ export function parseCompetitionPage(html, url = '') {
     url, name,
     start: starts[0] ?? null, end: ends[ends.length - 1] ?? null, feeShekel: fee, venues,
     categories: found,
-    isDoubles,
+    isDoubles, contacts,
     registrationCloses: deadlines[0] ?? null, registerUrl: form, planned,
   };
 }
