@@ -10,7 +10,7 @@ const count = (n: number, one: string, many: string) => (n === 1 ? one : `${n.to
 
 /** Two letters for the club's round mark: the first letters of the first two distinctive words ("מרכז הטניס חיפה" gives "חי" from "חיפה"). */
 const mark = (name: string) => {
-  const words = name.split(/\s+/).filter((w) => w && !/^(מועדון|מרכז|מרכזי|הטניס|טניס|והחינוך|החינוך|בישראל|עירוני|מ.|ה|של|ב|ל|-|–)$/.test(w));
+  const words = name.split(/\s+/).filter((w) => w && !/^(מועדון|מרכז|מרכזי|הטניס|טניס|והחינוך|החינוך|בישראל|עירוני|מ\.|ה|של|ב|ל|-|–)$/.test(w));
   const w = words.length ? words : name.split(/\s+/).filter(Boolean);
   return (w.length > 1 ? w.slice(0, 2).map((x) => Array.from(x)[0]).join('') : Array.from(w[0] ?? '?').slice(0, 2).join('')).toUpperCase();
 };
