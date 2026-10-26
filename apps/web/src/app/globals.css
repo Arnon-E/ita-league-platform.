@@ -388,15 +388,20 @@ details.acct .out:hover{background:var(--badbg)}
 
 /* rankings podium */
 .podium{display:grid;grid-template-columns:1fr 1.15fr 1fr;gap:12px;align-items:end;margin:22px 0 6px}
-.pod{position:relative;display:flex;flex-direction:column;gap:2px;padding:20px 22px;border-radius:26px;background:var(--surface);border:1px solid var(--line);min-height:150px;justify-content:flex-end;transition:transform .2s var(--ease),box-shadow .2s var(--ease)}
+.pod{position:relative;display:flex;flex-direction:column;gap:2px;padding:20px 22px;border-radius:26px;background:var(--surface);border:1px solid var(--line);height:215px;overflow:hidden;justify-content:flex-end;transition:transform .2s var(--ease),box-shadow .2s var(--ease)}
 .pod:hover{transform:translateY(-3px);box-shadow:var(--shadow-lg)}
 .pod .n{font-family:var(--display);font-size:56px;font-weight:700;line-height:.9;letter-spacing:-.05em;color:var(--muted);margin-bottom:auto}
 .pod strong{font-size:17px;font-weight:700}
+/* a podium: fixed heights (1st tallest), long names and clubs are cut after two lines instead of stretching a card */
+.pod strong,.pod .muted{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;line-height:1.25;flex-shrink:0}
+.pod .n,.pod .pts{flex-shrink:0}
+.pod.p2{height:235px}
+.pod .muted{font-size:13px}
 .pod .pts{margin-top:8px;font-family:var(--display);font-size:24px;font-weight:700;letter-spacing:-.03em}
 .pod .pts small{font-family:var(--body);font-size:12px;font-weight:500;color:var(--muted);letter-spacing:0}
-.pod.p1{min-height:210px;background:var(--volt);border-color:transparent;color:var(--ink)}
+.pod.p1{height:275px;background:var(--volt);border-color:transparent;color:var(--ink)}
 .pod.p1 .n{color:var(--ink);font-size:84px}.pod.p1 .muted,.pod.p1 .pts small{color:#3C4E12}
-@media(max-width:720px){.podium{gap:8px}.pod{padding:14px;min-height:130px;border-radius:20px}.pod.p1{min-height:170px}.pod .n{font-size:38px}.pod.p1 .n{font-size:56px}.pod strong{font-size:14px}.pod .pts{font-size:18px}}
+@media(max-width:720px){.podium{gap:8px}.pod{padding:14px;border-radius:20px;height:190px}.pod.p2{height:208px}.pod.p1{height:232px}.pod .muted{font-size:12px}.pod .n{font-size:38px}.pod.p1 .n{font-size:56px}.pod strong{font-size:14px}.pod .pts{font-size:18px}}
 
 /* small screens: grid/flex children may shrink below their content, and nothing may push the page wider than the phone */
 .home-hero>*,.grid>*,.row>*,.bento>*,.podium>*,.sbgrid>*{min-width:0}
