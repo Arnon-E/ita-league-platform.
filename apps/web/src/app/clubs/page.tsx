@@ -8,6 +8,13 @@ import { listClubs } from '@/services/public';
 /** "שחקן אחד" / "N שחקנים": the counts are small, so the singular matters. */
 const count = (n: number, one: string, many: string) => (n === 1 ? one : `${n.toLocaleString('he-IL')} ${many}`);
 
+/** Two letters for the club's round mark: the first letters of the first two distinctive words ("מרכז הטניס חיפה" gives "חי" from "חיפה"). */
+const mark = (name: string) => {
+  const words = name.split(/\s+/).filter((w) => w && !/^(מועדון|מרכז|מרכזי|הטניס|טניס|והחינוך|החינוך|בישראל|עירוני|מ.|ה|של|ב|ל|-|–)$/.test(w));
+  const w = words.length ? words : name.split(/\s+/).filter(Boolean);
+  return (w.length > 1 ? w.slice(0, 2).map((x) => Array.from(x)[0]).join('') : Array.from(w[0] ?? '?').slice(0, 2).join('')).toUpperCase();
+};
+
 export default async function Clubs({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
   const t = await tr();
   const { q = '' } = await searchParams;
@@ -30,9 +37,13 @@ export default async function Clubs({ searchParams }: { searchParams: Promise<{ 
         {rows.map(({ c, n }) => {
           const phone = (c.info as { phone?: string } | null)?.phone;
           return (
-            <Link key={c.id} href={`/clubs/${c.id}`} className="card grid" style={{ gap: 4 }}>
-              <strong style={{ fontSize: 17 }}>{t(c.name)}</strong>
-              <span className="muted">{[c.city, n ? count(n, t('שחקן אחד'), t('שחקנים')) : t('אין שחקנים רשומים'), phone].filter(Boolean).join(' · ')}</span>
+            <Link key={c.id} href={`/clubs/${c.id}`} className="card ccard">
+              <span className="cmark" aria-hidden="true">{mark(t(c.name))}</span>
+              <span className="cmain">
+                <strong>{t(c.name)}</strong>
+                <span className="muted">{[c.city, phone].filter(Boolean).join(' · ') || ' '}</span>
+              </span>
+              <span className={`ccount${n ? '' : ' none'}`}><b>{n.toLocaleString('he-IL')}</b><small>{n === 1 ? t('שחקן אחד') : t('שחקנים')}</small></span>
             </Link>
           );
         })}
