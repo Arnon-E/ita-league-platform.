@@ -613,3 +613,9 @@ html[dir=rtl] .pside{align-items:flex-start}
 .ccount b{font-family:var(--display);font-size:19px;font-weight:800;font-variant-numeric:tabular-nums}
 .ccount small{font-size:11.5px;color:var(--muted)}
 .ccount.none b{color:var(--muted);font-weight:600}
+
+/* player pictures (hosted by Loglig) */
+.pav.img{object-fit:cover;padding:0;display:block;background:var(--surface2)}
+.pod .pph{width:56px;height:56px;border-radius:50%;object-fit:cover;border:3px solid var(--surface);margin-bottom:auto;background:var(--surface2);flex:none}
+.pod.p1 .pph{width:84px;height:84px;border-color:var(--ink)}
+@media(max-width:720px){.pod .pph{width:44px;height:44px;border-width:2px}.pod.p1 .pph{width:60px;height:60px}}

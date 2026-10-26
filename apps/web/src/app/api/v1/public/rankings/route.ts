@@ -1,6 +1,7 @@
 import { db } from '@/db';
 import { handlePublic } from '@/lib/api';
 import { AGE_GROUPS } from '@/services/public';
+import { photoUrl } from '@/lib/photos';
 import { rankingPage } from '@/services/ranking-sql';
 
 /** ?g=MALE|FEMALE &age=12|14|16|18 (optional) &club=<id> (optional) &offset=<n> &limit=<n> (optional paging; without them the whole table) &count=1 (just { total }) */
@@ -17,5 +18,5 @@ export const GET = (req: Request) => handlePublic(async () => {
   };
   if (q.get('count')) return { total: (await rankingPage(db, { ...narrow, limit: 1 })).total };
   // the rows of the requested page only; without a limit, the first 500
-  return (await rankingPage(db, { ...narrow, limit: limit > 0 ? Math.min(200, limit) : 500, offset })).rows;
+  return (await rankingPage(db, { ...narrow, limit: limit > 0 ? Math.min(200, limit) : 500, offset })).rows.map((r) => ({ ...r, photo: photoUrl(r.photo) }));
 }, 60);

@@ -16,7 +16,8 @@ import { ensureDefaultRuleSet, loadRuleSet } from './rules';
  */
 type Gender = 'MALE' | 'FEMALE';
 
-export interface RankingTableRow { rank: number; playerId: string; name: string; club: string | null; points: number; counted: number }
+/** `photo` is the file name of the player's picture on Loglig (null without one); the pages turn it into a URL. */
+export interface RankingTableRow { rank: number; playerId: string; name: string; club: string | null; points: number; counted: number; photo: string | null }
 
 const MAX_AGE_MS = 24 * 3600 * 1000;
 
@@ -80,7 +81,7 @@ export function rankingPage(db: Db, o: { gender: Gender; age?: number; clubId?: 
     const ageCond = o.age ? sql`and (extract(year from now() at time zone 'UTC') - extract(year from pl.birth_date at time zone 'UTC')) <= ${o.age}` : sql``;
     const clubCond = o.clubId ? sql`and pl.club_id = ${o.clubId}` : sql``;
     const rows = (await db.execute(sql`
-      select rs.player_id as "playerId", pl.first_name || ' ' || pl.last_name as name, c.name as club, (rs.points_cents / 100.0)::float8 as points, rs.counted,
+      select rs.player_id as "playerId", pl.first_name || ' ' || pl.last_name as name, c.name as club, pl.photo, (rs.points_cents / 100.0)::float8 as points, rs.counted,
         (row_number() over (order by rs.rank))::int as rank, (count(*) over ())::int as total
       from ranking_snapshot rs join players pl on pl.id = rs.player_id left join clubs c on c.id = pl.club_id
       where rs.gender = ${o.gender}::gender ${ageCond} ${clubCond}

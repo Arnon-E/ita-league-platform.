@@ -2,8 +2,8 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-export interface PlayerRow { id: string; name: string; club: string | null; gender: string; birthYear: number; rank: number | null }
-export interface RankRow { rank: number; playerId: string; name: string; club: string | null; points: number; counted: number }
+export interface PlayerRow { id: string; name: string; club: string | null; gender: string; birthYear: number; rank: number | null; photo?: string | null }
+export interface RankRow { rank: number; playerId: string; name: string; club: string | null; points: number; counted: number; photo?: string | null }
 
 /** Shared "load the next page when the bottom comes into view" behaviour. */
 function useInfinite<T>(initial: T[], pageSize: number, url: (offset: number) => string) {
@@ -55,6 +55,12 @@ const Footer = ({ done, busy, err, sentinel, more, labels }: { done: boolean; bu
   </div>
 );
 
+/** The player's picture (hosted by Loglig, loaded only when it scrolls into view), else the initials. */
+function Avatar({ photo, name, cls }: { photo?: string | null; name: string; cls: string }) {
+  return photo
+    ? <img className={`${cls} img`} src={photo} alt="" loading="lazy" decoding="async" referrerPolicy="no-referrer" />
+    : <span className={cls} aria-hidden="true">{initials(name)}</span>;
+}
 const initials = (name: string) => name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => Array.from(w)[0]).join('').toUpperCase();
 
 export function PlayersRows({ initial, query, pageSize, genders, labels }: {
@@ -68,7 +74,7 @@ export function PlayersRows({ initial, query, pageSize, genders, labels }: {
         {rows.map((p) => (
           <li key={p.id}>
             <Link href={`/players/${p.id}`}>
-              <span className={`pav ${p.gender === 'FEMALE' ? 'f' : p.gender === 'MALE' ? 'm' : ''}`} aria-hidden="true">{initials(p.name)}</span>
+              <Avatar photo={p.photo} name={p.name} cls={`pav ${p.gender === 'FEMALE' ? 'f' : p.gender === 'MALE' ? 'm' : ''}`} />
               <span className="pmain"><strong>{p.name}</strong><span className="muted">{p.club ?? '—'}</span></span>
               <span className="pside"><b className={`prank${p.rank ? (p.rank <= 3 ? ` top r${p.rank}` : '') : ' none'}`} title={labels.rank}>{p.rank ? `#${p.rank}` : '—'}</b><span className="muted" title={String(p.birthYear)}>{labels.age ? `${labels.age} ${year - p.birthYear}` : p.birthYear} · {genders[p.gender] ?? ''}</span></span>
             </Link>
@@ -88,7 +94,7 @@ export function RankingRows({ initial, query, pageSize, labels }: {
   return (
     <div className="card" style={{ overflow: 'auto' }}>
       <table className="stack rank"><thead><tr><th>#</th><th>{labels.player}</th><th>{labels.club}</th><th>{labels.points}</th><th>{labels.counted}</th></tr></thead><tbody>
-        {rows.map((r) => <tr key={r.playerId}><td><span className={`rkn${r.rank <= 3 ? ` r${r.rank}` : ''}`}>{r.rank}</span></td><td><Link href={`/players/${r.playerId}`} className="rname"><span className="pav sm" aria-hidden="true">{initials(r.name)}</span>{r.name}</Link></td><td>{r.club ?? '—'}</td><td><strong>{r.points}</strong></td><td>{r.counted}<span className="cnt-l">{labels.counted}</span></td></tr>)}
+        {rows.map((r) => <tr key={r.playerId}><td><span className={`rkn${r.rank <= 3 ? ` r${r.rank}` : ''}`}>{r.rank}</span></td><td><Link href={`/players/${r.playerId}`} className="rname"><Avatar photo={r.photo} name={r.name} cls="pav sm" />{r.name}</Link></td><td>{r.club ?? '—'}</td><td><strong>{r.points}</strong></td><td>{r.counted}<span className="cnt-l">{labels.counted}</span></td></tr>)}
       </tbody></table>
       {!rows.length && <p className="muted">{labels.none}</p>}
       <Footer done={done} busy={busy} err={err} sentinel={sentinel} more={more} labels={labels} />
