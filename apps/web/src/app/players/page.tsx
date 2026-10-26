@@ -65,7 +65,7 @@ export default async function Players({ searchParams }: { searchParams: Promise<
         initial={rows.map(({ p, club: cn }) => ({ id: p.id, name: `${p.firstName} ${p.lastName}`, club: cn, gender: p.gender, birthYear: p.birthDate.getUTCFullYear(), rank: rk.get(p.id)?.rank ?? null }))}
         query={query} pageSize={PAGE}
         genders={Object.fromEntries(Object.entries(GENDER).map(([k, v]) => [k, t(v)]))}
-        labels={{ player: t('שחקן'), club: t('מועדון'), gender: t('מין'), birth: t('שנת לידה'), rank: t('דירוג'), loading: t('טוען...'), retry: t('נסו שוב'), end: '', none: t('לא נמצאו שחקנים.') }}
+        labels={{ player: t('שחקן'), club: t('מועדון'), gender: t('מין'), birth: t('שנת לידה'), rank: t('דירוג'), age: t('גיל'), loading: t('טוען...'), retry: t('נסו שוב'), end: '', none: t('לא נמצאו שחקנים.') }}
       />
     </Shell>
   );

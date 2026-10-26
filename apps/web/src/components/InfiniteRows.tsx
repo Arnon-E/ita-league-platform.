@@ -58,8 +58,9 @@ const Footer = ({ done, busy, err, sentinel, more, labels }: { done: boolean; bu
 const initials = (name: string) => name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => Array.from(w)[0]).join('').toUpperCase();
 
 export function PlayersRows({ initial, query, pageSize, genders, labels }: {
-  initial: PlayerRow[]; query: string; pageSize: number; genders: Record<string, string>; labels: { player: string; club: string; gender: string; birth: string; rank: string; loading: string; retry: string; end: string; none: string };
+  initial: PlayerRow[]; query: string; pageSize: number; genders: Record<string, string>; labels: { player: string; club: string; gender: string; birth: string; rank: string; age?: string; loading: string; retry: string; end: string; none: string };
 }) {
+  const year = new Date().getFullYear();
   const { rows, done, busy, err, more, sentinel } = useInfinite<PlayerRow>(initial, pageSize, (o) => `/api/v1/public/players?${query}&offset=${o}&limit=${pageSize}`);
   return (
     <div className="card prows">
@@ -67,9 +68,9 @@ export function PlayersRows({ initial, query, pageSize, genders, labels }: {
         {rows.map((p) => (
           <li key={p.id}>
             <Link href={`/players/${p.id}`}>
-              <span className="pav" aria-hidden="true">{initials(p.name)}</span>
+              <span className={`pav ${p.gender === 'FEMALE' ? 'f' : p.gender === 'MALE' ? 'm' : ''}`} aria-hidden="true">{initials(p.name)}</span>
               <span className="pmain"><strong>{p.name}</strong><span className="muted">{p.club ?? '—'}</span></span>
-              <span className="pside"><b className={`prank${p.rank ? '' : ' none'}`} title={labels.rank}>{p.rank ? `#${p.rank}` : '—'}</b><span className="muted">{p.birthYear} · {genders[p.gender] ?? ''}</span></span>
+              <span className="pside"><b className={`prank${p.rank ? (p.rank <= 3 ? ` top r${p.rank}` : '') : ' none'}`} title={labels.rank}>{p.rank ? `#${p.rank}` : '—'}</b><span className="muted" title={String(p.birthYear)}>{labels.age ? `${labels.age} ${year - p.birthYear}` : p.birthYear} · {genders[p.gender] ?? ''}</span></span>
             </Link>
           </li>
         ))}
@@ -87,7 +88,7 @@ export function RankingRows({ initial, query, pageSize, labels }: {
   return (
     <div className="card" style={{ overflow: 'auto' }}>
       <table className="stack rank"><thead><tr><th>#</th><th>{labels.player}</th><th>{labels.club}</th><th>{labels.points}</th><th>{labels.counted}</th></tr></thead><tbody>
-        {rows.map((r) => <tr key={r.playerId}><td>{r.rank}</td><td><Link href={`/players/${r.playerId}`}>{r.name}</Link></td><td>{r.club ?? '—'}</td><td><strong>{r.points}</strong></td><td>{r.counted}<span className="cnt-l">{labels.counted}</span></td></tr>)}
+        {rows.map((r) => <tr key={r.playerId}><td><span className={`rkn${r.rank <= 3 ? ` r${r.rank}` : ''}`}>{r.rank}</span></td><td><Link href={`/players/${r.playerId}`} className="rname"><span className="pav sm" aria-hidden="true">{initials(r.name)}</span>{r.name}</Link></td><td>{r.club ?? '—'}</td><td><strong>{r.points}</strong></td><td>{r.counted}<span className="cnt-l">{labels.counted}</span></td></tr>)}
       </tbody></table>
       {!rows.length && <p className="muted">{labels.none}</p>}
       <Footer done={done} busy={busy} err={err} sentinel={sentinel} more={more} labels={labels} />

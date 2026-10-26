@@ -590,3 +590,14 @@ html[dir=rtl] .pside{align-items:flex-start}
 .tm:has(.w)>div:not(.w):not(.meta){color:var(--muted)}
 @media(max-width:720px){.pod .medal{top:10px;inset-inline-end:10px;width:28px;height:28px}}
 .tm .w.me{background:color-mix(in srgb,var(--lime) 28%,transparent)}
+
+/* richer player and ranking rows */
+.pav.m{background:color-mix(in srgb,var(--blue) 10%,var(--surface2));color:var(--blue)}
+.pav.f{background:color-mix(in srgb,#C2185B 9%,var(--surface2));color:#B0124F}
+.pav.sm{width:30px;height:30px;font-size:12px;display:inline-grid;vertical-align:middle;margin-inline-end:10px}
+.prank.top{display:inline-block;padding:1px 10px;border-radius:999px;color:var(--ink);font-size:15px}
+.prank.r1{background:#F2C230}.prank.r2{background:#CBD3DA}.prank.r3{background:#D99560}
+.rkn{display:inline-grid;place-items:center;min-width:32px;height:32px;padding:0 6px;border-radius:999px;background:var(--surface2);font-family:var(--display);font-weight:700;font-variant-numeric:tabular-nums}
+.rkn.r1{background:#F2C230;color:var(--ink)}.rkn.r2{background:#CBD3DA;color:var(--ink)}.rkn.r3{background:#D99560;color:var(--ink)}
+.rname{display:inline-flex;align-items:center}
+.rname{text-decoration:none}.rname:hover{text-decoration:underline}
