@@ -554,3 +554,26 @@ html[dir=rtl] .pside{align-items:flex-start}
 
 /* shown on every page of a development / preview deployment, so it is never mistaken for the live site */
 .envbadge{position:fixed;top:3px;inset-inline-start:3px;z-index:100;background:#F59E0B;color:#1c1407;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;pointer-events:none}
+
+/* tournament page: hero and match cards */
+.thero{padding:26px 28px 28px;border-radius:28px;display:flex;flex-direction:column;align-items:flex-start;margin-bottom:14px}
+.thero-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%}
+.thero h1{font-size:clamp(30px,5vw,52px);margin:20px 0 0;text-wrap:balance}
+.thero .thero-dates{margin:10px 0 0;color:#C3CFC8;font-size:16px;max-width:none;font-variant-numeric:tabular-nums}
+.thero-meta{display:flex;flex-wrap:wrap;gap:8px;margin:18px 0 0}
+.thero .btn.lime{margin-top:22px}
+.thero .pill:not(.lime):not(.ok):not(.warn):not(.bad){background:rgba(255,255,255,.12);color:#E9F0EB;border-color:rgba(255,255,255,.18)}
+.thero .btn.small.ghost{background:transparent;color:#fff;box-shadow:inset 0 0 0 1px rgba(255,255,255,.4)}
+.thero .btn.small.ghost:hover{background:rgba(255,255,255,.1);box-shadow:inset 0 0 0 1px #fff}
+.thero .btn.small:not(.ghost){background:var(--volt);color:var(--ink)}
+.mclist{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.mc{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:12px 14px 14px}
+.mc.mine{background:var(--limebg,rgba(190,242,100,.18))}
+.mc-meta{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;margin-bottom:10px;font-size:12.5px}
+.mc-stage{font-weight:600;color:var(--text);margin-inline-end:2px}
+.mc-chip{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:999px;background:var(--surface2);border:1px solid var(--line);color:var(--muted);font-variant-numeric:tabular-nums}
+.mc-chip svg{flex:none}
+.mc-body{display:flex;align-items:flex-end;gap:12px}
+.mc-body .sb{flex:1;min-width:0}
+.mc-act{flex:none}
+@media(max-width:720px){.thero{padding:20px 18px 22px;border-radius:24px}.thero h1{margin-top:16px}.mc-body{flex-direction:column;align-items:stretch}.mc-act{align-self:flex-start}}

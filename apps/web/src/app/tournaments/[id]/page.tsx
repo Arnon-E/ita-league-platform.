@@ -5,6 +5,7 @@ import { notFound } from 'next/navigation';
 import { db, schema } from '@/db';
 import { getActor } from '@/lib/session';
 import { Flash, Shell } from '@/components/Shell';
+import { Court } from '@/components/Brand';
 import { FollowButton } from '@/components/FollowButton';
 import { DoublesView } from '@/components/DoublesView';
 import type { BracketTree } from '@/components/DoublesBracket';
@@ -74,10 +75,22 @@ export default async function TournamentPage({ params, searchParams }: { params:
   const tabs = TABS.filter(([k]) => manage || k === tab || hasContent[k]);
   return (
     <Shell nav="home">
-      <div className="row" style={{ justifyContent: 'space-between' }}>
-        <div style={{ minWidth: 0 }}><span className={`pill ${cls}`}>{tt(st)}</span><h1 style={{ marginTop: 6 }}>{t.name}</h1><span className="muted">{fmtDate(t.startDate)} – {fmtDate(t.endDate)}</span></div>
-        <FollowButton kind="TOURNAMENT" target={t.id} back={`/tournaments/${t.id}`} />
-      </div>
+      <section className="hero thero">
+        <Court />
+        <div className="thero-bar">
+          <span className={`pill ${cls}`}>{tt(st)}</span>
+          <FollowButton kind="TOURNAMENT" target={t.id} back={`/tournaments/${t.id}`} />
+        </div>
+        <h1>{t.name}</h1>
+        <p className="thero-dates">{fmtDate(t.startDate)} – {fmtDate(t.endDate)}</p>
+        <div className="thero-meta">
+          <span className="pill">{tt(LEVEL[t.level] ?? '')}</span>
+          <span className="pill">{d.cats.length} {tt('קטגוריות')}</span>
+        </div>
+        {t.status === 'REGISTRATION_OPEN' && (t.registerUrl
+          ? <a className="btn lime" href={t.registerUrl} target="_blank" rel="noopener noreferrer">{tt('להרשמה')}</a>
+          : <Link className="btn lime" href="/me">{tt('להרשמה')}</Link>)}
+      </section>
       {focus && focus.entries.length > 0 && <MyPlayerCard d={d} focus={focus} mine={mine} showAll={useFocus} />}
       <nav className="tabs">{tabs.map(([k, l]) => <Link key={k} href={`/tournaments/${id}?tab=${k}${sp.for ? `&for=${sp.for}` : ''}${explicitFilter ? '' : ''}`} className={tab === k ? 'on' : ''}>{tt(l)}</Link>)}</nav>
       <Flash err={err} ok={ok} />
@@ -637,23 +650,28 @@ async function Results({ d, scorer, hl }: { d: Detail; scorer: boolean; hl: Set<
       {d.cats.map((c) => (
         <section key={c.id}>
           <h2>{c.name}</h2>
-          <div className="card" style={{ overflow: 'auto' }}>
-            <table><thead><tr><th>{tt('שלב')}</th><th>{tt('משחק')}</th><th>{tt('תוצאה')}</th><th /></tr></thead><tbody>
-              {d.ms.filter((m) => m.categoryId === c.id).map((m) => (
-                <tr key={m.id} style={(m.aEntryId && hl.has(m.aEntryId)) || (m.bEntryId && hl.has(m.bEntryId)) ? { background: 'var(--limebg, rgba(190,242,100,.18))' } : undefined}>
-                  <td>{m.stage === 'GROUP' ? `${tt('שלב הבתים')} · ${tt('מחזור')} ${m.round}` : `${tt('הדחה')} · ${tt('סיבוב')} ${m.round}`}</td>
-                  <td colSpan={2} style={{ minWidth: 260 }}>
+          <ol className="mclist">
+            {d.ms.filter((m) => m.categoryId === c.id).map((m) => {
+              const when = m.scheduledStart ? fmtTime(m.scheduledStart) : m.notBefore ? (m.status === 'SCHEDULED' ? `${tt('לא לפני')} ${fmtTime(m.notBefore)}` : fmtTime(m.notBefore)) : '';
+              const mine = (m.aEntryId && hl.has(m.aEntryId)) || (m.bEntryId && hl.has(m.bEntryId));
+              return (
+                <li key={m.id} className={`mc${mine ? ' mine' : ''}`}>
+                  <div className="mc-meta">
+                    <span className="mc-stage">{m.stage === 'GROUP' ? `${tt('שלב הבתים')} · ${tt('מחזור')} ${m.round}` : `${tt('הדחה')} · ${tt('סיבוב')} ${m.round}`}</span>
+                    {m.courtLabel && <span className="mc-chip"><svg aria-hidden viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="5" width="18" height="14" rx="1.5" /><path d="M12 5v14M3 12h18" /></svg>{tt('מגרש')} {courtNo(m.courtLabel)}</span>}
+                    {when && <span className="mc-chip"><svg aria-hidden viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="8.5" /><path d="M12 7.5V12l3 2" /></svg>{when}</span>}
+                  </div>
+                  <div className="mc-body">
                     <MatchScore aName={nm(m.aEntryId)} bName={nm(m.bEntryId)} sets={m.status === 'SCHEDULED' ? [] : (m.sets as { a: number; b: number }[])} status={m.status}
                       winner={m.winnerEntryId ? (m.winnerEntryId === m.aEntryId ? 'a' : m.winnerEntryId === m.bEntryId ? 'b' : null) : null}
                       caption={m.status === 'SCHEDULED' ? tt(MSTATUS.SCHEDULED ?? '') : undefined}
                       labels={{ walkover: tt('ווק-אובר'), retired: tt('פרישה'), void: tt('בוטל'), live: tt('חי'), won: tt('ניצח') }} />
-                    {(m.courtLabel || m.scheduledStart || m.notBefore) && <div className="muted" style={{ marginTop: 4 }}>{[m.courtLabel ? `${tt('מגרש')} ${courtNo(m.courtLabel)}` : '', m.scheduledStart ? fmtTime(m.scheduledStart) : m.notBefore ? (m.status === 'SCHEDULED' ? `${tt('לא לפני')} ${fmtTime(m.notBefore)}` : fmtTime(m.notBefore)) : ''].filter(Boolean).join(' · ')}</div>}
-                  </td>
-                  <td>{m.aEntryId && m.bEntryId && <Link className="btn small ghost" href={`/matches/${m.id}`}>{scorer ? (m.status === 'SCHEDULED' ? 'הזנת תוצאה' : 'עריכה') : 'פרטים'}</Link>}</td>
-                </tr>
-              ))}
-            </tbody></table>
-          </div>
+                    {m.aEntryId && m.bEntryId && <Link className="btn small ghost mc-act" href={`/matches/${m.id}`}>{scorer ? (m.status === 'SCHEDULED' ? 'הזנת תוצאה' : 'עריכה') : 'פרטים'}</Link>}
+                  </div>
+                </li>
+              );
+            })}
+          </ol>
         </section>
       ))}
     </>
