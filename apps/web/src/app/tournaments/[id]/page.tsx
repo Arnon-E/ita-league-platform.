@@ -67,9 +67,11 @@ export default async function TournamentPage({ params, searchParams }: { params:
   const mine: Mine = viewed ? [viewed] : owned;
   const focus = focusFor(d, mine, sp.for ?? '');
   const useFocus = !!focus && !explicitFilter;
-  const flt = useFocus && focus!.cat
+  const wanted = useFocus && focus!.cat
     ? { g: focus!.cat.gender === 'MALE' || focus!.cat.gender === 'FEMALE' ? focus!.cat.gender : '', age: ageOf(focus!.cat.name) }
     : { g: g === 'MALE' || g === 'FEMALE' ? g : '', age: /^\d{2}$/.test(age) ? age : '' };
+  // an age nobody of the chosen gender plays in (a stale link, or girls picked after age 70) is dropped instead of showing an empty draw
+  const flt = wanted.g && wanted.age && !d.cats.some((c) => c.gender === wanted.g && ageOf(c.name) === wanted.age) ? { ...wanted, age: '' } : wanted;
   const cat = sp.cat ?? (useFocus ? focus!.entries[0]?.e.categoryId ?? '' : '');
   const tab = sp.tab ?? (useFocus && focus!.entries.length ? (hasContent.draw ? 'draw' : hasContent.results ? 'results' : 'overview') : hasContent.doubles && !hasContent.draw && !hasContent.results ? 'doubles' : 'overview');
   const tabs = TABS.filter(([k]) => manage || k === tab || hasContent[k]);
@@ -206,10 +208,15 @@ const narrow = (d: Detail, f: Flt): Detail => {
 async function CatFilter({ d, tab, cat, flt, withCats }: { d: Detail; tab: string; cat: string; flt: Flt; withCats: boolean }) {
   const tt = await tr();
   if (d.cats.length <= 1) return null;
-  const ages = [...new Set(d.cats.map((c) => ageOf(c.name)).filter(Boolean))].sort();
-  const genders = [...new Set(d.cats.map((c) => c.gender).filter((x) => x === 'MALE' || x === 'FEMALE'))];
+  // only what exists under the other filter is offered: with girls chosen, an age group nobody plays in has no button (and the same the other way round)
+  const fits = (c: Detail['cats'][number], g: string, a: string) => (!g || c.gender === g) && (!a || ageOf(c.name) === a);
+  const allGenders = [...new Set(d.cats.map((c) => c.gender).filter((x) => x === 'MALE' || x === 'FEMALE'))];
+  const genders = allGenders.filter((g) => g === flt.g || d.cats.some((c) => fits(c, g, flt.age)));
+  const ages = [...new Set(d.cats.filter((c) => fits(c, flt.g, '')).map((c) => ageOf(c.name)).filter(Boolean))].sort();
   const url = (o: Partial<Flt> & { cat?: string }) => {
-    const p = new URLSearchParams({ tab, g: o.g ?? flt.g, age: o.age ?? flt.age });
+    // switching gender keeps the age only when that gender has it
+    const age = o.age ?? (o.g && flt.age && !d.cats.some((c) => fits(c, o.g!, flt.age)) ? '' : flt.age);
+    const p = new URLSearchParams({ tab, g: o.g ?? flt.g, age });
     if (o.cat) p.set('cat', o.cat);
     return `/tournaments/${d.t.id}?${p.toString()}`;
   };
@@ -218,7 +225,7 @@ async function CatFilter({ d, tab, cat, flt, withCats }: { d: Detail; tab: strin
   return (
     <div className="grid" style={{ gap: 12, margin: '8px 0 16px' }}>
       <div className="row">
-        {genders.length > 1 && <>
+        {allGenders.length > 1 && <>
           <Link scroll={false} href={url({ g: '' })} className={`pill ${!flt.g ? 'lime' : ''}`}>{tt('בנים ובנות')}</Link>
           {genders.includes('MALE') && <Link scroll={false} href={url({ g: 'MALE' })} className={`pill ${flt.g === 'MALE' ? 'lime' : ''}`}>{tt('בנים')}</Link>}
           {genders.includes('FEMALE') && <Link scroll={false} href={url({ g: 'FEMALE' })} className={`pill ${flt.g === 'FEMALE' ? 'lime' : ''}`}>{tt('בנות')}</Link>}
