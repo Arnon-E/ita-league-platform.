@@ -8,6 +8,7 @@ import { photoUrl } from '@/lib/photos';
 import { rankingPage } from '@/services/ranking-sql';
 import { ClubSearch } from '@/components/ClubSearch';
 import { RankingRows } from '@/components/InfiniteRows';
+import { SafeImg } from '@/components/SafeImg';
 
 const PAGE = 60;
 
@@ -40,7 +41,7 @@ export default async function Rankings({ searchParams }: { searchParams: Promise
         <div className="podium" aria-label={t('שלושת המובילים')}>
           {[all[1]!, all[0]!, all[2]!].map((r) => (
             <Link key={r.playerId} href={`/players/${r.playerId}`} className={`pod p${r.rank}`}>
-              {r.photo ? <img className="pph" src={r.photo} alt="" loading="lazy" decoding="async" referrerPolicy="no-referrer" /> : <span className="n">{r.rank}</span>}
+              {r.photo ? <SafeImg src={r.photo} className="pph" fallback={<span className="n">{r.rank}</span>} /> : <span className="n">{r.rank}</span>}
               <svg aria-hidden className="medal" viewBox="0 0 32 32" width="34" height="34" fill="none" strokeLinejoin="round" strokeLinecap="round"><path d="M10 3h5l2 8h-5zM22 3h-5l-2 8h5z" className="rb" /><circle cx="16" cy="20" r="9" className="md" /><text x="16" y="24.2" textAnchor="middle" fontSize="12" fontWeight="800" className="nr" stroke="none">{r.rank}</text></svg>
               <strong>{r.name}</strong>
               <span className="muted">{r.club ?? ''}</span>

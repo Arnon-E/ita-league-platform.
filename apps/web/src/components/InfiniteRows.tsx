@@ -1,5 +1,6 @@
 'use client';
 import Link from 'next/link';
+import { SafeImg } from '@/components/SafeImg';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 export interface PlayerRow { id: string; name: string; club: string | null; gender: string; birthYear: number; rank: number | null; photo?: string | null }
@@ -57,9 +58,8 @@ const Footer = ({ done, busy, err, sentinel, more, labels }: { done: boolean; bu
 
 /** The player's picture (hosted by Loglig, loaded only when it scrolls into view), else the initials. */
 function Avatar({ photo, name, cls }: { photo?: string | null; name: string; cls: string }) {
-  return photo
-    ? <img className={`${cls} img`} src={photo} alt="" loading="lazy" decoding="async" referrerPolicy="no-referrer" />
-    : <span className={cls} aria-hidden="true">{initials(name)}</span>;
+  const letters = <span className={cls} aria-hidden="true">{initials(name)}</span>;
+  return photo ? <SafeImg src={photo} className={`${cls} img`} fallback={letters} /> : letters;
 }
 const initials = (name: string) => name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => Array.from(w)[0]).join('').toUpperCase();
 
