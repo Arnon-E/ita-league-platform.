@@ -33,8 +33,8 @@ export function BracketView({ cols, tt, pending, extra = [] }: { cols: (BracketC
             </div>
           );
           return (
-            <div key={k} className="tcol">
-              <h3>{title ? tt(title) : `${tt('סיבוב')} ${k + 1}`}</h3>
+            <div key={k} className={`tcol${k === cols.length - 1 ? ' final' : ''}`}>
+              <h3><span>{title ? tt(title) : `${tt('סיבוב')} ${k + 1}`}</span></h3>
               <div className="tcells">
                 {col.length === 1 ? box(col[0]!, 0) : Array.from({ length: col.length / 2 }, (_, j) => <div key={j} className="tpair">{box(col[2 * j]!, 0)}{box(col[2 * j + 1]!, 1)}</div>)}
               </div>
@@ -47,7 +47,7 @@ export function BracketView({ cols, tt, pending, extra = [] }: { cols: (BracketC
         <div className="tree" style={{ paddingTop: 0 }}>
           {extra.map((x, i) => (
             <div key={i} className="tcol">
-              <h3>{x.title}</h3>
+              <h3><span>{x.title}</span></h3>
               <div className="tcell">{x.cell.href ? <Link href={x.cell.href} className="tm">{side(x.cell.a)}{side(x.cell.b)}{meta(x.cell)}</Link> : <div className="tm">{side(x.cell.a)}{side(x.cell.b)}{meta(x.cell)}</div>}</div>
             </div>
           ))}

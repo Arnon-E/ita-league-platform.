@@ -577,3 +577,16 @@ html[dir=rtl] .pside{align-items:flex-start}
 .mc-body .sb{flex:1;min-width:0}
 .mc-act{flex:none}
 @media(max-width:720px){.thero{padding:20px 18px 22px;border-radius:24px}.thero h1{margin-top:16px}.mc-body{flex-direction:column;align-items:stretch}.mc-act{align-self:flex-start}}
+
+/* podium medals and a livelier knockout tree */
+.pod .medal{position:absolute;top:14px;inset-inline-end:14px;width:42px;height:42px;flex:none}
+.pod .medal .md{stroke:#0A1F44;stroke-width:1.6}.pod .medal .rb{fill:#2447F5;stroke:#0A1F44;stroke-width:1.4}.pod .medal .nr{fill:#0A1F44}
+.pod.p1 .medal .md{fill:#F2C230}.pod.p2 .medal .md{fill:#CBD3DA}.pod.p3 .medal .md{fill:#D99560}
+.tcol>h3{text-align:center}
+.tcol>h3 span{display:inline-block;padding:3px 12px;border-radius:999px;background:var(--surface2);border:1px solid var(--line);font-size:12.5px;color:var(--muted)}
+.tcol.final>h3 span{background:var(--volt);border-color:transparent;color:var(--ink);font-weight:700}
+.tcol.final .tm{border-color:var(--volt);box-shadow:0 2px 10px -2px color-mix(in srgb,var(--volt) 70%,transparent)}
+.tm .w{background:var(--okbg)}
+.tm:has(.w)>div:not(.w):not(.meta){color:var(--muted)}
+@media(max-width:720px){.pod .medal{top:10px;inset-inline-end:10px;width:28px;height:28px}}
+.tm .w.me{background:color-mix(in srgb,var(--lime) 28%,transparent)}
