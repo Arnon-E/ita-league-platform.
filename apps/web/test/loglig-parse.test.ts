@@ -50,6 +50,9 @@ describe('loglig page parsing', () => {
     expect(parseScore('6-3 7-5').sets).toEqual([{ a: 6, b: 3 }, { a: 7, b: 5 }]);
     expect(parseScore('2-6 6-4 7-10').sets[2]).toEqual({ a: 7, b: 10, superTb: true });
     expect(parseScore('6-6 Ret').retired).toBe(true);
+    // a set decided by a tiebreak carries its score in brackets and must not be lost (Loglig writes '7-6(4) 5-7 10-2')
+    expect(parseScore('7-6(4) 5-7 10-2').sets).toEqual([{ a: 7, b: 6 }, { a: 5, b: 7 }, { a: 10, b: 2, superTb: true }]);
+    expect(parseScore('6-7(5) 7-5 2-10').sets).toEqual([{ a: 6, b: 7 }, { a: 7, b: 5 }, { a: 2, b: 10, superTb: true }]);
     expect(parseScore('').sets).toEqual([]);
   });
 

@@ -132,7 +132,8 @@ export function expandAges(text, doubles = false) {
   return out;
 }
 
-const SCORE_SET = /^(\d{1,2})[-:](\d{1,2})$/;
+// a set may carry its tiebreak score in brackets: "7-6(4)"
+const SCORE_SET = /^(\d{1,2})[-:](\d{1,2})(?:\(\d{1,2}\))?$/;
 
 /** "6-3 7-5" | "2-6 6-4 7-10" | "6-6 Ret" -> { sets, retired, walkover }. A third set to 10 is a super tiebreak. */
 export function parseScore(text) {
