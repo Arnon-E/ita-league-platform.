@@ -11,12 +11,15 @@ const decode = (s) => s.replace(/&#39;|&apos;/g, "'").replace(/&quot;/g, '"').re
 const text = (h) => decode(h.replace(/<[^>]+>/g, ' ')).replace(/\s+/g, ' ').trim();
 const pad = (n) => String(n).padStart(2, '0');
 
-/** "ינון 0527773432 סגל" -> "ינון סגל": the page shows a player as first name, the phone they typed at registration, then the last name. Phones and seed marks ("[1]") are never kept. */
+/** "ינון 0527773432 סגל" -> "ינון סגל": the page shows a player as first name, the phone they typed at registration, then the last name. Phones (in any grouping), seed marks ("[1]"), years in brackets and stray numbers are never kept. */
 export function cleanPlayer(raw) {
   return decode(raw)
+    .replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCodePoint(parseInt(h, 16)))
+    .replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(Number(n)))
     .replace(/\[[^\]]*\]/g, ' ')
-    .replace(/(?:\+?972[-\s]?|0)\d{1,2}[-\s]?\d{3}[-\s]?\d{4}\b/g, ' ')
-    .replace(/\b\d{7,}\b/g, ' ')
+    .replace(/\(\s*\d+\s*\)/g, ' ')
+    .replace(/\+?\d(?:[-\s]?\d){6,}/g, ' ')
+    .replace(/(^|\s)\d{1,4}(?=\s|$)/g, ' ')
     .replace(/\s+/g, ' ').trim();
 }
 

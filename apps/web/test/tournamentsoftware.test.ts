@@ -18,6 +18,12 @@ describe('tournamentsoftware (Israel Masters Tennis Tour)', () => {
     expect(cleanPlayer('רפאל עזריה [1]')).toBe('רפאל עזריה');
     expect(cleanPlayer('Silvia 0545420201 DE STEFANI')).toBe('Silvia DE STEFANI');
     expect(cleanPlayer('אינדי 0529669360 ג&#39;אבר')).toBe("אינדי ג'אבר");
+    // other groupings of the phone, stray numbers, a year in brackets and numeric HTML entities
+    expect(cleanPlayer('ליאור 0543-161873 לקס')).toBe('ליאור לקס');
+    expect(cleanPlayer('קתרין 0 שלו')).toBe('קתרין שלו');
+    expect(cleanPlayer('Daniel (1977) ARONOVIC')).toBe('Daniel ARONOVIC');
+    expect(cleanPlayer('Roni 70 GOLDMAN')).toBe('Roni GOLDMAN');
+    expect(cleanPlayer('Le&#243;n SMEKE')).toBe('León SMEKE');
   });
 
   it('names an event in Hebrew with its gender', () => {
