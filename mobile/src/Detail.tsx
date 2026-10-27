@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { ActivityIndicator, Image, Linking, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import * as api from './api';
-import { MatchCard, matchWhen } from './MatchCard';
+import { MatchCard, courtText, matchWhen } from './MatchCard';
 import { T, Icon } from './theme';
 import { AdminAudit, AdminImport, AdminMessages, AdminReports, AdminRules, AdminVenues } from './AdminDesk';
 import { locale, startAlign, tr } from './i18n';
@@ -127,7 +127,7 @@ export function MatchScreen({ id, onBack }: { id: string; onBack: () => void }) 
       {m && <>
         <Pressable onPress={() => nav.tournament(m.tournamentId)}><Text style={st.link}>{m.tournament}</Text></Pressable>
         <Text style={st.muted}>{`${m.category} · ${m.stage === 'GROUP' ? `${tr('בית, מחזור')} ${m.round}` : `${tr('הדחה, סיבוב')} ${m.round}`}`}</Text>
-        <Text style={st.muted}>{[m.court ? tr('מגרש {c}', { c: m.court }) : '', matchWhen(m.start) ?? '', m.setsToWin === 2 ? tr('הטוב מ-3 סטים') : `${m.setsToWin} ${tr('סטים')}`].filter(Boolean).join(' · ')}</Text>
+        <Text style={st.muted}>{[m.court ? courtText(m.court) : '', matchWhen(m.start) ?? '', m.setsToWin === 2 ? tr('הטוב מ-3 סטים') : `${m.setsToWin} ${tr('סטים')}`].filter(Boolean).join(' · ')}</Text>
         {ready ? <MatchCard a={m.a!} b={m.b!} sets={m.status === 'SCHEDULED' && !m.live ? [] : m.sets ?? []} status={m.status} winner={m.winner} live={m.live && m.status === 'SCHEDULED'} />
           : <View style={st.card}><Text style={st.muted}>{tr('המשחק עדיין לא מוכן: ממתין לסיום משחקים קודמים.')}</Text></View>}
       </>}

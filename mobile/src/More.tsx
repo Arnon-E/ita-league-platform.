@@ -138,6 +138,13 @@ function Regulations({ onBack }: { onBack: () => void }) {
   );
 }
 
+/** Two letters for a club's round mark: the first letters of the first two distinctive words of its name. */
+function clubMark(name: string) {
+  const words = name.split(/\s+/).filter((w) => w && !/^(מועדון|מרכז|מרכזי|הטניס|טניס|והחינוך|החינוך|בישראל|עירוני|מ\.|ה|של|ב|ל|-|–)$/.test(w));
+  const w = words.length ? words : name.split(/\s+/).filter(Boolean);
+  return (w.length > 1 ? w.slice(0, 2).map((x) => Array.from(x)[0]).join('') : Array.from(w[0] ?? '?').slice(0, 2).join('')).toUpperCase();
+}
+
 function Clubs({ onBack }: { onBack: () => void }) {
   const nav = useNav();
   const { data, err, busy } = useData(api.clubs);
@@ -148,7 +155,16 @@ function Clubs({ onBack }: { onBack: () => void }) {
       <Head title={tr('מועדונים')} onBack={onBack} />
       <TextInput style={[st.input, startAlign()]} placeholder={tr('חיפוש מועדון')} placeholderTextColor={T.muted} value={q} onChangeText={setQ} />
       <Wait err={err} busy={busy} />
-      <FlatList contentContainerStyle={{ paddingBottom: 100 }} data={rows} keyExtractor={(c) => c.id} renderItem={({ item }) => <Pressable style={st.card} onPress={() => nav.club(item.id)}><Text style={st.b}>{item.name}</Text><Text style={st.muted}>{item.city ? `${item.city} · ` : ''}{tr('{n} שחקנים', { n: item.players })}</Text></Pressable>} />
+      <FlatList contentContainerStyle={{ paddingBottom: 100 }} data={rows} keyExtractor={(c) => c.id} renderItem={({ item }) => (
+        <Pressable style={({ pressed }) => [st.card, st.clubRow, pressed && { opacity: 0.85 }]} onPress={() => nav.club(item.id)}>
+          <View style={st.cmark}><Text style={st.cmarkT}>{clubMark(item.name)}</Text></View>
+          <View style={{ flex: 1 }}>
+            <Text style={st.b} numberOfLines={2}>{item.name}</Text>
+            {!!item.city && <Text style={st.muted} numberOfLines={1}>{item.city}</Text>}
+          </View>
+          <View style={st.ccount}><Text style={st.ccountN}>{item.players.toLocaleString('he-IL')}</Text><Text style={st.ccountL}>{item.players === 1 ? tr('שחקן אחד') : tr('שחקנים')}</Text></View>
+        </Pressable>
+      )} />
     </View>
   );
 }
@@ -214,6 +230,12 @@ const st = StyleSheet.create({
   h1: { fontSize: 32, fontWeight: '800', color: T.text, letterSpacing: -0.8, flexShrink: 1 },
   h2: { fontSize: 22, fontWeight: '700', color: T.text, letterSpacing: -0.4, marginTop: 8, marginBottom: 6 },
   card: { backgroundColor: T.surface, borderWidth: 1, borderColor: T.line, borderRadius: 22, padding: 18, marginBottom: 8, gap: 4 },
+  clubRow: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 14, paddingHorizontal: 16 },
+  cmark: { width: 46, height: 46, borderRadius: 23, backgroundColor: T.ink, alignItems: 'center', justifyContent: 'center' },
+  cmarkT: { color: T.volt, fontWeight: '800', fontSize: 16 },
+  ccount: { minWidth: 54, paddingVertical: 6, paddingHorizontal: 10, borderRadius: 14, backgroundColor: T.surface2, alignItems: 'center' },
+  ccountN: { fontSize: 19, fontWeight: '800', color: T.text },
+  ccountL: { fontSize: 11.5, color: T.muted },
   b: { fontSize: 16, fontWeight: '700', color: T.text },
   muted: { color: T.muted, fontSize: 14 },
   err: { backgroundColor: T.badbg, color: T.bad, padding: 12, borderRadius: 14, overflow: 'hidden', margin: 12 },

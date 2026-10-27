@@ -13,6 +13,22 @@ export function matchWhen(d: string | Date | null | undefined, kind?: string | n
   return `${kind ? `${kind} ` : ''}${x.toLocaleDateString(locale())} ${x.toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' })}`;
 }
 
+/** A court label as text: mirrored competitions already say "מגרש 3", hand-made ones only "3"; either way "Court 3" once. */
+export function courtText(label: string) {
+  return tr('מגרש {c}', { c: label.replace(/^מגרש\s*/, '') });
+}
+
+/**
+ * When a match is on: its fixed time, or its "not before" time. "Not before" is said only while the match has not been played;
+ * a played match just shows when it was. `kind` is "St" / "NB" (doubles) or "EXACT" / "NOT_BEFORE" (singles).
+ */
+export function whenOf(m: { start?: string | null; notBefore?: string | null; kind?: string | null; status?: string }) {
+  const at = m.start ?? m.notBefore;
+  if (!at) return undefined;
+  const notBefore = m.kind === 'NB' || m.kind === 'NOT_BEFORE' || (!m.start && !!m.notBefore);
+  return matchWhen(at, notBefore && m.status === 'SCHEDULED' ? tr('לא לפני') : undefined);
+}
+
 /**
  * The app's one match card, the same as the website's: a row per side (a pair on two lines in doubles), a column per set, the winner
  * bold with a green check; the footer holds the status (live, walkover, retired), competition and category, and the time.

@@ -87,7 +87,7 @@ export const updatePlayer = (id: string, p: { first: string; last: string; birth
 export const removePlayer = (id: string) => call<{ deleted: boolean }>(`/players/${id}`, { method: 'DELETE' });
 export const addPlayer = (p: { first: string; last: string; birth: string; gender: 'MALE' | 'FEMALE'; forChild: boolean; nationalId?: string }) => call<{ id: string; linkedExisting?: boolean; pending?: boolean }>('/players', { method: 'POST', body: JSON.stringify(p) });
 
-export type Match = { id: string; categoryId: string; stage: string; round: number; index?: number; status: string; a: { id: string | null; name: string | null }; b: { id: string | null; name: string | null }; court: string | null; start: string | null; kind?: string | null; sets: { a: number; b: number }[]; winnerEntryId?: string | null };
+export type Match = { id: string; categoryId: string; stage: string; round: number; index?: number; status: string; a: { id: string | null; name: string | null }; b: { id: string | null; name: string | null }; court: string | null; start: string | null; notBefore?: string | null; kind?: string | null; sets: { a: number; b: number }[]; winnerEntryId?: string | null };
 export type TournamentRow = { id: string; name: string; status: string; level: string; section: string; startDate: string; endDate: string; registrationCloses: string | null; relevant?: boolean };
 export const tournaments = () => call<TournamentRow[]>('/tournaments');
 export type Cat = { id: string; name: string; gender: 'MALE' | 'FEMALE' | 'OPEN'; minBirthYear: number | null; maxBirthYear: number | null };
@@ -96,7 +96,7 @@ export type DoublesMatch = { id: string; category: string; stage: string; group:
 /** Loglig's knockout tree of a doubles category: leaves are first-round pairs, an inner node holds the winner's name ('' until played); t = a third-place match exists. */
 export type BracketTree = { n: string; c: BracketTree[]; t?: boolean };
 export type DoublesTable = { category: string; group: string; rows: { pair: string; played: number; wins: number; losses: number; setsFor: number; setsAgainst: number; gamesFor: number; gamesAgainst: number; rank: number }[] };
-export const tournament = (id: string) => call<{ tournament: { name: string; status: string; startDate: string; endDate: string; registrationCloses: string | null; registerUrl: string | null; contacts?: { area: string; club: string; name: string; phone: string }[] }; categories: Cat[]; matches: Match[]; participants?: Participant[]; doubles?: DoublesMatch[]; doublesTables?: DoublesTable[]; doublesBrackets?: { category: string; tree: BracketTree }[] }>(`/tournaments/${id}`);
+export const tournament = (id: string) => call<{ tournament: { name: string; status: string; startDate: string; endDate: string; registrationCloses: string | null; registerUrl: string | null; level?: string; contacts?: { area: string; club: string; name: string; phone: string }[] }; categories: Cat[]; matches: Match[]; participants?: Participant[]; doubles?: DoublesMatch[]; doublesTables?: DoublesTable[]; doublesBrackets?: { category: string; tree: BracketTree }[] }>(`/tournaments/${id}`);
 export const me = () => call<{ name: string; isChild: boolean; canCreate: boolean; suggestions: Suggestion[]; players: { id: string; name: string; first: string; last: string; birth: string; synced: boolean; gender: 'MALE' | 'FEMALE'; birthYear: number; own: boolean; childLogin: string | null; documents: { ok: boolean; missing: string[] } }[]; entries: { id: string; playerId: string; player: string; tournament: string; tournamentStatus: string; category: string; status: string; payment: string }[]; notifications: { id: string; title: string; body: string }[] }>('/me');
 export const sendResult = (matchId: string, body: unknown) => call(`/matches/${matchId}/result`, { method: 'POST', body: JSON.stringify(body) });
 export const registerDevice = (pushToken: string, platform: 'ios' | 'android') => call('/devices', { method: 'POST', body: JSON.stringify({ token: pushToken, platform }) });
@@ -125,10 +125,10 @@ export const photoUrl = (photoId: string) => `${BASE}/api/gallery/${photoId}`;
 export const live = (u = 15, r = 15) => call<{ live: FeedRow[]; upcoming: FeedRow[]; results: FeedRow[]; moreUpcoming?: boolean; moreResults?: boolean }>(`/public/live?u=${u}&r=${r}`);
 export const sendLive = (matchId: string, sets: { a: number; b: number; superTb?: boolean }[]) => call(`/matches/${matchId}/live`, { method: 'POST', body: JSON.stringify({ sets }) });
 export const rankingCount = (g: 'MALE' | 'FEMALE', age?: number, club?: string) => call<{ total: number }>(`/public/rankings?g=${g}${age ? `&age=${age}` : ''}${club ? `&club=${club}` : ''}&count=1`);
-export const rankings = (g: 'MALE' | 'FEMALE', age?: number, club?: string, offset = 0, limit = 50) => call<{ playerId: string; rank: number; points: number; name: string; club: string | null; counted?: number }[]>(`/public/rankings?g=${g}${age ? `&age=${age}` : ''}${club ? `&club=${club}` : ''}&offset=${offset}&limit=${limit}`);
+export const rankings = (g: 'MALE' | 'FEMALE', age?: number, club?: string, offset = 0, limit = 50) => call<{ playerId: string; rank: number; points: number; name: string; club: string | null; counted?: number; photo?: string | null }[]>(`/public/rankings?g=${g}${age ? `&age=${age}` : ''}${club ? `&club=${club}` : ''}&offset=${offset}&limit=${limit}`);
 export const webUrl = (path: string) => `${BASE}${path}`;
 export type PlayerRow = { rank?: number | null; id: string; name: string; club: string | null; birthYear?: number; age?: number; gender?: 'MALE' | 'FEMALE'; photo?: string | null };
-export const players = (q: string, offset = 0, limit = 50, f: { g?: 'MALE' | 'FEMALE'; age?: number; club?: string; all?: boolean } = {}) => call<PlayerRow[]>(`/public/players?q=${encodeURIComponent(q)}&offset=${offset}&limit=${limit}${f.g ? `&g=${f.g}` : ''}${f.age ? `&age=${f.age}` : ''}${f.club ? `&club=${f.club}` : ''}${f.all ? '&show=all' : ''}`);
+export const players = (q: string, offset = 0, limit = 50, f: { g?: 'MALE' | 'FEMALE'; age?: number; club?: string; all?: boolean; sec?: string } = {}) => call<PlayerRow[]>(`/public/players?q=${encodeURIComponent(q)}&offset=${offset}&limit=${limit}${f.g ? `&g=${f.g}` : ''}${f.age ? `&age=${f.age}` : ''}${f.club ? `&club=${f.club}` : ''}${f.all ? '&show=all' : ''}${f.sec ? `&sec=${f.sec}` : ''}`);
 
 export type LeagueRow = { id: string; name: string; gender: string; teams: number; played: number; total: number };
 export type LeagueDetail = {
@@ -225,3 +225,10 @@ export const adminPublishRules = (name: string, json: string) => call<{ version:
 type ImportBrief = { created: number; updated: number; errors: number; firstErrors: string[] } | null;
 export const adminImport = (b: { kind: 'players' | 'points' | 'db'; csv?: string; url?: string; playersSql?: string; pointsSql?: string; dry: boolean }) =>
   call<{ dry: boolean; result?: ImportBrief; players?: ImportBrief; points?: ImportBrief }>('/admin/import', { method: 'POST', body: JSON.stringify(b) });
+
+/** The federation's sections by age this year: youth up to 18, adults 19-29, masters 30 and over (the same as the website). */
+export type Section = 'YOUTH' | 'ADULTS' | 'MASTERS';
+export const sectionOfBirthYear = (birthYear: number, now = new Date()): Section => {
+  const age = now.getFullYear() - birthYear;
+  return age <= 18 ? 'YOUTH' : age < 30 ? 'ADULTS' : 'MASTERS';
+};

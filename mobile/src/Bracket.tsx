@@ -4,7 +4,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type * as api from './api';
 import { bracketLayout, roundName } from './bracketLayout';
 import { tr } from './i18n';
-import { matchWhen } from './MatchCard';
+import { courtText, whenOf } from './MatchCard';
 import { T } from './theme';
 
 const CELL = 96; // height of one first-round slot; later rounds take 2, 4, 8... of them, so every box sits between its two feeders
@@ -94,7 +94,7 @@ function BracketImpl({ matches, me, onPress }: { matches: api.Match[]; me?: stri
         sets: m.status === 'WALKOVER' ? (m.winnerEntryId === p.id ? 'W/O' : null) : (m.sets ?? []).map((x) => String(who === 'a' ? x.a : x.b)),
       };
     };
-    return { a: side('a'), b: side('b'), match: m, meta: [matchWhen(m.start, m.kind), m.court].filter(Boolean).join(' · ') || undefined };
+    return { a: side('a'), b: side('b'), match: m, meta: [whenOf(m), m.court ? courtText(m.court) : ''].filter(Boolean).join(' · ') || undefined };
   };
   const inTree = new Set(tree.cols.flat().map((m) => m?.id));
   const extra = matches.filter((m) => m.stage === 'KO' && !inTree.has(m.id)).map((m) => ({ title: tr('מקומות 3-4'), cell: cell(m) }));

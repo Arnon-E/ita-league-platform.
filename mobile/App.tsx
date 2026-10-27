@@ -10,7 +10,7 @@ import { More } from './src/More';
 import { MyHome } from './src/MyHome';
 import { FoldHeader } from './src/Fold';
 import { Bracket, DoublesBracket } from './src/Bracket';
-import { MatchCard, matchWhen } from './src/MatchCard';
+import { MatchCard, courtText, matchWhen, whenOf } from './src/MatchCard';
 import { AdminScreen, ClubScreen, MatchScreen, NavCtx, PlayerScreen, useNav, type Focus, type Nav } from './src/Detail';
 import { useFonts } from 'expo-font';
 import { T, Icon, BallMark, CourtLines, FONTS } from './src/theme';
@@ -231,7 +231,8 @@ function TournamentList({ onOpen, authed, onGoAccount, go }: { onOpen: (id: stri
   const { data, err, busy, reload } = useLoad(api.tournaments);
   // people who run tournaments manage rather than register
   const [staff, setStaff] = useState(false);
-  useEffect(() => { if (authed) api.me().then((m) => setStaff(m.canCreate)).catch(() => setStaff(false)); else setStaff(false); }, [authed]);
+  const [births, setBirths] = useState<number[]>([]);
+  useEffect(() => { if (authed) api.me().then((m) => { setStaff(m.canCreate); setBirths(m.players.map((p) => p.birthYear)); }).catch(() => setStaff(false)); else { setStaff(false); setBirths([]); } }, [authed]);
   const [level, setLevel] = useState('');
   const [sec, setSec] = useState('');
   const [season, setSeason] = useState('');
@@ -240,6 +241,8 @@ function TournamentList({ onOpen, authed, onGoAccount, go }: { onOpen: (id: stri
   const [more, setMore] = useState(false);
   const [mineOnly, setMineOnly] = useState(true);
   const [listOpen, setListOpen] = useState(true);
+  // section tabs: the chosen one; a search by name looks at everything; otherwise the signed-in player's own section (youngest of theirs), else youth
+  const secKey = sec || (q.trim() ? 'ALL' : births.length ? api.sectionOfBirthYear(Math.max(...births)) : 'YOUTH');
   const isDone = (x: { status: string; endDate: string }) => x.status === 'FINISHED' || x.status === 'CANCELLED' || +new Date(x.endDate) < Date.now();
   // open registration, then running, then upcoming soonest first, then finished latest first
   const rank = (x: { status: string; endDate: string }) => (x.status === 'REGISTRATION_OPEN' ? 0 : x.status === 'IN_PROGRESS' ? 1 : isDone(x) ? 3 : 2);
@@ -247,8 +250,8 @@ function TournamentList({ onOpen, authed, onGoAccount, go }: { onOpen: (id: stri
   const sorted = useMemo(() => [...(data ?? [])]
     .sort((a, b) => rank(a) - rank(b) || (rank(a) === 3 ? +new Date(b.startDate) - +new Date(a.startDate) : +new Date(a.startDate) - +new Date(b.startDate))), [data]);
   const shown = useMemo(() => sorted
-    .filter((x) => (!mineOnly || !!q.trim() || !!level || !!sec || !!season || x.relevant !== false) && (!season || String(new Date(x.startDate).getFullYear()) === season) && (!q.trim() || x.name.includes(q.trim())) && (!level || x.level === level) && (!sec || x.section === sec)
-      && (st === 'all' || (st === 'up' ? !isDone(x) : st === 'open' ? x.status === 'REGISTRATION_OPEN' : st === 'live' ? x.status === 'IN_PROGRESS' : isDone(x)))), [sorted, mineOnly, q, level, sec, season, st]);
+    .filter((x) => (!mineOnly || !!q.trim() || !!level || !!sec || !!season || x.relevant !== false) && (!season || String(new Date(x.startDate).getFullYear()) === season) && (!q.trim() || x.name.includes(q.trim())) && (!level || x.level === level) && (secKey === 'ALL' || x.section === secKey)
+      && (st === 'all' || (st === 'up' ? !isDone(x) : st === 'open' ? x.status === 'REGISTRATION_OPEN' : st === 'live' ? x.status === 'IN_PROGRESS' : isDone(x)))), [sorted, mineOnly, q, level, sec, secKey, season, st]);
   return (
       <FlatList style={s.pad} contentContainerStyle={{ paddingBottom: 100, gap: 10 }} ListHeaderComponent={<View style={{ gap: 10 }}>
       <View style={s.hero}><CourtLines /><Text style={s.heroT}>{tr('איגוד הטניס בישראל')}</Text><Text style={s.heroS}>{tr('תחרויות, לוחות משחקים ותוצאות חיות')}</Text>
@@ -266,16 +269,16 @@ function TournamentList({ onOpen, authed, onGoAccount, go }: { onOpen: (id: stri
       {listOpen && <>
       <TextInput style={[s.input, startAlign()]} placeholder={tr('חיפוש לפי שם תחרות')} placeholderTextColor={T.muted} value={q} onChangeText={setQ} />
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+        {([['YOUTH', tr('נוער')], ['ADULTS', tr('בוגרים')], ['MASTERS', tr('מאסטרס')], ['ALL', tr('הכול')]] as const).map(([k, l]) => <Pressable key={k} style={[s.chip, secKey === k && s.chipOn]} onPress={() => setSec(k)}><Text style={secKey === k ? s.chipOnT : s.b}>{l}</Text></Pressable>)}
+      </View>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
         {([['up', tr('קרובות')], ['open', tr('הרשמה פתוחה')], ['live', tr('מתקיימת')], ['done', tr('הסתיימה')], ['all', tr('הכול')]] as const).map(([k, l]) => <Pressable key={k} style={[s.chip, st === k && s.chipOn]} onPress={() => setSt(k)}><Text style={st === k ? s.chipOnT : s.b}>{l}</Text></Pressable>)}
         {(data ?? []).some((x) => x.relevant === false) && <Pressable style={[s.chip, mineOnly && s.chipOn]} onPress={() => setMineOnly(!mineOnly)}><Text style={mineOnly ? s.chipOnT : s.b}>{mineOnly ? tr('✓ מתאימות לי') : tr('מתאימות לי')}</Text></Pressable>}
-        <Pressable style={[s.chip, (more || !!level || !!sec || !!season) && s.chipOn]} onPress={() => setMore(!more)}><Text style={(more || !!level || !!sec || !!season) ? s.chipOnT : s.b}>{level || sec || season ? tr('סינון ·') : tr('סינון')}</Text></Pressable>
+        <Pressable style={[s.chip, (more || !!level || !!season) && s.chipOn]} onPress={() => setMore(!more)}><Text style={(more || !!level || !!season) ? s.chipOnT : s.b}>{level || season ? tr('סינון ·') : tr('סינון')}</Text></Pressable>
       </View>
       {more && <>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
           {([['', tr('כל הסוגים')], ['NATIONAL', tr('ארצית')], ['REGIONAL', tr('אזורית')], ['INTERNATIONAL', tr('בינלאומית')], ['CIRCUIT', tr('סבב')]] as const).map(([k, l]) => <Pressable key={k} style={[s.chip, level === k && s.chipOn]} onPress={() => setLevel(k)}><Text style={level === k ? s.chipOnT : s.b}>{l}</Text></Pressable>)}
-        </View>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
-          {([['', tr('כל הקטגוריות')], ['YOUTH', tr('נוער')], ['ADULTS', tr('בוגרים')], ['MASTERS', tr('מאסטרס')], ['OTHER', tr('אחר')]] as const).map(([k, l]) => <Pressable key={k} style={[s.chip, sec === k && s.chipOn]} onPress={() => setSec(k)}><Text style={sec === k ? s.chipOnT : s.b}>{l}</Text></Pressable>)}
         </View>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
           {[['', tr('כל העונות')], ...[...new Set((data ?? []).map((x) => new Date(x.startDate).getFullYear()))].filter((y) => y >= 2000).sort((a, b) => b - a).map((y) => [String(y), String(y)])].map(([k, l]) => <Pressable key={k} style={[s.chip, season === k && s.chipOn]} onPress={() => setSeason(k)}><Text style={season === k ? s.chipOnT : s.b}>{l}</Text></Pressable>)}
@@ -331,6 +334,24 @@ function Live() {
   );
 }
 
+const MEDAL = ['#F2C230', '#CBD3DA', '#D99560'] as const;
+const LEVEL_HE: Record<string, string> = { NATIONAL: 'ארצית', REGIONAL: 'אזורית', INTERNATIONAL: 'בינלאומית', CIRCUIT: 'סבב' };
+
+/** The podium's picture (Loglig photo), or the rank number when there is none or the file is missing. */
+function PodPhoto({ uri, n, big }: { uri: string | null; n: number; big: boolean }) {
+  const [bad, setBad] = useState(false);
+  const size = big ? 64 : 48;
+  if (uri && !bad) return <Image source={{ uri }} style={{ width: size, height: size, borderRadius: size / 2, marginBottom: 'auto', backgroundColor: T.line }} onError={() => setBad(true)} />;
+  return <Text style={[s.podN, big && { color: T.ink, fontSize: 52 }]}>{n}</Text>;
+}
+
+/** A small round picture beside a ranking row, or the player's initials. */
+function RowPhoto({ uri, name }: { uri: string | null; name: string }) {
+  const [bad, setBad] = useState(false);
+  if (uri && !bad) return <Image source={{ uri }} style={s.rowPic} onError={() => setBad(true)} />;
+  return <View style={[s.rowPic, { alignItems: 'center', justifyContent: 'center', backgroundColor: T.surface2 }]}><Text style={{ color: T.muted, fontWeight: '700', fontSize: 12 }}>{initialsOf(name)}</Text></View>;
+}
+
 function Rankings() {
   const nav = useNav();
   const [club, setClub] = useState<{ id: string; name: string } | null>(null);
@@ -378,10 +399,11 @@ function Rankings() {
         ListHeaderComponent={podium.length === 3 ? (
           <View style={s.podium}>
             {[podium[1]!, podium[0]!, podium[2]!].map((r) => (
-              <Pressable key={r.playerId} onPress={() => nav.player(r.playerId)} style={({ pressed }) => [s.pod, r.rank === 1 && s.pod1, pressed && s.pressed]}>
-                <Text style={[s.podN, r.rank === 1 && { color: T.ink, fontSize: 52 }]}>{r.rank}</Text>
+              <Pressable key={r.playerId} onPress={() => nav.player(r.playerId)} style={({ pressed }) => [s.pod, r.rank === 1 ? s.pod1 : r.rank === 2 ? s.pod2 : s.pod3, pressed && s.pressed]}>
+                <PodPhoto uri={r.photo ?? null} n={r.rank} big={r.rank === 1} />
+                <View style={[s.medal, { backgroundColor: MEDAL[r.rank - 1] }]}><Text style={s.medalT}>{r.rank}</Text></View>
                 <Text style={[s.b, { fontSize: 14 }, r.rank === 1 && { color: T.ink }]} numberOfLines={2}>{r.name}</Text>
-                {!!r.club && <Text style={[s.muted, { fontSize: 13 }, r.rank === 1 && { color: '#3C4E12' }]}>{r.club}</Text>}
+                {!!r.club && <Text style={[s.muted, { fontSize: 12 }, r.rank === 1 && { color: '#3C4E12' }]} numberOfLines={2}>{r.club}</Text>}
                 <Text style={[s.podPts, r.rank === 1 && { color: T.ink }]}>{r.points.toLocaleString('he-IL')} <Text style={{ fontSize: 12, fontWeight: '500', color: r.rank === 1 ? '#3C4E12' : T.muted }}>{tr('נקודות')}</Text></Text>
               </Pressable>
             ))}
@@ -390,7 +412,8 @@ function Rankings() {
         ListFooterComponent={rest.length ? <View style={s.rowEnd} /> : null}
         renderItem={({ item, index }) => (
           <Pressable style={({ pressed }) => [s.rrow, index === 0 && s.rrowFirst, pressed && s.pressed]} onPress={() => nav.player(item.playerId)}>
-            <Text style={[s.num, { fontSize: 18, width: 36 }]}>{item.rank}</Text>
+            <View style={[s.rkn, item.rank <= 3 && { backgroundColor: MEDAL[item.rank - 1] }]}><Text style={[s.rknT, item.rank <= 3 && { color: T.ink }]}>{item.rank}</Text></View>
+            <RowPhoto uri={item.photo ?? null} name={item.name} />
             <View style={{ flex: 1 }}>
               <Text style={[s.b, { fontWeight: '600', fontSize: 16, textDecorationLine: 'underline', textDecorationColor: T.line2 }]} numberOfLines={1}>{item.name}</Text>
               {!!item.club && <Text style={[s.muted, { fontSize: 13 }]} numberOfLines={1}>{item.club}</Text>}
@@ -417,20 +440,29 @@ function Dropdown<V extends string | number | undefined>({ value, options, onCha
   );
 }
 
+/** A player's picture in a list row, or their initials on a tint that tells boys from girls; a missing or broken file shows the initials. */
+function PlayerPic({ uri, name, gender }: { uri: string | null; name: string; gender?: 'MALE' | 'FEMALE' }) {
+  const [bad, setBad] = useState(false);
+  if (uri && !bad) return <Image source={{ uri }} style={s.pavSm} onError={() => setBad(true)} />;
+  const tint = gender === 'FEMALE' ? '#F6E3EA' : gender === 'MALE' ? '#E3E9FB' : T.surface2;
+  const ink = gender === 'FEMALE' ? '#B0124F' : gender === 'MALE' ? T.blue : T.muted;
+  return <View style={[s.pavSm, { backgroundColor: tint }]}><Text style={{ color: ink, fontWeight: '700', fontSize: 15 }}>{initialsOf(name)}</Text></View>;
+}
+
 /** A player as one row of the list card: photo (or initials), name and club, rank and year of birth. */
 const PlayerCard = memo(function PlayerCard({ p, first }: { p: api.PlayerRow; first?: boolean }) {
   const nav = useNav();
   const kind = p.gender === 'FEMALE' ? ((p.age ?? 99) < 18 ? 'בת' : 'אישה') : p.gender === 'MALE' ? ((p.age ?? 99) < 18 ? 'בן' : 'גבר') : '';
-  const line = [p.birthYear ? String(p.birthYear) : '', kind && tr(kind)].filter(Boolean).join(' · ');
+  const line = [p.age != null ? tr('גיל {n}', { n: p.age }) : p.birthYear ? String(p.birthYear) : '', kind && tr(kind)].filter(Boolean).join(' · ');
   return (
     <Pressable style={({ pressed }) => [s.rrow, first && s.rrowFirst, pressed && s.pressed]} onPress={() => nav.player(p.id)}>
-      <View style={s.pavSm}>{p.photo ? <Image source={{ uri: p.photo }} style={s.pavSm} /> : <Text style={{ color: T.muted, fontWeight: '700', fontSize: 15 }}>{initialsOf(p.name)}</Text>}</View>
+      <PlayerPic uri={p.photo ?? null} name={p.name} gender={p.gender} />
       <View style={{ flex: 1 }}>
         <Text style={[s.b, { fontWeight: '600', fontSize: 16 }]} numberOfLines={1}>{p.name}</Text>
         {!!p.club && <Text style={[s.muted, { fontSize: 13 }]} numberOfLines={1}>{p.club}</Text>}
       </View>
       <View style={{ alignItems: 'flex-end' }}>
-        <Text style={{ color: p.rank != null ? T.text : T.muted, fontWeight: '700', fontSize: 17 }}>{p.rank != null ? `#${p.rank}` : '—'}</Text>
+        <Text style={[{ color: p.rank != null ? T.text : T.muted, fontWeight: '700', fontSize: 17 }, p.rank != null && p.rank <= 3 && { backgroundColor: MEDAL[p.rank - 1], color: T.ink, paddingHorizontal: 10, borderRadius: 999, overflow: 'hidden' }]}>{p.rank != null ? `#${p.rank}` : '—'}</Text>
         {!!line && <Text style={[s.muted, { fontSize: 12 }]}>{line}</Text>}
       </View>
     </Pressable>
@@ -444,17 +476,22 @@ function Players() {
   const [club, setClub] = useState<{ id: string; name: string } | null>(null);
   const [cq, setCq] = useState(''); const [pick, setPick] = useState(false);
   const [all, setAll] = useState(false);
+  const [sec, setSec] = useState('');
+  const [births, setBirths] = useState<number[]>([]);
+  useEffect(() => { api.me().then((m) => setBirths(m.players.map((p) => p.birthYear))).catch(() => setBirths([])); }, []);
+  // youth / adults / masters / all: the chosen one; a search by name or club looks at everyone; otherwise the signed-in player's own section, else youth
+  const secKey = sec || (q.trim() || club ? 'ALL' : births.length ? api.sectionOfBirthYear(Math.max(...births)) : 'YOUTH');
   const clubs = useLoad(api.clubs);
   const [rows, setRows] = useState<api.PlayerRow[]>([]);
   const [busy, setBusy] = useState(true); const [err, setErr] = useState(''); const [done, setDone] = useState(false);
   const PAGE = 50;
-  const f = { g, age, ...(club ? { club: club.id } : {}), all };
+  const f = { g, age: secKey === 'YOUTH' || secKey === 'ALL' ? age : undefined, ...(club ? { club: club.id } : {}), all, ...(secKey !== 'ALL' ? { sec: secKey } : {}) };
   useEffect(() => {
     let live = true;
     setBusy(true); setErr(''); setDone(false);
     api.players(q, 0, PAGE, f).then((r) => { if (live) { setRows(r); setDone(r.length < PAGE); } }).catch((e) => live && setErr(e.message)).finally(() => live && setBusy(false));
     return () => { live = false; };
-  }, [q, g, age, club?.id, all]);
+  }, [q, g, age, club?.id, all, secKey]);
   const more = () => {
     if (busy || done) return;
     setBusy(true);
@@ -468,9 +505,12 @@ function Players() {
         <Text style={{ color: T.muted, fontSize: 18 }}>⌕</Text>
         <TextInput style={[{ flex: 1, minHeight: 46, color: T.text, fontSize: 16 }, startAlign()]} placeholder={tr('חיפוש לפי שם')} placeholderTextColor={T.muted} value={q} onChangeText={setQ} returnKeyType="search" />
       </View>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+        {([['YOUTH', tr('נוער')], ['ADULTS', tr('בוגרים')], ['MASTERS', tr('מאסטרס')], ['ALL', tr('הכול')]] as const).map(([k, l]) => <Pressable key={k} style={[s.chip, secKey === k && s.chipOn]} onPress={() => setSec(k)}><Text style={secKey === k ? s.chipOnT : s.b}>{l}</Text></Pressable>)}
+      </View>
       <View style={{ flexDirection: 'row', gap: 8, zIndex: 3 }}>
         <Dropdown value={g} onChange={setG} options={[[undefined, tr('בנים ובנות')], ['MALE', tr('בנים')], ['FEMALE', tr('בנות')]] as const} />
-        <Dropdown value={age} onChange={setAge} options={[[undefined, tr('כל הגילאים')], [10, `${tr('עד גיל')} 10`], [12, `${tr('עד גיל')} 12`], [14, `${tr('עד גיל')} 14`], [16, `${tr('עד גיל')} 16`], [18, `${tr('עד גיל')} 18`]] as const} />
+        {(secKey === 'YOUTH' || secKey === 'ALL') && <Dropdown value={age} onChange={setAge} options={[[undefined, tr('כל הגילאים')], [10, `${tr('עד גיל')} 10`], [12, `${tr('עד גיל')} 12`], [14, `${tr('עד גיל')} 14`], [16, `${tr('עד גיל')} 16`], [18, `${tr('עד גיל')} 18`]] as const} />}
       </View>
       <Pressable style={[s.select, s.pselect]} onPress={() => { if (club) { setClub(null); setPick(false); } else setPick(!pick); }}><Text style={{ color: T.text, fontSize: 15, fontWeight: '500', flex: 1 }} numberOfLines={1}>{club ? club.name : tr('כל המועדונים')}</Text><Text style={{ color: T.muted, fontSize: 20, lineHeight: 22 }}>{club ? '✕' : pick ? '⌃' : '⌄'}</Text></Pressable>
       {pick && !club && <View style={{ gap: 8 }}>
@@ -575,10 +615,10 @@ const MatchRow = memo(function MatchRow({ m, catName, meName, canScore, onScore 
   const done = m.status !== 'SCHEDULED' && m.status !== 'VOID';
   const win = m.winnerEntryId ? (m.winnerEntryId === m.a.id ? 'a' : m.winnerEntryId === m.b.id ? 'b' : null) : null;
   const mineSide = meName ? (m.a.name === meName ? 'a' : m.b.name === meName ? 'b' : undefined) : undefined;
-  const where = m.status === 'SCHEDULED' ? (m.court ? tr('מגרש {c}', { c: m.court }) : tr('טרם שובץ')) : '';
+  const where = m.court ? courtText(m.court) : m.status === 'SCHEDULED' ? tr('טרם שובץ') : '';
   return (
     <MatchCard a={m.a.name ?? tr('טרם נקבע')} b={m.b.name ?? tr('טרם נקבע')} sets={done ? m.sets ?? [] : []} status={m.status} winner={win}
-      caption={[catName, where].filter(Boolean).join(' · ') || undefined} when={matchWhen(m.start)} mine={mineSide}
+      caption={[catName, where].filter(Boolean).join(' · ') || undefined} when={whenOf(m)} mine={mineSide}
       onPress={m.a.id && m.b.id && canScore ? () => onScore(m) : undefined} />
   );
 });
@@ -591,7 +631,11 @@ type SetStr = (v: string) => void;
 /** Gender / age / category chips of a tournament. Memoised: it redraws only when the filters or the categories change. */
 const CatFilters = memo(function CatFilters({ cats, fg, fage, fcat, setFg, setFage, setFcat, setPicked }: { cats: api.Cat[]; fg: string; fage: string; fcat: string; setFg: SetStr; setFage: SetStr; setFcat: SetStr; setPicked: (v: boolean) => void }) {
                 const ageOf = (n: string) => (n.match(/(\d{2})/) ?? [])[1] ?? '';
-        const ages = [...new Set(cats.map((c) => ageOf(c.name)).filter(Boolean))].sort();
+        // only what exists under the other filter is offered (with girls chosen, an age nobody of them plays in has no chip)
+        const fits = (c: api.Cat, g: string, a: string) => (!g || c.gender === g) && (!a || ageOf(c.name) === a);
+        const hasG = (g: 'MALE' | 'FEMALE') => cats.some((c) => c.gender === g) && (g === fg || cats.some((c) => fits(c, g, fage)));
+        const ages = [...new Set(cats.filter((c) => fits(c, fg, '')).map((c) => ageOf(c.name)).filter(Boolean))].sort();
+        const pickG = (g: 'MALE' | 'FEMALE' | '') => { setFg(g); if (g && fage && !cats.some((c) => fits(c, g, fage))) setFage(''); setFcat(''); setPicked(false); };
         const chip = (on: boolean, label: string, press: () => void, key: string) => (
           <Pressable key={key} style={[s.chip, on && s.chipOn]} onPress={press}><Text style={on ? s.chipOnT : s.b}>{label}</Text></Pressable>
         );
@@ -599,9 +643,9 @@ const CatFilters = memo(function CatFilters({ cats, fg, fage, fcat, setFg, setFa
         return (
           <View style={{ gap: 8 }}>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-              {chip(!fg, tr('בנים ובנות'), () => { setFg(''); setFcat(''); setPicked(false); }, 'g0')}
-              {chip(fg === 'MALE', tr('בנים'), () => { setFg('MALE'); setFcat(''); setPicked(false); }, 'g1')}
-              {chip(fg === 'FEMALE', tr('בנות'), () => { setFg('FEMALE'); setFcat(''); setPicked(false); }, 'g2')}
+              {chip(!fg, tr('בנים ובנות'), () => pickG(''), 'g0')}
+              {hasG('MALE') && chip(fg === 'MALE', tr('בנים'), () => pickG('MALE'), 'g1')}
+              {hasG('FEMALE') && chip(fg === 'FEMALE', tr('בנות'), () => pickG('FEMALE'), 'g2')}
               {chip(!fage, tr('כל הגילאים'), () => { setFage(''); setFcat(''); setPicked(false); }, 'a0')}
               {ages.map((a) => chip(fage === a, tr('גיל {n}', { n: a }), () => { setFage(a); setFcat(''); setPicked(false); }, 'a' + a))}
             </View>
@@ -717,7 +761,7 @@ const DoublesBlock = memo(function DoublesBlock({ doubles, tables, brackets }: {
           </Pressable>
           {!closed.has(keyOf('::tree')) && (
             <View style={{ padding: 8 }}>
-              <DoublesBracket tree={tree} results={ms.filter((m) => m.stage !== 'GROUP').map((m) => ({ a: m.a, b: m.b, sets: m.sets, status: m.status, winner: m.winner, meta: [matchWhen(m.start, m.kind), m.court].filter(Boolean).join(' · ') }))} />
+              <DoublesBracket tree={tree} results={ms.filter((m) => m.stage !== 'GROUP').map((m) => ({ a: m.a, b: m.b, sets: m.sets, status: m.status, winner: m.winner, meta: [whenOf(m), m.court ? courtText(m.court) : ''].filter(Boolean).join(' · ') }))} />
             </View>
           )}
         </View>
@@ -734,7 +778,7 @@ const DoublesBlock = memo(function DoublesBlock({ doubles, tables, brackets }: {
             <Pressable onPress={() => toggle(t.group)} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingVertical: 12, backgroundColor: T.line, borderBottomWidth: open ? 1 : 0, borderColor: T.line2 }}>
               <View style={{ flex: 1 }}>
                 <Text style={{ fontSize: 17, fontWeight: '800', color: T.text }}>{groupLabel(t.group)}</Text>
-                {!!first && <Text style={[s.muted, { fontSize: 13 }]}>{[first.court, matchWhen(first.start, first.kind)].filter(Boolean).join(' · ')}</Text>}
+                {!!first && <Text style={[s.muted, { fontSize: 13 }]}>{[first.court ? courtText(first.court) : '', whenOf(first)].filter(Boolean).join(' · ')}</Text>}
               </View>
               <View style={{ borderWidth: 1, borderColor: T.line2, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 2, backgroundColor: doneCount === gm.length && gm.length ? T.okbg : T.surface }}><Text style={{ fontSize: 13, fontWeight: '700', color: T.text, direction: 'ltr' }}>{`${doneCount}/${gm.length}`}</Text></View>
               {/* drawn with borders, not a font glyph, so it looks the same on every Android font */}
@@ -784,7 +828,7 @@ const DoublesBlock = memo(function DoublesBlock({ doubles, tables, brackets }: {
           </View>
         );
       })}
-      {koCards.map((m) => <MatchCard key={m.id} a={m.a} b={m.b} sets={m.status === 'SCHEDULED' ? [] : m.sets} status={m.status} winner={m.winner} caption={[tr('הדחה'), m.court].filter(Boolean).join(' · ')} when={matchWhen(m.start, m.kind)} />)}
+      {koCards.map((m) => <MatchCard key={m.id} a={m.a} b={m.b} sets={m.status === 'SCHEDULED' ? [] : m.sets} status={m.status} winner={m.winner} caption={[tr('הדחה'), m.court ? courtText(m.court) : ''].filter(Boolean).join(' · ')} when={whenOf(m)} />)}
     </View>
   );
 });
@@ -878,8 +922,21 @@ function Tournament({ id, focus, onBack, onGoAccount }: { id: string; focus?: Fo
   return (
       <FlatList style={s.pad} contentContainerStyle={{ paddingBottom: 100, gap: 10 }} ListHeaderComponent={<View style={{ gap: 10 }}>
       <Pressable onPress={onBack}><Text style={s.b}>{tr('→ חזרה')}</Text></Pressable>
-      <Text style={s.h1}>{d?.tournament.name}</Text>
-      <Pressable style={[s.chip, following && s.chipOn, { alignSelf: 'flex-start' }]} onPress={toggle}><Text style={following ? s.chipOnT : s.b}>{following ? tr('★ במעקב') : tr('☆ מעקב')}</Text></Pressable>
+      {d ? (
+        <View style={s.hero}>
+          <CourtLines />
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <View style={[s.chip2, d.tournament.status === 'REGISTRATION_OPEN' ? s.chipOk : d.tournament.status === 'IN_PROGRESS' ? s.chipLive : null]}><Text style={s.chip2T}>{tr(STATUS_HE[d.tournament.status] ?? d.tournament.status)}</Text></View>
+            <Pressable style={[s.heroBtn, following && s.heroBtnOn]} onPress={toggle}><Text style={[s.heroBtnT, following && { color: T.ink }]}>{following ? tr('★ במעקב') : tr('☆ מעקב')}</Text></Pressable>
+          </View>
+          <Text style={[s.heroT, { marginTop: 14 }]}>{d.tournament.name}</Text>
+          <Text style={s.heroS}>{`${new Date(d.tournament.startDate).toLocaleDateString(locale())} – ${new Date(d.tournament.endDate).toLocaleDateString(locale())}`}</Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>
+            {!!d.tournament.level && <View style={s.heroChip}><Text style={s.heroChipT}>{tr(LEVEL_HE[d.tournament.level] ?? d.tournament.level)}</Text></View>}
+            <View style={s.heroChip}><Text style={s.heroChipT}>{`${d.categories.length} ${tr('קטגוריות')}`}</Text></View>
+          </View>
+        </View>
+      ) : <Text style={s.h1}> </Text>}
       {!!fErr && <Text style={s.err}>{fErr}</Text>}
       {photos.length > 0 && (
         <FlatList horizontal data={photos} keyExtractor={(p) => p.id} style={{ flexGrow: 0, flexShrink: 0 }} showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}
@@ -1203,6 +1260,11 @@ const s = StyleSheet.create({
   tileOn: { backgroundColor: T.ink, borderColor: T.ink }, tileN: { fontSize: 34, fontWeight: '800', letterSpacing: -1, color: T.text }, tileT: { fontSize: 16, fontWeight: '700', color: T.text },
   hero: { backgroundColor: T.ink, borderRadius: 28, padding: 24, gap: 6, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)', marginBottom: 4 },
   heroBrand: { color: '#fff', fontWeight: '800', fontSize: 20, letterSpacing: -0.4 },
+  heroBtn: { borderWidth: 1, borderColor: 'rgba(255,255,255,0.4)', borderRadius: 999, paddingHorizontal: 14, paddingVertical: 7 },
+  heroBtnOn: { backgroundColor: T.volt, borderColor: T.volt },
+  heroBtnT: { color: '#fff', fontWeight: '600', fontSize: 14 },
+  heroChip: { backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 4 },
+  heroChipT: { color: '#E9F0EB', fontSize: 12.5, fontWeight: '600' },
   heroT: { color: '#fff', fontSize: 32, fontWeight: '800', letterSpacing: -1.2, lineHeight: 36, marginTop: 8 }, heroS: { color: '#AEBBB4', fontSize: 15, lineHeight: 22 },
   cardT: { fontSize: 18, fontWeight: '700', color: T.text, letterSpacing: -0.2 }, pressed: { opacity: 0.75, transform: [{ scale: 0.985 }] },
   chip2: { alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 999, backgroundColor: T.surface2, borderWidth: 1, borderColor: T.line }, chip2T: { fontSize: 12.5, fontWeight: '600', color: T.text },
@@ -1239,8 +1301,16 @@ const s = StyleSheet.create({
   pavSm: { width: 44, height: 44, borderRadius: 22, backgroundColor: T.surface2, borderWidth: 1, borderColor: T.line, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   rowEnd: { height: 14, backgroundColor: T.surface, borderWidth: 1, borderTopWidth: 0, borderColor: T.line, borderBottomLeftRadius: 22, borderBottomRightRadius: 22 },
   podium: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, marginVertical: 12 },
-  pod: { flex: 1, minHeight: 130, justifyContent: 'flex-end', gap: 2, padding: 12, borderRadius: 20, backgroundColor: T.surface, borderWidth: 1, borderColor: T.line },
-  pod1: { flex: 1.15, minHeight: 170, backgroundColor: T.volt, borderColor: T.volt },
+  // a podium: fixed heights (1st tallest); long names and clubs are cut after two lines
+  pod: { flex: 1, justifyContent: 'flex-end', gap: 2, padding: 12, borderRadius: 20, backgroundColor: T.surface, borderWidth: 1, borderColor: T.line, overflow: 'hidden' },
+  pod1: { flex: 1.15, height: 232, backgroundColor: T.volt, borderColor: T.volt },
+  pod2: { height: 206 },
+  pod3: { height: 188 },
+  medal: { position: 'absolute', top: 10, end: 10, width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: T.ink },
+  medalT: { fontSize: 13, fontWeight: '800', color: T.ink },
+  rkn: { minWidth: 32, height: 32, paddingHorizontal: 6, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: T.surface2 },
+  rknT: { fontSize: 15, fontWeight: '800', color: T.text },
+  rowPic: { width: 36, height: 36, borderRadius: 18, backgroundColor: T.surface2 },
   podN: { fontSize: 36, fontWeight: '800', color: T.muted, marginBottom: 'auto' },
   podPts: { marginTop: 6, fontSize: 20, fontWeight: '800', color: T.text },
   num: { width: 32, textAlign: 'center', fontSize: 28, fontWeight: '800', color: T.text },

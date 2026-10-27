@@ -10,7 +10,7 @@ export const GET = (_req: Request, ctx: { params: Promise<{ id: string }> }) => 
   if (!d) throw new Error('not found');
   const nm = (id: string | null) => (id ? d.names.get(id) ?? null : null);
   return {
-    tournament: { id: d.t.id, name: d.t.name, status: d.t.status, startDate: d.t.startDate, endDate: d.t.endDate, registrationCloses: d.t.registrationCloses, registerUrl: d.t.registerUrl, contacts: d.t.contacts ?? [] },
+    tournament: { id: d.t.id, name: d.t.name, status: d.t.status, startDate: d.t.startDate, endDate: d.t.endDate, registrationCloses: d.t.registrationCloses, registerUrl: d.t.registerUrl, level: d.t.level, contacts: d.t.contacts ?? [] },
     participants: d.ents.filter((x) => x.e.status === 'CONFIRMED').map((x) => ({ categoryId: x.e.categoryId, id: x.p.id, name: `${x.p.firstName} ${x.p.lastName}`, club: x.club, photo: photoUrl(x.p.photo), fromLoglig: x.e.source === 'loglig' })),
     categories: d.cats.map((c) => ({ id: c.id, name: c.name, gender: c.gender, minBirthYear: c.minBirthYear, maxBirthYear: effectiveMaxBirthYear(c, d.t) })),
     matches: d.ms.map((m) => ({
