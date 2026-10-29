@@ -103,6 +103,7 @@ const en: Record<string, string> = {
   'אזורית': 'Regional',
   'בינלאומית': 'International',
   'סבב': 'Circuit',
+  'מתוכננת': 'Planned',
   'כל הקטגוריות': 'All categories',
   'נוער': 'Youth',
   'בוגרים': 'Adults',

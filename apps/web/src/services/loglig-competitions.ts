@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { canonicalClub } from './clubs';
-import { and, eq, inArray, sql, notInArray } from 'drizzle-orm';
+import { and, eq, gte, inArray, or, sql, notInArray } from 'drizzle-orm';
 import { resolveCompleted, BEST_OF_3_SUPER_TB } from '@ita/rules-engine';
 import { schema, type Db } from '@/db';
 import { ensureDefaultRuleSet } from '@/services/rules';
@@ -32,7 +32,7 @@ function cleanBracket(x: unknown, depth = 0, count = { n: 0 }): BracketNode | nu
 /** `area` is the region or age group the venue serves ("אזור צפון"), `club` the venue. */
 export interface ContactIn { area: string; club: string; name: string; phone: string }
 export interface CompetitionIn {
-  kind: 'competition'; name: string; start: string; end: string; feeShekel: number; level: 'NATIONAL' | 'REGIONAL' | 'INTERNATIONAL' | 'CIRCUIT';
+  kind: 'competition'; name: string; start: string; end: string; feeShekel: number; level: 'NATIONAL' | 'REGIONAL' | 'INTERNATIONAL' | 'CIRCUIT' | 'LEAGUE';
   section?: 'YOUTH' | 'ADULTS' | 'MASTERS' | 'OTHER'; sourceUrl?: string; registerUrl?: string; registrationCloses?: string | null; venues: { club: string; address: string }[]; categories: CategoryIn[];
   /** Live refresh: only matches and results are updated, for a tournament that already exists; its fee, venue, links and deadline stay as they are. */
   resultsOnly?: boolean;
@@ -117,7 +117,7 @@ export function validateCompetitionImport(x: unknown): CompetitionIn {
   return {
     kind: 'competition', name, start: b.start as string, end: b.end as string,
     feeShekel: Math.max(0, Number(b.feeShekel) || 0),
-    level: b.level === 'REGIONAL' || b.level === 'INTERNATIONAL' || b.level === 'CIRCUIT' ? b.level : 'NATIONAL',
+    level: b.level === 'REGIONAL' || b.level === 'INTERNATIONAL' || b.level === 'CIRCUIT' || b.level === 'LEAGUE' ? b.level : 'NATIONAL',
     section: b.section === 'ADULTS' || b.section === 'MASTERS' || b.section === 'OTHER' ? b.section : 'YOUTH',
     sourceUrl: webUrl(b.sourceUrl), registerUrl: webUrl(b.registerUrl),
     registrationCloses: typeof b.registrationCloses === 'string' && !Number.isNaN(Date.parse(b.registrationCloses)) ? new Date(b.registrationCloses).toISOString() : null,
@@ -178,7 +178,11 @@ export async function importCompetition(db: Db, input: CompetitionIn, now = new 
     let tid: string;
     if (input.resultsOnly && !existing) { stats.skipped = true; return; }
     if (existing && input.resultsOnly) { tid = existing.id; if (drawn) await tx.update(schema.tournaments).set({ status: status as 'FINISHED' }).where(eq(schema.tournaments.id, tid)); }
-    else if (existing) { tid = existing.id; await tx.update(schema.tournaments).set({ ...fields, ...(+existing.startDate < REAL_FROM ? { startDate: start } : {}) }).where(eq(schema.tournaments.id, tid)); }
+    else if (existing) {
+      tid = existing.id;
+      // a planned competition (known from the federation's Gantt) becomes the real one: its dates and name are the published ones
+      const planned = existing.status === 'PLANNED';
+      await tx.update(schema.tournaments).set({ ...fields, ...(planned ? { name: input.name, startDate: start } : {}), ...(+existing.startDate < REAL_FROM ? { startDate: start } : {}) }).where(eq(schema.tournaments.id, tid)); }
     else {
       tid = (await tx.insert(schema.tournaments).values({
         name: input.name, startDate: start, ruleSetId: rule.id, format: input.categories.some((c) => c.format === 'GROUPS_KNOCKOUT') ? 'GROUPS_KNOCKOUT' : 'KNOCKOUT', ...fields,
@@ -566,4 +570,70 @@ export async function deletePlayersById(db: Db, playerIds: string[]) {
     await tx.execute(sql`delete from players where id in (select jsonb_array_elements_text(${list}::jsonb))`);
   });
   return { players: playerIds.length, matches };
+}
+
+/** A competition from the federation's yearly Gantt: a name and dates only, until its own page or draws are published. */
+export interface CalendarEventIn { name: string; start: string; end: string; level: CompetitionIn['level']; section: NonNullable<CompetitionIn['section']> }
+export interface CalendarIn { kind: 'calendar'; events: CalendarEventIn[] }
+
+export function validateCalendarImport(x: unknown): CalendarIn {
+  const b = x as Partial<CalendarIn> | null;
+  if (!b || b.kind !== 'calendar' || !Array.isArray(b.events)) throw new Error('bad payload');
+  const events: CalendarEventIn[] = [];
+  for (const e of b.events.slice(0, 400)) {
+    const name = clean(e?.name, 120);
+    if (!name || !isDate(e.start) || !isDate(e.end) || e.end < e.start) continue;
+    events.push({
+      name, start: e.start, end: e.end,
+      level: e.level === 'REGIONAL' || e.level === 'INTERNATIONAL' || e.level === 'CIRCUIT' || e.level === 'LEAGUE' ? e.level : 'NATIONAL',
+      section: e.section === 'ADULTS' || e.section === 'MASTERS' || e.section === 'OTHER' ? e.section : 'YOUTH',
+    });
+  }
+  return { kind: 'calendar', events };
+}
+
+/** Words that name a kind of competition rather than one competition ("ארצית", "מוקדמות"): sharing them proves nothing. */
+const GENERIC_WORDS = new Set(['ארצית', 'אזורית', 'אליפות', 'ישראל', 'לנוער', 'תחרות', 'לאומית', 'מוקדמות', 'בית', 'גמר', 'סבב', 'זוגות', 'ליגות', 'מחזור', 'מאסטרס', 'פסטיבל', 'גילאי', 'לבוגרים', 'itf', 'tennis', 'europe']);
+const distinctive = (name: string) => new Set(squeeze(name).split(' ').filter((w) => w.length >= 3 && !/^\d+$/.test(w) && !GENERIC_WORDS.has(w)));
+const DAY = 864e5;
+
+/**
+ * Keeps the planned competitions (status PLANNED) equal to the Gantt: adds, moves and removes them. A planned competition that a real one
+ * covers (same section, nearby dates, the same event or a shared distinctive word such as "חנוכה") is dropped: the real one has the details.
+ */
+export async function importCalendar(db: Db, input: CalendarIn, now = new Date()) {
+  const rule = await ensureDefaultRuleSet(db);
+  const t = schema.tournaments;
+  const today = new Date(now.getTime() - DAY);
+  const events = input.events.filter((e) => new Date(`${e.end}T23:59:59Z`) >= today);
+  const stats = { events: events.length, added: 0, updated: 0, removed: 0, covered: 0 };
+  const from = events.reduce((m, e) => (e.start < m ? e.start : m), events[0]?.start ?? now.toISOString().slice(0, 10));
+  // one small read: the planned ones (a few dozen) and what could cover a planned one
+  const rows = await db.select({ id: t.id, name: t.name, start: t.startDate, end: t.endDate, status: t.status, section: t.section, level: t.level })
+    .from(t).where(or(eq(t.status, 'PLANNED'), gte(t.endDate, new Date(Date.parse(`${from}T00:00:00Z`) - 7 * DAY))));
+  const real = rows.filter((r) => r.status !== 'PLANNED');
+  const planned = rows.filter((r) => r.status === 'PLANNED');
+  const covers = (e: CalendarEventIn) => {
+    const s = Date.parse(`${e.start}T00:00:00Z`), en = Date.parse(`${e.end}T23:59:59Z`), words = distinctive(e.name);
+    return real.some((r) => r.section === e.section && +r.start <= en + 3 * DAY && +r.end >= s - 3 * DAY
+      && (sameEvent(r.name, e.name) || e.section === 'MASTERS' || [...distinctive(r.name)].some((w) => words.has(w))));
+  };
+  const wanted = events.filter((e) => (covers(e) ? (stats.covered++, false) : true));
+  const key = (name: string, start: Date | string) => `${name}|${new Date(start).toISOString().slice(0, 10)}`;
+  const have = new Map(planned.map((p) => [key(p.name, p.start), p]));
+  const keep = new Set(wanted.map((e) => key(e.name, e.start)));
+  // a planned competition that is over, moved, renamed or now covered by a real one is removed (the Gantt is the source)
+  const stale = planned.filter((p) => !keep.has(key(p.name, p.start)) || +p.end < +today).map((p) => p.id);
+  if (stale.length) { await db.delete(t).where(inArray(t.id, stale)); stats.removed = stale.length; }
+  for (const e of wanted) {
+    const fields = { endDate: new Date(`${e.end}T23:59:59Z`), level: e.level, section: e.section, status: 'PLANNED' as const };
+    const existing = have.get(key(e.name, e.start));
+    if (existing && +existing.end >= +today) {
+      if (+existing.end !== +fields.endDate || existing.level !== e.level || existing.section !== e.section) { await db.update(t).set(fields).where(eq(t.id, existing.id)); stats.updated++; }
+    } else {
+      await db.insert(t).values({ name: e.name, startDate: new Date(`${e.start}T00:00:00Z`), ruleSetId: rule.id, format: 'KNOCKOUT', feeAgorot: 0, ...fields });
+      stats.added++;
+    }
+  }
+  return stats;
 }

@@ -20,6 +20,7 @@ Where each piece of data comes from, and the rules the import follows: `docs/log
 |---|---|
 | `rankings.mjs` | Public ranking tables (both genders, exact birth dates) |
 | `competitions.mjs` | Competitions from every ita.co.il listing plus the Loglig app's lists: details, categories, draws, schedule, results. `--list all --all` for everything, `--recent N` to skip ones that ended more than N days ago, `--seasons all` for every past season |
+| `calendar.mjs` | The federation's yearly Gantt (an .xlsx linked from its "לוח תחרויות" pages) as planned competitions: name, dates, section and level only (Tennis Europe, ITF, leagues, qualifiers and finals not yet published). Dates come from where each text box sits over the day grid (`gantt.mjs`). Runs at the end of `competitions.mjs --list all`; real competitions replace the planned ones (status `PLANNED`, label "מתוכננת"). `--file x.xlsx` for a local copy |
 | `live-results.mjs` | Fresh draws and results for the competitions that are not finished (results only: fee, venue and links stay) |
 | `rosters.mjs` | Who is registered in each category of the competitions that have not finished |
 | `dedupe.mjs` | Repairs: a competition stored twice under the two sites' titles (keeps the copy refreshed last), import-created players left without history, birth years from Loglig's empty 1753 date. Safe to run any time |

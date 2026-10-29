@@ -309,5 +309,15 @@ for (const d of docs) {
   console.log(`push ${d.name}: ${res.status} ${(await res.text()).slice(0, 160)}`);
   if (!res.ok) failed++;
 }
+// 5) planned competitions from the federation's Gantt (Tennis Europe, ITF, leagues, qualifiers...): after the real ones, so those it covers are skipped
+if ((listArg === 'all' || args.includes('--calendar')) && !only.length) {
+  try {
+    const { readPlanned, pushCalendar } = await import('./calendar.mjs');
+    const planned = await readPlanned();
+    console.log(`
+Gantt: ${planned.length} planned competition(s)`);
+    if (!(await pushCalendar(planned, base, env.CRON_SECRET))) failed++;
+  } catch (e) { console.warn('  gantt failed', String(e.message).slice(0, 100)); }
+}
 console.log(failed ? `Done with ${failed} failure(s).` : 'Done.');
 process.exit(failed ? 1 : 0);

@@ -276,7 +276,7 @@ async function Overview({ d, manage, compact = false, registered = false }: { d:
     ...(venue ? [['מקום', [venue.name, venue.city].filter(Boolean).join(', ')] as [string, string]] : []),
     ['סוג', `${tt(LEVEL[t.level] ?? '')} · ${tt(FORMAT[t.format] ?? '')}`],
     ...(t.feeAgorot > 0 ? [['דמי השתתפות', `₪${(t.feeAgorot / 100).toFixed(0)}`] as [string, string]] : []),
-    ['קטגוריות', `${cats.length}${confirmed ? ` · ${confirmed} ${tt('משתתפים מאושרים')}` : ''}`],
+    ...(t.status === 'PLANNED' ? [] : [['קטגוריות', `${cats.length}${confirmed ? ` · ${confirmed} ${tt('משתתפים מאושרים')}` : ''}`] as [string, string]]),
     ...(contacts.length ? [['שופט ראשי', (
       <div className="grid" style={{ gap: 4 }}>
         {contacts.map((c, i) => (
@@ -299,6 +299,7 @@ async function Overview({ d, manage, compact = false, registered = false }: { d:
         )}
         <span className="muted">דמי השתתפות: ₪{(t.feeAgorot / 100).toFixed(0)}</span>
       </div> : null}
+      {t.status === 'PLANNED' && <div className="card"><p className="muted">{tt('תחרות מתוכננת לפי לוח התחרויות של האיגוד. המועדים עשויים להשתנות, והקטגוריות, ההרשמה וההגרלה יופיעו כאן כשהאיגוד יפרסם אותם.')}</p></div>}
       {!manage && compact && (
         <>
           {t.status === 'REGISTRATION_OPEN' && !registered && <div className="row">{t.registerUrl ? <a className="btn" href={t.registerUrl} target="_blank" rel="noopener noreferrer">{tt('להרשמה')}</a> : <Link className="btn" href="/me">{tt('להרשמה')}</Link>}</div>}

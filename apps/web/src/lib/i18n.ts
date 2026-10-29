@@ -43,7 +43,7 @@ const EN: Record<string, string> = {
   'משחקים חיים עכשיו': 'live matches now', 'טיוטה': 'Draft', 'הרשמה פתוחה': 'Registration open', 'הרשמה סגורה': 'Registration closed', 'הוגרל': 'Drawn',
   'מתנהלת': 'In progress', 'הסתיימה': 'Finished', 'בוטלה': 'Cancelled', 'שחקנים · ': 'Players · ', 'תחרויות · ': 'Tournaments · ',
   'מוצגים 100 הראשונים. צמצמו את החיפוש.': 'Showing the first 100. Narrow your search.', 'לא נמצאו תוצאות עבור': 'No results for',
-  'ארצית': 'National', 'אזורית': 'Regional', 'בינלאומית': 'International', 'סבב': 'Circuit', 'עונה': 'Season', 'הכול': 'All',
+  'ארצית': 'National', 'אזורית': 'Regional', 'בינלאומית': 'International', 'סבב': 'Circuit', 'ליגה': 'League', 'מתוכננת': 'Planned', 'תחרות מתוכננת לפי לוח התחרויות של האיגוד. המועדים עשויים להשתנות, והקטגוריות, ההרשמה וההגרלה יופיעו כאן כשהאיגוד יפרסם אותם.': "A competition planned in the federation's calendar. Dates may change; categories, registration and the draw will appear here once the federation publishes them.", 'עונה': 'Season', 'הכול': 'All',
   'יצירת חשבון שחקן או הורה': 'Create a player or parent account', 'שם מלא': 'Full name', 'אימייל': 'Email', 'טלפון': 'Phone', 'סיסמה': 'Password',
   'סיסמה (10 תווים, אותיות וספרות)': 'Password (10+ characters, letters and digits)', 'יצירת חשבון': 'Create account', 'כבר רשומים? כניסה': 'Already registered? Log in',
   'אין חשבון? הרשמה': 'No account? Sign up',

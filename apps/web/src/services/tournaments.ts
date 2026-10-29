@@ -18,7 +18,7 @@ export interface CreateTournamentInput {
   format?: 'KNOCKOUT' | 'GROUPS_KNOCKOUT' | 'ROUND_ROBIN';
   feeAgorot?: number; registrationOpens?: Date; registrationCloses?: Date;
   setsToWin?: number; decider?: 'set' | 'superTb'; ruleSetId?: string; pointsTableKey?: string;
-  level?: 'NATIONAL' | 'REGIONAL' | 'INTERNATIONAL' | 'CIRCUIT';
+  level?: 'NATIONAL' | 'REGIONAL' | 'INTERNATIONAL' | 'CIRCUIT' | 'LEAGUE';
   /** Competition section; adults and masters have a minimum age (see eligibility.ts). */
   section?: 'YOUTH' | 'ADULTS' | 'MASTERS' | 'OTHER';
 }

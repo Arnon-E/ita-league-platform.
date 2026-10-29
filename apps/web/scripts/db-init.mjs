@@ -25,6 +25,8 @@ try {
   }
 
   // additive column changes for databases created before the column existed (never drops or rewrites anything)
+  // a competition known only from the federation's Gantt (name and dates): shown as "planned" until its own page or draws exist
+  await sql`alter type tournament_status add value if not exists 'PLANNED'`;
   await sql`alter table tournaments add column if not exists source_url text`;
   await sql`alter table tournaments add column if not exists register_url text`;
   await sql`alter table tournaments add column if not exists contacts jsonb`;

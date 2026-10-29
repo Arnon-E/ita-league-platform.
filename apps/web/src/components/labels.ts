@@ -1,6 +1,6 @@
 export const STATUS: Record<string, [string, string]> = {
   DRAFT: ['טיוטה', ''], REGISTRATION_OPEN: ['הרשמה פתוחה', 'ok'], REGISTRATION_CLOSED: ['הרשמה סגורה', 'warn'],
-  DRAWN: ['הוגרל', 'lime'], IN_PROGRESS: ['מתנהלת', 'lime'], FINISHED: ['הסתיימה', ''], CANCELLED: ['בוטלה', 'bad'],
+  DRAWN: ['הוגרל', 'lime'], IN_PROGRESS: ['מתנהלת', 'lime'], FINISHED: ['הסתיימה', ''], CANCELLED: ['בוטלה', 'bad'], PLANNED: ['מתוכננת', ''],
 };
 export const NEXT: Record<string, [string, string][]> = {
   DRAFT: [['REGISTRATION_OPEN', 'פתיחת הרשמה']],
@@ -12,7 +12,7 @@ export const NEXT: Record<string, [string, string][]> = {
 };
 /** Points tables as people read them (the keys are internal). */
 export const POINTS_TABLE_LABEL: Record<string, string> = { NATIONAL_GRADE1: 'ארצית דרגה א׳ (עד 1000 נקודות)', NATIONAL_GRADE2: 'ארצית דרגה ב׳ (עד 750 נקודות)' };
-export const LEVEL: Record<string, string> = { NATIONAL: 'ארצית', REGIONAL: 'אזורית', INTERNATIONAL: 'בינלאומית', CIRCUIT: 'סבב' };
+export const LEVEL: Record<string, string> = { NATIONAL: 'ארצית', REGIONAL: 'אזורית', INTERNATIONAL: 'בינלאומית', CIRCUIT: 'סבב', LEAGUE: 'ליגה' };
 export const FORMAT: Record<string, string> = { KNOCKOUT: 'הדחה', GROUPS_KNOCKOUT: 'בתים + הדחה', ROUND_ROBIN: 'ליגה (כולם נגד כולם)' };
 export const GENDER: Record<string, string> = { MALE: 'בנים/גברים', FEMALE: 'בנות/נשים', OPEN: 'פתוח' };
 export const MSTATUS: Record<string, string> = { SCHEDULED: 'טרם שוחק', COMPLETED: 'הסתיים', WALKOVER: 'ווק-אובר', RETIRED: 'פרישה', VOID: 'בוטל' };

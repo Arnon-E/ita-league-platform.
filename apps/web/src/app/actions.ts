@@ -25,7 +25,7 @@ export async function createTournamentAction(fd: FormData) {
     const t = await createTournament(db, a, {
       name: s(fd, 'name'), startDate: d(fd, 'start'), endDate: d(fd, 'end'), feeAgorot: Math.round(n(fd, 'fee') * 100),
       format: s(fd, 'format') as 'KNOCKOUT', setsToWin: 2, decider: 'superTb', pointsTableKey: s(fd, 'points') || 'DEFAULT',
-      level: (['NATIONAL', 'REGIONAL', 'INTERNATIONAL', 'CIRCUIT'].includes(s(fd, 'level')) ? s(fd, 'level') : 'NATIONAL') as 'NATIONAL',
+      level: (['NATIONAL', 'REGIONAL', 'INTERNATIONAL', 'CIRCUIT', 'LEAGUE'].includes(s(fd, 'level')) ? s(fd, 'level') : 'NATIONAL') as 'NATIONAL',
       section: (['YOUTH', 'ADULTS', 'MASTERS', 'OTHER'].includes(s(fd, 'section')) ? s(fd, 'section') : 'YOUTH') as 'YOUTH',
     });
     id = t.id;

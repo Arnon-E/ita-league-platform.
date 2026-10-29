@@ -8,7 +8,7 @@ const createdAt = () => timestamp('created_at', { withTimezone: true }).notNull(
 
 export const roleEnum = pgEnum('role', ['SUPER_ADMIN', 'FEDERATION_ADMIN', 'TOURNAMENT_MANAGER', 'REFEREE', 'CLUB_MANAGER', 'PLAYER']);
 export const genderEnum = pgEnum('gender', ['MALE', 'FEMALE', 'OPEN']);
-export const tournamentStatusEnum = pgEnum('tournament_status', ['DRAFT', 'REGISTRATION_OPEN', 'REGISTRATION_CLOSED', 'DRAWN', 'IN_PROGRESS', 'FINISHED', 'CANCELLED']);
+export const tournamentStatusEnum = pgEnum('tournament_status', ['DRAFT', 'REGISTRATION_OPEN', 'REGISTRATION_CLOSED', 'DRAWN', 'IN_PROGRESS', 'FINISHED', 'CANCELLED', 'PLANNED']);
 export const formatEnum = pgEnum('tournament_format', ['KNOCKOUT', 'GROUPS_KNOCKOUT', 'ROUND_ROBIN']);
 export const entryStatusEnum = pgEnum('entry_status', ['PENDING', 'CONFIRMED', 'WAITLIST', 'WITHDRAWN', 'REJECTED']);
 export const paymentStatusEnum = pgEnum('payment_status', ['UNPAID', 'PAID', 'PARTIALLY_REFUNDED', 'REFUNDED', 'FAILED']);
@@ -129,7 +129,7 @@ export const tournaments = pgTable('tournaments', {
   refundPolicy: jsonb('refund_policy'),
   /** Key into the rule set's pointsTables; 'DEFAULT' uses rules.points. */
   pointsTableKey: text('points_table_key').notNull().default('DEFAULT'),
-  /** Calendar level: NATIONAL | REGIONAL | INTERNATIONAL | CIRCUIT. */
+  /** Calendar level: NATIONAL | REGIONAL | INTERNATIONAL | CIRCUIT | LEAGUE. */
   level: text('level').notNull().default('NATIONAL'),
   /** Mirrored competitions: the federation's page and the sign-up form where players really register. */
   /** YOUTH | ADULTS | MASTERS | OTHER: the federation's competition section. */

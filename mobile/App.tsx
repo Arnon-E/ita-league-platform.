@@ -179,7 +179,7 @@ function Status({ err, busy, empty }: { err: string; busy: boolean; empty?: stri
 }
 
 const dead = (e: { status: string; tournamentStatus: string }) => e.status === 'WITHDRAWN' || e.status === 'REJECTED' || e.tournamentStatus === 'CANCELLED';
-const STATUS_HE: Record<string, string> = { DRAFT: 'טיוטה', REGISTRATION_OPEN: 'הרשמה פתוחה', REGISTRATION_CLOSED: 'הרשמה סגורה', DRAWN: 'הוגרלה', IN_PROGRESS: 'מתקיימת', FINISHED: 'הסתיימה', CANCELLED: 'בוטלה' };
+const STATUS_HE: Record<string, string> = { DRAFT: 'טיוטה', REGISTRATION_OPEN: 'הרשמה פתוחה', REGISTRATION_CLOSED: 'הרשמה סגורה', DRAWN: 'הוגרלה', IN_PROGRESS: 'מתקיימת', FINISHED: 'הסתיימה', CANCELLED: 'בוטלה', PLANNED: 'מתוכננת' };
 
 /** The registration that closes next, as on the website's home: name, dates, a countdown and the button. Only competitions that can apply to the user. */
 function Featured({ data, onOpen }: { data: { id: string; name: string; status: string; level: string; startDate: string; endDate: string; registrationCloses: string | null; relevant?: boolean }[] | null; onOpen: (id: string) => void }) {
@@ -278,7 +278,7 @@ function TournamentList({ onOpen, authed, onGoAccount, go }: { onOpen: (id: stri
       </View>
       {more && <>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
-          {([['', tr('כל הסוגים')], ['NATIONAL', tr('ארצית')], ['REGIONAL', tr('אזורית')], ['INTERNATIONAL', tr('בינלאומית')], ['CIRCUIT', tr('סבב')]] as const).map(([k, l]) => <Pressable key={k} style={[s.chip, level === k && s.chipOn]} onPress={() => setLevel(k)}><Text style={level === k ? s.chipOnT : s.b}>{l}</Text></Pressable>)}
+          {([['', tr('כל הסוגים')], ['NATIONAL', tr('ארצית')], ['REGIONAL', tr('אזורית')], ['INTERNATIONAL', tr('בינלאומית')], ['CIRCUIT', tr('סבב')], ['LEAGUE', tr('ליגה')]] as const).map(([k, l]) => <Pressable key={k} style={[s.chip, level === k && s.chipOn]} onPress={() => setLevel(k)}><Text style={level === k ? s.chipOnT : s.b}>{l}</Text></Pressable>)}
         </View>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
           {[['', tr('כל העונות')], ...[...new Set((data ?? []).map((x) => new Date(x.startDate).getFullYear()))].filter((y) => y >= 2000).sort((a, b) => b - a).map((y) => [String(y), String(y)])].map(([k, l]) => <Pressable key={k} style={[s.chip, season === k && s.chipOn]} onPress={() => setSeason(k)}><Text style={season === k ? s.chipOnT : s.b}>{l}</Text></Pressable>)}
@@ -335,7 +335,7 @@ function Live() {
 }
 
 const MEDAL = ['#F2C230', '#CBD3DA', '#D99560'] as const;
-const LEVEL_HE: Record<string, string> = { NATIONAL: 'ארצית', REGIONAL: 'אזורית', INTERNATIONAL: 'בינלאומית', CIRCUIT: 'סבב' };
+const LEVEL_HE: Record<string, string> = { NATIONAL: 'ארצית', REGIONAL: 'אזורית', INTERNATIONAL: 'בינלאומית', CIRCUIT: 'סבב', LEAGUE: 'ליגה' };
 
 /** The podium's picture (Loglig photo), or the rank number when there is none or the file is missing. */
 function PodPhoto({ uri, n, big }: { uri: string | null; n: number; big: boolean }) {
@@ -533,7 +533,7 @@ const DAY = 864e5;
 /** Ready-made searches for when nothing has been typed yet, as on the website's search page. */
 const SHORTCUTS: [string, string, string, (x: api.TournamentRow) => boolean, number][] = [
   ['recent', 'תחרויות בשנה האחרונה', 'מהחדשה לישנה', (x) => +new Date(x.endDate) >= Date.now() - 365 * DAY && +new Date(x.startDate) <= Date.now() + 365 * DAY, -1],
-  ['open', 'הרשמה פתוחה וקרובות', 'מה אפשר לעשות עכשיו', (x) => x.status === 'REGISTRATION_OPEN' || (+new Date(x.startDate) >= Date.now() && ['REGISTRATION_CLOSED', 'DRAWN', 'IN_PROGRESS'].includes(x.status)), 1],
+  ['open', 'הרשמה פתוחה וקרובות', 'מה אפשר לעשות עכשיו', (x) => x.status === 'REGISTRATION_OPEN' || (+new Date(x.startDate) >= Date.now() && ['REGISTRATION_CLOSED', 'DRAWN', 'IN_PROGRESS', 'PLANNED'].includes(x.status)), 1],
   ['masters', 'מאסטרס ובוגרים', 'בשנה האחרונה, בלי קשר לגיל', (x) => ['MASTERS', 'ADULTS'].includes(x.section) && +new Date(x.endDate) >= Date.now() - 365 * DAY, -1],
 ];
 
