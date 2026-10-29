@@ -44,13 +44,19 @@ const norm = (s) => String(s).replace(/מס[׳'’]?\.?\s/g, ' ').replace(/["'`�
 const ours = (await get(`${site}/api/v1/tournaments`, [])).filter((t) => !['FINISHED', 'CANCELLED'].includes(t.status));
 console.log(`${ours.length} tournaments on the site that are not finished`);
 const byName = new Map(ours.map((t) => [norm(t.name), t]));
+// the same event under the two sites' titles ("אליפות ארצית חנוכה 2026" / "ארצית חנוכה 2026"): equal, or one contains the other as whole words with the same numbers
+const nums = (x) => (x.match(/d+/g) ?? []).sort().join(',');
+const findOurs = (title) => {
+  const n = norm(title);
+  return byName.get(n) ?? ours.find((t) => { const m = norm(t.name); const [short, long] = m.length <= n.length ? [m, n] : [n, m]; return short.length >= 8 && nums(m) === nums(n) && ` ${long} `.includes(` ${short} `); });
+};
 
 const lists = [];
 for (const ep of ['CompetitionsYouth', 'CompetitionsSenior', 'CompetitionsAdult', 'CompetitionsDaily']) lists.push(...(await get(`${API}/Union/${ep}/${UNION}?seasonId=${SEASON}`, [])));
 
 const competitions = [];
 for (const c of lists) {
-  const t = byName.get(norm(c.CompetitionTitle));
+  const t = findOurs(c.CompetitionTitle);
   if (!t) continue;
   const cats = [];
   for (const k of c.categoriLIstItem ?? []) {
