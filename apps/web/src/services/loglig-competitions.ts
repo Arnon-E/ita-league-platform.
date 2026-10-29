@@ -596,6 +596,9 @@ export function validateCalendarImport(x: unknown): CalendarIn {
 const GENERIC_WORDS = new Set(['ארצית', 'אזורית', 'אליפות', 'ישראל', 'לנוער', 'תחרות', 'לאומית', 'מוקדמות', 'בית', 'גמר', 'סבב', 'זוגות', 'ליגות', 'מחזור', 'מאסטרס', 'פסטיבל', 'גילאי', 'לבוגרים', 'itf', 'tennis', 'europe']);
 const distinctive = (name: string) => new Set(squeeze(name).split(' ').filter((w) => w.length >= 3 && !/^\d+$/.test(w) && !GENERIC_WORDS.has(w)));
 const DAY = 864e5;
+/** The Gantt's "Tennis Europe U14" week and the tournament Tennis Europe lists for that week ("TE 14 - HAIFA", or our name for it): the same week. */
+const sameTennisEuropeWeek = (r: { name: string; start: Date; end: Date }, e: CalendarEventIn) =>
+  /^tennis europe/i.test(e.name) && /^(te\b|tennis europe)/i.test(r.name) && Math.abs(+r.start - Date.parse(`${e.start}T00:00:00Z`)) <= DAY && Math.abs(+r.end - Date.parse(`${e.end}T23:59:59Z`)) <= 2 * DAY;
 
 /**
  * Keeps the planned competitions (status PLANNED) equal to the Gantt: adds, moves and removes them. A planned competition that a real one
@@ -616,7 +619,7 @@ export async function importCalendar(db: Db, input: CalendarIn, now = new Date()
   const covers = (e: CalendarEventIn) => {
     const s = Date.parse(`${e.start}T00:00:00Z`), en = Date.parse(`${e.end}T23:59:59Z`), words = distinctive(e.name);
     return real.some((r) => r.section === e.section && +r.start <= en + 3 * DAY && +r.end >= s - 3 * DAY
-      && (sameEvent(r.name, e.name) || e.section === 'MASTERS' || [...distinctive(r.name)].some((w) => words.has(w))));
+      && (/^tennis europe/i.test(e.name) ? sameTennisEuropeWeek(r, e) : sameEvent(r.name, e.name) || e.section === 'MASTERS' || [...distinctive(r.name)].some((w) => words.has(w))));
   };
   const wanted = events.filter((e) => (covers(e) ? (stats.covered++, false) : true));
   const key = (name: string, start: Date | string) => `${name}|${new Date(start).toISOString().slice(0, 10)}`;

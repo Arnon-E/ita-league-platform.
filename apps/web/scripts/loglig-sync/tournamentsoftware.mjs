@@ -26,6 +26,11 @@ export function cleanPlayer(raw) {
 const GENDER_WORD = { MS: 'גברים', WS: 'נשים', MD: 'זוגות גברים', WD: 'זוגות נשים', XD: 'זוגות מעורבים' };
 /** "MS 40 (B)" -> { name: 'גברים 40 (B)', gender: 'MALE', doubles: false }; "XD (A)" -> 'זוגות מעורבים (A)'. */
 export function eventInfo(code) {
+  const junior = code.trim().match(/^(?:(BS|GS|BD|GD)\s*U?(\d{1,2})|U(\d{1,2})\s*(BS|GS|BD|GD))\b/i);
+  if (junior) {
+    const kind = (junior[1] ?? junior[4]).toUpperCase(), age = Number(junior[2] ?? junior[3]);
+    return { code: code.trim(), name: `${kind[0] === 'B' ? 'בנים' : 'בנות'} ${age}${kind[1] === 'D' ? ' זוגות' : ''}`, kind, doubles: kind[1] === 'D', gender: kind[0] === 'B' ? 'MALE' : 'FEMALE', age };
+  }
   const m = code.trim().match(/^(MS|WS|MD|WD|XD)\s*([\d]+(?:\s*-\s*[\d]+)?)?\s*(\([A-Za-z0-9]+\))?/);
   if (!m) return null;
   const kind = m[1];
@@ -127,7 +132,7 @@ export function buildTsCompetition(raw, draws) {
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 /** A session that has accepted only the strictly necessary cookies (the site shows a cookie wall otherwise). */
-export function session() {
+export function session(base = TS) {
   const jar = new Map();
   const keep = (r) => { for (const c of r.headers.getSetCookie?.() ?? []) { const [kv] = c.split(';'); const i = kv.indexOf('='); jar.set(kv.slice(0, i), kv.slice(i + 1)); } };
   async function get(url, o = {}, hops = 0) {
@@ -144,11 +149,11 @@ export function session() {
       if (!ready) {
         ready = true;
         const ret = '/';
-        await get(`${TS}/cookiewall/?returnurl=${encodeURIComponent(ret)}`);
+        await get(`${base}/cookiewall/?returnurl=${encodeURIComponent(ret)}`);
         const body = new URLSearchParams({ ReturnUrl: ret, SettingsOpen: 'false' }); body.append('CookiePurposes', '1');
-        await get(`${TS}/cookiewall/Save`, { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body });
+        await get(`${base}/cookiewall/Save`, { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body });
       }
-      return get(path.startsWith('http') ? path : TS + path, o);
+      return get(path.startsWith('http') ? path : base + path, o);
     },
   };
 }

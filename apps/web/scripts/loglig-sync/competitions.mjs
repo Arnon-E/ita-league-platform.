@@ -297,6 +297,14 @@ Tournamentsoftware: ${org.length} Masters tournament(s) since ${since}`);
 }
 
 if (listArg === 'all' || args.includes('--ts')) await mergeTournamentSoftware(docs);
+// 4b) Tennis Europe events held in Israel (te.tournamentsoftware.com): details, and draws and results once published
+if ((listArg === 'all' || args.includes('--te')) && !only.length) {
+  try {
+    const { readTennisEurope } = await import('./te.mjs');
+    const events = (await readTennisEurope({ year: Number(today.slice(0, 4)) })).filter((d) => daysAgo(d.end) <= recentDays);
+    for (const d of events) { docs.push(d); console.log(`- + Tennis Europe: ${d.name}  ${d.start}..${d.end}  ${d.categories.length + d.doubles.length} draws`); }
+  } catch (e) { console.warn('  tennis europe failed', String(e.message).slice(0, 100)); }
+}
 writeFileSync(path.join(OUT, 'competitions.json'), JSON.stringify(docs), 'utf8');
 console.log(`\nSaved ${docs.length} competition(s) to ${OUT}\\competitions.json`);
 if (!push) { console.log('Dry run (nothing sent). Add --push --url <site> to import.'); process.exit(0); }
