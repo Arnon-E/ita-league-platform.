@@ -28,6 +28,8 @@ describe('Tennis Europe parsers (real pages)', () => {
 
   it('reads the fee, hospitality and court type from the fact sheet', () => {
     expect(parseFactsheet(fixture('te-factsheet.html'))).toEqual({ fee: '80 Euro MD 70 Euro QD', hospitality: 'For National Squads: Lunch and Dinner until last member of the squad is eliminated.', indoor: false });
+    // "None" typed by an organizer is an empty field, not a condition
+    expect(parseFactsheet('<p>Hospitality: None Entry Fee: MD 75/QD 70 Draws: BS14</p><p>Location type: Indoors</p>')).toEqual({ fee: 'MD 75/QD 70', hospitality: '', indoor: true });
   });
 });
 

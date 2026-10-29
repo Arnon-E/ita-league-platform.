@@ -20,4 +20,5 @@ echo ===== %date% %time% ===== >> "%DEVDIR%\daily-sync.log"
 %RUN% scripts\loglig-sync\leagues.mjs --push --url %URL% >> "%DEVDIR%\daily-sync.log" 2>&1
 %RUN% scripts\loglig-sync\app-data.mjs --push --url %URL% >> "%DEVDIR%\daily-sync.log" 2>&1
 %RUN% scripts\loglig-sync\regulations.mjs --push --url %URL% >> "%DEVDIR%\daily-sync.log" 2>&1
+%RUN% scripts\loglig-sync\abroad.mjs --days 300 --push --url %URL% >> "%DEVDIR%\daily-sync.log" 2>&1
 echo done >> "%DEVDIR%\daily-sync.log"

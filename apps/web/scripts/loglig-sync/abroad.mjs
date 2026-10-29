@@ -57,8 +57,9 @@ export function parseFactsheet(html) {
   const between = (a, b) => t.match(new RegExp(`${a}:\\s*(.*?)\\s*(?:${b})`))?.[1]?.trim() ?? '';
   const loc = t.match(/Location type:\s*(\w+)/)?.[1];
   return {
-    fee: between('Entry Fee', 'Draws:|Hospitality:|Category:').replace(/^none$/i, ''),
-    hospitality: between('Hospitality', 'Entry Fee:|Draws:|Accommodation:'),
+    fee: between('Entry Fee', 'Draws:|Hospitality:|Category:').replace(/^(none|n\/?a|-+)$/i, ''),
+    // organizers type "None", "-" or "n/a" when they offer nothing: that is an empty field, not a condition worth showing
+    hospitality: between('Hospitality', 'Entry Fee:|Draws:|Accommodation:').replace(/^(none|n\/?a|no|nil|-+|\.+)$/i, ''),
     indoor: loc ? /^indoor/i.test(loc) : null,
   };
 }

@@ -13,4 +13,5 @@ node scripts\loglig-sync\photos.mjs --push --limit 300 --url %URL% >> .loglig-du
 node scripts\loglig-sync\leagues.mjs --push --url %URL% >> .loglig-dump\daily-sync.log 2>&1
 node scripts\loglig-sync\app-data.mjs --push --url %URL% >> .loglig-dump\daily-sync.log 2>&1
 node scripts\loglig-sync\regulations.mjs --push --url %URL% >> .loglig-dump\daily-sync.log 2>&1
+node scripts\loglig-sync\abroad.mjs --days 300 --push --url %URL% >> .loglig-dump\daily-sync.log 2>&1
 echo done >> .loglig-dump\daily-sync.log

@@ -13,7 +13,7 @@ const COUNTRY_HE: Record<string, string> = {
   Georgia: 'גאורגיה', Germany: 'גרמניה', 'Great Britain': 'בריטניה', Greece: 'יוון', Hungary: 'הונגריה', Iceland: 'איסלנד', Ireland: 'אירלנד', Italy: 'איטליה', Kosovo: 'קוסובו', Latvia: 'לטביה',
   Liechtenstein: 'ליכטנשטיין', Lithuania: 'ליטא', Luxembourg: 'לוקסמבורג', Malta: 'מלטה', Moldova: 'מולדובה', Monaco: 'מונקו', Montenegro: 'מונטנגרו', Netherlands: 'הולנד',
   'North Macedonia': 'צפון מקדוניה', Norway: 'נורווגיה', Poland: 'פולין', Portugal: 'פורטוגל', Romania: 'רומניה', Russia: 'רוסיה', 'San Marino': 'סן מרינו', Serbia: 'סרביה',
-  'Slovak Republic': 'סלובקיה', Slovenia: 'סלובניה', Spain: 'ספרד', Sweden: 'שוודיה', Switzerland: 'שווייץ', Turkiye: 'טורקיה', Ukraine: 'אוקראינה',
+  'Slovak Republic': 'סלובקיה', Slovakia: 'סלובקיה', 'Bosnia and Herzegovina': 'בוסניה והרצגובינה', 'Czech Republic': 'צ׳כיה', Turkey: 'טורקיה', 'United Kingdom': 'בריטניה', Slovenia: 'סלובניה', Spain: 'ספרד', Sweden: 'שוודיה', Switzerland: 'שווייץ', Turkiye: 'טורקיה', Ukraine: 'אוקראינה',
 };
 const heCountry = (c: string) => COUNTRY_HE[c] ?? c;
 const TZ = 'Asia/Jerusalem';
