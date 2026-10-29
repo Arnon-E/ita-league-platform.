@@ -4,6 +4,7 @@ import { devSeed, devStats, devWipe } from '@/services/devtools';
 import { db } from '@/db';
 import { addResultOverride, dedupeMirror, importCalendar, importCompetition, removePairPlayers, removeTournament, validateCalendarImport, validateCompetitionImport } from '@/services/loglig-competitions';
 import { importClubs, importSiteInfo, validateClubsImport, validateSiteInfoImport } from '@/services/loglig-app';
+import { importAbroad, validateAbroadImport } from '@/services/abroad';
 import { importRegulations, validateRegulationsImport } from '@/services/regulations';
 import { importLeague, validateLeagueImport } from '@/services/loglig-leagues';
 import { createTestUser, removeTestUsers } from '@/services/test-users';
@@ -38,6 +39,7 @@ export async function POST(req: Request) {
     if (body?.kind === 'remove-tournament' && typeof body.name === 'string' && body.name.trim()) return Response.json(await removeTournament(db, body.name.trim()));
     if (body?.kind === 'competition') return Response.json(await importCompetition(db, validateCompetitionImport(body)));
     if (body?.kind === 'calendar') return Response.json(await importCalendar(db, validateCalendarImport(body)));
+    if (body?.kind === 'abroad') return Response.json(await importAbroad(db, validateAbroadImport(body)));
     if (body?.kind === 'clubs') return Response.json(await importClubs(db, validateClubsImport(body)));
     if (body?.kind === 'site-info') return Response.json(await importSiteInfo(db, validateSiteInfoImport(body)));
     if (body?.kind === 'regulations') return Response.json(await importRegulations(db, validateRegulationsImport(body)));

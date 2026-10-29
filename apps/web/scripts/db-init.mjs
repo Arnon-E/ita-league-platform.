@@ -43,6 +43,12 @@ try {
   await sql`create table if not exists external_leagues (
     id text primary key, name text not null, gender gender not null default 'OPEN', data jsonb not null, updated_at timestamptz not null default now())`;
 
+  await sql`create table if not exists abroad_events (
+    id text primary key, name text not null, venue text not null default '', city text not null default '', country text not null default '',
+    start_date timestamptz not null, end_date timestamptz not null, surface text not null default '', category text not null default '', age_group integer,
+    closed boolean not null default false, entry_opens timestamptz, entry_deadline timestamptz, withdrawal_deadline timestamptz,
+    fee text not null default '', hospitality text not null default '', indoor boolean, url text not null, updated_at timestamptz not null default now())`;
+  await sql`create index if not exists abroad_events_start_idx on abroad_events (start_date)`;
   await sql`create table if not exists claim_requests (
     id text primary key, user_id text not null references users(id) on delete cascade, player_id text references players(id) on delete set null,
     first_name text not null, last_name text not null, birth_date timestamptz not null, id_hash text, for_child boolean not null default false,

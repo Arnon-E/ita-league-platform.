@@ -204,6 +204,36 @@ export const regulations = pgTable('regulations', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
+/**
+ * Tennis Europe tournaments held outside Israel, so players can see when and where junior tournaments take place and until when they can enter.
+ * Name, place, dates, level and conditions only: no draws or players. Read from te.tournamentsoftware.com (id = its tournament id).
+ */
+export const abroadEvents = pgTable('abroad_events', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  venue: text('venue').notNull().default(''),
+  city: text('city').notNull().default(''),
+  country: text('country').notNull().default(''),
+  startDate: timestamp('start_date', { withTimezone: true }).notNull(),
+  endDate: timestamp('end_date', { withTimezone: true }).notNull(),
+  surface: text('surface').notNull().default(''),
+  /** "Category 1" | "Category 2" | "Category 3" | "Super Category" | "Masters" ... as Tennis Europe names it. */
+  category: text('category').notNull().default(''),
+  /** 12 | 14 | 16 (the tournament's "12&U" group); null when not stated. */
+  ageGroup: integer('age_group'),
+  /** Closed to players of other nations ("closed event"). */
+  closed: boolean('closed').notNull().default(false),
+  entryOpens: timestamp('entry_opens', { withTimezone: true }),
+  entryDeadline: timestamp('entry_deadline', { withTimezone: true }),
+  withdrawalDeadline: timestamp('withdrawal_deadline', { withTimezone: true }),
+  /** As the fact sheet words it ("80 Euro MD 70 Euro QD"), and what the organizer offers ("Hospitality"). */
+  fee: text('fee').notNull().default(''),
+  hospitality: text('hospitality').notNull().default(''),
+  indoor: boolean('indoor'),
+  url: text('url').notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => ({ startIdx: index('abroad_events_start_idx').on(t.startDate) }));
+
 /** Team leagues mirrored from the federation's public pages (standings and fixtures kept as one document). */
 export const externalLeagues = pgTable('external_leagues', {
   id: text('id').primaryKey(),
