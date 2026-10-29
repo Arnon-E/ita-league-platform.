@@ -2,7 +2,8 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { db, schema } from '@/db';
 import { resetDb } from './helpers';
-import { displayName, parseEvent, parseOtherEvents } from '../scripts/loglig-sync/te.mjs';
+import { readFileSync } from 'node:fs';
+import { displayName, parseAcceptance, parseEvent, parseOtherEvents } from '../scripts/loglig-sync/te.mjs';
 import { eventInfo } from '../scripts/loglig-sync/tournamentsoftware.mjs';
 import { importCalendar, importCompetition, validateCalendarImport, validateCompetitionImport } from '@/services/loglig-competitions';
 
@@ -51,5 +52,27 @@ describe('the Gantt week and the Tennis Europe event are one competition', () =>
     ]);
     // the calendar run that follows does not bring the first week back
     expect(await importCalendar(db, cal, NOW)).toMatchObject({ covered: 1, added: 0 });
+  });
+});
+
+describe('Tennis Europe acceptance list', () => {
+  it('reads the accepted players of an event: draw, order, name, nation, year of birth, rank and WTN', () => {
+    const a = parseAcceptance(readFileSync(new URL('./fixtures/te-acceptance.html', import.meta.url), 'utf8')) as { label: string; active: number; updated: string | null; players: { draw: string; n: number; name: string; nation: string; born: number; rank: string; wtn: string }[] };
+    expect(a).toMatchObject({ label: 'BS14', active: 78, updated: '2026-10-23T09:20:00.000Z' });
+    expect(a.players.length).toBeGreaterThan(40);
+    expect(a.players[0]).toEqual({ draw: 'Main', n: 1, name: 'Adam Chashkin', nation: 'Israel', born: 2013, rank: '161', wtn: '21.45' });
+    // the flag's print-only "[ISR]" tag is not part of the name
+    expect(a.players.every((p) => !p.name.includes('[ISR]'))).toBe(true);
+  });
+
+  it('keeps the accepted players on the competition and replaces them on the next run', async () => {
+    await resetDb();
+    const doc = (rank: string) => ({ kind: 'competition', name: 'Tennis Europe U14 חיפה', start: '2026-11-02', end: '2026-11-08', feeShekel: 0, level: 'INTERNATIONAL', section: 'YOUTH', venues: [], categories: [],
+      acceptance: [{ label: 'BS14', active: 78, updated: '2026-10-23T09:20:00Z', players: [{ draw: 'Main', n: 1, name: 'Adam Chashkin', nation: 'Israel', born: 2013, rank, wtn: '21.45' }, { draw: 'Main', n: 2, name: '', nation: '', born: null, rank: '', wtn: '' }] }, { label: 'GS14', active: 0, updated: null, players: [] }] });
+    await importCompetition(db, validateCompetitionImport(doc('161')), new Date('2026-10-29T12:00:00Z'));
+    await importCompetition(db, validateCompetitionImport(doc('150')), new Date('2026-10-29T12:00:00Z'));
+    const [t] = await db.select().from(schema.tournaments).where(eq(schema.tournaments.name, 'Tennis Europe U14 חיפה'));
+    expect(t!.acceptance).toHaveLength(1);
+    expect(t!.acceptance![0]!.players).toEqual([{ draw: 'Main', n: 1, name: 'Adam Chashkin', nation: 'Israel', born: 2013, rank: '150', wtn: '21.45' }]);
   });
 });

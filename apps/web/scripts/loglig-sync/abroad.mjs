@@ -116,7 +116,7 @@ if (process.argv[1] && process.argv[1].endsWith('abroad.mjs')) {
   if (!args.includes('--push')) { console.log('Dry run (nothing sent). Add --push --url <site> to import.'); process.exit(0); }
   const base = opt('--url', process.env.PUBLIC_URL ?? '').replace(/\/$/, '');
   if (!base || !process.env.CRON_SECRET) { console.error('--push needs --url <site> and CRON_SECRET in the environment.'); process.exit(1); }
-  const res = await fetch(`${base}/api/sync/loglig`, { method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${process.env.CRON_SECRET}` }, body: JSON.stringify({ kind: 'abroad', events, until }) });
+  const res = await fetch(`${base}/api/sync/loglig`, { method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${process.env.CRON_SECRET}` }, body: JSON.stringify({ kind: 'abroad', circuit: 'TE', events, until }) });
   console.log(`push abroad: ${res.status} ${(await res.text()).slice(0, 200)}`);
   process.exit(res.ok ? 0 : 1);
 }

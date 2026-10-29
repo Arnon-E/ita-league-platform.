@@ -4,6 +4,7 @@ import { eq } from 'drizzle-orm';
 import { db, schema } from '@/db';
 import { resetDb } from './helpers';
 import { parseEntryDates, parseFactsheet, parseSearch } from '../scripts/loglig-sync/abroad.mjs';
+import { israelDocs, parseItem } from '../scripts/loglig-sync/itf.mjs';
 import { abroadCatalog, entryState, importAbroad, validateAbroadImport } from '@/services/abroad';
 
 const fixture = (n: string) => readFileSync(new URL(`./fixtures/${n}`, import.meta.url), 'utf8');
@@ -72,5 +73,29 @@ describe('abroad events in the database', () => {
     expect(entryState(e('2026-11-01', '2026-11-20'), NOW)).toBe('soon');
     expect(entryState(e('2026-09-01', '2026-10-06'), NOW)).toBe('closed');
     expect(entryState(e(null, null), NOW)).toBe('unknown');
+  });
+});
+
+describe('ITF juniors and the two circuits together', () => {
+  beforeAll(resetDb);
+  const NOW = new Date('2026-10-29T12:00:00Z');
+  const itf = { tournamentKey: 'J-J30-CYP-2026-005', name: 'J30 Larnaca', promotionalName: 'Herodotou Tennis Academy', location: 'Larnaca', venue: 'Larnaca', hostNation: 'Cyprus', hostNationCode: 'CYP', startDate: '2026-11-09T00:00:00', endDate: '2026-11-15T00:00:00', category: 'J30', surfaceDesc: 'Hard', indoorOrOutDoor: 'Outdoor', tournamentLink: '/en/tournament/j30-larnaca/cyp/2026/j-j30-cyp-2026-005/' };
+
+  it('reads an ITF calendar item and turns the ones in Israel into competitions', () => {
+    expect(parseItem(itf)).toMatchObject({ id: 'J-J30-CYP-2026-005', name: 'J30 Larnaca', city: 'Larnaca', country: 'Cyprus', start: '2026-11-09', end: '2026-11-15', category: 'J30', surface: 'Hard', indoor: false, closed: false, url: 'https://www.itftennis.com/en/tournament/j30-larnaca/cyp/2026/j-j30-cyp-2026-005/' });
+    const isr = parseItem({ ...itf, tournamentKey: 'J-J30-ISR-2026-001', name: 'J30 Ramat Hasharon (CLOSED)', location: 'Ramat Hasharon', hostNation: 'Israel', hostNationCode: 'ISR', promotionalName: '' });
+    expect(isr).toMatchObject({ closed: true, name: 'J30 Ramat Hasharon', countryCode: 'ISR' });
+    expect(israelDocs([isr])[0]).toMatchObject({ name: 'ITF J30 רמת השרון', level: 'INTERNATIONAL', section: 'YOUTH', start: '2026-11-09', end: '2026-11-15' });
+  });
+
+  it('a sync of one circuit never removes the other circuit\'s events', async () => {
+    const base = { venue: '', city: 'X', country: 'Y', surface: '', category: 'Category 2', age: 14, closed: false, entryOpens: null, entryDeadline: null, withdrawalDeadline: null, fee: '', hospitality: '', indoor: null, url: 'https://example.org/x' };
+    await importAbroad(db, validateAbroadImport({ kind: 'abroad', circuit: 'TE', until: '2026-12-31', events: [{ ...base, id: '8D96D7A4-AD04-4FAA-977A-EC491BEA6CFF', name: 'TE one', start: '2026-12-02', end: '2026-12-07' }] }), NOW);
+    await importAbroad(db, validateAbroadImport({ kind: 'abroad', circuit: 'ITF', until: '2026-12-31', events: [{ ...base, id: 'J-J30-CYP-2026-005', name: 'J30 Larnaca', category: 'J30', age: null, start: '2026-12-03', end: '2026-12-08' }] }), NOW);
+    const rows = await db.select({ id: schema.abroadEvents.id, circuit: schema.abroadEvents.circuit }).from(schema.abroadEvents);
+    expect(rows.map((r) => `${r.circuit}:${r.id}`).sort()).toEqual(['ITF:J-J30-CYP-2026-005', 'TE:8D96D7A4-AD04-4FAA-977A-EC491BEA6CFF']);
+    // the TE list now lacks its event: only the TE row goes
+    await importAbroad(db, validateAbroadImport({ kind: 'abroad', circuit: 'TE', until: '2026-12-31', events: [{ ...base, id: '4F42640A-EF8A-4BD9-A603-9FCE5F22ABF8', name: 'TE two', start: '2026-12-09', end: '2026-12-14' }] }), NOW);
+    expect((await db.select({ id: schema.abroadEvents.id }).from(schema.abroadEvents)).map((r) => r.id).sort()).toEqual(['4F42640A-EF8A-4BD9-A603-9FCE5F22ABF8', 'J-J30-CYP-2026-005']);
   });
 });

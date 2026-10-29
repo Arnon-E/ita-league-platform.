@@ -373,6 +373,24 @@ async function Overview({ d, manage, compact = false, registered = false }: { d:
       )}
         </>
       )}
+      {(t.acceptance ?? []).length > 0 && (
+        <>
+          <h2>{tt('רשומים (רשימת הקבלה של Tennis Europe)')}</h2>
+          <div className="grid cols">
+            {t.acceptance!.map((a, i) => (
+              <details key={a.label} className="card" open={i === 0}>
+                <summary><strong>{a.label}</strong> <span className="muted">· {a.active} {tt('פעילים')}{a.updated ? ` · ${tt('עודכן')} ${fmtDate(new Date(a.updated))}` : ''}</span></summary>
+                <div style={{ overflowX: 'auto', marginTop: 8 }}>
+                  <table>
+                    <thead><tr><th>#</th><th>{tt('שם')}</th><th>{tt('שנת לידה')}</th><th>{tt('דירוג')}</th><th>WTN</th></tr></thead>
+                    <tbody>{a.players.map((p) => <tr key={`${p.draw}-${p.n}-${p.name}`}><td>{p.n}</td><td dir="ltr" style={{ textAlign: 'start' }}>{p.name}</td><td>{p.born ?? ''}</td><td>{p.rank ? `#${p.rank}` : ''}</td><td>{p.wtn}</td></tr>)}</tbody>
+                  </table>
+                </div>
+              </details>
+            ))}
+          </div>
+        </>
+      )}
       <h2>{tt('קטגוריות')} <span className="muted" style={{ fontWeight: 400 }}>· {cats.length}</span></h2>
       {ents.length === 0 && cats.length > 0 && <p className="muted" style={{ margin: 0 }}>{tt('עדיין אין משתתפים מאושרים באתר.')}</p>}
       <div className="grid cols">

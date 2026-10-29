@@ -31,6 +31,7 @@ function cleanBracket(x: unknown, depth = 0, count = { n: 0 }): BracketNode | nu
 }
 /** `area` is the region or age group the venue serves ("אזור צפון"), `club` the venue. */
 export interface ContactIn { area: string; club: string; name: string; phone: string }
+export interface AcceptanceEvent { label: string; active: number; updated: string | null; players: { draw: string; n: number; name: string; nation: string; born: number | null; rank: string; wtn: string }[] }
 export interface CompetitionIn {
   kind: 'competition'; name: string; start: string; end: string; feeShekel: number; level: 'NATIONAL' | 'REGIONAL' | 'INTERNATIONAL' | 'CIRCUIT' | 'LEAGUE';
   section?: 'YOUTH' | 'ADULTS' | 'MASTERS' | 'OTHER'; sourceUrl?: string; registerUrl?: string; registrationCloses?: string | null; venues: { club: string; address: string }[]; categories: CategoryIn[];
@@ -38,6 +39,8 @@ export interface CompetitionIn {
   resultsOnly?: boolean;
   /** Who to call at each venue ("פרטי יצירת קשר" on the federation's page): the tournament director. */
   contacts?: ContactIn[];
+  /** Who is accepted so far, per event (Tennis Europe's acceptance list): shown on the tournament page. */
+  acceptance?: AcceptanceEvent[];
   doubles?: DoublesIn[];
 }
 
@@ -114,6 +117,10 @@ export function validateCompetitionImport(x: unknown): CompetitionIn {
   const contacts: ContactIn[] = (Array.isArray(b.contacts) ? b.contacts : []).slice(0, 30)
     .map((c) => ({ area: clean(c?.area, 80), club: clean(c?.club, 120), name: clean(c?.name, 80), phone: clean(c?.phone, 30).replace(/[^\d+\-\s]/g, '').trim() }))
     .filter((c) => c.name || c.phone);
+  const acceptance: AcceptanceEvent[] = (Array.isArray(b.acceptance) ? b.acceptance : []).slice(0, 12).map((a) => ({
+    label: clean(a?.label, 40), active: Math.max(0, Number(a?.active) || 0), updated: typeof a?.updated === 'string' && !Number.isNaN(Date.parse(a.updated)) ? new Date(a.updated).toISOString() : null,
+    players: (Array.isArray(a?.players) ? a.players : []).slice(0, 300).map((x) => ({ draw: clean(x?.draw, 30), n: Number(x?.n) || 0, name: clean(x?.name, 80), nation: clean(x?.nation, 40), born: Number.isInteger(x?.born) ? (x.born as number) : null, rank: clean(x?.rank, 12), wtn: clean(x?.wtn, 8) })).filter((x) => x.name),
+  })).filter((a) => a.label && a.players.length);
   return {
     kind: 'competition', name, start: b.start as string, end: b.end as string,
     feeShekel: Math.max(0, Number(b.feeShekel) || 0),
@@ -124,6 +131,7 @@ export function validateCompetitionImport(x: unknown): CompetitionIn {
     venues: (Array.isArray(b.venues) ? b.venues : []).slice(0, 20).map((v) => ({ club: clean(v?.club, 120), address: clean(v?.address, 200) })).filter((v) => v.club),
     categories: cats,
     ...(contacts.length ? { contacts } : {}),
+    ...(acceptance.length ? { acceptance } : {}),
     ...(doubles.length ? { doubles } : {}),
     ...(b.resultsOnly ? { resultsOnly: true } : {}),
   };
@@ -174,6 +182,8 @@ export async function importCompetition(db: Db, input: CompetitionIn, now = new 
       sourceUrl: input.sourceUrl || null, registerUrl: input.registerUrl || null, registrationCloses: closes,
       // the app's lists carry no contacts: never blank what the federation's page gave
       ...(input.contacts?.length ? { contacts: input.contacts } : {}),
+      // the list is replaced as a whole each run (people drop out and come in)
+      ...(input.acceptance?.length ? { acceptance: input.acceptance } : {}),
     };
     let tid: string;
     if (input.resultsOnly && !existing) { stats.skipped = true; return; }
@@ -598,7 +608,7 @@ const distinctive = (name: string) => new Set(squeeze(name).split(' ').filter((w
 const DAY = 864e5;
 /** The Gantt's "Tennis Europe U14" week and the tournament Tennis Europe lists for that week ("TE 14 - HAIFA", or our name for it): the same week. */
 const sameTennisEuropeWeek = (r: { name: string; start: Date; end: Date }, e: CalendarEventIn) =>
-  /^tennis europe/i.test(e.name) && /^(te\b|tennis europe)/i.test(r.name) && Math.abs(+r.start - Date.parse(`${e.start}T00:00:00Z`)) <= DAY && Math.abs(+r.end - Date.parse(`${e.end}T23:59:59Z`)) <= 2 * DAY;
+  /^(tennis europe|itf)/i.test(e.name) && /^(te\b|tennis europe|itf)/i.test(r.name) && (/^itf/i.test(e.name) === /^itf/i.test(r.name)) && Math.abs(+r.start - Date.parse(`${e.start}T00:00:00Z`)) <= DAY && Math.abs(+r.end - Date.parse(`${e.end}T23:59:59Z`)) <= 2 * DAY;
 
 /**
  * Keeps the planned competitions (status PLANNED) equal to the Gantt: adds, moves and removes them. A planned competition that a real one
@@ -619,7 +629,7 @@ export async function importCalendar(db: Db, input: CalendarIn, now = new Date()
   const covers = (e: CalendarEventIn) => {
     const s = Date.parse(`${e.start}T00:00:00Z`), en = Date.parse(`${e.end}T23:59:59Z`), words = distinctive(e.name);
     return real.some((r) => r.section === e.section && +r.start <= en + 3 * DAY && +r.end >= s - 3 * DAY
-      && (/^tennis europe/i.test(e.name) ? sameTennisEuropeWeek(r, e) : sameEvent(r.name, e.name) || e.section === 'MASTERS' || [...distinctive(r.name)].some((w) => words.has(w))));
+      && (/^(tennis europe|itf)/i.test(e.name) ? sameTennisEuropeWeek(r, e) : sameEvent(r.name, e.name) || e.section === 'MASTERS' || [...distinctive(r.name)].some((w) => words.has(w))));
   };
   const wanted = events.filter((e) => (covers(e) ? (stats.covered++, false) : true));
   const key = (name: string, start: Date | string) => `${name}|${new Date(start).toISOString().slice(0, 10)}`;

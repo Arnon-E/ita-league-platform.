@@ -115,6 +115,49 @@ function AboutScreen({ onBack }: { onBack: () => void }) {
   );
 }
 
+/** Junior tournaments outside Israel (Tennis Europe and ITF): the website's "abroad" page. Tapping one opens its page on the circuit's own site. */
+function Abroad({ onBack }: { onBack: () => void }) {
+  const { data, err, busy } = useData(api.abroad);
+  const [age, setAge] = useState(''); const [circuit, setCircuit] = useState(''); const [openOnly, setOpenOnly] = useState(false); const [shown, setShown] = useState(40);
+  const now = Date.now();
+  const state = (e: api.AbroadEvent) => (!e.entryDeadline ? 'unknown' : +new Date(e.entryDeadline) < now ? 'closed' : e.entryOpens && +new Date(e.entryOpens) > now ? 'soon' : 'open');
+  const rows = (data ?? []).filter((e) => (!age || String(e.age) === age) && (!circuit || e.circuit === circuit) && (!openOnly || ['open', 'soon'].includes(state(e))));
+  const dm = (iso: string) => new Date(iso).toLocaleDateString(locale(), { day: 'numeric', month: 'numeric', timeZone: 'Asia/Jerusalem' });
+  const dt = (iso: string) => new Date(iso).toLocaleString(locale(), { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem' });
+  const Chip = ({ on, label, onPress }: { on: boolean; label: string; onPress: () => void }) => <Pressable style={[st.chip, on && st.chipOn]} onPress={onPress}><Text style={on ? st.chipOnT : st.b}>{label}</Text></Pressable>;
+  return (
+    <FlatList contentContainerStyle={st.pad} data={rows.slice(0, shown)} keyExtractor={(e) => e.id}
+      ListHeaderComponent={<>
+        <Head title={tr('תחרויות נוער בחו״ל')} onBack={onBack} />
+        <View style={[st.row, { flexWrap: 'wrap' }]}>
+          {([['', tr('הכול')], ['TE', 'Tennis Europe'], ['ITF', 'ITF']] as const).map(([k, l]) => <Chip key={k} on={circuit === k} label={l} onPress={() => { setCircuit(k); setShown(40); }} />)}
+        </View>
+        <View style={[st.row, { flexWrap: 'wrap' }]}>
+          {([['', tr('כל הגילאים')], ['12', 'U12'], ['14', 'U14'], ['16', 'U16']] as const).map(([k, l]) => <Chip key={k} on={age === k} label={l} onPress={() => { setAge(k); setShown(40); }} />)}
+          <Chip on={openOnly} label={tr('עוד אפשר להירשם')} onPress={() => { setOpenOnly(!openOnly); setShown(40); }} />
+        </View>
+        <Wait err={err} busy={busy} />
+        {!busy && !err && <Text style={st.muted}>{rows.length} {tr('טורנירים')}</Text>}
+      </>}
+      ListEmptyComponent={!busy && !err ? <Text style={st.muted}>{tr('אין טורנירים שמתאימים לסינון.')}</Text> : null}
+      onEndReached={() => setShown((n) => n + 40)} onEndReachedThreshold={0.5}
+      renderItem={({ item: e }) => {
+        const s = state(e);
+        return (
+          <Pressable style={st.card} onPress={() => Linking.openURL(e.url)}>
+            <Text style={st.muted}>{e.circuit === 'ITF' ? 'ITF ' + e.category : [e.age ? 'U' + e.age : '', e.category].filter(Boolean).join(' · ')}</Text>
+            <Text style={st.b}>{e.name}</Text>
+            <Text style={st.muted}>{[e.city, e.country].filter(Boolean).join(', ')} · {dm(e.start)} – {new Date(e.end).toLocaleDateString(locale(), { timeZone: 'Asia/Jerusalem' })}</Text>
+            {!!(e.surface || e.fee) && <Text style={st.muted}>{[e.surface, e.fee && tr('דמי השתתפות') + ': ' + e.fee].filter(Boolean).join(' · ')}</Text>}
+            <Text style={[st.muted, s === 'open' && { color: T.ok, fontWeight: '700' }]}>
+              {s === 'open' && e.entryDeadline ? tr('הרשמה עד') + ' ' + dt(e.entryDeadline) : s === 'soon' && e.entryOpens ? tr('ההרשמה נפתחת') + ' ' + dm(e.entryOpens) : s === 'closed' ? tr('ההרשמה נסגרה') : tr('פתיחה ↗')}
+            </Text>
+          </Pressable>
+        );
+      }} />
+  );
+}
+
 function Regulations({ onBack }: { onBack: () => void }) {
   const { data, err, busy } = useData(api.regulations);
   const [q, setQ] = useState('');
@@ -194,6 +237,7 @@ function Stats({ onBack }: { onBack: () => void }) {
 
 const ITEMS = [
   ['leagues', 'leagues', 'ליגות', 'ליגת Winner: טבלאות ולוח משחקים'],
+  ['abroad', 'info', 'תחרויות בחו״ל', 'טורנירי נוער של Tennis Europe ו-ITF: תאריכים, תנאים והרשמה'],
   ['regs', 'doc', 'תקנונים ונהלים', 'כל התקנונים והמסמכים של האיגוד'],
   ['clubs', 'club', 'מועדונים', 'רשימת המועדונים וכמות השחקנים'],
   ['stats', 'stats', 'סטטיסטיקות', 'מובילים בניצחונות ומועדונים גדולים'],
@@ -205,6 +249,7 @@ export function More({ initial }: { initial?: string }) {
   const [page, setPage] = useState<string | null>(initial ?? null);
   const back = () => setPage(null);
   if (page === 'leagues') return <Leagues onBack={back} />;
+  if (page === 'abroad') return <Abroad onBack={back} />;
   if (page === 'regs') return <Regulations onBack={back} />;
   if (page === 'about') return <AboutScreen onBack={back} />;
   if (page === 'clubs') return <Clubs onBack={back} />;
@@ -237,6 +282,9 @@ const st = StyleSheet.create({
   ccountN: { fontSize: 19, fontWeight: '800', color: T.text },
   ccountL: { fontSize: 11.5, color: T.muted },
   b: { fontSize: 16, fontWeight: '700', color: T.text },
+  chip: { paddingHorizontal: 16, minHeight: 40, borderRadius: 999, borderWidth: 1, borderColor: T.line2, alignItems: 'center', justifyContent: 'center', backgroundColor: T.surface },
+  chipOn: { backgroundColor: T.btn, borderColor: T.btn },
+  chipOnT: { color: T.btnText, fontSize: 16, fontWeight: '700' },
   muted: { color: T.muted, fontSize: 14 },
   err: { backgroundColor: T.badbg, color: T.bad, padding: 12, borderRadius: 14, overflow: 'hidden', margin: 12 },
   input: { backgroundColor: T.surface, borderWidth: 1, borderColor: T.line2, borderRadius: 14, paddingHorizontal: 16, minHeight: 48, fontSize: 16, textAlign: 'right', color: T.text },

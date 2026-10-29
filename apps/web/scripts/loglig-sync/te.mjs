@@ -16,7 +16,10 @@ const text = (h) => decode(h.replace(/<script[\s\S]*?<\/script>/g, '').replace(/
 const MONTH = { Jan: 1, Feb: 2, Mar: 3, Apr: 4, May: 5, Jun: 6, Jul: 7, Aug: 8, Sep: 9, Oct: 10, Nov: 11, Dec: 12 };
 const pad = (n) => String(n).padStart(2, '0');
 /** Israeli cities as Tennis Europe spells them (upper case, with street names) -> the Hebrew the site uses. */
-const CITY_HE = [['TEL AVIV', 'תל אביב'], ['HAIFA', 'חיפה'], ['JERUSALEM', 'ירושלים'], ['RAANANA', 'רעננה'], ['HERZLIYA', 'הרצליה'], ['RAMAT GAN', 'רמת גן'], ['NETANYA', 'נתניה'], ['BEER SHEVA', 'באר שבע'], ['ASHKELON', 'אשקלון'], ['EILAT', 'אילת'], ['KFAR SABA', 'כפר סבא'], ['CAESAREA', 'קיסריה'], ['JAFFA', 'יפו']];
+const CITY_HE = [['TEL AVIV', 'תל אביב'], ['HAIFA', 'חיפה'], ['JERUSALEM', 'ירושלים'], ['RAANANA', 'רעננה'], ['HERZLIYA', 'הרצליה'], ['RAMAT GAN', 'רמת גן'], ['NETANYA', 'נתניה'], ['BEER SHEVA', 'באר שבע'], ['ASHKELON', 'אשקלון'], ['EILAT', 'אילת'], ['KFAR SABA', 'כפר סבא'], ['CAESAREA', 'קיסריה'], ['JAFFA', 'יפו'], ['RAMAT HASHARON', 'רמת השרון'], ['RAMAT-HASHARON', 'רמת השרון'], ['YAFO', 'יפו']];
+
+/** Hebrew name of an Israeli city mentioned in any of the texts ("Ramat Hasharon", "TE 14 - HAIFA"), or undefined. */
+export const hebrewCity = (...texts) => CITY_HE.find(([en]) => texts.some((t) => String(t ?? '').toUpperCase().includes(en)))?.[1];
 
 /** The year's events from the "other events" tab: [{ id, title }]. */
 export function parseOtherEvents(html) {
@@ -54,6 +57,45 @@ export function displayName(title, city) {
   return `Tennis Europe ${age ? `U${age}` : ''} ${he}`.replace(/\s+/g, ' ').trim();
 }
 
+/**
+ * One event's acceptance list (the page shows one event at a time, "BS14" / "GS14"...) -> { label, active, updated, players: [{ draw, n, name, nation, born, rank, wtn }] }.
+ * The table has a header row per draw ("Main", then "(RA: 18, OA: 14 ...). Total positions: 48") followed by one row per player.
+ */
+export function parseAcceptance(html) {
+  const label = text(html.match(/<h3>([^<]*)<\/h3>/)?.[1] ?? '').replace(/\s*Acceptance list\s*$/i, '');
+  const active = Number(text(html).match(/(\d+) Active entries/)?.[1] ?? 0);
+  const updated = text(html).match(/Last updated:\s*(\d{2})\/(\d{2})\/(\d{4}) (\d{2}):(\d{2}) GMT/);
+  const players = [];
+  let draw = '';
+  for (const row of html.match(/<tr[\s\S]*?<\/tr>/g) ?? []) {
+    const head = row.match(/^<tr[^>]*>\s*<th[^>]*>([^<]+)<\/th>\s*<th/);
+    if (head) { draw = text(head[1]); continue; }
+    const cells = (row.match(/<td[\s\S]*?<\/td>/g) ?? []).map((c) => text(c.replace(/<span class="printonly[^"]*">[\s\S]*?<\/span>/g, '')));
+    if (cells.length < 6 || !/^\d+$/.test(cells[0])) continue;
+    players.push({ draw, n: Number(cells[0]), name: cells[1], nation: cells[2], born: Number(cells[3]) || null, rank: cells[4].replace(/^#/, ''), wtn: cells[6] ?? '' });
+  }
+  return { label, active, updated: updated ? `${updated[3]}-${updated[2]}-${updated[1]}T${updated[4]}:${updated[5]}:00.000Z` : null, players };
+}
+
+/** Every event's acceptance list of a tournament: the first from the page, the others by the page's own postback (the event selector). */
+export async function readAcceptance(ts, id) {
+  const url = `/sport/acceptancelist.aspx?id=${id}`;
+  const first = await ts.get(url);
+  const select = first.match(/<select[^>]*id="[^"]*selectevent"[^>]*name="([^"]+)"[\s\S]*?<\/select>/);
+  const options = select ? [...select[0].matchAll(/<option[^>]*value="(\d+)"[^>]*>([^<]*)<\/option>/g)].map((m) => ({ value: m[1], label: text(m[2]), selected: /selected/.test(m[0]) })) : [];
+  const out = [parseAcceptance(first)];
+  for (const o of options.filter((x) => !x.selected)) {
+    const body = new URLSearchParams();
+    for (const m of first.matchAll(/<input[^>]*type="hidden"[^>]*>/g)) {
+      const name = m[0].match(/name="([^"]+)"/)?.[1];
+      if (name) body.set(name, decode(m[0].match(/value="([^"]*)"/)?.[1] ?? ''));
+    }
+    body.set('__EVENTTARGET', 'ClientFunctionHandler'); body.set('__EVENTARGUMENT', 'selectevent_IndexChanged'); body.set(select[1], o.value); body.set('SearchString', '');
+    out.push(parseAcceptance(await ts.get(url, { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body })));
+  }
+  return out.filter((a) => a.label);
+}
+
 /** Israeli events as competition documents. `ids` adds events by id. Draws and results are filled in when the pages have them. */
 export async function readTennisEurope({ year = new Date().getFullYear(), ids = [], log = console.log } = {}) {
   const ts = session(TE);
@@ -72,6 +114,8 @@ export async function readTennisEurope({ year = new Date().getFullYear(), ids = 
       const ev = parseEvent(await ts.get(`/tournament/${id.toLowerCase()}`), year);
       if (!ev || !/israel/i.test(ev.country)) continue;
       const name = displayName(ev.title, ev.city);
+      let acceptance = [];
+      try { acceptance = (await readAcceptance(ts, id)).filter((x) => x.players.length); } catch (e) { log(`  no acceptance list for ${ev.title}: ${String(e.message).slice(0, 50)}`); }
       let categories = [], doubles = [];
       try {
         const data = await readTournament(ts, id);
@@ -79,7 +123,7 @@ export async function readTennisEurope({ year = new Date().getFullYear(), ids = 
       } catch (e) { log(`  no draws yet for ${ev.title}: ${String(e.message).slice(0, 50)}`); }
       docs.push({
         kind: 'competition', name, start: ev.start, end: ev.end, feeShekel: 0, level: 'INTERNATIONAL', section: 'YOUTH', sourceUrl: `${TE}/tournament/${id.toLowerCase()}`, registerUrl: '', registrationCloses: null, isDoubles: false,
-        venues: [{ club: ev.venue, address: ev.city }], contacts: ev.contact ? [{ area: '', club: ev.venue, name: ev.contact.name, phone: ev.contact.phone }] : [], categories, doubles, entries: ev.entries,
+        venues: [{ club: ev.venue, address: ev.city }], contacts: ev.contact ? [{ area: '', club: ev.venue, name: ev.contact.name, phone: ev.contact.phone }] : [], categories, doubles, entries: ev.entries, acceptance,
       });
     } catch (e) { log(`  tennis europe event failed ${id}: ${String(e.message).slice(0, 60)}`); }
   }

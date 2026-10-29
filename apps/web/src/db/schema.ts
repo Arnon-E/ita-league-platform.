@@ -137,6 +137,8 @@ export const tournaments = pgTable('tournaments', {
   sourceUrl: text('source_url'),
   registerUrl: text('register_url'),
   /** Tournament director(s) per venue, from the federation's page. */
+  /** Players accepted so far, by event ("BS14"), as a federation's own site lists them: [{ label, active, updated, players: [{ draw, n, name, nation, born, rank, wtn }] }]. */
+  acceptance: jsonb('acceptance').$type<{ label: string; active: number; updated: string | null; players: { draw: string; n: number; name: string; nation: string; born: number | null; rank: string; wtn: string }[] }[] | null>(),
   contacts: jsonb('contacts').$type<{ area: string; club: string; name: string; phone: string }[]>(),
   createdAt: createdAt(),
 });
@@ -221,6 +223,8 @@ export const abroadEvents = pgTable('abroad_events', {
   category: text('category').notNull().default(''),
   /** 12 | 14 | 16 (the tournament's "12&U" group); null when not stated. */
   ageGroup: integer('age_group'),
+  /** Where the tournament comes from: 'TE' (Tennis Europe) or 'ITF' (ITF World Tennis Tour Juniors). */
+  circuit: text('circuit').notNull().default('TE'),
   /** Closed to players of other nations ("closed event"). */
   closed: boolean('closed').notNull().default(false),
   entryOpens: timestamp('entry_opens', { withTimezone: true }),
