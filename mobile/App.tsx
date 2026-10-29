@@ -37,7 +37,7 @@ type Go = (t: Tab, extra?: string) => void;
 // the website's dock; everything else is in the menu (hamburger) and the account behind the avatar, as on the site
 const TABS: [Tab, string, 'home' | 'live' | 'rank' | 'players' | 'search'][] = [['t', 'בית', 'home'], ['live', 'משחקים', 'live'], ['rank', 'דירוג', 'rank'], ['players', 'שחקנים', 'players'], ['search', 'חיפוש', 'search']];
 // the website's menu, in its order
-const MENU: [Tab, string, string?][] = [['t', 'תחרויות'], ['live', 'משחקים'], ['rank', 'דירוג'], ['players', 'שחקנים'], ['more', 'מועדונים', 'clubs'], ['more', 'ליגות', 'leagues'], ['more', 'בחו״ל', 'abroad'], ['more', 'תקנונים', 'regs'], ['more', 'סטטיסטיקות', 'stats'], ['more', 'אודות', 'about'], ['search', 'חיפוש']];
+const MENU: [Tab, string, string?][] = [['t', 'תחרויות'], ['live', 'משחקים'], ['rank', 'דירוג'], ['players', 'שחקנים'], ['more', 'מועדונים', 'clubs'], ['more', 'ליגות', 'leagues'], ['more', 'תחרויות חו״ל', 'abroad'], ['more', 'תקנונים', 'regs'], ['more', 'סטטיסטיקות', 'stats'], ['more', 'אודות', 'about'], ['search', 'חיפוש']];
 
 export default function App() {
   const [ready, setReady] = useState(false);
