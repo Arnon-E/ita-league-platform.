@@ -4,7 +4,7 @@
 //   node scripts/loglig-sync/itf.mjs                       # dry run (next 240 days)
 //   node scripts/loglig-sync/itf.mjs --push --url <site>   # CRON_SECRET from the environment
 //
-// Read-only: plain GETs, 100 tournaments a page. The list has no entry deadlines or fees, so the page shows the link to the tournament's own page.
+// Read-only: plain GETs, one request for the whole period (300 tournaments at a time if there are more). The list has no entry deadlines or fees, so the page shows the link to the tournament's own page.
 import { hebrewCity } from './te.mjs';
 
 const ITF = 'https://www.itftennis.com';
@@ -26,9 +26,9 @@ export async function readItf({ days = 240, log = console.log } = {}) {
   const today = new Date().toISOString().slice(0, 10);
   const to = new Date(Date.now() + days * 864e5).toISOString().slice(0, 10);
   const items = [];
-  for (let skip = 0; skip < 1000; skip += 100) {
+  for (let skip = 0; skip < 1000; skip = items.length) {
     await new Promise((r) => setTimeout(r, 700));
-    const res = await fetch(`${ITF}/tennis/api/TournamentApi/GetCalendar?circuitCode=JT&searchString=&skip=${skip}&take=100&nationCodes=&zoneCodes=&dateFrom=${today}&dateTo=${to}&indoorOutdoor=&categories=&isOrderAscending=true&orderField=startDate&surfaceCodes=`, { headers: UA });
+    const res = await fetch(`${ITF}/tennis/api/TournamentApi/GetCalendar?circuitCode=JT&searchString=&skip=${skip}&take=300&nationCodes=&zoneCodes=&dateFrom=${today}&dateTo=${to}&indoorOutdoor=&categories=&isOrderAscending=true&orderField=startDate&surfaceCodes=`, { headers: UA });
     if (!res.ok) throw new Error(`itf ${res.status}`);
     // the site's bot protection answers an HTML "request unsuccessful" page when it has seen too many requests: not an error in our data, so nothing
     // is sent (the events already on the site stay) and the next run tries again; the request is never disguised
