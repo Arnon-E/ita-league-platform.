@@ -6,6 +6,7 @@ import { resetDb } from './helpers';
 import { parseEntryDates, parseFactsheet, parseSearch } from '../scripts/loglig-sync/abroad.mjs';
 import { israelDocs, parseItem } from '../scripts/loglig-sync/itf.mjs';
 import { abroadCatalog, entryState, importAbroad, validateAbroadImport } from '@/services/abroad';
+import { countryInfo, flagEmoji } from '@/lib/countries';
 
 const fixture = (n: string) => readFileSync(new URL(`./fixtures/${n}`, import.meta.url), 'utf8');
 
@@ -97,5 +98,15 @@ describe('ITF juniors and the two circuits together', () => {
     // the TE list now lacks its event: only the TE row goes
     await importAbroad(db, validateAbroadImport({ kind: 'abroad', circuit: 'TE', until: '2026-12-31', events: [{ ...base, id: '4F42640A-EF8A-4BD9-A603-9FCE5F22ABF8', name: 'TE two', start: '2026-12-09', end: '2026-12-14' }] }), NOW);
     expect((await db.select({ id: schema.abroadEvents.id }).from(schema.abroadEvents)).map((r) => r.id).sort()).toEqual(['4F42640A-EF8A-4BD9-A603-9FCE5F22ABF8', 'J-J30-CYP-2026-005']);
+  });
+});
+
+describe('countries', () => {
+  it('knows the flag and the Hebrew name of the countries the circuits list', () => {
+    expect(countryInfo('Turkiye')).toEqual({ cc: 'tr', he: 'טורקיה' });
+    expect(countryInfo('Korea, Rep.')).toEqual({ cc: 'kr', he: 'דרום קוריאה' });
+    expect(countryInfo('Atlantis')).toEqual({ cc: null, he: 'Atlantis' });
+    expect(flagEmoji('il')).toBe('🇮🇱');
+    expect(flagEmoji(null)).toBe('');
   });
 });

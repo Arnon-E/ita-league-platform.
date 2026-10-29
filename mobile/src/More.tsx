@@ -118,12 +118,15 @@ function AboutScreen({ onBack }: { onBack: () => void }) {
 /** Junior tournaments outside Israel (Tennis Europe and ITF): the website's "abroad" page. Tapping one opens its page on the circuit's own site. */
 function Abroad({ onBack }: { onBack: () => void }) {
   const { data, err, busy } = useData(api.abroad);
+  const [help, setHelp] = useState(false);
   const [age, setAge] = useState(''); const [circuit, setCircuit] = useState(''); const [openOnly, setOpenOnly] = useState(false); const [shown, setShown] = useState(40);
   const now = Date.now();
   const state = (e: api.AbroadEvent) => (!e.entryDeadline ? 'unknown' : +new Date(e.entryDeadline) < now ? 'closed' : e.entryOpens && +new Date(e.entryOpens) > now ? 'soon' : 'open');
   const rows = (data ?? []).filter((e) => (!age || String(e.age) === age) && (!circuit || e.circuit === circuit) && (!openOnly || ['open', 'soon'].includes(state(e))));
   const dm = (iso: string) => new Date(iso).toLocaleDateString(locale(), { day: 'numeric', month: 'numeric', timeZone: 'Asia/Jerusalem' });
   const dt = (iso: string) => new Date(iso).toLocaleString(locale(), { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem' });
+  const flag = (cc: string | null) => (cc && /^[a-z]{2}$/i.test(cc) ? String.fromCodePoint(...[...cc.toUpperCase()].map((c) => 0x1f1a5 + c.charCodeAt(0))) + ' ' : '');
+  const year = new Date().getFullYear();
   const Chip = ({ on, label, onPress }: { on: boolean; label: string; onPress: () => void }) => <Pressable style={[st.chip, on && st.chipOn]} onPress={onPress}><Text style={on ? st.chipOnT : st.b}>{label}</Text></Pressable>;
   return (
     <FlatList contentContainerStyle={st.pad} data={rows.slice(0, shown)} keyExtractor={(e) => e.id}
@@ -136,6 +139,15 @@ function Abroad({ onBack }: { onBack: () => void }) {
           {([['', tr('כל הגילאים')], ['12', 'U12'], ['14', 'U14'], ['16', 'U16']] as const).map(([k, l]) => <Chip key={k} on={age === k} label={l} onPress={() => { setAge(k); setShown(40); }} />)}
           <Chip on={openOnly} label={tr('עוד אפשר להירשם')} onPress={() => { setOpenOnly(!openOnly); setShown(40); }} />
         </View>
+        <Pressable onPress={() => setHelp(!help)}><Text style={[st.muted, { textDecorationLine: 'underline' }]}>{tr('מה זה קטגוריות, ואיך יודעים לאיזה טורניר להירשם?')}</Text></Pressable>
+        {help && (
+          <View style={st.card}>
+            <Text style={st.muted}><Text style={st.b}>{tr('גיל (U12 / U14 / U16)')}: </Text>{tr('הטורניר פתוח לשחקנים עד הגיל הזה בשנת הטורניר.')} U12 = {tr('נולדו ב-')}{year - 12} {tr('ואחריה')}, U14 = {year - 14} {tr('ואחריה')}, U16 = {year - 16} {tr('ואחריה')}.</Text>
+            <Text style={st.muted}><Text style={st.b}>{tr('קטגוריה ב-Tennis Europe')}: </Text>{tr('זו דרגת הטורניר. Super Category ו-Category 1 הן הדרגות הגבוהות, עם שדה חזק יותר ויותר נקודות לדירוג של Tennis Europe. Category 2 היא דרגה בינונית, ו-Category 3 היא דרגת הכניסה, הנגישה ביותר לשחקן שמתחיל לשחק בחו״ל. Festival הוא אירוע מיוחד.')}</Text>
+            <Text style={st.muted}><Text style={st.b}>{tr('ITF (J30 עד J500)')}: </Text>{tr('דרגות הסבב הבינלאומי של ITF לנוער. ככל שהמספר גבוה יותר, השדה חזק יותר והנקודות לדירוג של ITF רבות יותר.')}</Text>
+            <Text style={st.muted}><Text style={st.b}>{tr('איך בוחרים?')} </Text>{tr('מתחילים מהגיל, ואז בוחרים דרגה שמתאימה לרמה ולדירוג, ולתאריכים ולתקציב (דמי ההשתתפות מופיעים בכרטיס). ההרשמה בפועל נעשית דרך האיגוד או דרך אתר הטורניר (הכפתור "לדף הטורניר"), ולכן כדאי להתייעץ עם המאמן או האיגוד לפני שמחליטים.')}</Text>
+          </View>
+        )}
         <Wait err={err} busy={busy} />
         {!busy && !err && <Text style={st.muted}>{rows.length} {tr('טורנירים')}</Text>}
       </>}
@@ -147,7 +159,7 @@ function Abroad({ onBack }: { onBack: () => void }) {
           <Pressable style={st.card} onPress={() => Linking.openURL(e.url)}>
             <Text style={st.muted}>{e.circuit === 'ITF' ? 'ITF ' + e.category : [e.age ? 'U' + e.age : '', e.category].filter(Boolean).join(' · ')}</Text>
             <Text style={st.b}>{e.name}</Text>
-            <Text style={st.muted}>{[e.city, e.country].filter(Boolean).join(', ')} · {dm(e.start)} – {new Date(e.end).toLocaleDateString(locale(), { timeZone: 'Asia/Jerusalem' })}</Text>
+            <Text style={st.muted}>{flag(e.cc)}{[e.city, e.country].filter(Boolean).join(', ')} · {dm(e.start)} – {new Date(e.end).toLocaleDateString(locale(), { timeZone: 'Asia/Jerusalem' })}</Text>
             {!!(e.surface || e.fee) && <Text style={st.muted}>{[e.surface, e.fee && tr('דמי השתתפות') + ': ' + e.fee].filter(Boolean).join(' · ')}</Text>}
             <Text style={[st.muted, s === 'open' && { color: T.ok, fontWeight: '700' }]}>
               {s === 'open' && e.entryDeadline ? tr('הרשמה עד') + ' ' + dt(e.entryDeadline) : s === 'soon' && e.entryOpens ? tr('ההרשמה נפתחת') + ' ' + dm(e.entryOpens) : s === 'closed' ? tr('ההרשמה נסגרה') : tr('פתיחה ↗')}

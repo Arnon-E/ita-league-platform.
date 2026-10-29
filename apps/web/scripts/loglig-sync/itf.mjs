@@ -30,7 +30,11 @@ export async function readItf({ days = 240, log = console.log } = {}) {
     await new Promise((r) => setTimeout(r, 700));
     const res = await fetch(`${ITF}/tennis/api/TournamentApi/GetCalendar?circuitCode=JT&searchString=&skip=${skip}&take=100&nationCodes=&zoneCodes=&dateFrom=${today}&dateTo=${to}&indoorOutdoor=&categories=&isOrderAscending=true&orderField=startDate&surfaceCodes=`, { headers: UA });
     if (!res.ok) throw new Error(`itf ${res.status}`);
-    const body = await res.json();
+    // the site's bot protection answers an HTML "request unsuccessful" page when it has seen too many requests: not an error in our data, so nothing
+    // is sent (the events already on the site stay) and the next run tries again; the request is never disguised
+    const raw = await res.text();
+    let body;
+    try { body = JSON.parse(raw); } catch { throw new Error('ITF answered with a block page (bot protection); trying again at the next sync'); }
     items.push(...(body.items ?? []));
     if (items.length >= (body.totalItems ?? 0) || !(body.items ?? []).length) break;
   }
@@ -50,7 +54,9 @@ export function israelDocs(israel) {
 if (process.argv[1] && process.argv[1].endsWith('itf.mjs')) {
   const args = process.argv.slice(2);
   const opt = (n, d) => (args.includes(n) ? args[args.indexOf(n) + 1] : d);
-  const { events, israel, until } = await readItf({ days: Number(opt('--days', 240)) });
+  let read;
+  try { read = await readItf({ days: Number(opt('--days', 240)) }); } catch (e) { console.warn(String(e.message)); process.exit(0); }
+  const { events, israel, until } = read;
   for (const e of events) console.log(`${e.start}..${e.end}  ${e.country.padEnd(16)} ${e.city.padEnd(18)} ${e.category.padEnd(5)} ${e.surface.padEnd(8)} ${e.name}`);
   const docs = israelDocs(israel);
   for (const d of docs) console.log(`ISRAEL ${d.start}..${d.end}  ${d.name}`);
