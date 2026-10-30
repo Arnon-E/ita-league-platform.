@@ -33,8 +33,9 @@ export default async function AbroadEventPage({ params }: { params: Promise<{ id
   const sideOf = (m: DrawMatch, k: 'a' | 'b'): BracketSide => ({ names: m[k].names, win: m[k].won, me: m[k].cc.includes('ISR'), sets: m.sets.length ? m.sets.map((s, i) => <b key={i}>{s[k === 'a' ? 0 : 1]}</b>) : null });
   const treeOf = (rounds: DrawMatch[][]) => rounds.map((round, k): (BracketCell | null)[] => {
     const want = 2 ** (rounds.length - 1 - k);
-    return Array.from({ length: want }, (_, i) => (round[i] ? { a: sideOf(round[i]!, 'a'), b: sideOf(round[i]!, 'b'), meta: round[i]!.date || undefined } : null));
+    return Array.from({ length: want }, (_, i) => (round[i] ? { a: sideOf(round[i]!, 'a'), b: sideOf(round[i]!, 'b'), meta: dateOf(round[i]!.date) || undefined } : null));
   });
+  const dateOf = (d: string) => d.replace(/^[A-Za-z]{3}\s+/, '').replace(/\//g, '.');
   const draws = e.results?.draws ?? [];
 
   const Side = ({ s }: { s: { names: string[]; cc: string[]; won: boolean; msg: string } }) => (
@@ -84,13 +85,13 @@ export default async function AbroadEventPage({ params }: { params: Promise<{ id
                 <div className="card grid" style={{ gap: 10 }}>
                   <div style={{ overflowX: 'auto' }}>
                     <table>
-                      <thead><tr><th>#</th><th>{t('שחקן')}</th><th>{t('משחקים')}</th><th>{t('נצחונות')}</th><th>{t('סטים')}</th><th>{t('גיימים')}</th></tr></thead>
+                      <thead><tr><th>#</th><th>{t('שחקן')}</th><th>{t('נצחונות')}</th><th>{t('סטים')}</th></tr></thead>
                       <tbody>
                         {groupTable(d.rounds).map((r, k) => (
                           <tr key={r.names.join('/')} style={r.cc.includes('ISR') ? { fontWeight: 700, color: 'var(--blue)' } : undefined}>
                             <td>{k + 1}</td>
                             <td dir="ltr" style={{ textAlign: 'start' }}><span style={{ display: 'inline-flex', gap: 3, marginInlineEnd: 6, verticalAlign: 'middle' }}>{r.cc.map((c, j) => <img key={j} src={flagUrl(c)} width={20} height={15} alt={c} style={{ borderRadius: 2, boxShadow: '0 0 0 1px var(--line)' }} />)}</span>{r.names.join(' / ')}</td>
-                            <td>{r.played}</td><td>{r.won}</td><td dir="ltr">{r.setsWon}-{r.setsLost}</td><td dir="ltr">{r.gamesWon}-{r.gamesLost}</td>
+                            <td dir="ltr">{r.won}/{r.played}</td><td dir="ltr">{r.setsWon}-{r.setsLost}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -100,9 +101,9 @@ export default async function AbroadEventPage({ params }: { params: Promise<{ id
                     <div key={k} className="grid" style={{ gap: 6 }}>
                       <strong className="muted">{t('סיבוב')} {k + 1}</strong>
                       {round.filter((m) => m.a.names.length && m.b.names.length).map((m, j) => (
-                        <div key={j} className="row" style={{ justifyContent: 'space-between', gap: 8 }}>
+                        <div key={j} className="grid" style={{ gap: 0 }}>
                           <span dir="ltr" style={{ textAlign: 'start' }}><span style={{ fontWeight: m.a.won ? 800 : 500, color: m.a.cc.includes('ISR') ? 'var(--blue)' : undefined }}>{m.a.names.join(' / ')}</span> – <span style={{ fontWeight: m.b.won ? 800 : 500, color: m.b.cc.includes('ISR') ? 'var(--blue)' : undefined }}>{m.b.names.join(' / ')}</span></span>
-                          <span className="muted" dir="ltr">{m.sets.length ? fmtScore(m.sets.map(([a, b]) => ({ a: a ?? 0, b: b ?? 0 }))) : t('טרם שוחק')}</span>
+                          <span className="muted" dir="ltr" style={{ textAlign: 'start' }}>{m.sets.length ? fmtScore(m.sets.map(([a, b]) => ({ a: a ?? 0, b: b ?? 0 }))) : t('טרם שוחק')}</span>
                         </div>
                       ))}
                     </div>
