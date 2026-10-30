@@ -67,14 +67,14 @@ export async function importAbroad(db: Db, input: AbroadIn, now = new Date()) {
   return stats;
 }
 
-/** Everything the page shows, shared for a minute between visitors: upcoming events from the next ~10 months, only the columns the cards need. */
+/** Everything the page shows, shared for a minute between visitors: events that have not started yet (one already under way is no use for planning), only the columns the cards need. */
 export function abroadCatalog(db: Db) {
   return memo('abroad:catalog', 60_000, async () => {
     const t = schema.abroadEvents;
     return db.select({
       id: t.id, name: t.name, venue: t.venue, city: t.city, country: t.country, start: t.startDate, end: t.endDate, surface: t.surface, category: t.category,
       age: t.ageGroup, circuit: t.circuit, closed: t.closed, entryOpens: t.entryOpens, entryDeadline: t.entryDeadline, withdrawalDeadline: t.withdrawalDeadline, fee: t.fee, hospitality: t.hospitality, indoor: t.indoor, url: t.url,
-    }).from(t).where(gte(t.endDate, new Date())).orderBy(t.startDate).limit(600);
+    }).from(t).where(gte(t.startDate, new Date(Date.now() - 12 * 36e5))).orderBy(t.startDate).limit(600);
   });
 }
 
