@@ -4,7 +4,6 @@ import { eq } from 'drizzle-orm';
 import { db, schema } from '@/db';
 import { resetDb } from './helpers';
 import { parseEntryDates, parseFactsheet, parseSearch } from '../scripts/loglig-sync/abroad.mjs';
-import { israelDocs, parseItem } from '../scripts/loglig-sync/itf.mjs';
 import { abroadCatalog, entryState, importAbroad, validateAbroadImport } from '@/services/abroad';
 import { countryInfo, flagEmoji } from '@/lib/countries';
 
@@ -77,17 +76,10 @@ describe('abroad events in the database', () => {
   });
 });
 
-describe('ITF juniors and the two circuits together', () => {
+describe('the two circuits are kept apart', () => {
   beforeAll(resetDb);
   const NOW = new Date('2026-10-29T12:00:00Z');
-  const itf = { tournamentKey: 'J-J30-CYP-2026-005', name: 'J30 Larnaca', promotionalName: 'Herodotou Tennis Academy', location: 'Larnaca', venue: 'Larnaca', hostNation: 'Cyprus', hostNationCode: 'CYP', startDate: '2026-11-09T00:00:00', endDate: '2026-11-15T00:00:00', category: 'J30', surfaceDesc: 'Hard', indoorOrOutDoor: 'Outdoor', tournamentLink: '/en/tournament/j30-larnaca/cyp/2026/j-j30-cyp-2026-005/' };
 
-  it('reads an ITF calendar item and turns the ones in Israel into competitions', () => {
-    expect(parseItem(itf)).toMatchObject({ id: 'J-J30-CYP-2026-005', name: 'J30 Larnaca', city: 'Larnaca', country: 'Cyprus', start: '2026-11-09', end: '2026-11-15', category: 'J30', surface: 'Hard', indoor: false, closed: false, url: 'https://www.itftennis.com/en/tournament/j30-larnaca/cyp/2026/j-j30-cyp-2026-005/' });
-    const isr = parseItem({ ...itf, tournamentKey: 'J-J30-ISR-2026-001', name: 'J30 Ramat Hasharon (CLOSED)', location: 'Ramat Hasharon', hostNation: 'Israel', hostNationCode: 'ISR', promotionalName: '' });
-    expect(isr).toMatchObject({ closed: true, name: 'J30 Ramat Hasharon', countryCode: 'ISR' });
-    expect(israelDocs([isr])[0]).toMatchObject({ name: 'ITF J30 רמת השרון', level: 'INTERNATIONAL', section: 'YOUTH', start: '2026-11-09', end: '2026-11-15' });
-  });
 
   it('a sync of one circuit never removes the other circuit\'s events', async () => {
     const base = { venue: '', city: 'X', country: 'Y', surface: '', category: 'Category 2', age: 14, closed: false, entryOpens: null, entryDeadline: null, withdrawalDeadline: null, fee: '', hospitality: '', indoor: null, url: 'https://example.org/x' };

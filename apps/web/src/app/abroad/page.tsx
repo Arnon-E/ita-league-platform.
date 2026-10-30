@@ -27,7 +27,7 @@ const Flag = ({ country }: { country: string }) => {
 
 type Q = { circuit?: string; age?: string; country?: string; month?: string; cat?: string; open?: string; n?: string };
 
-/** Public to everyone: junior tournaments outside Israel (Tennis Europe and ITF, mirrored by the daily sync): when and where, the level, until when to enter, the fee. */
+/** Public to everyone: junior tournaments outside Israel (Tennis Europe, mirrored by the daily sync): when and where, the level, until when to enter, the fee. */
 export default async function Abroad({ searchParams }: { searchParams: Promise<Q> }) {
   const t = await tr();
   const q = await searchParams;
@@ -49,19 +49,15 @@ export default async function Abroad({ searchParams }: { searchParams: Promise<Q
   return (
     <Shell nav="abroad">
       <h1>{t('תחרויות נוער בחו״ל')}</h1>
-      <p className="muted">{t('טורנירי נוער של Tennis Europe ו-ITF: מתי ואיפה הם מתקיימים, באיזו רמה, עד מתי אפשר להירשם ומה התנאים. הנתונים נלקחים מהאתרים שלהם ועשויים להשתנות, ולכן כדאי לוודא מול האיגוד או המאמן איך נרשמים.')}</p>
+      <p className="muted">{t('טורנירי נוער של Tennis Europe: מתי ואיפה הם מתקיימים, באיזו רמה, עד מתי אפשר להירשם ומה התנאים. הנתונים נלקחים מהאתר שלהם ועשויים להשתנות, ולכן כדאי לוודא מול האיגוד או המאמן איך נרשמים.')}</p>
       <details className="filters" style={{ marginTop: 12 }}>
         <summary>{t('מה זה קטגוריות, ואיך יודעים לאיזה טורניר להירשם?')}</summary>
         <div className="card grid" style={{ gap: 10, marginTop: 8 }}>
           <span><strong>{t('גיל (U12 / U14 / U16)')}:</strong> {t('הטורניר פתוח לשחקנים עד הגיל הזה בשנת הטורניר.')} {t('ב-')}{year}: U12 = {t('נולדו ב-')}{year - 12} {t('ואחריה')}, U14 = {year - 14} {t('ואחריה')}, U16 = {year - 16} {t('ואחריה')}.</span>
           <span><strong>{t('קטגוריה ב-Tennis Europe')}:</strong> {t('זו דרגת הטורניר. Super Category ו-Category 1 הן הדרגות הגבוהות, עם שדה חזק יותר ויותר נקודות לדירוג של Tennis Europe. Category 2 היא דרגה בינונית, ו-Category 3 היא דרגת הכניסה, הנגישה ביותר לשחקן שמתחיל לשחק בחו״ל. Festival הוא אירוע מיוחד.')}</span>
-          <span><strong>{t('ITF (J30 עד J500)')}:</strong> {t('דרגות הסבב הבינלאומי של ITF לנוער. ככל שהמספר גבוה יותר, השדה חזק יותר והנקודות לדירוג של ITF רבות יותר.')}</span>
           <span><strong>{t('איך בוחרים?')}</strong> {t('מתחילים מהגיל, ואז בוחרים דרגה שמתאימה לרמה ולדירוג, ולתאריכים ולתקציב (דמי ההשתתפות מופיעים בכרטיס). ההרשמה בפועל נעשית דרך האיגוד או דרך אתר הטורניר (הכפתור "לדף הטורניר"), ולכן כדאי להתייעץ עם המאמן או האיגוד לפני שמחליטים.')}</span>
         </div>
       </details>
-      <nav className="tabs" style={{ margin: '12px 0 0' }} aria-label={t('מסלול')}>
-        {([['', 'הכול'], ['TE', 'Tennis Europe'], ['ITF', 'ITF']] as const).map(([k, label]) => <Link key={k} scroll={false} href={href({ circuit: k, age: '', country: '', month: '', cat: '', n: '' })} className={circuit === k ? 'on' : ''}>{t(label)}</Link>)}
-      </nav>
       <div className="row" style={{ marginTop: 12 }}>
         <Link scroll={false} href={href({ open: '', n: '' })} className={`pill ${open ? '' : 'lime'}`}>{t('הכול')} {inCircuit.length}</Link>
         <Link scroll={false} href={href({ open: '1', n: '' })} className={`pill ${open ? 'lime' : ''}`}>{t('עוד אפשר להירשם')} {openCount}</Link>

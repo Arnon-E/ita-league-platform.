@@ -115,7 +115,7 @@ function AboutScreen({ onBack }: { onBack: () => void }) {
   );
 }
 
-/** Junior tournaments outside Israel (Tennis Europe and ITF): the website's "abroad" page. Tapping one opens its page on the circuit's own site. */
+/** Junior tournaments outside Israel (Tennis Europe): the website's "abroad" page. Tapping one opens its page on the circuit's own site. */
 function Abroad({ onBack }: { onBack: () => void }) {
   const { data, err, busy } = useData(api.abroad);
   const [help, setHelp] = useState(false);
@@ -133,9 +133,6 @@ function Abroad({ onBack }: { onBack: () => void }) {
       ListHeaderComponent={<>
         <Head title={tr('תחרויות נוער בחו״ל')} onBack={onBack} />
         <View style={[st.row, { flexWrap: 'wrap' }]}>
-          {([['', tr('הכול')], ['TE', 'Tennis Europe'], ['ITF', 'ITF']] as const).map(([k, l]) => <Chip key={k} on={circuit === k} label={l} onPress={() => { setCircuit(k); setShown(40); }} />)}
-        </View>
-        <View style={[st.row, { flexWrap: 'wrap' }]}>
           {([['', tr('כל הגילאים')], ['12', 'U12'], ['14', 'U14'], ['16', 'U16']] as const).map(([k, l]) => <Chip key={k} on={age === k} label={l} onPress={() => { setAge(k); setShown(40); }} />)}
           <Chip on={openOnly} label={tr('עוד אפשר להירשם')} onPress={() => { setOpenOnly(!openOnly); setShown(40); }} />
         </View>
@@ -144,7 +141,6 @@ function Abroad({ onBack }: { onBack: () => void }) {
           <View style={st.card}>
             <Text style={st.muted}><Text style={st.b}>{tr('גיל (U12 / U14 / U16)')}: </Text>{tr('הטורניר פתוח לשחקנים עד הגיל הזה בשנת הטורניר.')} U12 = {tr('נולדו ב-')}{year - 12} {tr('ואחריה')}, U14 = {year - 14} {tr('ואחריה')}, U16 = {year - 16} {tr('ואחריה')}.</Text>
             <Text style={st.muted}><Text style={st.b}>{tr('קטגוריה ב-Tennis Europe')}: </Text>{tr('זו דרגת הטורניר. Super Category ו-Category 1 הן הדרגות הגבוהות, עם שדה חזק יותר ויותר נקודות לדירוג של Tennis Europe. Category 2 היא דרגה בינונית, ו-Category 3 היא דרגת הכניסה, הנגישה ביותר לשחקן שמתחיל לשחק בחו״ל. Festival הוא אירוע מיוחד.')}</Text>
-            <Text style={st.muted}><Text style={st.b}>{tr('ITF (J30 עד J500)')}: </Text>{tr('דרגות הסבב הבינלאומי של ITF לנוער. ככל שהמספר גבוה יותר, השדה חזק יותר והנקודות לדירוג של ITF רבות יותר.')}</Text>
             <Text style={st.muted}><Text style={st.b}>{tr('איך בוחרים?')} </Text>{tr('מתחילים מהגיל, ואז בוחרים דרגה שמתאימה לרמה ולדירוג, ולתאריכים ולתקציב (דמי ההשתתפות מופיעים בכרטיס). ההרשמה בפועל נעשית דרך האיגוד או דרך אתר הטורניר (הכפתור "לדף הטורניר"), ולכן כדאי להתייעץ עם המאמן או האיגוד לפני שמחליטים.')}</Text>
           </View>
         )}
@@ -249,7 +245,7 @@ function Stats({ onBack }: { onBack: () => void }) {
 
 const ITEMS = [
   ['leagues', 'leagues', 'ליגות', 'ליגת Winner: טבלאות ולוח משחקים'],
-  ['abroad', 'info', 'תחרויות בחו״ל', 'טורנירי נוער של Tennis Europe ו-ITF: תאריכים, תנאים והרשמה'],
+  ['abroad', 'info', 'תחרויות בחו״ל', 'טורנירי נוער של Tennis Europe: תאריכים, תנאים והרשמה'],
   ['regs', 'doc', 'תקנונים ונהלים', 'כל התקנונים והמסמכים של האיגוד'],
   ['clubs', 'club', 'מועדונים', 'רשימת המועדונים וכמות השחקנים'],
   ['stats', 'stats', 'סטטיסטיקות', 'מובילים בניצחונות ומועדונים גדולים'],

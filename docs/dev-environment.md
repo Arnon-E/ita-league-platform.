@@ -92,7 +92,7 @@
 
 ## מיזוג ממתין: `dev` לפני `main` (אוקטובר 2026)
 
-ב-`dev` (עד `d81ed2e`) נמצאים שינויים שעדיין **לא** ב-`main` (פרודקשן): לוח התחרויות השנתי של האיגוד (הגאנט) כתחרויות "מתוכננות" (`calendar.mjs`, `gantt.mjs`), טורנירי Tennis Europe בישראל עם רשימות הקבלה (`te.mjs`), טורנירי ITF לנוער (`itf.mjs`), עמוד **תחרויות חו"ל** (`abroad.mjs`, הטבלה `abroad_events`, ה-API `/api/v1/public/abroad` ומסך באפליקציה) ותיקון להתאמת שמות בסנכרון הרשומים (`rosters.mjs`).
+ב-`dev` (עד `d81ed2e`) נמצאים שינויים שעדיין **לא** ב-`main` (פרודקשן): לוח התחרויות השנתי של האיגוד (הגאנט) כתחרויות "מתוכננות" (`calendar.mjs`, `gantt.mjs`), טורנירי Tennis Europe בישראל עם רשימות הקבלה (`te.mjs`), עמוד **תחרויות חו"ל** (`abroad.mjs`, הטבלה `abroad_events`, ה-API `/api/v1/public/abroad` ומסך באפליקציה) ותיקון להתאמת שמות בסנכרון הרשומים (`rosters.mjs`).
 
 **למה לא מיזגנו:** ב-2026-10-29 הפרודקשן החזיר 500 ו-"exceeded the quota" (מכסת Neon החינמית). כשהמסד לא נגיש, `scripts/db-init.mjs` מדלג על בדיקות הסכימה וממשיך לבנות, וכאן זה מסוכן: הקוד החדש צריך את `ALTER TYPE tournament_status ADD VALUE 'PLANNED'`, את העמודה `tournaments.acceptance` ואת הטבלה `abroad_events`. אם הוא יעלה לפני שהן קיימות, כל שאילתת תחרויות תיכשל כשהמסד יחזור, עד לבנייה הבאה שבה `db-init` רץ כראוי.
 
@@ -100,8 +100,8 @@
 
 **מה עושים אז:**
 1. `git checkout main && git merge dev && git push origin main`, ולחכות שהבנייה בפרודקשן תסתיים (בלוג הבנייה צריך להופיע `[db-init]` בלי "skipping schema checks").
-2. להריץ מול הפרודקשן (מ-`apps/web`, `CRON_SECRET` מ-`.env.production.local`, ב-PowerShell כדי להגיע ל-tournamentsoftware): `calendar.mjs --push`, `te.mjs --push`, `abroad.mjs --days 300 --push`, `itf.mjs --days 300 --push` (אם ITF חוסם, הוא ינסה שוב בסנכרון היומי), `rosters.mjs --push`.
+2. להריץ מול הפרודקשן (מ-`apps/web`, `CRON_SECRET` מ-`.env.production.local`, ב-PowerShell כדי להגיע ל-tournamentsoftware): `calendar.mjs --push`, `te.mjs --push`, `abroad.mjs --days 300 --push`, `rosters.mjs --push`.
 3. `git checkout dev && git merge main && git push origin dev`, ולוודא ש-`git log main..dev` ו-`dev..main` ריקים.
-4. בשני קבצי הסנכרון היומי (`run-daily-sync.bat` ו-`run-dev-daily-sync.bat`) כבר נוספו `abroad.mjs` ו-`itf.mjs`; `competitions.mjs --list all` כבר מריץ את הגאנט, Tennis Europe בישראל ו-ITF בישראל.
+4. בשני קבצי הסנכרון היומי (`run-daily-sync.bat` ו-`run-dev-daily-sync.bat`) כבר נוסף `abroad.mjs`; `competitions.mjs --list all` כבר מריץ את הגאנט ו-Tennis Europe בישראל.
 
-**זהירות עם ITF:** האתר שלהם מוגן בהגנת בוטים (Incapsula) וחוסם אחרי כמה בקשות. `itf.mjs` מזהה את דף החסימה, לא שולח כלום (הנתונים הקיימים נשארים) ומנסה שוב בהרצה הבאה. אין לעקוף את החסימה ואין להסוות את הבקשות.
+**ITF לנוער לא נכלל:** האתר שלהם חוסם בקשות אוטומטיות (הגנת בוטים), ולכן הוחלט (2026-10-30) לוותר עליו ולהסתפק ב-Tennis Europe. טורנירי ITF לנוער בישראל מופיעים כ"מתוכננים" מהגאנט. אם ITF יאפשר גישה מסודרת, אפשר לחזור לזה (ב-git: `itf.mjs` בקומיט `5ae64d0`). אין לעקוף את החסימה ואין להסוות את הבקשות.

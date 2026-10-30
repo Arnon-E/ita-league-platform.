@@ -303,7 +303,6 @@ if ((listArg === 'all' || args.includes('--te')) && !only.length) {
     const { readTennisEurope } = await import('./te.mjs');
     const events = (await readTennisEurope({ year: Number(today.slice(0, 4)) })).filter((d) => daysAgo(d.end) <= recentDays);
     for (const d of events) { docs.push(d); console.log(`- + Tennis Europe: ${d.name}  ${d.start}..${d.end}  ${d.categories.length + d.doubles.length} draws`); }
-    // ITF juniors in Israel are sent by itf.mjs itself (one request a day to ITF, which blocks bots): not read a second time here
   } catch (e) { console.warn('  tennis europe failed', String(e.message).slice(0, 100)); }
 }
 writeFileSync(path.join(OUT, 'competitions.json'), JSON.stringify(docs), 'utf8');

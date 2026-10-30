@@ -103,6 +103,7 @@ const en: Record<string, string> = {
   'אזורית': 'Regional',
   'בינלאומית': 'International',
   'סבב': 'Circuit',
+  "טורנירי נוער של Tennis Europe: תאריכים, תנאים והרשמה": 'Tennis Europe junior tournaments: dates, conditions and entry',
   "מה זה קטגוריות, ואיך יודעים לאיזה טורניר להירשם?": "What are categories, and how do you know which tournament to enter?",
   "גיל (U12 / U14 / U16)": "Age (U12 / U14 / U16)",
   "הטורניר פתוח לשחקנים עד הגיל הזה בשנת הטורניר.": "The tournament is open to players up to this age in the year of the tournament.",
