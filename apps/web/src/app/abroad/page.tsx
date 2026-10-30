@@ -42,7 +42,7 @@ export default async function Abroad({ searchParams }: { searchParams: Promise<Q
   const fits = (e: AbroadRow) => (!age || String(e.age) === age) && (!country || e.country === country) && (!month || monthKey(e.start) === month) && (!cat || e.category === cat);
   const inGroup = (e: AbroadRow, k: string) => (k === 'open' ? phaseOf(e, now) === 'up' && ['open', 'soon'].includes(entryState(e, now)) : phaseOf(e, now) === k);
   const counts: Record<string, number> = Object.fromEntries(Object.keys(ST).map((k) => [k, inCircuit.filter((e) => inGroup(e, k)).length]));
-  const rows = inCircuit.filter((e) => fits(e) && inGroup(e, st)).sort((a, b) => (st === 'done' ? +b.end - +a.end : +a.start - +b.start));
+  const rows = inCircuit.filter((e) => fits(e) && inGroup(e, st)).sort((a, b) => (st === 'live' || st === 'done' ? b.israelis - a.israelis : 0) || (st === 'done' ? +b.end - +a.end : +a.start - +b.start)); // under way and finished: the ones with Israeli players first
   const opts = (f: (e: AbroadRow) => string | null) => [...new Set(inCircuit.map(f).filter((x): x is string => !!x))].sort();
   const filtered = [age, country, month, cat].filter(Boolean).length;
   const href = (o: Partial<Q>) => `/abroad?${new URLSearchParams(Object.entries({ circuit, age, country, month, cat, st: st === 'up' ? '' : st, ...o }).filter(([, v]) => v) as [string, string][]).toString()}`;

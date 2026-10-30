@@ -54,7 +54,7 @@ export default async function AbroadEventPage({ params }: { params: Promise<{ id
           <div className="grid cols">
             {matches.filter((m) => m.day === d).map((m, i) => (
               <div key={`${d}-${i}`} className="card grid" style={{ gap: 8 }}>
-                <span className="top"><span className="muted" dir="ltr">{m.draw}{m.stage ? ` · ${m.stage}` : ''}</span><span className="muted">{[m.court, m.time].filter(Boolean).join(' · ')}</span></span>
+                <span className="grid" style={{ gap: 2 }}><span className="muted" dir="ltr" style={{ textAlign: 'start' }}>{m.draw}{m.stage ? ` · ${m.stage}` : ''}</span><span className="muted" dir="ltr" style={{ textAlign: 'start' }}>{[m.time, m.court].filter(Boolean).join(' · ')}</span></span>
                 <Side s={m.a} />
                 <Side s={m.b} />
                 <span className="muted" style={{ fontWeight: 600 }}>{m.sets.length ? fmtScore(m.sets.map(([a, b]) => ({ a: a ?? 0, b: b ?? 0 }))) : t('טרם שוחק')}</span>

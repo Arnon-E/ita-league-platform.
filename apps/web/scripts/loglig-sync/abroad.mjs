@@ -97,7 +97,9 @@ export async function readAbroad({ days = 180, limit = Infinity, log = console.l
   const ts = session(TE);
   const today = new Date().toISOString().slice(0, 10);
   const to = new Date(Date.now() + days * 864e5).toISOString().slice(0, 10);
-  const found = (await searchTournaments(ts, today, to, log)).filter((e) => !/israel/i.test(e.country));
+  // from a week back: what ended in the last week is listed too (its results are still read)
+  const from = new Date(Date.now() - 7 * 864e5).toISOString().slice(0, 10);
+  const found = (await searchTournaments(ts, from, to, log)).filter((e) => !/israel/i.test(e.country));
   const events = [];
   for (const e of found.slice(0, limit)) {
     let extra = { entryOpens: null, entryDeadline: null, withdrawalDeadline: null, fee: '', hospitality: '', indoor: null };
