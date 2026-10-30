@@ -68,6 +68,17 @@ describe('abroad events in the database', () => {
     expect(Array.isArray(await abroadCatalog(db))).toBe(true);
   });
 
+  it('keeps an old event that has matches of Israeli players (their history), and drops the others', async () => {
+    const mk = (id: string, name: string) => ({ id, name, venue: '', city: 'X', country: 'Greece', start: '2026-10-01', end: '2026-10-07', surface: '', category: 'Category 2', age: 12, closed: false, entryOpens: null, entryDeadline: null, withdrawalDeadline: null, fee: '', hospitality: '', indoor: null, url: 'https://example.org/x' });
+    const K = '1111AAAA-0000-0000-0000-000000000001', D = '1111AAAA-0000-0000-0000-000000000002';
+    await importAbroad(db, validateAbroadImport({ kind: 'abroad', circuit: 'TE', until: '2026-10-31', events: [mk(K, 'Kept'), mk(D, 'Dropped')] }), new Date('2026-09-30T12:00:00Z'));
+    const side = (n: string, cc: string) => ({ names: [n], cc: [cc], won: true, msg: '' });
+    await importAbroadResults(db, validateAbroadResults({ kind: 'abroad-results', results: [{ id: K, days: ['2026-10-03'], matches: [{ day: '2026-10-03', draw: 'BS12 - Boys', stage: 'R16', court: '', time: '', a: side('Ben STRAUSS', 'ISR'), b: side('X', 'GRE'), sets: [[6, 0]] }] }] }), new Date('2026-10-04T12:00:00Z'));
+    await importAbroad(db, validateAbroadImport({ kind: 'abroad', circuit: 'TE', until: '2026-12-31', events: [] }), new Date('2026-12-01T12:00:00Z'));
+    expect((await ids()).includes(K)).toBe(true);
+    expect((await ids()).includes(D)).toBe(false);
+  });
+
   it('tells whether a player can still enter', () => {
     const e = (opens: string | null, deadline: string | null) => ({ entryOpens: opens ? new Date(opens) : null, entryDeadline: deadline ? new Date(deadline) : null, start: new Date('2026-12-02') });
     expect(entryState(e('2026-09-01', '2026-11-20'), NOW)).toBe('open');

@@ -69,7 +69,8 @@ export async function importAbroad(db: Db, input: AbroadIn, now = new Date()) {
     const gone = await db.delete(t).where(and(eq(t.circuit, input.circuit), gte(t.startDate, now), lte(t.startDate, until), notInArray(t.id, input.events.map((e) => e.id)))).returning({ id: t.id });
     stats.removed = gone.length;
   }
-  const old = await db.delete(t).where(lt(t.endDate, new Date(now.getTime() - 7 * 864e5))).returning({ id: t.id });
+  // an event with matches of Israeli players stays for good: it is part of those players' history (the lists only show the last week)
+  const old = await db.delete(t).where(and(lt(t.endDate, new Date(now.getTime() - 7 * 864e5)), sql`cardinality(${t.israeliNames}) = 0`)).returning({ id: t.id });
   stats.removed += old.length;
   return stats;
 }
