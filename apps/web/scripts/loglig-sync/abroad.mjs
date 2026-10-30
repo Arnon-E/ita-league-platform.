@@ -202,10 +202,13 @@ async function liveRefresh(ts, events, state, base, secret, force = false) {
       if (!force && changed && changed === known.changed) continue; // nothing was saved since the last look
       const days = [yesterday, today].filter((d) => d >= e.start && d <= e.end).map((d) => d.replace(/-/g, ''));
       const r = await readIsraeliMatches(ts, e.id, days);
+      // the draws come out before the first match: an event with Israeli players in a draw is worth showing from then on
+      let draws = [];
+      try { draws = await readEventDraws(ts, e.id); } catch (err) { console.log(`  draws failed for ${e.name}: ${String(err.message).slice(0, 60)}`); }
       state.events[e.id].changed = changed;
-      state.events[e.id].israelis = known.israelis || r.matches.length > 0;
-      if (!r.matches.length) continue;
-      try { r.draws = await readEventDraws(ts, e.id); } catch (err) { console.log(`  draws failed for ${e.name}: ${String(err.message).slice(0, 60)}`); }
+      state.events[e.id].israelis = known.israelis || r.matches.length > 0 || draws.length > 0;
+      if (!r.matches.length && !draws.length) continue;
+      r.draws = draws;
       out.push(r);
     } catch (err) { console.log(`  refresh failed for ${e.name}: ${String(err.message).slice(0, 60)}`); }
   }
@@ -234,11 +237,12 @@ if (process.argv[1] && process.argv[1].endsWith('abroad.mjs')) {
     let state = { scannedAt: null, events: {} };
     try { if (existsSync(stateFile)) state = { ...state, ...JSON.parse(readFileSync(stateFile, 'utf8')) }; } catch { /* a damaged file: start again */ }
     const today = new Date().toISOString().slice(0, 10);
+    const soon = new Date(Date.now() + 3 * 864e5).toISOString().slice(0, 10);
     const full = args.includes('--force') || !state.scannedAt || Date.now() - Date.parse(state.scannedAt) > 50 * 60e3;
     const ts = session(TE);
     const events = full
-      ? (await searchTournaments(ts, today, today)).filter((e) => e.start <= today && e.end >= today)
-      : Object.entries(state.events).filter(([, v]) => v.israelis && v.start <= today && v.end >= today).map(([id, v]) => ({ id, name: v.name, start: v.start, end: v.end }));
+      ? (await searchTournaments(ts, today, soon)).filter((e) => e.end >= today && e.start <= soon)
+      : Object.entries(state.events).filter(([, v]) => v.israelis && v.start <= soon && v.end >= today).map(([id, v]) => ({ id, name: v.name, start: v.start, end: v.end }));
     if (!push) { console.log(`${events.length} event(s) to look at (${full ? 'full scan' : 'events with Israelis'}); dry run: nothing read or sent`); process.exit(0); }
     if (full) state.scannedAt = new Date().toISOString();
     await liveRefresh(ts, events, state, base, process.env.CRON_SECRET, args.includes('--force'));
