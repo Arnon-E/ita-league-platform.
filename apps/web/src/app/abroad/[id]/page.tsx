@@ -68,12 +68,12 @@ export default async function AbroadEventPage({ params }: { params: Promise<{ id
                 <strong dir="ltr" style={{ textAlign: 'start' }}>{a.label} <span className="muted" style={{ fontWeight: 400 }}>· {a.players.length} {t('ישראלים')}</span></strong>
                 <div style={{ overflowX: 'auto' }}>
                   <table>
-                    <thead><tr><th>{t('שם')}</th><th>{t('שנת לידה')}</th><th>{t('דירוג')}</th></tr></thead>
+                    <thead><tr><th>{t('שם')}</th><th>{t('שנת לידה')}</th>{a.players.some((p) => p.rank && p.rank !== '-') && <th>{t('דירוג')}</th>}</tr></thead>
                     <tbody>
                       {a.players.map((p) => (
                         <tr key={p.draw + p.n + p.name}>
                           <td>{p.player ? <Link href={`/players/${p.player.id}`}><u>{p.player.first} {p.player.last}</u></Link> : null}<div dir="ltr" className={p.player ? 'muted' : undefined} style={{ textAlign: 'start' }}>{p.name}</div></td>
-                          <td>{p.born ?? ''}</td><td dir="ltr">{p.rank && p.rank !== '-' ? `#${p.rank}` : ''}</td>
+                          <td>{p.born ?? ''}</td>{a.players.some((x) => x.rank && x.rank !== '-') && <td dir="ltr">{p.rank && p.rank !== '-' ? `#${p.rank}` : ''}</td>}
                         </tr>
                       ))}
                     </tbody>
