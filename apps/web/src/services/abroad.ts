@@ -14,7 +14,7 @@ export interface ResultSide { names: string[]; cc: string[]; won: boolean; msg: 
 export interface ResultMatch { day: string; draw: string; stage: string; court: string; time: string; a: ResultSide; b: ResultSide; sets: number[][] }
 /** Matches of Israeli players at events, per event and match days: the sync sends the days it read and the matches found on them. */
 export interface DrawMatch { a: { names: string[]; cc: string[]; won: boolean }; b: { names: string[]; cc: string[]; won: boolean }; sets: number[][]; date: string }
-export interface ResultDraw { n: number; name: string; rounds: DrawMatch[][] }
+export interface ResultDraw { n: number; name: string; kind: 'KO' | 'RR'; rounds: DrawMatch[][] }
 export interface AbroadResultsIn { kind: 'abroad-results'; results: { id: string; days: string[]; matches: ResultMatch[]; draws?: ResultDraw[] }[] }
 
 const clean = (s: unknown, n = 200) => (typeof s === 'string' ? s.replace(/\s+/g, ' ').trim().slice(0, n) : '');
@@ -128,7 +128,7 @@ export function validateAbroadResults(x: unknown): AbroadResultsIn {
     }
     // the knockout trees of the draws that have an Israeli player: a handful of rounds of at most 64 matches
     const draws: ResultDraw[] = (Array.isArray((r as { draws?: unknown }).draws) ? (r as { draws: ResultDraw[] }).draws : []).slice(0, 12).map((d) => ({
-      n: Math.max(0, Math.floor(Number(d?.n)) || 0), name: clean(d?.name, 80),
+      n: Math.max(0, Math.floor(Number(d?.n)) || 0), name: clean(d?.name, 80), kind: (d as { kind?: unknown })?.kind === 'RR' ? 'RR' as const : 'KO' as const,
       rounds: (Array.isArray(d?.rounds) ? d.rounds : []).slice(0, 8).map((round) => (Array.isArray(round) ? round : []).slice(0, 64).map((m) => {
         const s1 = side(m?.a), s2 = side(m?.b);
         return { a: { names: s1.names, cc: s1.cc, won: s1.won }, b: { names: s2.names, cc: s2.cc, won: s2.won }, sets: (Array.isArray(m?.sets) ? m.sets : []).slice(0, 5).map((s) => (Array.isArray(s) ? [Number(s[0]) || 0, Number(s[1]) || 0] : [0, 0])), date: clean(m?.date, 24) };
@@ -161,4 +161,33 @@ export async function importAbroadResults(db: Db, input: AbroadResultsIn, now = 
 export async function abroadEvent(db: Db, id: string) {
   const [row] = await db.select().from(schema.abroadEvents).where(eq(schema.abroadEvents.id, id.toUpperCase()));
   return row ?? null;
+}
+
+export interface GroupRow { names: string[]; cc: string[]; played: number; won: number; lost: number; setsWon: number; setsLost: number; gamesWon: number; gamesLost: number }
+
+/**
+ * The table of a round robin group from its matches: everyone who appears is listed; a match counts once it has a winner. Ranked by wins, then set difference,
+ * then game difference (the order Tennis Europe's own tables start with; a tie it settles by head to head is left as it falls).
+ */
+export function groupTable(rounds: DrawMatch[][]): GroupRow[] {
+  const rows = new Map<string, GroupRow>();
+  const row = (s: DrawMatch['a']) => {
+    const key = s.names.join(' / ');
+    if (!rows.has(key)) rows.set(key, { names: s.names, cc: s.cc, played: 0, won: 0, lost: 0, setsWon: 0, setsLost: 0, gamesWon: 0, gamesLost: 0 });
+    return rows.get(key)!;
+  };
+  for (const m of rounds.flat()) {
+    if (!m.a.names.length || !m.b.names.length) continue;
+    const a = row(m.a), b = row(m.b);
+    if (!m.a.won && !m.b.won) continue;
+    a.played++; b.played++;
+    (m.a.won ? a : b).won++; (m.a.won ? b : a).lost++;
+    m.sets.forEach(([x = 0, y = 0], i) => {
+      if (x > y) { a.setsWon++; b.setsLost++; } else if (y > x) { b.setsWon++; a.setsLost++; }
+      // a deciding match tiebreak (10-8) counts as one game
+      const tb = i === 2 && Math.max(x, y) >= 10;
+      a.gamesWon += tb ? Number(x > y) : x; a.gamesLost += tb ? Number(y > x) : y; b.gamesWon += tb ? Number(y > x) : y; b.gamesLost += tb ? Number(x > y) : x;
+    });
+  }
+  return [...rows.values()].sort((p, q) => q.won - p.won || (q.setsWon - q.setsLost) - (p.setsWon - p.setsLost) || (q.gamesWon - q.gamesLost) - (p.gamesWon - p.gamesLost));
 }

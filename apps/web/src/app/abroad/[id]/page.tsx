@@ -8,7 +8,7 @@ import { BracketView, type BracketCell, type BracketSide } from '@/components/Br
 import { fmtScore } from '@/components/labels';
 import { tr } from '@/lib/i18n';
 import { countryInfo } from '@/lib/countries';
-import { abroadEvent, phaseOf, type DrawMatch } from '@/services/abroad';
+import { abroadEvent, groupTable, phaseOf, type DrawMatch } from '@/services/abroad';
 
 export const dynamic = 'force-dynamic';
 
@@ -80,7 +80,37 @@ export default async function AbroadEventPage({ params }: { params: Promise<{ id
           <h2>{t('הגרלות')}</h2>
           {draws.map((d, i) => (
             <Fold key={d.n} title={d.name} open={i === 0}>
-              <BracketView cols={treeOf(d.rounds)} tt={t} pending={t('טרם נקבע')} />
+              {d.kind === 'RR' ? (
+                <div className="card grid" style={{ gap: 10 }}>
+                  <div style={{ overflowX: 'auto' }}>
+                    <table>
+                      <thead><tr><th>#</th><th>{t('שחקן')}</th><th>{t('משחקים')}</th><th>{t('נצחונות')}</th><th>{t('סטים')}</th><th>{t('גיימים')}</th></tr></thead>
+                      <tbody>
+                        {groupTable(d.rounds).map((r, k) => (
+                          <tr key={r.names.join('/')} style={r.cc.includes('ISR') ? { fontWeight: 700, color: 'var(--blue)' } : undefined}>
+                            <td>{k + 1}</td>
+                            <td dir="ltr" style={{ textAlign: 'start' }}><span style={{ display: 'inline-flex', gap: 3, marginInlineEnd: 6, verticalAlign: 'middle' }}>{r.cc.map((c, j) => <img key={j} src={flagUrl(c)} width={20} height={15} alt={c} style={{ borderRadius: 2, boxShadow: '0 0 0 1px var(--line)' }} />)}</span>{r.names.join(' / ')}</td>
+                            <td>{r.played}</td><td>{r.won}</td><td dir="ltr">{r.setsWon}-{r.setsLost}</td><td dir="ltr">{r.gamesWon}-{r.gamesLost}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  {d.rounds.map((round, k) => (
+                    <div key={k} className="grid" style={{ gap: 6 }}>
+                      <strong className="muted">{t('סיבוב')} {k + 1}</strong>
+                      {round.filter((m) => m.a.names.length && m.b.names.length).map((m, j) => (
+                        <div key={j} className="row" style={{ justifyContent: 'space-between', gap: 8 }}>
+                          <span dir="ltr" style={{ textAlign: 'start' }}><span style={{ fontWeight: m.a.won ? 800 : 500, color: m.a.cc.includes('ISR') ? 'var(--blue)' : undefined }}>{m.a.names.join(' / ')}</span> – <span style={{ fontWeight: m.b.won ? 800 : 500, color: m.b.cc.includes('ISR') ? 'var(--blue)' : undefined }}>{m.b.names.join(' / ')}</span></span>
+                          <span className="muted" dir="ltr">{m.sets.length ? fmtScore(m.sets.map(([a, b]) => ({ a: a ?? 0, b: b ?? 0 }))) : t('טרם שוחק')}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <BracketView cols={treeOf(d.rounds)} tt={t} pending={t('טרם נקבע')} />
+              )}
             </Fold>
           ))}
         </>

@@ -5,7 +5,7 @@ import { db, schema } from '@/db';
 import { resetDb } from './helpers';
 import { matchDays, parseDrawContent, parseEntryDates, parseFactsheet, parseSearch } from '../scripts/loglig-sync/abroad.mjs';
 import { parseDayMatches } from '../scripts/loglig-sync/tournamentsoftware.mjs';
-import { abroadCatalog, abroadEvent, entryState, importAbroad, importAbroadResults, phaseOf, validateAbroadImport, validateAbroadResults } from '@/services/abroad';
+import { abroadCatalog, abroadEvent, entryState, groupTable, importAbroad, importAbroadResults, phaseOf, validateAbroadImport, validateAbroadResults } from '@/services/abroad';
 import { countryInfo, flagEmoji } from '@/lib/countries';
 
 const fixture = (n: string) => readFileSync(new URL(`./fixtures/${n}`, import.meta.url), 'utf8');
@@ -183,5 +183,27 @@ describe('knockout draws of an event', () => {
     await importAbroadResults(db, validateAbroadResults({ kind: 'abroad-results', results: [{ id: A, days: ['2026-10-29'], matches: [match] }] }), NOW);
     ev = await abroadEvent(db, A);
     expect(ev!.results!.draws).toHaveLength(1);
+  });
+});
+
+describe('round robin groups', () => {
+  it('reads a real group and works out its table', () => {
+    const rounds = parseDrawContent(readFileSync(new URL('./fixtures/te-group.html', import.meta.url), 'utf8')) as Parameters<typeof groupTable>[0];
+    // the page lays a 4-player group out in three columns (1, 2 and 3 matches, an empty slot in the first): six matches
+    expect(rounds.map((r) => r.length)).toEqual([2, 2, 3]);
+    expect(rounds.flat().filter((m) => m.a.names.length).length).toBe(6);
+    const table = groupTable(rounds);
+    expect(table.map((r) => r.names[0]!.split(' ').pop())).toEqual(['UZHYLOVSKYI', 'VLACHOS', 'MODZMANASHVILI', 'KAROUZAKIS']);
+    expect(table.map((r) => [r.played, r.won, r.lost])).toEqual([[3, 3, 0], [3, 2, 1], [3, 1, 2], [3, 0, 3]]);
+    expect(table[0]).toMatchObject({ setsWon: 6, setsLost: 0 });
+  });
+
+  it('lists a player who has not played yet and counts a deciding match tiebreak as one game', () => {
+    const p = (n: string, won = false) => ({ names: [n], cc: ['ISR'], won });
+    const table = groupTable([[{ a: p('A', true), b: p('B'), sets: [[6, 4], [3, 6], [10, 8]], date: '' }, { a: p('C'), b: { names: [], cc: [], won: false }, sets: [], date: '' }], [{ a: p('C'), b: p('D'), sets: [], date: '' }]]);
+    // everyone is listed; the one who lost ranks below those who have not played yet (wins, then the set difference)
+    expect(table.map((r) => r.names[0])).toEqual(['A', 'C', 'D', 'B']);
+    expect(table[0]).toMatchObject({ played: 1, won: 1, setsWon: 2, setsLost: 1, gamesWon: 10, gamesLost: 10 });
+    expect(table[1]).toMatchObject({ played: 0, won: 0 });
   });
 });

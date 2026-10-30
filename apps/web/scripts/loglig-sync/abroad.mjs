@@ -131,19 +131,21 @@ export function parseDrawContent(html) {
     }).filter(Boolean)).filter((round) => round.length);
 }
 
-/** The knockout draws of an event in which an Israeli player is: [{ n, name, rounds }]. Round robin draws are left to the tournament's own page. */
+/**
+ * The draws of an event in which an Israeli player is: [{ n, name, kind: 'KO' | 'RR', rounds }] (a group's rounds are its round robin days; its table is worked out
+ * from the matches on the page).
+ */
 export async function readEventDraws(ts, id) {
   const list = await ts.get(`/sport/draws.aspx?id=${id}`);
-  const links = [...list.matchAll(/href="draw\.aspx\?id=[^"]*&amp;draw=(\d+)"[^>]*>([\s\S]*?)<\/a>/g)].map((m) => ({ n: Number(m[1]), name: text(m[2]) }));
+  const links = [...list.matchAll(/href="draw\.aspx\?id=[^"]*&(?:amp;)?draw=(\d+)"[^>]*>([\s\S]*?)<\/a>/g)].map((m) => ({ n: Number(m[1]), name: text(m[2]) }));
   if (!links.length) return [];
   const types = new Map(parseDraws(list).map((d) => [d.name, d.type]));
   await ts.get(`/tournament/${id.toLowerCase()}/Draw/${links[0].n}`); // opens the draw page first, like a browser does
   const out = [];
   for (const l of links) {
-    if (types.get(l.name) && !/elimination/i.test(types.get(l.name))) continue;
     const html = await ts.get(`/tournament/${id.toLowerCase()}/Draw/${l.n}/GetDrawContent?tabindex=1`, { method: 'POST', headers: { 'x-requested-with': 'XMLHttpRequest', 'content-type': 'application/x-www-form-urlencoded' }, body: '' });
     const rounds = parseDrawContent(html);
-    if (rounds.some((round) => round.some((m) => [...m.a.cc, ...m.b.cc].includes('ISR')))) out.push({ n: l.n, name: l.name, rounds });
+    if (rounds.some((round) => round.some((m) => [...m.a.cc, ...m.b.cc].includes('ISR')))) out.push({ n: l.n, name: l.name, kind: /round robin/i.test(types.get(l.name) ?? '') ? 'RR' : 'KO', rounds });
   }
   return out;
 }

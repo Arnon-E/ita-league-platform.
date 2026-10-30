@@ -236,7 +236,7 @@ export const abroadEvents = pgTable('abroad_events', {
   indoor: boolean('indoor'),
   url: text('url').notNull(),
   /** The matches of Israeli players at this event (read from the event's own match pages while it is on): { updated, days: [ISO day], matches: [...] }. */
-  results: jsonb('results').$type<{ updated: string; days: string[]; matches: { day: string; draw: string; stage: string; court: string; time: string; a: { names: string[]; cc: string[]; won: boolean; msg: string }; b: { names: string[]; cc: string[]; won: boolean; msg: string }; sets: number[][] }[]; draws?: { n: number; name: string; rounds: { a: { names: string[]; cc: string[]; won: boolean }; b: { names: string[]; cc: string[]; won: boolean }; sets: number[][]; date: string }[][] }[] } | null>(),
+  results: jsonb('results').$type<{ updated: string; days: string[]; matches: { day: string; draw: string; stage: string; court: string; time: string; a: { names: string[]; cc: string[]; won: boolean; msg: string }; b: { names: string[]; cc: string[]; won: boolean; msg: string }; sets: number[][] }[]; draws?: { n: number; name: string; kind?: 'KO' | 'RR'; rounds: { a: { names: string[]; cc: string[]; won: boolean }; b: { names: string[]; cc: string[]; won: boolean }; sets: number[][]; date: string }[][] }[] } | null>(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => ({ startIdx: index('abroad_events_start_idx').on(t.startDate) }));
 
