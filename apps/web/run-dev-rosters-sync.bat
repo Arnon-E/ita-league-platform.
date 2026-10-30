@@ -12,7 +12,8 @@ set "HERE=%CD:\=/%"
 set "URL=https://ita-league-platform-jpgi-git-dev-arnonerez1-4924s-projects.vercel.app"
 set "RUN=node --env-file="%ENVFILE%" --import file:///%HERE%/scripts/loglig-sync/_bypass.mjs"
 echo ===== %date% %time% ===== > "%DEVDIR%\rosters-sync.log"
-rem Tennis Europe tournaments abroad: the Israeli players' matches of the ones on today; once an hour, 8:00-22:00 (its own stamp), independent of the gate below
+rem Tennis Europe tournaments abroad, 8:00-22:00 (independent of the gate below): every 10 minutes it looks at the events known to have Israeli players (one small request each,
+rem matches are read only when the event's "last changed" moved); about once an hour it looks at every event that is on, to find new ones
 %RUN% scripts\loglig-sync\abroad.mjs --live --push --url %URL% >> "%DEVDIR%\rosters-sync.log" 2>&1
 node scripts\loglig-sync\gate.mjs >> "%DEVDIR%\rosters-sync.log" 2>&1
 if errorlevel 10 exit /b 0

@@ -6,7 +6,7 @@
 //   node scripts/loglig-sync/abroad.mjs --push --url <site>  # CRON_SECRET from the environment
 //
 // Read-only against Tennis Europe: the search page's own POST (20 results a page), then each upcoming event's page and fact sheet (~1.5 s each).
-import { existsSync, mkdirSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { cleanPlayer, parseDayMatches, parseDraws, session } from './tournamentsoftware.mjs';
@@ -226,6 +226,41 @@ async function sendResults(events, base, secret, { liveOnly = false } = {}) {
   }
 }
 
+/** "Last changed Friday, 30 October 2026 14:24 (GMT +01:00)" on an event's main page: when its organizer last saved anything there (entries, draws, results). */
+export const parseLastChanged = (html) => text(html).match(/Last changed ([^(]*\(GMT [^)]*\))/)?.[1]?.trim() ?? null;
+
+/**
+ * The hourly/ten-minute refresh of events that are on. Each event's main page is looked at first (one small request) and its matches only when the stamp changed since
+ * the last look; `state` remembers the stamp and whether the event has Israelis. Events with Israeli matches are sent with their draws.
+ */
+async function liveRefresh(ts, events, state, base, secret) {
+  const today = new Date().toISOString().slice(0, 10);
+  const yesterday = new Date(Date.now() - 864e5).toISOString().slice(0, 10);
+  const out = [];
+  let looked = 0;
+  for (const e of events) {
+    const known = state.events[e.id] ?? { changed: null, israelis: false };
+    try {
+      const changed = parseLastChanged(await ts.get(`/tournament/${e.id.toLowerCase()}`));
+      looked++;
+      state.events[e.id] = { ...known, name: e.name, start: e.start, end: e.end };
+      if (changed && changed === known.changed) continue; // nothing was saved since the last look
+      const days = [yesterday, today].filter((d) => d >= e.start && d <= e.end).map((d) => d.replace(/-/g, ''));
+      const r = await readIsraeliMatches(ts, e.id, days);
+      state.events[e.id].changed = changed;
+      state.events[e.id].israelis = known.israelis || r.matches.length > 0;
+      if (!r.matches.length) continue;
+      try { r.draws = await readEventDraws(ts, e.id); } catch (err) { console.log(`  draws failed for ${e.name}: ${String(err.message).slice(0, 60)}`); }
+      out.push(r);
+    } catch (err) { console.log(`  refresh failed for ${e.name}: ${String(err.message).slice(0, 60)}`); }
+  }
+  console.log(`live: looked at ${looked} event(s), ${out.length} with news for Israeli players`);
+  for (let i = 0; i < out.length; i += 10) {
+    const r = await post(base, secret, { kind: 'abroad-results', results: out.slice(i, i + 10) });
+    console.log(`push abroad-results: ${r.status} ${r.text}`);
+  }
+}
+
 if (process.argv[1] && process.argv[1].endsWith('abroad.mjs')) {
   const args = process.argv.slice(2);
   const opt = (n, d) => (args.includes(n) ? args[args.indexOf(n) + 1] : d);
@@ -234,19 +269,27 @@ if (process.argv[1] && process.argv[1].endsWith('abroad.mjs')) {
   if (push && (!base || !process.env.CRON_SECRET)) { console.error('--push needs --url <site> and CRON_SECRET in the environment.'); process.exit(1); }
 
   if (args.includes('--live')) {
-    // started every 10 minutes by the rosters job: does something once an hour, in the daytime (Israel time), and reads only what is on today
+    // started every 10 minutes by the rosters job, in the daytime (Israel time). Every run looks at the events known to have Israeli players (one small request each;
+    // matches are read only when the event's "last changed" moved); about once an hour it also looks at every event that is on, to find new ones
     const hour = Number(new Date().toLocaleString('en-GB', { hour: '2-digit', hour12: false, timeZone: 'Asia/Jerusalem' }));
     const out = process.env.LOGLIG_DUMP_DIR ? path.resolve(process.env.LOGLIG_DUMP_DIR) : path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../.loglig-dump');
-    const stamp = path.join(out, 'abroad-live.stamp');
-    if (!args.includes('--force')) {
-      if (hour < 8 || hour >= 22) { console.log('abroad live: outside 8:00-22:00 (Israel time), nothing to do'); process.exit(0); }
-      if (existsSync(stamp) && Date.now() - statSync(stamp).mtimeMs < 50 * 60e3) { console.log('abroad live: ran less than 50 minutes ago'); process.exit(0); }
-    }
-    mkdirSync(out, { recursive: true }); writeFileSync(stamp, new Date().toISOString());
+    if (!args.includes('--force') && (hour < 8 || hour >= 22)) { console.log('abroad live: outside 8:00-22:00 (Israel time), nothing to do'); process.exit(0); }
+    mkdirSync(out, { recursive: true });
+    const stateFile = path.join(out, 'abroad-live-state.json');
+    let state = { scannedAt: null, events: {} };
+    try { if (existsSync(stateFile)) state = { ...state, ...JSON.parse(readFileSync(stateFile, 'utf8')) }; } catch { /* a damaged file: start again */ }
     const today = new Date().toISOString().slice(0, 10);
-    const found = (await searchTournaments(session(TE), today, today)).filter((e) => !/israel/i.test(e.country) && e.start <= today && e.end >= today);
-    if (!push) { console.log(found.length + ' event(s) on today (dry run: nothing read or sent)'); process.exit(0); }
-    await sendResults(found, base, process.env.CRON_SECRET, { liveOnly: true });
+    const full = args.includes('--force') || !state.scannedAt || Date.now() - Date.parse(state.scannedAt) > 50 * 60e3;
+    const ts = session(TE);
+    const events = full
+      ? (await searchTournaments(ts, today, today)).filter((e) => !/israel/i.test(e.country) && e.start <= today && e.end >= today)
+      : Object.entries(state.events).filter(([, v]) => v.israelis && v.start <= today && v.end >= today).map(([id, v]) => ({ id, name: v.name, start: v.start, end: v.end }));
+    if (!push) { console.log(`${events.length} event(s) to look at (${full ? 'full scan' : 'events with Israelis'}); dry run: nothing read or sent`); process.exit(0); }
+    if (full) state.scannedAt = new Date().toISOString();
+    await liveRefresh(ts, events, state, base, process.env.CRON_SECRET);
+    // forget events that are over
+    for (const [id, v] of Object.entries(state.events)) if (v.end < new Date(Date.now() - 2 * 864e5).toISOString().slice(0, 10)) delete state.events[id];
+    writeFileSync(stateFile, JSON.stringify(state));
     process.exit(0);
   }
 

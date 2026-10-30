@@ -3,7 +3,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { db, schema } from '@/db';
 import { resetDb } from './helpers';
-import { matchDays, parseDrawContent, parseEntryDates, parseFactsheet, parseSearch } from '../scripts/loglig-sync/abroad.mjs';
+import { matchDays, parseDrawContent, parseLastChanged, parseEntryDates, parseFactsheet, parseSearch } from '../scripts/loglig-sync/abroad.mjs';
 import { parseDayMatches } from '../scripts/loglig-sync/tournamentsoftware.mjs';
 import { abroadCatalog, abroadEvent, entryState, groupTable, importAbroad, importAbroadResults, phaseOf, validateAbroadImport, validateAbroadResults } from '@/services/abroad';
 import { countryInfo, flagEmoji } from '@/lib/countries';
@@ -26,6 +26,11 @@ describe('Tennis Europe parsers (real pages)', () => {
     expect(parseEntryDates(text, '2026-11-02')).toEqual({ entryOpens: '2026-09-07T00:00:00.000Z', entryDeadline: '2026-10-06T14:00:00.000Z', withdrawalDeadline: '2026-10-20T14:00:00.000Z' });
     expect(parseEntryDates('Entry opens Mon 7 Dec 00:00 GMT Entry deadline Tue 5 Jan 14:00 GMT', '2027-01-11')).toMatchObject({ entryOpens: '2026-12-07T00:00:00.000Z', entryDeadline: '2027-01-05T14:00:00.000Z' });
     expect(parseEntryDates('nothing here', '2026-11-02')).toEqual({ entryOpens: null, entryDeadline: null, withdrawalDeadline: null });
+  });
+
+  it('reads when the organizer last saved anything (what the live refresh compares)', () => {
+    expect(parseLastChanged(fixture('te-event.html'))).toBe('Wednesday, 28 October 2026 12:48 (GMT +02:00)');
+    expect(parseLastChanged('<p>no stamp here</p>')).toBeNull();
   });
 
   it('reads the fee, hospitality and court type from the fact sheet', () => {
