@@ -9,7 +9,7 @@
 import { existsSync, mkdirSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { parseDayMatches, session } from './tournamentsoftware.mjs';
+import { cleanPlayer, parseDayMatches, parseDraws, session } from './tournamentsoftware.mjs';
 
 export const TE = 'https://te.tournamentsoftware.com';
 const decode = (s) => s.replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCodePoint(parseInt(h, 16))).replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(Number(n)))
@@ -112,6 +112,42 @@ export async function readAbroad({ days = 180, limit = Infinity, log = console.l
   return { events, until: to };
 }
 
+/**
+ * A draw's knockout tree (the page's own GetDrawContent): every round is a slide, its matches in the order of the tree, empty rows where the players
+ * are not known yet. -> [[{ a: { names, cc, won }, b: { names, cc, won }, sets, date }]], first round first.
+ */
+export function parseDrawContent(html) {
+  return html.split(/<swiper-slide[^>]*>/).slice(1).map((slide) => slide.split('</swiper-slide>')[0]
+    .split(/<div class="match(?=[ "])/).slice(1)
+    .map((block) => {
+      const rows = block.split(/<div class="match__row(?=[ "])/).slice(1).map((r) => ({
+        names: [...r.matchAll(/data-player-id="[^"]*"[^>]*>\s*<span class="nav-link__value">([\s\S]*?)<\/span>/g)].map((x) => cleanPlayer(x[1])).filter(Boolean),
+        cc: [...r.matchAll(/data-nationality-id="([A-Z]{3})"/g)].map((x) => x[1]),
+        won: /^[^>]*has-won/.test(r),
+      }));
+      const sets = [...block.matchAll(/<ul class="points">([\s\S]*?)<\/ul>/g)].map((x) => [...x[1].matchAll(/<li[^>]*>\s*(\d+)\s*<\/li>/g)].map((c) => Number(c[1]))).filter((p) => p.length === 2);
+      const date = text(block.match(/match__footer[\s\S]*?nav-link__value">([^<]*)</)?.[1] ?? '');
+      return rows.length >= 2 ? { a: rows[0], b: rows[1], sets, date } : null;
+    }).filter(Boolean)).filter((round) => round.length);
+}
+
+/** The knockout draws of an event in which an Israeli player is: [{ n, name, rounds }]. Round robin draws are left to the tournament's own page. */
+export async function readEventDraws(ts, id) {
+  const list = await ts.get(`/sport/draws.aspx?id=${id}`);
+  const links = [...list.matchAll(/href="draw\.aspx\?id=[^"]*&amp;draw=(\d+)"[^>]*>([\s\S]*?)<\/a>/g)].map((m) => ({ n: Number(m[1]), name: text(m[2]) }));
+  if (!links.length) return [];
+  const types = new Map(parseDraws(list).map((d) => [d.name, d.type]));
+  await ts.get(`/tournament/${id.toLowerCase()}/Draw/${links[0].n}`); // opens the draw page first, like a browser does
+  const out = [];
+  for (const l of links) {
+    if (types.get(l.name) && !/elimination/i.test(types.get(l.name))) continue;
+    const html = await ts.get(`/tournament/${id.toLowerCase()}/Draw/${l.n}/GetDrawContent?tabindex=1`, { method: 'POST', headers: { 'x-requested-with': 'XMLHttpRequest', 'content-type': 'application/x-www-form-urlencoded' }, body: '' });
+    const rounds = parseDrawContent(html);
+    if (rounds.some((round) => round.some((m) => [...m.a.cc, ...m.b.cc].includes('ISR')))) out.push({ n: l.n, name: l.name, rounds });
+  }
+  return out;
+}
+
 /** The match days an event lists (its match page's date strip), as YYYYMMDD. */
 export const matchDays = (html) => [...new Set([...html.matchAll(/data-value="(\d{8})"[^>]*js-date-selection-tab/g)].map((m) => m[1]))];
 const isoDay = (d) => `${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6)}`;
@@ -151,7 +187,11 @@ async function sendResults(events, base, secret, { liveOnly = false } = {}) {
       // the hourly refresh reads only today and yesterday of the days the event runs; the daily one reads them all
       const only = liveOnly ? [yesterday, today].filter((d) => d >= e.start && d <= e.end).map((d) => d.replace(/-/g, '')) : undefined;
       const r = await readIsraeliMatches(ts, e.id, only);
-      if (r.matches.length) out.push(r);
+      if (r.matches.length) {
+        // the trees of the draws the Israelis are in (one failing page must not lose the matches)
+        try { r.draws = await readEventDraws(ts, e.id); } catch (err) { console.log(`  draws failed for ${e.name}: ${String(err.message).slice(0, 60)}`); }
+        out.push(r);
+      }
     } catch (err) { console.log(`  results failed for ${e.name}: ${String(err.message).slice(0, 60)}`); }
   }
   console.log(`${out.length} of ${wanted.length} running or recent event(s) have matches of Israeli players (${out.reduce((n, r) => n + r.matches.length, 0)} matches)`);

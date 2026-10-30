@@ -3,10 +3,12 @@ import { notFound } from 'next/navigation';
 import { db } from '@/db';
 import { Shell } from '@/components/Shell';
 import { Flag } from '@/components/Flag';
+import { Fold } from '@/components/Fold';
+import { BracketView, type BracketCell, type BracketSide } from '@/components/BracketView';
 import { fmtScore } from '@/components/labels';
 import { tr } from '@/lib/i18n';
 import { countryInfo } from '@/lib/countries';
-import { abroadEvent, phaseOf } from '@/services/abroad';
+import { abroadEvent, phaseOf, type DrawMatch } from '@/services/abroad';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,6 +28,14 @@ export default async function AbroadEventPage({ params }: { params: Promise<{ id
   const dayLabel = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString('he-IL', { timeZone: 'UTC', weekday: 'long', day: 'numeric', month: 'numeric' });
   const range = `${e.startDate.toLocaleDateString('he-IL', { timeZone: TZ, day: 'numeric', month: 'numeric' })} – ${e.endDate.toLocaleDateString('he-IL', { timeZone: TZ })}`;
   const where = [e.city, t(countryInfo(e.country).he)].filter(Boolean).join(', ');
+
+  // a knockout draw as the site's own tree: first round first, each round half the size of the one before (a missing slot is a bye); the Israelis are marked
+  const sideOf = (m: DrawMatch, k: 'a' | 'b'): BracketSide => ({ names: m[k].names, win: m[k].won, me: m[k].cc.includes('ISR'), sets: m.sets.length ? m.sets.map((s, i) => <b key={i}>{s[k === 'a' ? 0 : 1]}</b>) : null });
+  const treeOf = (rounds: DrawMatch[][]) => rounds.map((round, k): (BracketCell | null)[] => {
+    const want = 2 ** (rounds.length - 1 - k);
+    return Array.from({ length: want }, (_, i) => (round[i] ? { a: sideOf(round[i]!, 'a'), b: sideOf(round[i]!, 'b'), meta: round[i]!.date || undefined } : null));
+  });
+  const draws = e.results?.draws ?? [];
 
   const Side = ({ s }: { s: { names: string[]; cc: string[]; won: boolean; msg: string } }) => (
     <span className="row" style={{ gap: 8, flexWrap: 'nowrap', alignItems: 'baseline', fontWeight: s.won ? 800 : 500, ...(s.cc.includes('ISR') ? { color: 'var(--blue)' } : {}) }}>
@@ -64,6 +74,16 @@ export default async function AbroadEventPage({ params }: { params: Promise<{ id
         </section>
       )) : (
         <div className="card muted">{phase === 'up' ? t('הטורניר עוד לא התחיל.') : t('עדיין אין משחקים של שחקנים ישראלים בטורניר, או שהמארגן עוד לא פירסם אותם. לכל המשחקים אפשר לעבור לדף הטורניר ב-Tennis Europe.')}</div>
+      )}
+      {draws.length > 0 && (
+        <>
+          <h2>{t('הגרלות')}</h2>
+          {draws.map((d, i) => (
+            <Fold key={d.n} title={d.name} open={i === 0}>
+              <BracketView cols={treeOf(d.rounds)} tt={t} pending={t('טרם נקבע')} />
+            </Fold>
+          ))}
+        </>
       )}
       <p className="muted" style={{ marginTop: 18 }}>{t('המשחקים נלקחים מהאתר של Tennis Europe ומתעדכנים בערך פעם בשעה בזמן הטורניר.')}</p>
     </Shell>

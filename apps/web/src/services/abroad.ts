@@ -13,7 +13,9 @@ export interface AbroadIn { kind: 'abroad'; circuit: 'TE' | 'ITF'; events: Abroa
 export interface ResultSide { names: string[]; cc: string[]; won: boolean; msg: string }
 export interface ResultMatch { day: string; draw: string; stage: string; court: string; time: string; a: ResultSide; b: ResultSide; sets: number[][] }
 /** Matches of Israeli players at events, per event and match days: the sync sends the days it read and the matches found on them. */
-export interface AbroadResultsIn { kind: 'abroad-results'; results: { id: string; days: string[]; matches: ResultMatch[] }[] }
+export interface DrawMatch { a: { names: string[]; cc: string[]; won: boolean }; b: { names: string[]; cc: string[]; won: boolean }; sets: number[][]; date: string }
+export interface ResultDraw { n: number; name: string; rounds: DrawMatch[][] }
+export interface AbroadResultsIn { kind: 'abroad-results'; results: { id: string; days: string[]; matches: ResultMatch[]; draws?: ResultDraw[] }[] }
 
 const clean = (s: unknown, n = 200) => (typeof s === 'string' ? s.replace(/\s+/g, ' ').trim().slice(0, n) : '');
 const day = (s: unknown) => (typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s) && Date.parse(s) >= Date.parse('2000-01-01') ? s : null);
@@ -124,7 +126,15 @@ export function validateAbroadResults(x: unknown): AbroadResultsIn {
         sets: (Array.isArray(m.sets) ? m.sets : []).slice(0, 5).map((s) => (Array.isArray(s) ? [Number(s[0]) || 0, Number(s[1]) || 0] : [0, 0])),
       });
     }
-    results.push({ id, days, matches });
+    // the knockout trees of the draws that have an Israeli player: a handful of rounds of at most 64 matches
+    const draws: ResultDraw[] = (Array.isArray((r as { draws?: unknown }).draws) ? (r as { draws: ResultDraw[] }).draws : []).slice(0, 12).map((d) => ({
+      n: Math.max(0, Math.floor(Number(d?.n)) || 0), name: clean(d?.name, 80),
+      rounds: (Array.isArray(d?.rounds) ? d.rounds : []).slice(0, 8).map((round) => (Array.isArray(round) ? round : []).slice(0, 64).map((m) => {
+        const s1 = side(m?.a), s2 = side(m?.b);
+        return { a: { names: s1.names, cc: s1.cc, won: s1.won }, b: { names: s2.names, cc: s2.cc, won: s2.won }, sets: (Array.isArray(m?.sets) ? m.sets : []).slice(0, 5).map((s) => (Array.isArray(s) ? [Number(s[0]) || 0, Number(s[1]) || 0] : [0, 0])), date: clean(m?.date, 24) };
+      })).filter((round) => round.length),
+    })).filter((d) => d.name && d.rounds.length);
+    results.push({ id, days, matches, ...((r as { draws?: unknown }).draws !== undefined ? { draws } : {}) });
   }
   return { kind: 'abroad-results', results };
 }
@@ -141,7 +151,7 @@ export async function importAbroadResults(db: Db, input: AbroadResultsIn, now = 
     const matches = [...keep, ...r.matches].sort((x, y) => x.day.localeCompare(y.day) || x.time.localeCompare(y.time)).slice(-400);
     const days = [...new Set([...(byId.get(r.id)?.days ?? []), ...r.days])].sort();
     stats.events++; stats.matches += matches.length;
-    return { id: r.id, results: { updated: now.toISOString(), days, matches } };
+    return { id: r.id, results: { updated: now.toISOString(), days, matches, draws: r.draws ?? byId.get(r.id)?.draws ?? [] } };
   });
   if (rows.length) await db.execute(sql`update abroad_events a set results = t.results from jsonb_to_recordset(${JSON.stringify(rows)}::jsonb) as t(id text, results jsonb) where a.id = t.id`);
   return stats;

@@ -3,7 +3,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { db, schema } from '@/db';
 import { resetDb } from './helpers';
-import { matchDays, parseEntryDates, parseFactsheet, parseSearch } from '../scripts/loglig-sync/abroad.mjs';
+import { matchDays, parseDrawContent, parseEntryDates, parseFactsheet, parseSearch } from '../scripts/loglig-sync/abroad.mjs';
 import { parseDayMatches } from '../scripts/loglig-sync/tournamentsoftware.mjs';
 import { abroadCatalog, abroadEvent, entryState, importAbroad, importAbroadResults, phaseOf, validateAbroadImport, validateAbroadResults } from '@/services/abroad';
 import { countryInfo, flagEmoji } from '@/lib/countries';
@@ -152,5 +152,36 @@ describe('matches of Israeli players abroad', () => {
     const bad = validateAbroadResults({ kind: 'abroad-results', results: [{ id: 'not an id', days: [], matches: [] }, { id: '0EDF3889-7C03-4427-B261-E5C54EC3B579', days: ['2026-10-29'], matches: [m('2026-10-29', '09:00', true), { day: 'x' }] }] });
     expect(bad.results).toHaveLength(1);
     expect(await importAbroadResults(db, bad, NOW)).toMatchObject({ events: 0 });
+  });
+});
+
+describe('knockout draws of an event', () => {
+  beforeAll(resetDb);
+  const NOW = new Date('2026-10-29T12:00:00Z');
+  const A = '7D87510B-EAD5-459F-AA73-448502DEF587';
+  const base = { venue: '', city: 'Heraklion', country: 'Greece', surface: '', category: 'Category 2', age: 12, closed: false, entryOpens: null, entryDeadline: null, withdrawalDeadline: null, fee: '', hospitality: '', indoor: null, url: 'https://example.org/x' };
+
+  it('reads the tree of a real draw: the rounds, the players with their flags, the sets and who won', () => {
+    const rounds = parseDrawContent(readFileSync(new URL('./fixtures/te-draw.html', import.meta.url), 'utf8')) as { a: { names: string[]; cc: string[]; won: boolean }; b: { names: string[]; cc: string[] }; sets: number[][]; date: string }[][];
+    expect(rounds.map((r) => r.length)).toEqual([32, 16, 8, 4, 2, 1]);
+    // names carry no seeding marks; the winner is flagged; the sets are as the page shows them
+    expect(rounds[0]![0]).toMatchObject({ a: { names: ['Nikita Alexander RUNG'], cc: ['GER'], won: true }, b: { names: ['Charles TRENTESAUX'], cc: ['FRA'] }, sets: [[6, 1], [6, 1]], date: 'Mon 26/10/2026' });
+    // the final is not played yet: empty sides, no sets
+    expect(rounds[5]![0]).toMatchObject({ a: { names: [] }, b: { names: [] }, sets: [] });
+  });
+
+  it('stores the trees with the results and keeps them when a later refresh sends only matches', async () => {
+    await importAbroad(db, validateAbroadImport({ kind: 'abroad', circuit: 'TE', until: '2026-12-31', events: [{ ...base, id: A, name: 'NANA Golden Beach', start: '2026-10-24', end: '2026-10-31' }] }), NOW);
+    const side = (n: string, cc: string, won = false) => ({ names: [n], cc: [cc], won });
+    const draws = [{ n: 1, name: 'BS12 - Boys Singles 12 Main Draw', rounds: [[{ a: side('Ben STRAUSS', 'ISR', true), b: side('Loukas PANOUSIS', 'GRE'), sets: [[6, 3], [6, 3]], date: 'Thu 29/10/2026' }, { a: side('X', 'GRE'), b: side('Y', 'GRE', true), sets: [[6, 0]], date: '' }], [{ a: side('Ben STRAUSS', 'ISR'), b: { names: [], cc: [], won: false }, sets: [], date: '' }]] }];
+    const match = { day: '2026-10-29', draw: 'BS12', stage: 'Quarter final', court: 'Court 4', time: '12:30', a: side('Ben STRAUSS', 'ISR', true), b: side('Loukas PANOUSIS', 'GRE'), sets: [[6, 3], [6, 3]] };
+    await importAbroadResults(db, validateAbroadResults({ kind: 'abroad-results', results: [{ id: A, days: ['2026-10-29'], matches: [match], draws }] }), NOW);
+    let ev = await abroadEvent(db, A);
+    expect(ev!.results!.draws).toHaveLength(1);
+    expect(ev!.results!.draws![0]!.rounds.map((r) => r.length)).toEqual([2, 1]);
+    // the hourly refresh that sends no trees leaves them as they were
+    await importAbroadResults(db, validateAbroadResults({ kind: 'abroad-results', results: [{ id: A, days: ['2026-10-29'], matches: [match] }] }), NOW);
+    ev = await abroadEvent(db, A);
+    expect(ev!.results!.draws).toHaveLength(1);
   });
 });
