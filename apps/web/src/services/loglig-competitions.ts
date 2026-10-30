@@ -193,7 +193,7 @@ export async function importCompetition(db: Db, input: CompetitionIn, now = new 
       // a planned competition (known from the federation's Gantt) becomes the real one: its dates and name are the published ones
       const planned = existing.status === 'PLANNED';
       // Tennis Europe is the authority on its own events' dates (an organizer moves a week): the start follows it; other sources keep the start the competition was created with
-      const moved = /te.tournamentsoftware.com/.test(input.sourceUrl ?? '') && +existing.startDate !== +start;
+      const moved = /te\.tournamentsoftware\.com/.test(input.sourceUrl ?? '') && +existing.startDate !== +start;
       await tx.update(schema.tournaments).set({ ...fields, ...(planned ? { name: input.name, startDate: start } : {}), ...(moved ? { startDate: start } : {}), ...(+existing.startDate < REAL_FROM ? { startDate: start } : {}) }).where(eq(schema.tournaments.id, tid)); }
     else {
       tid = (await tx.insert(schema.tournaments).values({
@@ -651,4 +651,15 @@ export async function importCalendar(db: Db, input: CalendarIn, now = new Date()
     }
   }
   return stats;
+}
+
+/**
+ * Players the sync made from Latin-letter names (a Tennis Europe match page lists "Ben STRAUSS", the site knows him in Hebrew) and that nothing refers to any more:
+ * no entries, no account. Removes them so the real player is the only one. Players with entries are never touched.
+ */
+export async function removeLatinPlayers(db: Db) {
+  const ids = (await db.execute(sql`
+    select p.id from players p where p.loglig_id like 'cp:%' and p.account_id is null and p.first_name ~ '^[A-Za-z]'
+      and not exists (select 1 from entries e where e.player_id = p.id)`)) as unknown as { id: string }[];
+  return deletePlayersById(db, ids.map((r) => r.id));
 }

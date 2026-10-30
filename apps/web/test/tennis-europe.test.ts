@@ -3,7 +3,7 @@ import { eq } from 'drizzle-orm';
 import { db, schema } from '@/db';
 import { resetDb } from './helpers';
 import { readFileSync } from 'node:fs';
-import { buildCategories, displayName, parseAcceptance, parseEvent, parseOtherEvents } from '../scripts/loglig-sync/te.mjs';
+import { displayName, parseAcceptance, parseEvent, parseOtherEvents } from '../scripts/loglig-sync/te.mjs';
 import { eventInfo } from '../scripts/loglig-sync/tournamentsoftware.mjs';
 import { importCalendar, importCompetition, validateCalendarImport, validateCompetitionImport } from '@/services/loglig-competitions';
 
@@ -91,10 +91,19 @@ describe('an event whose organizer moved its dates', () => {
     await importCompetition(db, doc('2026-11-02', 'https://ita.co.il/competitions/x/'), new Date('2026-10-30T12:00:00Z'));
     expect((await db.select().from(schema.tournaments).where(eq(schema.tournaments.name, 'Tennis Europe U14 חיפה')))[0]!.startDate.toISOString().slice(0, 10)).toBe('2026-10-31');
   });
+});
 
-  it('keeps the qualifying draw apart from the main draw and reads the age of Tennis Europe draws', () => {
-    const row = (draw: string, a: string, b: string) => ({ draw, stage: 'Round of 16', day: '2026-11-01', court: '', time: '', kindText: '', a: { names: [a], won: true, msg: '' }, b: { names: [b], won: false, msg: '' }, sets: [[6, 1], [6, 2]] });
-    const { categories } = buildCategories([row('BS14 - Boys Singles 14 Main Draw', 'A A', 'B B'), row('BS14 - Boys Singles 14 Qualifying', 'C C', 'D D')], [{ name: 'BS14 - Boys Singles 14 Main Draw', size: 48, type: 'Elimination' }, { name: 'BS14 - Boys Singles 14 Qualifying', size: 48, type: 'Elimination' }]);
-    expect(categories.map((c: { name: string; age: number }) => [c.name, c.age])).toEqual([['בנים 14', 14], ['מוקדמות · בנים 14', 14]]);
+describe('cleaning up players made from Latin names', () => {
+  it('removes Latin-named players nothing refers to, and only those', async () => {
+    await resetDb();
+    const mk = (first: string, last: string, key: string, account?: string) => db.insert(schema.players).values({ firstName: first, lastName: last, birthDate: new Date('2014-01-01'), gender: 'MALE', logligId: key, accountId: account ?? null }).returning().then((r) => r[0]!);
+    const latin = await mk('Ben', 'STRAUSS', 'cp:MALE:Ben STRAUSS');
+    const hebrew = await mk('בן', 'שטראוס', 'cp:MALE:בן שטראוס');
+    const ranked = await mk('Ron', 'Bar', 'rk:M:2014:Ron Bar'); // from the ranking mirror: not made by a match page
+    const { removeLatinPlayers } = await import('@/services/loglig-competitions');
+    expect(await removeLatinPlayers(db)).toMatchObject({ players: 1 });
+    const left = (await db.select({ id: schema.players.id }).from(schema.players)).map((p) => p.id).sort();
+    expect(left).toEqual([hebrew.id, ranked.id].sort());
+    expect(left).not.toContain(latin.id);
   });
 });

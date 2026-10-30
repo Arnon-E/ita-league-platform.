@@ -8,7 +8,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { buildTsCompetition, readTournament, session } from './tournamentsoftware.mjs';
+import { session } from './tournamentsoftware.mjs';
 
 export const TE = 'https://te.tournamentsoftware.com';
 /** Any Israeli Tennis Europe event: its "other events" tab lists the year's events, and the Israeli ones are picked from there. */
@@ -102,15 +102,6 @@ export async function readAcceptance(ts, id) {
 /** "Last changed Friday, 30 October 2026 14:24 (GMT +01:00)" on an event's main page: when its organizer last saved anything. */
 export const lastChanged = (html) => text(html).match(/Last changed ([^(]*\(GMT [^)]*\))/)?.[1]?.trim() ?? null;
 
-/** The draws of an event as categories: the qualifying draw of "BS14" is its own category ("מוקדמות · בנים 14"), not a second "בנים 14". */
-export function buildCategories(raw, draws) {
-  const isQ = (name) => /qualifying/i.test(name);
-  const main = buildTsCompetition(raw.filter((r) => !isQ(r.draw)), draws.filter((d) => !isQ(d.name)));
-  const qual = buildTsCompetition(raw.filter((r) => isQ(r.draw)), draws.filter((d) => isQ(d.name)));
-  const q = (c) => ({ ...c, name: `מוקדמות · ${c.name}` });
-  return { categories: [...main.categories, ...qual.categories.map(q)], doubles: [...main.doubles, ...qual.doubles.map(q)] };
-}
-
 /** Ids of the Israeli-looking events of the year(s) from the "other events" tab (the page then confirms the country). */
 async function candidateIds(ts, years, ids, log) {
   const found = new Map(ids.map((i) => [i.toUpperCase(), '']));
@@ -122,18 +113,15 @@ async function candidateIds(ts, years, ids, log) {
   return [...found].filter(([id, title]) => ids.map((i) => i.toUpperCase()).includes(id) || id === SEED || /closed event|israel|haifa|tel aviv|jerusalem|raanana|herzliya/i.test(title)).map(([id]) => id);
 }
 
-/** One Israeli event as a competition document (details, who is accepted, draws and results once published), or null when it is not in Israel. */
+/** One Israeli event as a competition document (details and who is accepted), or null when it is not in Israel. */
 export async function readEventDoc(ts, id, year, log = console.log) {
   const html = await ts.get(`/tournament/${id.toLowerCase()}`);
   const ev = parseEvent(html, year);
   if (!ev || !/israel/i.test(ev.country)) return null;
   let acceptance = [];
   try { acceptance = (await readAcceptance(ts, id)).filter((x) => x.players.length); } catch (e) { log(`  no acceptance list for ${ev.title}: ${String(e.message).slice(0, 50)}`); }
-  let categories = [], doubles = [];
-  try {
-    const data = await readTournament(ts, id);
-    ({ categories, doubles } = buildCategories(data.raw, data.draws));
-  } catch (e) { log(`  no draws yet for ${ev.title}: ${String(e.message).slice(0, 50)}`); }
+  // no draws or matches here: they are read into the event's own page (see abroad.mjs), where the players are not created as new players of the site
+  const categories = [], doubles = [];
   return {
     kind: 'competition', name: displayName(ev.title, ev.city), start: ev.start, end: ev.end, feeShekel: 0, level: 'INTERNATIONAL', section: 'YOUTH', sourceUrl: `${TE}/tournament/${id.toLowerCase()}`, registerUrl: '', registrationCloses: null, isDoubles: false,
     venues: [{ club: ev.venue, address: ev.city }], contacts: ev.contact ? [{ area: '', club: ev.venue, name: ev.contact.name, phone: ev.contact.phone }] : [], categories, doubles, entries: ev.entries, acceptance, changed: lastChanged(html),

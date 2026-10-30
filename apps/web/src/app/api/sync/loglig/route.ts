@@ -2,7 +2,7 @@ import { timingSafeEqual } from 'node:crypto';
 import { mergeClubs } from '@/services/clubs';
 import { devSeed, devStats, devWipe } from '@/services/devtools';
 import { db } from '@/db';
-import { addResultOverride, dedupeMirror, importCalendar, importCompetition, removePairPlayers, removeTournament, validateCalendarImport, validateCompetitionImport } from '@/services/loglig-competitions';
+import { addResultOverride, dedupeMirror, importCalendar, importCompetition, removeLatinPlayers, removePairPlayers, removeTournament, validateCalendarImport, validateCompetitionImport } from '@/services/loglig-competitions';
 import { importClubs, importSiteInfo, validateClubsImport, validateSiteInfoImport } from '@/services/loglig-app';
 import { importAbroad, importAbroadAcceptance, importAbroadResults, validateAbroadAcceptance, validateAbroadImport, validateAbroadResults } from '@/services/abroad';
 import { importRegulations, validateRegulationsImport } from '@/services/regulations';
@@ -30,6 +30,7 @@ export async function POST(req: Request) {
     if (body?.kind === 'test-user-create') return Response.json(await createTestUser(db, body.role === 'FEDERATION_ADMIN' ? 'FEDERATION_ADMIN' : 'PLAYER'));
     if (body?.kind === 'test-user-delete') return Response.json(await removeTestUsers(db));
     if (body?.kind === 'cleanup-pairs') return Response.json(await removePairPlayers(db));
+    if (body?.kind === 'cleanup-latin-players') return Response.json(await removeLatinPlayers(db));
     if (body?.kind === 'dev-seed') return Response.json(await devSeed(db, { players: Number(body.players) || undefined, tournaments: Number(body.tournaments) || undefined, reset: body.reset === true }));
     if (body?.kind === 'dev-wipe') return Response.json(await devWipe(db));
     if (body?.kind === 'dev-stats') return Response.json(await devStats(db, body.action === 'reset' ? 'reset' : 'snapshot'));

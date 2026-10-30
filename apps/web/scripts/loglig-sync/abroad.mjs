@@ -101,7 +101,8 @@ export async function readAbroad({ days = 180, limit = Infinity, log = console.l
   const to = new Date(Date.now() + days * 864e5).toISOString().slice(0, 10);
   // from a week back: what ended in the last week is listed too (its results are still read)
   const from = new Date(Date.now() - 7 * 864e5).toISOString().slice(0, 10);
-  const found = (await searchTournaments(ts, from, to, log)).filter((e) => !/israel/i.test(e.country));
+  // Israeli events too: their page here has the draws and results (they are also competitions on the site, with details and who is accepted only)
+  const found = await searchTournaments(ts, from, to, log);
   const events = [];
   for (const e of found.slice(0, limit)) {
     let extra = { entryOpens: null, entryDeadline: null, withdrawalDeadline: null, fee: '', hospitality: '', indoor: null };
@@ -281,7 +282,7 @@ if (process.argv[1] && process.argv[1].endsWith('abroad.mjs')) {
     const full = args.includes('--force') || !state.scannedAt || Date.now() - Date.parse(state.scannedAt) > 50 * 60e3;
     const ts = session(TE);
     const events = full
-      ? (await searchTournaments(ts, today, today)).filter((e) => !/israel/i.test(e.country) && e.start <= today && e.end >= today)
+      ? (await searchTournaments(ts, today, today)).filter((e) => e.start <= today && e.end >= today)
       : Object.entries(state.events).filter(([, v]) => v.israelis && v.start <= today && v.end >= today).map(([id, v]) => ({ id, name: v.name, start: v.start, end: v.end }));
     if (!push) { console.log(`${events.length} event(s) to look at (${full ? 'full scan' : 'events with Israelis'}); dry run: nothing read or sent`); process.exit(0); }
     if (full) state.scannedAt = new Date().toISOString();

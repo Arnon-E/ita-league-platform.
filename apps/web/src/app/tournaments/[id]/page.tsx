@@ -271,6 +271,8 @@ async function Overview({ d, manage, compact = false, registered = false }: { d:
   const closesIn = t.status === 'REGISTRATION_OPEN' && t.registrationCloses ? Math.ceil((+t.registrationCloses - Date.now()) / 864e5) : null;
   const step = STEP_OF[t.status];
   const contacts = t.contacts ?? [];
+  // a Tennis Europe event in Israel: its draws, groups and results are on its page for events (the competition here has the details and who is accepted)
+  const teEvent = t.sourceUrl?.match(/te\.tournamentsoftware\.com\/tournament\/([0-9a-f-]{36})/i)?.[1]?.toUpperCase() ?? null;
   const facts: [string, React.ReactNode][] = [
     ['תאריכים', `${fmtDate(t.startDate)} – ${fmtDate(t.endDate)} · ${days} ${tt('ימים')}`],
     ...(venue ? [['מקום', [venue.name, venue.city].filter(Boolean).join(', ')] as [string, string]] : []),
@@ -318,7 +320,9 @@ async function Overview({ d, manage, compact = false, registered = false }: { d:
           <div className="row" style={{ gap: 18 }}>
             {t.registrationCloses && <span><strong>{tt('ההרשמה נסגרת')}:</strong> {t.registrationCloses.toLocaleString('he-IL', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Jerusalem' })}</span>}
             {t.feeAgorot > 0 && <span><strong>{tt('דמי השתתפות')}:</strong> ₪{(t.feeAgorot / 100).toFixed(0)}</span>}
-            {t.sourceUrl && <a className="muted" href={t.sourceUrl} target="_blank" rel="noopener noreferrer"><u>{tt('עמוד התחרות באתר האיגוד')}</u></a>}
+            {t.sourceUrl && !teEvent && <a className="muted" href={t.sourceUrl} target="_blank" rel="noopener noreferrer"><u>{tt('עמוד התחרות באתר האיגוד')}</u></a>}
+            {teEvent && <Link className="btn" href={"/abroad/" + teEvent}>{tt('הגרלות, בתים ותוצאות')}</Link>}
+            {teEvent && <a className="muted" href={t.sourceUrl!} target="_blank" rel="noopener noreferrer"><u>{tt('הדף באתר Tennis Europe')}</u></a>}
           </div>
         </div>
       )}
@@ -354,7 +358,9 @@ async function Overview({ d, manage, compact = false, registered = false }: { d:
           <div className="row" style={{ gap: 18 }}>
             {t.registrationCloses && <span><strong>{tt('ההרשמה נסגרת')}:</strong> {t.registrationCloses.toLocaleString('he-IL', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Jerusalem' })}</span>}
             {t.feeAgorot > 0 && <span><strong>{tt('דמי השתתפות')}:</strong> ₪{(t.feeAgorot / 100).toFixed(0)}</span>}
-            {t.sourceUrl && <a className="muted" href={t.sourceUrl} target="_blank" rel="noopener noreferrer"><u>{tt('עמוד התחרות באתר האיגוד')}</u></a>}
+            {t.sourceUrl && !teEvent && <a className="muted" href={t.sourceUrl} target="_blank" rel="noopener noreferrer"><u>{tt('עמוד התחרות באתר האיגוד')}</u></a>}
+            {teEvent && <Link className="btn" href={"/abroad/" + teEvent}>{tt('הגרלות, בתים ותוצאות')}</Link>}
+            {teEvent && <a className="muted" href={t.sourceUrl!} target="_blank" rel="noopener noreferrer"><u>{tt('הדף באתר Tennis Europe')}</u></a>}
           </div>
         </div>
       )}

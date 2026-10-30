@@ -87,7 +87,7 @@ export function abroadCatalog(db: Db) {
       age: t.ageGroup, circuit: t.circuit, registered: t.registered, closed: t.closed, entryOpens: t.entryOpens, entryDeadline: t.entryDeadline, withdrawalDeadline: t.withdrawalDeadline, fee: t.fee, hospitality: t.hospitality, indoor: t.indoor, url: t.url,
       // how many matches of Israeli players the event has, without reading the matches themselves
       israelis: sql<number>`coalesce(jsonb_array_length(${t.results}->'matches'), 0)::int`,
-    }).from(t).where(gte(t.endDate, new Date(Date.now() - 7 * 864e5))).orderBy(t.startDate).limit(600);
+    }).from(t).where(and(gte(t.endDate, new Date(Date.now() - 7 * 864e5)), sql`${t.country} <> 'Israel'`)).orderBy(t.startDate).limit(600);
   });
 }
 
