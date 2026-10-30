@@ -123,8 +123,8 @@ export function buildTsCompetition(raw, draws) {
         sets: done ? sets : [], ...(r.a.won ? { winner: 'a' } : r.b.won ? { winner: 'b' } : {}), retired: [r.a.msg, r.b.msg].some((x) => /retired/i.test(x)), walkover: [r.a.msg, r.b.msg].some((x) => /walkover/i.test(x)),
       };
     });
-    if (info.doubles) doubles.push({ name: info.name, source: `ts:${info.code}`, gender: info.gender, age: null, matches: ms });
-    else categories.push({ name: info.name, source: `ts:${info.code}`, gender: info.gender, age: null, format: ms.some((m) => m.stage === 'GROUP') ? 'GROUPS_KNOCKOUT' : 'KNOCKOUT', matches: ms });
+    if (info.doubles) doubles.push({ name: info.name, source: `ts:${info.code}`, gender: info.gender, age: info.age ?? null, matches: ms });
+    else categories.push({ name: info.name, source: `ts:${info.code}`, gender: info.gender, age: info.age ?? null, format: ms.some((m) => m.stage === 'GROUP') ? 'GROUPS_KNOCKOUT' : 'KNOCKOUT', matches: ms });
   }
   return { categories, doubles };
 }
@@ -173,9 +173,12 @@ export async function readDraws(ts, id) {
 }
 
 /** Every match of one tournament (one request per match day) and its draws: { raw, draws, days }. */
+/** The match days a tournament's match page lists (YYYYMMDD): its date tabs (Tennis Europe) or, on the older pages, a select. */
+export const matchDays = (html) => [...new Set([...html.matchAll(/data-value="(\d{8})"[^>]*js-date-selection-tab/g), ...html.matchAll(/<option[^>]*value="(\d{8})"/g)].map((m) => m[1]))];
+
 export async function readTournament(ts, id) {
   const page = await ts.get(`/tournament/${id.toLowerCase()}/Matches`);
-  const days = [...page.matchAll(/<option[^>]*value="(\d{8})"/g)].map((m) => m[1]);
+  const days = matchDays(page);
   const raw = [];
   for (const d of days) raw.push(...(await readDay(ts, id, `${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6)}`)));
   return { raw, draws: await readDraws(ts, id), days };

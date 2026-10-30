@@ -9,7 +9,8 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { cleanPlayer, parseDayMatches, parseDraws, session } from './tournamentsoftware.mjs';
+import { cleanPlayer, matchDays, parseDayMatches, parseDraws, session } from './tournamentsoftware.mjs';
+export { matchDays };
 import { readAcceptance } from './te.mjs';
 
 export const TE = 'https://te.tournamentsoftware.com';
@@ -151,8 +152,6 @@ export async function readEventDraws(ts, id) {
   return out;
 }
 
-/** The match days an event lists (its match page's date strip), as YYYYMMDD. */
-export const matchDays = (html) => [...new Set([...html.matchAll(/data-value="(\d{8})"[^>]*js-date-selection-tab/g)].map((m) => m[1]))];
 const isoDay = (d) => `${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6)}`;
 
 /**

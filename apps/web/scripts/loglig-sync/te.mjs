@@ -5,6 +5,9 @@
 //   node scripts/loglig-sync/te.mjs --id <tournament id>  # one event, even if the year's list does not show it
 //
 // Also runs inside `competitions.mjs --list all` (documents are pushed with the other competitions). Read-only: plain GETs and the page's own POSTs.
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { buildTsCompetition, readTournament, session } from './tournamentsoftware.mjs';
 
 export const TE = 'https://te.tournamentsoftware.com';
@@ -96,48 +99,118 @@ export async function readAcceptance(ts, id) {
   return out.filter((a) => a.label);
 }
 
-/** Israeli events as competition documents. `ids` adds events by id. Draws and results are filled in when the pages have them. */
-export async function readTennisEurope({ year = new Date().getFullYear(), ids = [], log = console.log } = {}) {
-  const ts = session(TE);
-  const ajax = { 'x-requested-with': 'XMLHttpRequest' };
+/** "Last changed Friday, 30 October 2026 14:24 (GMT +01:00)" on an event's main page: when its organizer last saved anything. */
+export const lastChanged = (html) => text(html).match(/Last changed ([^(]*\(GMT [^)]*\))/)?.[1]?.trim() ?? null;
+
+/** The draws of an event as categories: the qualifying draw of "BS14" is its own category ("מוקדמות · בנים 14"), not a second "בנים 14". */
+export function buildCategories(raw, draws) {
+  const isQ = (name) => /qualifying/i.test(name);
+  const main = buildTsCompetition(raw.filter((r) => !isQ(r.draw)), draws.filter((d) => !isQ(d.name)));
+  const qual = buildTsCompetition(raw.filter((r) => isQ(r.draw)), draws.filter((d) => isQ(d.name)));
+  const q = (c) => ({ ...c, name: `מוקדמות · ${c.name}` });
+  return { categories: [...main.categories, ...qual.categories.map(q)], doubles: [...main.doubles, ...qual.doubles.map(q)] };
+}
+
+/** Ids of the Israeli-looking events of the year(s) from the "other events" tab (the page then confirms the country). */
+async function candidateIds(ts, years, ids, log) {
   const found = new Map(ids.map((i) => [i.toUpperCase(), '']));
-  for (const y of [year, year + 1]) {
-    try { for (const e of parseOtherEvents(await ts.get(`/tournament/${SEED}/Home/OtherEventsTabContent?year=${y}`, { headers: ajax }))) found.set(e.id, e.title); }
+  for (const y of years) {
+    try { for (const e of parseOtherEvents(await ts.get(`/tournament/${SEED}/Home/OtherEventsTabContent?year=${y}`, { headers: { 'x-requested-with': 'XMLHttpRequest' } }))) found.set(e.id, e.title); }
     catch (e) { log(`  tennis europe list ${y} failed: ${String(e.message).slice(0, 60)}`); }
   }
   found.set(SEED, found.get(SEED) ?? '');
-  // only the events that look Israeli by their title get a page read; the page then confirms the country
-  const candidates = [...found].filter(([id, title]) => ids.map((i) => i.toUpperCase()).includes(id) || id === SEED || /closed event|israel|haifa|tel aviv|jerusalem|raanana|herzliya/i.test(title));
-  const docs = [];
-  for (const [id] of candidates) {
-    try {
-      const ev = parseEvent(await ts.get(`/tournament/${id.toLowerCase()}`), year);
-      if (!ev || !/israel/i.test(ev.country)) continue;
-      const name = displayName(ev.title, ev.city);
-      let acceptance = [];
-      try { acceptance = (await readAcceptance(ts, id)).filter((x) => x.players.length); } catch (e) { log(`  no acceptance list for ${ev.title}: ${String(e.message).slice(0, 50)}`); }
-      let categories = [], doubles = [];
-      try {
-        const data = await readTournament(ts, id);
-        ({ categories, doubles } = buildTsCompetition(data.raw, data.draws));
-      } catch (e) { log(`  no draws yet for ${ev.title}: ${String(e.message).slice(0, 50)}`); }
-      docs.push({
-        kind: 'competition', name, start: ev.start, end: ev.end, feeShekel: 0, level: 'INTERNATIONAL', section: 'YOUTH', sourceUrl: `${TE}/tournament/${id.toLowerCase()}`, registerUrl: '', registrationCloses: null, isDoubles: false,
-        venues: [{ club: ev.venue, address: ev.city }], contacts: ev.contact ? [{ area: '', club: ev.venue, name: ev.contact.name, phone: ev.contact.phone }] : [], categories, doubles, entries: ev.entries, acceptance,
-      });
-    } catch (e) { log(`  tennis europe event failed ${id}: ${String(e.message).slice(0, 60)}`); }
-  }
-  // two events with one name (consecutive weeks in one city): the later ones are numbered so they never merge into one
+  return [...found].filter(([id, title]) => ids.map((i) => i.toUpperCase()).includes(id) || id === SEED || /closed event|israel|haifa|tel aviv|jerusalem|raanana|herzliya/i.test(title)).map(([id]) => id);
+}
+
+/** One Israeli event as a competition document (details, who is accepted, draws and results once published), or null when it is not in Israel. */
+export async function readEventDoc(ts, id, year, log = console.log) {
+  const html = await ts.get(`/tournament/${id.toLowerCase()}`);
+  const ev = parseEvent(html, year);
+  if (!ev || !/israel/i.test(ev.country)) return null;
+  let acceptance = [];
+  try { acceptance = (await readAcceptance(ts, id)).filter((x) => x.players.length); } catch (e) { log(`  no acceptance list for ${ev.title}: ${String(e.message).slice(0, 50)}`); }
+  let categories = [], doubles = [];
+  try {
+    const data = await readTournament(ts, id);
+    ({ categories, doubles } = buildCategories(data.raw, data.draws));
+  } catch (e) { log(`  no draws yet for ${ev.title}: ${String(e.message).slice(0, 50)}`); }
+  return {
+    kind: 'competition', name: displayName(ev.title, ev.city), start: ev.start, end: ev.end, feeShekel: 0, level: 'INTERNATIONAL', section: 'YOUTH', sourceUrl: `${TE}/tournament/${id.toLowerCase()}`, registerUrl: '', registrationCloses: null, isDoubles: false,
+    venues: [{ club: ev.venue, address: ev.city }], contacts: ev.contact ? [{ area: '', club: ev.venue, name: ev.contact.name, phone: ev.contact.phone }] : [], categories, doubles, entries: ev.entries, acceptance, changed: lastChanged(html),
+  };
+}
+
+/** Two events with one name (consecutive weeks in one city): the later ones are numbered so they never merge into one. */
+const numberDuplicates = (docs) => {
   docs.sort((a, b) => a.start.localeCompare(b.start));
   const count = new Map();
   for (const d of docs) { const n = (count.get(d.name) ?? 0) + 1; count.set(d.name, n); if (n > 1) d.name = `${d.name} ${n}`; }
   return docs;
+};
+
+/** Israeli events as competition documents. `ids` adds events by id. */
+export async function readTennisEurope({ year = new Date().getFullYear(), ids = [], log = console.log } = {}) {
+  const ts = session(TE);
+  const docs = [];
+  for (const id of await candidateIds(ts, [year, year + 1], ids, log)) {
+    try { const d = await readEventDoc(ts, id, year, log); if (d) docs.push({ ...d, id }); }
+    catch (e) { log(`  tennis europe event failed ${id}: ${String(e.message).slice(0, 60)}`); }
+  }
+  return numberDuplicates(docs);
 }
 
 if (process.argv[1] && process.argv[1].endsWith('te.mjs')) {
   const args = process.argv.slice(2);
   const opt = (n, d) => (args.includes(n) ? args[args.indexOf(n) + 1] : d);
   const ids = args.flatMap((a, i) => (a === '--id' && args[i + 1] ? [args[i + 1]] : []));
+  if (args.includes('--live')) {
+    // started every 10 minutes by the rosters job, 7:00-22:00 Israel time: an Israeli event whose "last changed" moved since the last look is read in full and sent again
+    // (its dates, who is accepted, draws and results); about once an hour the list of Israeli events is read again to find new ones
+    const hour = Number(new Date().toLocaleString('en-GB', { hour: '2-digit', hour12: false, timeZone: 'Asia/Jerusalem' }));
+    if (!args.includes('--force') && (hour < 7 || hour >= 22)) { console.log('te live: outside 7:00-22:00 (Israel time), nothing to do'); process.exit(0); }
+    const base = opt('--url', process.env.PUBLIC_URL ?? '').replace(/\/$/, '');
+    if (!base || !process.env.CRON_SECRET) { console.error('--live needs --url <site> and CRON_SECRET in the environment.'); process.exit(1); }
+    const out = process.env.LOGLIG_DUMP_DIR ? path.resolve(process.env.LOGLIG_DUMP_DIR) : path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../.loglig-dump');
+    mkdirSync(out, { recursive: true });
+    const stateFile = path.join(out, 'te-live-state.json');
+    let state = { scannedAt: null, events: {} };
+    try { if (existsSync(stateFile)) state = { ...state, ...JSON.parse(readFileSync(stateFile, 'utf8')) }; } catch { /* a damaged file: start again */ }
+    const ts = session(TE);
+    const year = new Date().getFullYear();
+    const full = args.includes('--force') || !state.scannedAt || Date.now() - Date.parse(state.scannedAt) > 50 * 60e3;
+    if (full) {
+      state.scannedAt = new Date().toISOString();
+      for (const id of await candidateIds(ts, [year, year + 1], [], console.log)) state.events[id] ??= { changed: null, end: null };
+    }
+    const today = new Date().toISOString().slice(0, 10);
+    const docs = [], meta = [];
+    for (const [id, known] of Object.entries(state.events)) {
+      try {
+        if (known.end && known.end < today) continue; // over
+        const html = await ts.get(`/tournament/${id.toLowerCase()}`);
+        const changed = lastChanged(html);
+        const ev = parseEvent(html, year);
+        if (!ev || !/israel/i.test(ev.country)) { delete state.events[id]; continue; }
+        known.end = ev.end;
+        meta.push({ id, name: displayName(ev.title, ev.city), start: ev.start });
+        if (changed && changed === known.changed) continue; // nothing was saved since the last look
+        const d = await readEventDoc(ts, id, year);
+        if (d) { docs.push({ ...d, id }); known.changed = changed; }
+      } catch (e) { console.log(`  ${id}: ${String(e.message).slice(0, 60)}`); }
+    }
+    console.log(`te live: ${Object.keys(state.events).length} event(s) known, ${docs.length} changed`);
+    // the names of events that share one are numbered over all the events known, not only the ones sent now, so a name never flips between runs
+    const names = new Map(numberDuplicates(meta).map((m) => [m.id, m.name]));
+    for (const d of docs) d.name = names.get(d.id) ?? d.name;
+    let failed = 0;
+    for (const d of docs) {
+      const res = await fetch(`${base}/api/sync/loglig`, { method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${process.env.CRON_SECRET}` }, body: JSON.stringify(d) });
+      console.log(`push ${d.name}: ${res.status} ${(await res.text()).slice(0, 120)}`);
+      if (!res.ok) { failed++; state.events[d.id].changed = null; } // sent again at the next look
+    }
+    writeFileSync(stateFile, JSON.stringify(state));
+    process.exit(failed ? 1 : 0);
+  }
   const docs = await readTennisEurope({ ids });
   for (const d of docs) console.log(`${d.start}..${d.end}  ${d.name}  | ${d.venues[0]?.club}, ${d.venues[0]?.address}  | ${d.entries} entries, ${d.categories.length + d.doubles.length} draws`);
   if (!args.includes('--push')) { console.log('Dry run (nothing sent). Add --push --url <site> to import.'); process.exit(0); }

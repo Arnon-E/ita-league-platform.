@@ -3,7 +3,7 @@ import { eq } from 'drizzle-orm';
 import { db, schema } from '@/db';
 import { resetDb } from './helpers';
 import { readFileSync } from 'node:fs';
-import { displayName, parseAcceptance, parseEvent, parseOtherEvents } from '../scripts/loglig-sync/te.mjs';
+import { buildCategories, displayName, parseAcceptance, parseEvent, parseOtherEvents } from '../scripts/loglig-sync/te.mjs';
 import { eventInfo } from '../scripts/loglig-sync/tournamentsoftware.mjs';
 import { importCalendar, importCompetition, validateCalendarImport, validateCompetitionImport } from '@/services/loglig-competitions';
 
@@ -74,5 +74,27 @@ describe('Tennis Europe acceptance list', () => {
     const [t] = await db.select().from(schema.tournaments).where(eq(schema.tournaments.name, 'Tennis Europe U14 חיפה'));
     expect(t!.acceptance).toHaveLength(1);
     expect(t!.acceptance![0]!.players).toEqual([{ draw: 'Main', n: 1, name: 'Adam Chashkin', nation: 'Israel', born: 2013, rank: '150', wtn: '21.45' }]);
+  });
+});
+
+describe('an event whose organizer moved its dates', () => {
+  it('keeps one competition and follows the new start (Tennis Europe only)', async () => {
+    await resetDb();
+    const doc = (start: string, sourceUrl: string) => validateCompetitionImport({ kind: 'competition', name: 'Tennis Europe U14 חיפה', start, end: '2026-11-08', feeShekel: 0, level: 'INTERNATIONAL', section: 'YOUTH', sourceUrl, venues: [], categories: [] });
+    const TE = 'https://te.tournamentsoftware.com/tournament/9d8c8cd6-8183-4cd6-bbc1-aca9e07269a8';
+    await importCompetition(db, doc('2026-11-02', TE), new Date('2026-10-29T12:00:00Z'));
+    await importCompetition(db, doc('2026-10-31', TE), new Date('2026-10-30T12:00:00Z'));
+    const rows = await db.select().from(schema.tournaments).where(eq(schema.tournaments.name, 'Tennis Europe U14 חיפה'));
+    expect(rows).toHaveLength(1);
+    expect(rows[0]!.startDate.toISOString().slice(0, 10)).toBe('2026-10-31');
+    // a competition from another source keeps the start it was created with
+    await importCompetition(db, doc('2026-11-02', 'https://ita.co.il/competitions/x/'), new Date('2026-10-30T12:00:00Z'));
+    expect((await db.select().from(schema.tournaments).where(eq(schema.tournaments.name, 'Tennis Europe U14 חיפה')))[0]!.startDate.toISOString().slice(0, 10)).toBe('2026-10-31');
+  });
+
+  it('keeps the qualifying draw apart from the main draw and reads the age of Tennis Europe draws', () => {
+    const row = (draw: string, a: string, b: string) => ({ draw, stage: 'Round of 16', day: '2026-11-01', court: '', time: '', kindText: '', a: { names: [a], won: true, msg: '' }, b: { names: [b], won: false, msg: '' }, sets: [[6, 1], [6, 2]] });
+    const { categories } = buildCategories([row('BS14 - Boys Singles 14 Main Draw', 'A A', 'B B'), row('BS14 - Boys Singles 14 Qualifying', 'C C', 'D D')], [{ name: 'BS14 - Boys Singles 14 Main Draw', size: 48, type: 'Elimination' }, { name: 'BS14 - Boys Singles 14 Qualifying', size: 48, type: 'Elimination' }]);
+    expect(categories.map((c: { name: string; age: number }) => [c.name, c.age])).toEqual([['בנים 14', 14], ['מוקדמות · בנים 14', 14]]);
   });
 });

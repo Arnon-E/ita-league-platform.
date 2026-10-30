@@ -192,7 +192,9 @@ export async function importCompetition(db: Db, input: CompetitionIn, now = new 
       tid = existing.id;
       // a planned competition (known from the federation's Gantt) becomes the real one: its dates and name are the published ones
       const planned = existing.status === 'PLANNED';
-      await tx.update(schema.tournaments).set({ ...fields, ...(planned ? { name: input.name, startDate: start } : {}), ...(+existing.startDate < REAL_FROM ? { startDate: start } : {}) }).where(eq(schema.tournaments.id, tid)); }
+      // Tennis Europe is the authority on its own events' dates (an organizer moves a week): the start follows it; other sources keep the start the competition was created with
+      const moved = /te.tournamentsoftware.com/.test(input.sourceUrl ?? '') && +existing.startDate !== +start;
+      await tx.update(schema.tournaments).set({ ...fields, ...(planned ? { name: input.name, startDate: start } : {}), ...(moved ? { startDate: start } : {}), ...(+existing.startDate < REAL_FROM ? { startDate: start } : {}) }).where(eq(schema.tournaments.id, tid)); }
     else {
       tid = (await tx.insert(schema.tournaments).values({
         name: input.name, startDate: start, ruleSetId: rule.id, format: input.categories.some((c) => c.format === 'GROUPS_KNOCKOUT') ? 'GROUPS_KNOCKOUT' : 'KNOCKOUT', ...fields,
