@@ -40,6 +40,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ l
   // junior tournaments abroad: the three whose entry closes first, and how many there are (a failure here must never break the home page)
   const abroadAll = (await abroadCatalog(db).catch(() => [])).filter((e) => !e.closed);
   const abroadOpen = abroadAll.filter((e) => entryState(e) === 'open').sort((a, b) => +a.entryDeadline! - +b.entryDeadline!);
+  const abroadCanEnter = abroadAll.filter((e) => ['open', 'soon'].includes(entryState(e))).length; // the same count the abroad page's "entry still open" shows
   // a player or parent sees the competitions that can apply to them; "show all" is one tap away
   const mine = await myPlayersForRelevance(db, actor).catch(() => []);
   const relevantOnly = mine.length > 0 && rel !== 'all';
@@ -186,7 +187,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ l
           )}
           <div className="row" style={{ marginTop: 14 }}>
             <Link className="btn" href="/abroad">{t('לכל התחרויות בחו"ל')} · {abroadAll.length}</Link>
-            {abroadOpen.length > 0 && <Link className="btn ghost" href="/abroad?open=1">{t('רק כאלה שעוד אפשר להירשם אליהן')} · {abroadOpen.length}</Link>}
+            {abroadCanEnter > 0 && <Link className="btn ghost" href="/abroad?open=1">{t('רק כאלה שעוד אפשר להירשם אליהן')} · {abroadCanEnter}</Link>}
           </div>
         </Fold>
       )}
