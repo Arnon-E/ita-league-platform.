@@ -1,6 +1,7 @@
 import { and, eq, gte, inArray, lt, lte, notInArray, sql } from 'drizzle-orm';
 import { schema, type Db } from '@/db';
 import { memo } from '@/lib/memo';
+import { israelisIn, linkKey, linkNewPlayers } from '@/services/abroad-players';
 
 /** One Tennis Europe tournament outside Israel, as the sync sends it. Dates are ISO; the entry times are UTC instants. */
 export interface AbroadEventIn {
@@ -142,18 +143,24 @@ export function validateAbroadResults(x: unknown): AbroadResultsIn {
 /** Puts the days that were read into each event's results, leaving the days that were not read as they were (the hourly refresh reads only today and yesterday). */
 export async function importAbroadResults(db: Db, input: AbroadResultsIn, now = new Date()) {
   const t = schema.abroadEvents;
-  const stats = { events: 0, matches: 0 };
+  const stats: { events: number; matches: number; links?: Awaited<ReturnType<typeof linkNewPlayers>> } = { events: 0, matches: 0 };
   if (!input.results.length) return stats;
-  const have = await db.select({ id: t.id, results: t.results }).from(t).where(inArray(t.id, input.results.map((r) => r.id)));
+  const have = await db.select({ id: t.id, results: t.results, age: t.ageGroup, start: t.startDate }).from(t).where(inArray(t.id, input.results.map((r) => r.id)));
   const byId = new Map(have.map((h) => [h.id, h.results]));
   const rows = input.results.filter((r) => byId.has(r.id)).map((r) => {
     const keep = (byId.get(r.id)?.matches ?? []).filter((m) => !r.days.includes(m.day));
     const matches = [...keep, ...r.matches].sort((x, y) => x.day.localeCompare(y.day) || x.time.localeCompare(y.time)).slice(-400);
     const days = [...new Set([...(byId.get(r.id)?.days ?? []), ...r.days])].sort();
     stats.events++; stats.matches += matches.length;
-    return { id: r.id, results: { updated: now.toISOString(), days, matches, draws: r.draws ?? byId.get(r.id)?.draws ?? [] } };
+    return { id: r.id, results: { updated: now.toISOString(), days, matches, draws: r.draws ?? byId.get(r.id)?.draws ?? [] }, names: [...new Set(israelisIn(matches, 2000, null).map((p) => linkKey(p.name, p.gender).split('|')[0]!))] };
   });
-  if (rows.length) await db.execute(sql`update abroad_events a set results = t.results from jsonb_to_recordset(${JSON.stringify(rows)}::jsonb) as t(id text, results jsonb) where a.id = t.id`);
+  if (rows.length) {
+    await db.execute(sql`update abroad_events a set results = t.results, israeli_names = (select coalesce(array_agg(x), '{}') from jsonb_array_elements_text(t.names) x) from jsonb_to_recordset(${JSON.stringify(rows)}::jsonb) as t(id text, results jsonb, names jsonb) where a.id = t.id`);
+    // who the Israelis are: names not seen before are matched to players of this site (the event's year and age group tell which ages to look at)
+    const info = new Map(have.map((h) => [h.id, h]));
+    const seen = input.results.flatMap((r) => { const e = info.get(r.id); return e ? israelisIn(r.matches, e.start.getUTCFullYear(), e.age) : []; });
+    Object.assign(stats, { links: await linkNewPlayers(db, seen, now) });
+  }
   return stats;
 }
 

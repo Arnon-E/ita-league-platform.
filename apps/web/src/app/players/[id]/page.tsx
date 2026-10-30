@@ -8,6 +8,9 @@ import { playerProfile } from '@/services/public';
 import { playerRanks } from '@/services/ranking-sql';
 import { fmtDate, fmtTime, GENDER, MSTATUS, fmtScore } from '@/components/labels';
 import { tr } from '@/lib/i18n';
+import { Flag } from '@/components/Flag';
+import { countryInfo } from '@/lib/countries';
+import { abroadResultsOfPlayer } from '@/services/abroad-players';
 
 export default async function PlayerPage({ params }: { params: Promise<{ id: string }> }) {
   const t = await tr();
@@ -16,6 +19,8 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
   if (!d) notFound();
   const { p, club, ents, names, matches, awards, wins, losses, entryIds } = d;
   const mine = (await playerRanks(db, [p.id])).get(p.id);
+  // matches of this player at tournaments abroad (found by his Latin name, linked to him by the federation or automatically); a failure here never breaks the page
+  const abroad = await abroadResultsOfPlayer(db, p.id).catch(() => []);
   const age = Math.floor((Date.now() - p.birthDate.getTime()) / (365.25 * 864e5));
   const catOf = new Map(ents.map((x) => [x.c.id, x]));
   const recent = matches
@@ -56,6 +61,27 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
         </tbody></table>
         {!byTournament.length && <p className="muted">{t('טרם השתתף בתחרויות.')}</p>}
       </div>
+      {abroad.length > 0 && (
+        <>
+          <h2>{t('תוצאות בחו"ל')}</h2>
+          {abroad.map(({ event: ev, matches: ms }) => (
+            <div key={ev.id} className="card grid" style={{ gap: 8, marginBottom: 10 }}>
+              <Link href={`/abroad/${ev.id}`}><strong>{ev.name}</strong></Link>
+              <span className="muted"><Flag country={ev.country} /> {[ev.city, t(countryInfo(ev.country).he)].filter(Boolean).join(', ')} · {fmtDate(ev.start)} – {fmtDate(ev.end)}</span>
+              {ms.map((m, i) => (
+                <div key={i} className="grid" style={{ gap: 0 }}>
+                  <span dir="ltr" style={{ textAlign: 'start' }}>
+                    <b style={{ color: m.won ? 'var(--ok)' : m.played ? 'var(--bad)' : undefined }}>{m.won ? 'W' : m.played ? 'L' : '–'}</b>{' '}
+                    <span style={{ display: 'inline-flex', gap: 3, verticalAlign: 'middle' }}>{m.opponent.cc.map((c, j) => <img key={j} src={`https://static.tournamentsoftware.com/content/images/flags/${c}.svg`} width={20} height={15} alt={c} style={{ borderRadius: 2, boxShadow: '0 0 0 1px var(--line)' }} />)}</span>{' '}
+                    {m.opponent.names.join(' / ') || t('טרם נקבע')} <span className="muted">· {m.stage}</span>
+                  </span>
+                  <span className="muted" dir="ltr" style={{ textAlign: 'start' }}>{m.sets.length ? fmtScore(m.sets.map(([a, b]) => ({ a: a ?? 0, b: b ?? 0 }))) : t('טרם שוחק')}</span>
+                </div>
+              ))}
+            </div>
+          ))}
+        </>
+      )}
       <h2>{t('משחקים')}</h2>
       <div className="card" style={{ overflow: 'auto' }}>
         <table><thead><tr><th>{t('תחרות')}</th><th>{t('משחק')}</th><th>{t('תוצאה')}</th></tr></thead><tbody>

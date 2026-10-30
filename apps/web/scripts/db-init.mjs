@@ -50,6 +50,12 @@ try {
     fee text not null default '', hospitality text not null default '', indoor boolean, url text not null, updated_at timestamptz not null default now())`;
   await sql`alter table abroad_events add column if not exists circuit text not null default 'TE'`;
   await sql`alter table abroad_events add column if not exists results jsonb`;
+  await sql`alter table abroad_events add column if not exists israeli_names text[] not null default '{}'`;
+  await sql`create table if not exists abroad_player_links (
+    key text primary key, name text not null, gender text not null, player_id text references players(id) on delete set null,
+    status text not null default 'NONE', candidates jsonb, checked_at timestamptz not null default now())`;
+  await sql`create index if not exists abroad_player_links_player_idx on abroad_player_links (player_id)`;
+  await sql`create index if not exists abroad_player_links_status_idx on abroad_player_links (status)`;
   await sql`create index if not exists abroad_events_start_idx on abroad_events (start_date)`;
   await sql`alter table tournaments add column if not exists acceptance jsonb`;
   await sql`create table if not exists claim_requests (

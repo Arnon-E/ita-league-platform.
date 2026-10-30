@@ -30,7 +30,8 @@ export async function searchPlayers(db: Db, q: string, clubId?: string, limit = 
     conds.push(opts.section === 'YOUTH' ? sql`${players.birthDate} >= ${from(18)}` : opts.section === 'ADULTS' ? sql`${players.birthDate} < ${from(18)} and ${players.birthDate} >= ${from(29)}` : sql`${players.birthDate} < ${from(29)}`);
   }
   if (opts.age) conds.push(sql`${players.birthDate} >= make_date(${new Date().getFullYear() - opts.age}, 1, 1)::timestamptz`);
-  for (const w of q.trim().split(/\s+/).filter(Boolean)) conds.push(or(ilike(players.firstName, `%${w}%`), ilike(players.lastName, `%${w}%`)));
+  // a word also matches the Latin name a player was seen under at tournaments abroad ("Strauss" finds "שטראוס" once the two are linked)
+  for (const w of q.trim().split(/\s+/).filter(Boolean)) conds.push(or(ilike(players.firstName, `%${w}%`), ilike(players.lastName, `%${w}%`), sql`exists (select 1 from abroad_player_links l where l.player_id = ${players.id} and l.status in ('AUTO', 'CONFIRMED') and l.name ilike ${`%${w}%`})`));
   if (clubId) conds.push(eq(players.clubId, clubId));
   return db.select({ p: players, club: clubs.name }).from(players).leftJoin(clubs, eq(clubs.id, players.clubId))
     .where(conds.length ? and(...conds) : undefined).orderBy(asc(players.lastName), asc(players.firstName)).limit(limit).offset(opts.offset ?? 0);

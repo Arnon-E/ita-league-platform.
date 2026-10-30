@@ -1,4 +1,4 @@
-import { relations } from 'drizzle-orm';
+import { relations, sql } from 'drizzle-orm';
 import {
   boolean, doublePrecision, index, integer, jsonb, pgEnum, pgTable, primaryKey, text, timestamp, uniqueIndex,
 } from 'drizzle-orm/pg-core';
@@ -236,9 +236,26 @@ export const abroadEvents = pgTable('abroad_events', {
   indoor: boolean('indoor'),
   url: text('url').notNull(),
   /** The matches of Israeli players at this event (read from the event's own match pages while it is on): { updated, days: [ISO day], matches: [...] }. */
+  /** The lower-case Latin names of the Israeli players in `results` (to find an event by player without reading its matches). */
+  israeliNames: text('israeli_names').array().notNull().default(sql`'{}'::text[]`),
   results: jsonb('results').$type<{ updated: string; days: string[]; matches: { day: string; draw: string; stage: string; court: string; time: string; a: { names: string[]; cc: string[]; won: boolean; msg: string }; b: { names: string[]; cc: string[]; won: boolean; msg: string }; sets: number[][] }[]; draws?: { n: number; name: string; kind?: 'KO' | 'RR'; rounds: { a: { names: string[]; cc: string[]; won: boolean }; b: { names: string[]; cc: string[]; won: boolean }; sets: number[][]; date: string }[][] }[] } | null>(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => ({ startIdx: index('abroad_events_start_idx').on(t.startDate) }));
+
+/**
+ * An Israeli player seen at a tournament abroad (a Latin name) and the player of this site it is: 'AUTO' (one sure match), 'CONFIRMED' (the federation's choice),
+ * 'PENDING' (candidates wait for review), 'NONE' (nobody found, looked again after a week), 'REJECTED' (the federation says it is nobody we have).
+ * The key is the lower-case name plus the gender.
+ */
+export const abroadPlayerLinks = pgTable('abroad_player_links', {
+  key: text('key').primaryKey(),
+  name: text('name').notNull(),
+  gender: text('gender').notNull(),
+  playerId: text('player_id').references(() => players.id, { onDelete: 'set null' }),
+  status: text('status').notNull().default('NONE'),
+  candidates: jsonb('candidates').$type<string[]>(),
+  checkedAt: timestamp('checked_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [index('abroad_player_links_player_idx').on(t.playerId), index('abroad_player_links_status_idx').on(t.status)]);
 
 /** Team leagues mirrored from the federation's public pages (standings and fixtures kept as one document). */
 export const externalLeagues = pgTable('external_leagues', {
