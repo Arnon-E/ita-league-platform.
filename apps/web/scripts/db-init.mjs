@@ -49,6 +49,7 @@ try {
     closed boolean not null default false, entry_opens timestamptz, entry_deadline timestamptz, withdrawal_deadline timestamptz,
     fee text not null default '', hospitality text not null default '', indoor boolean, url text not null, updated_at timestamptz not null default now())`;
   await sql`alter table abroad_events add column if not exists circuit text not null default 'TE'`;
+  await sql`alter table abroad_events add column if not exists results jsonb`;
   await sql`create index if not exists abroad_events_start_idx on abroad_events (start_date)`;
   await sql`alter table tournaments add column if not exists acceptance jsonb`;
   await sql`create table if not exists claim_requests (

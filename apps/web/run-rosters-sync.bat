@@ -7,6 +7,8 @@ cd /d "%~dp0"
 if not exist .loglig-dump mkdir .loglig-dump
 set URL=https://ita-league-platform-jpgi.vercel.app
 echo ===== %date% %time% ===== > .loglig-dump\rosters-sync.log
+rem Tennis Europe tournaments abroad: the Israeli players' matches of the ones on today; once an hour, 8:00-22:00 (its own stamp), independent of the gate below
+node scripts\loglig-sync\abroad.mjs --live --push --url %URL% >> .loglig-dump\rosters-sync.log 2>&1
 node scripts\loglig-sync\gate.mjs >> .loglig-dump\rosters-sync.log 2>&1
 if errorlevel 10 exit /b 0
 node scripts\loglig-sync\rosters.mjs --push --url %URL% >> .loglig-dump\rosters-sync.log 2>&1

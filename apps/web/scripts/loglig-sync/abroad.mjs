@@ -6,7 +6,10 @@
 //   node scripts/loglig-sync/abroad.mjs --push --url <site>  # CRON_SECRET from the environment
 //
 // Read-only against Tennis Europe: the search page's own POST (20 results a page), then each upcoming event's page and fact sheet (~1.5 s each).
-import { session } from './tournamentsoftware.mjs';
+import { existsSync, mkdirSync, statSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { parseDayMatches, session } from './tournamentsoftware.mjs';
 
 export const TE = 'https://te.tournamentsoftware.com';
 const decode = (s) => s.replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCodePoint(parseInt(h, 16))).replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(Number(n)))
@@ -107,16 +110,85 @@ export async function readAbroad({ days = 180, limit = Infinity, log = console.l
   return { events, until: to };
 }
 
+/** The match days an event lists (its match page's date strip), as YYYYMMDD. */
+export const matchDays = (html) => [...new Set([...html.matchAll(/data-value="(\d{8})"[^>]*js-date-selection-tab/g)].map((m) => m[1]))];
+const isoDay = (d) => `${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6)}`;
+
+/**
+ * The matches of Israeli players ("ISR" flag on either side) at one event: on the given days (YYYYMMDD), or on every day its match page lists.
+ * Returns { id, days: [ISO day read], matches }. The page is only read when no days are given.
+ */
+export async function readIsraeliMatches(ts, id, onlyDays) {
+  const base = `/tournament/${id.toLowerCase()}`;
+  const days = onlyDays ?? matchDays(await ts.get(`${base}/Matches`));
+  const matches = [];
+  for (const d of days) {
+    const html = await ts.get(`${base}/Matches/MatchesInDay`, { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded', 'x-requested-with': 'XMLHttpRequest' }, body: new URLSearchParams({ Date: d }) });
+    for (const m of parseDayMatches(html, isoDay(d))) {
+      if (![...m.a.cc, ...m.b.cc].includes('ISR')) continue;
+      matches.push({ day: m.day, draw: m.draw, stage: m.stage, court: m.court, time: m.time, a: { names: m.a.names, cc: m.a.cc, won: m.a.won, msg: m.a.msg }, b: { names: m.b.names, cc: m.b.cc, won: m.b.won, msg: m.b.msg }, sets: m.sets });
+    }
+  }
+  return { id: id.toUpperCase(), days: days.map(isoDay), matches };
+}
+
+const post = async (base, secret, body) => {
+  const res = await fetch(`${base}/api/sync/loglig`, { method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${secret}` }, body: JSON.stringify(body) });
+  return { ok: res.ok, status: res.status, text: (await res.text()).slice(0, 200) };
+};
+
+/** Events that are on today (or ended in the last week): their Israeli players' matches, sent in small batches. Events with none are not sent. */
+async function sendResults(events, base, secret, { liveOnly = false } = {}) {
+  const ts = session(TE);
+  const today = new Date().toISOString().slice(0, 10);
+  const yesterday = new Date(Date.now() - 864e5).toISOString().slice(0, 10);
+  const wanted = events.filter((e) => e.start <= today && (liveOnly ? e.end >= today : e.end >= new Date(Date.now() - 7 * 864e5).toISOString().slice(0, 10)));
+  const out = [];
+  for (const e of wanted) {
+    try {
+      // the hourly refresh reads only today and yesterday of the days the event runs; the daily one reads them all
+      const only = liveOnly ? [yesterday, today].filter((d) => d >= e.start && d <= e.end).map((d) => d.replace(/-/g, '')) : undefined;
+      const r = await readIsraeliMatches(ts, e.id, only);
+      if (r.matches.length) out.push(r);
+    } catch (err) { console.log(`  results failed for ${e.name}: ${String(err.message).slice(0, 60)}`); }
+  }
+  console.log(`${out.length} of ${wanted.length} running or recent event(s) have matches of Israeli players (${out.reduce((n, r) => n + r.matches.length, 0)} matches)`);
+  for (let i = 0; i < out.length; i += 10) {
+    const r = await post(base, secret, { kind: 'abroad-results', results: out.slice(i, i + 10) });
+    console.log(`push abroad-results: ${r.status} ${r.text}`);
+  }
+}
+
 if (process.argv[1] && process.argv[1].endsWith('abroad.mjs')) {
   const args = process.argv.slice(2);
   const opt = (n, d) => (args.includes(n) ? args[args.indexOf(n) + 1] : d);
+  const base = opt('--url', process.env.PUBLIC_URL ?? '').replace(/\/$/, '');
+  const push = args.includes('--push');
+  if (push && (!base || !process.env.CRON_SECRET)) { console.error('--push needs --url <site> and CRON_SECRET in the environment.'); process.exit(1); }
+
+  if (args.includes('--live')) {
+    // started every 10 minutes by the rosters job: does something once an hour, in the daytime (Israel time), and reads only what is on today
+    const hour = Number(new Date().toLocaleString('en-GB', { hour: '2-digit', hour12: false, timeZone: 'Asia/Jerusalem' }));
+    const out = process.env.LOGLIG_DUMP_DIR ? path.resolve(process.env.LOGLIG_DUMP_DIR) : path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../.loglig-dump');
+    const stamp = path.join(out, 'abroad-live.stamp');
+    if (!args.includes('--force')) {
+      if (hour < 8 || hour >= 22) { console.log('abroad live: outside 8:00-22:00 (Israel time), nothing to do'); process.exit(0); }
+      if (existsSync(stamp) && Date.now() - statSync(stamp).mtimeMs < 50 * 60e3) { console.log('abroad live: ran less than 50 minutes ago'); process.exit(0); }
+    }
+    mkdirSync(out, { recursive: true }); writeFileSync(stamp, new Date().toISOString());
+    const today = new Date().toISOString().slice(0, 10);
+    const found = (await searchTournaments(session(TE), today, today)).filter((e) => !/israel/i.test(e.country) && e.start <= today && e.end >= today);
+    if (!push) { console.log(found.length + ' event(s) on today (dry run: nothing read or sent)'); process.exit(0); }
+    await sendResults(found, base, process.env.CRON_SECRET, { liveOnly: true });
+    process.exit(0);
+  }
+
   const { events, until } = await readAbroad({ days: Number(opt('--days', 180)), limit: Number(opt('--limit', Infinity)) });
   for (const e of events) console.log(`${e.start}..${e.end}  ${e.country.padEnd(14)} ${e.city.padEnd(18)} ${String(e.age ?? '').padEnd(3)} ${e.category.padEnd(12)} ${(e.entryDeadline ?? '').slice(0, 10).padEnd(11)} ${e.fee.slice(0, 28).padEnd(28)} ${e.name}`);
   console.log(`${events.length} tournament(s) abroad`);
-  if (!args.includes('--push')) { console.log('Dry run (nothing sent). Add --push --url <site> to import.'); process.exit(0); }
-  const base = opt('--url', process.env.PUBLIC_URL ?? '').replace(/\/$/, '');
-  if (!base || !process.env.CRON_SECRET) { console.error('--push needs --url <site> and CRON_SECRET in the environment.'); process.exit(1); }
-  const res = await fetch(`${base}/api/sync/loglig`, { method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${process.env.CRON_SECRET}` }, body: JSON.stringify({ kind: 'abroad', circuit: 'TE', events, until }) });
-  console.log(`push abroad: ${res.status} ${(await res.text()).slice(0, 200)}`);
-  process.exit(res.ok ? 0 : 1);
+  if (!push) { console.log('Dry run (nothing sent). Add --push --url <site> to import.'); process.exit(0); }
+  const r = await post(base, process.env.CRON_SECRET, { kind: 'abroad', circuit: 'TE', events, until });
+  console.log(`push abroad: ${r.status} ${r.text}`);
+  if (!r.ok) process.exit(1);
+  if (!args.includes('--no-results')) await sendResults(events, base, process.env.CRON_SECRET);
 }

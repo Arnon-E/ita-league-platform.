@@ -3,8 +3,9 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { db, schema } from '@/db';
 import { resetDb } from './helpers';
-import { parseEntryDates, parseFactsheet, parseSearch } from '../scripts/loglig-sync/abroad.mjs';
-import { abroadCatalog, entryState, importAbroad, phaseOf, validateAbroadImport } from '@/services/abroad';
+import { matchDays, parseEntryDates, parseFactsheet, parseSearch } from '../scripts/loglig-sync/abroad.mjs';
+import { parseDayMatches } from '../scripts/loglig-sync/tournamentsoftware.mjs';
+import { abroadCatalog, abroadEvent, entryState, importAbroad, importAbroadResults, phaseOf, validateAbroadImport, validateAbroadResults } from '@/services/abroad';
 import { countryInfo, flagEmoji } from '@/lib/countries';
 
 const fixture = (n: string) => readFileSync(new URL(`./fixtures/${n}`, import.meta.url), 'utf8');
@@ -109,5 +110,47 @@ describe('phase of an event', () => {
     expect(phaseOf(e, new Date('2026-10-30T12:00:00Z'))).toBe('up');
     expect(phaseOf(e, new Date('2026-11-05T12:00:00Z'))).toBe('live');
     expect(phaseOf(e, new Date('2026-11-09T09:00:00Z'))).toBe('done');
+  });
+});
+
+describe('matches of Israeli players abroad', () => {
+  beforeAll(resetDb);
+  const NOW = new Date('2026-10-29T12:00:00Z');
+  const A = '1595C1E2-4A15-4B56-B17B-B11CD58AC463';
+  const base = { venue: '', city: 'Villingen', country: 'Germany', surface: '', category: 'Category 3', age: 14, closed: false, entryOpens: null, entryDeadline: null, withdrawalDeadline: null, fee: '', hospitality: '', indoor: null, url: 'https://example.org/x' };
+  const m = (day: string, time: string, isr: boolean) => ({ day, draw: 'BS14 - Boys Singles 14 Main Draw', stage: 'Round of 16', court: 'C 1', time, a: { names: ['Luka BOH'], cc: [isr ? 'ISR' : 'SLO'], won: false, msg: '' }, b: { names: ['Constantin SZPAKOWSKI'], cc: ['GER'], won: true, msg: '' }, sets: [[6, 4], [2, 6], [4, 6]] });
+
+  it('reads the nation of each player and the match days of an event from the real pages', () => {
+    const day = readFileSync(new URL('./fixtures/te-day.html', import.meta.url), 'utf8');
+    const rows = parseDayMatches(day, '2026-10-29') as { a: { cc: string[]; names: string[] }; b: { cc: string[] } }[];
+    expect(rows).toHaveLength(22);
+    expect(rows[0]!.a).toMatchObject({ names: ['Luka BOH'], cc: ['SLO'] });
+    expect(rows[0]!.b.cc).toEqual(['GER']);
+    // with an Israeli flag on a side it is found (the sync keeps only such matches)
+    expect((parseDayMatches(day.replace(/SLO/g, 'ISR'), '2026-10-29') as { a: { cc: string[] } }[]).filter((r) => r.a.cc.includes('ISR'))).toHaveLength(1);
+    const days = matchDays(readFileSync(new URL('./fixtures/te-matches.html', import.meta.url), 'utf8'));
+    expect(days[0]).toBe('20261024');
+    expect(days).toContain('20261029');
+    expect(days).toContain('20261101');
+  });
+
+  it('keeps only the matches with an Israeli player, and replaces only the days that were read', async () => {
+    await importAbroad(db, validateAbroadImport({ kind: 'abroad', circuit: 'TE', until: '2026-12-31', events: [{ ...base, id: A, name: 'VS Tennis Academy U14 Villingen Open', start: '2026-10-24', end: '2026-11-01' }] }), NOW);
+    // two days read: only the Israeli matches stay
+    const first = validateAbroadResults({ kind: 'abroad-results', results: [{ id: A, days: ['2026-10-28', '2026-10-29'], matches: [m('2026-10-28', '09:00', true), m('2026-10-28', '10:00', false), m('2026-10-29', '09:00', true)] }] });
+    expect(first.results[0]!.matches).toHaveLength(2);
+    expect(await importAbroadResults(db, first, NOW)).toMatchObject({ events: 1, matches: 2 });
+    // the hourly refresh reads only today: today's matches are replaced, yesterday's stay
+    await importAbroadResults(db, validateAbroadResults({ kind: 'abroad-results', results: [{ id: A, days: ['2026-10-29'], matches: [m('2026-10-29', '09:00', true), m('2026-10-29', '11:30', true)] }] }), new Date('2026-10-29T14:00:00Z'));
+    const ev = await abroadEvent(db, A.toLowerCase());
+    expect(ev!.results!.matches.map((x) => `${x.day} ${x.time}`)).toEqual(['2026-10-28 09:00', '2026-10-29 09:00', '2026-10-29 11:30']);
+    expect(ev!.results!.days).toEqual(['2026-10-28', '2026-10-29']);
+    expect((await abroadCatalog(db)).find((r) => r.id === A)!.israelis).toBe(3);
+  });
+
+  it('ignores results for an event it does not know and bad rows', async () => {
+    const bad = validateAbroadResults({ kind: 'abroad-results', results: [{ id: 'not an id', days: [], matches: [] }, { id: '0EDF3889-7C03-4427-B261-E5C54EC3B579', days: ['2026-10-29'], matches: [m('2026-10-29', '09:00', true), { day: 'x' }] }] });
+    expect(bad.results).toHaveLength(1);
+    expect(await importAbroadResults(db, bad, NOW)).toMatchObject({ events: 0 });
   });
 });

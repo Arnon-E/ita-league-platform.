@@ -146,7 +146,7 @@ export type About = {
 export const about = () => call<About>('/public/about');
 export const leagues = () => call<LeagueRow[]>('/public/leagues');
 export const league = (id: string) => call<LeagueDetail>(`/public/leagues/${id}`);
-export interface AbroadEvent { id: string; name: string; venue: string; city: string; country: string; cc: string | null; start: string; end: string; surface: string; category: string; age: number | null; circuit: string; entryOpens: string | null; entryDeadline: string | null; withdrawalDeadline: string | null; fee: string; hospitality: string; indoor: boolean | null; url: string }
+export interface AbroadEvent { id: string; name: string; venue: string; city: string; country: string; cc: string | null; start: string; end: string; surface: string; category: string; age: number | null; circuit: string; entryOpens: string | null; entryDeadline: string | null; withdrawalDeadline: string | null; fee: string; hospitality: string; indoor: boolean | null; url: string; israelis: number }
 export const abroad = () => call<AbroadEvent[]>('/public/abroad');
 export const regulations = () => call<{ id: string; title: string; url: string; category: string }[]>('/public/regulations');
 export const clubs = () => call<{ id: string; name: string; city: string | null; players: number }[]>('/public/clubs');

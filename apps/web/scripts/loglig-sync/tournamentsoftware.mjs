@@ -81,6 +81,7 @@ export function parseDayMatches(html, day) {
     const body = (block.split('class="match__body"')[1] ?? '').split(/class="match__result"|class="match__footer"/)[0];
     const rows = body.split(/<div class="match__row(?=[ "])/).slice(1).map((r) => ({
       names: [...r.matchAll(/data-player-id="[^"]*"[^>]*>\s*<span class="nav-link__value">([\s\S]*?)<\/span>/g)].map((x) => cleanPlayer(x[1])).filter(Boolean),
+      cc: [...r.matchAll(/data-nationality-id="([A-Z]{3})"/g)].map((x) => x[1]),
       won: /^[^>]*has-won/.test(r),
       msg: (r.match(/match__message">([^<]*)</) ?? [])[1]?.trim() ?? '',
     }));

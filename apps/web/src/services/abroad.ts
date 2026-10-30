@@ -1,4 +1,4 @@
-import { and, eq, gte, lt, lte, notInArray, sql } from 'drizzle-orm';
+import { and, eq, gte, inArray, lt, lte, notInArray, sql } from 'drizzle-orm';
 import { schema, type Db } from '@/db';
 import { memo } from '@/lib/memo';
 
@@ -10,6 +10,10 @@ export interface AbroadEventIn {
 }
 /** `until`: the last start date the sync looked at; an upcoming event missing from the list up to there is removed, later ones are left alone. */
 export interface AbroadIn { kind: 'abroad'; circuit: 'TE' | 'ITF'; events: AbroadEventIn[]; until: string | null }
+export interface ResultSide { names: string[]; cc: string[]; won: boolean; msg: string }
+export interface ResultMatch { day: string; draw: string; stage: string; court: string; time: string; a: ResultSide; b: ResultSide; sets: number[][] }
+/** Matches of Israeli players at events, per event and match days: the sync sends the days it read and the matches found on them. */
+export interface AbroadResultsIn { kind: 'abroad-results'; results: { id: string; days: string[]; matches: ResultMatch[] }[] }
 
 const clean = (s: unknown, n = 200) => (typeof s === 'string' ? s.replace(/\s+/g, ' ').trim().slice(0, n) : '');
 const day = (s: unknown) => (typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s) && Date.parse(s) >= Date.parse('2000-01-01') ? s : null);
@@ -74,6 +78,8 @@ export function abroadCatalog(db: Db) {
     return db.select({
       id: t.id, name: t.name, venue: t.venue, city: t.city, country: t.country, start: t.startDate, end: t.endDate, surface: t.surface, category: t.category,
       age: t.ageGroup, circuit: t.circuit, closed: t.closed, entryOpens: t.entryOpens, entryDeadline: t.entryDeadline, withdrawalDeadline: t.withdrawalDeadline, fee: t.fee, hospitality: t.hospitality, indoor: t.indoor, url: t.url,
+      // how many matches of Israeli players the event has, without reading the matches themselves
+      israelis: sql<number>`coalesce(jsonb_array_length(${t.results}->'matches'), 0)::int`,
     }).from(t).where(gte(t.endDate, new Date(Date.now() - 7 * 864e5))).orderBy(t.startDate).limit(600);
   });
 }
@@ -89,4 +95,60 @@ export function entryState(e: Pick<AbroadRow, 'entryOpens' | 'entryDeadline' | '
   if (+e.entryDeadline < +now) return 'closed';
   if (e.entryOpens && +e.entryOpens > +now) return 'soon';
   return 'open';
+}
+
+const side = (s: unknown): ResultSide => {
+  const x = s as Partial<ResultSide> | null;
+  return {
+    names: (Array.isArray(x?.names) ? x!.names : []).slice(0, 2).map((n) => clean(n, 80)).filter(Boolean),
+    cc: (Array.isArray(x?.cc) ? x!.cc : []).slice(0, 2).map((c) => String(c).toUpperCase()).filter((c) => /^[A-Z]{3}$/.test(c)),
+    won: !!x?.won, msg: clean(x?.msg, 40),
+  };
+};
+
+/** Only the matches with an Israeli player ("ISR") are kept: that is what the page is for, and it keeps each event's row small. */
+export function validateAbroadResults(x: unknown): AbroadResultsIn {
+  const b = x as Partial<AbroadResultsIn> | null;
+  if (!b || b.kind !== 'abroad-results' || !Array.isArray(b.results)) throw new Error('bad payload');
+  const results: AbroadResultsIn['results'] = [];
+  for (const r of b.results.slice(0, 200)) {
+    const id = clean(r?.id, 60).toUpperCase();
+    if (!/^[0-9A-Z][0-9A-Z-]{7,59}$/.test(id)) continue;
+    const days = [...new Set((Array.isArray(r.days) ? r.days : []).map(day).filter((d): d is string => !!d))].slice(0, 20);
+    const matches: ResultMatch[] = [];
+    for (const m of (Array.isArray(r.matches) ? r.matches : []).slice(0, 400)) {
+      const a = side(m?.a), bb = side(m?.b), d = day(m?.day);
+      if (!d || !a.names.length || !bb.names.length || ![...a.cc, ...bb.cc].includes('ISR')) continue;
+      matches.push({
+        day: d, draw: clean(m.draw, 80), stage: clean(m.stage, 40), court: clean(m.court, 40), time: /^\d{1,2}:\d{2}$/.test(String(m.time)) ? String(m.time) : '', a, b: bb,
+        sets: (Array.isArray(m.sets) ? m.sets : []).slice(0, 5).map((s) => (Array.isArray(s) ? [Number(s[0]) || 0, Number(s[1]) || 0] : [0, 0])),
+      });
+    }
+    results.push({ id, days, matches });
+  }
+  return { kind: 'abroad-results', results };
+}
+
+/** Puts the days that were read into each event's results, leaving the days that were not read as they were (the hourly refresh reads only today and yesterday). */
+export async function importAbroadResults(db: Db, input: AbroadResultsIn, now = new Date()) {
+  const t = schema.abroadEvents;
+  const stats = { events: 0, matches: 0 };
+  if (!input.results.length) return stats;
+  const have = await db.select({ id: t.id, results: t.results }).from(t).where(inArray(t.id, input.results.map((r) => r.id)));
+  const byId = new Map(have.map((h) => [h.id, h.results]));
+  const rows = input.results.filter((r) => byId.has(r.id)).map((r) => {
+    const keep = (byId.get(r.id)?.matches ?? []).filter((m) => !r.days.includes(m.day));
+    const matches = [...keep, ...r.matches].sort((x, y) => x.day.localeCompare(y.day) || x.time.localeCompare(y.time)).slice(-400);
+    const days = [...new Set([...(byId.get(r.id)?.days ?? []), ...r.days])].sort();
+    stats.events++; stats.matches += matches.length;
+    return { id: r.id, results: { updated: now.toISOString(), days, matches } };
+  });
+  if (rows.length) await db.execute(sql`update abroad_events a set results = t.results from jsonb_to_recordset(${JSON.stringify(rows)}::jsonb) as t(id text, results jsonb) where a.id = t.id`);
+  return stats;
+}
+
+/** One event with its Israeli players' matches (the page of a tournament under way or just finished). */
+export async function abroadEvent(db: Db, id: string) {
+  const [row] = await db.select().from(schema.abroadEvents).where(eq(schema.abroadEvents.id, id.toUpperCase()));
+  return row ?? null;
 }
