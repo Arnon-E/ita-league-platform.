@@ -18,7 +18,7 @@ export interface DrawMatch { a: { names: string[]; cc: string[]; won: boolean };
 export interface ResultDraw { n: number; name: string; kind: 'KO' | 'RR'; rounds: DrawMatch[][] }
 export interface AcceptanceEvent { label: string; active: number; updated: string | null; players: { draw: string; n: number; name: string; nation: string; born: number | null; rank: string; wtn: string }[] }
 /** The Israelis on the acceptance lists of events (the sync keeps only them). */
-export interface AbroadAcceptanceIn { kind: 'abroad-acceptance'; events: { id: string; acceptance: AcceptanceEvent[] }[] }
+export interface AbroadAcceptanceIn { kind: 'abroad-acceptance'; events: { id: string; acceptance: AcceptanceEvent[] }[]; recheck?: boolean }
 export interface AbroadResultsIn { kind: 'abroad-results'; results: { id: string; days: string[]; matches: ResultMatch[]; draws?: ResultDraw[] }[] }
 
 const clean = (s: unknown, n = 200) => (typeof s === 'string' ? s.replace(/\s+/g, ' ').trim().slice(0, n) : '');
@@ -158,7 +158,7 @@ export function validateAbroadAcceptance(x: unknown): AbroadAcceptanceIn {
     })).filter((a) => a.label && a.players.length);
     events.push({ id, acceptance });
   }
-  return { kind: 'abroad-acceptance', events };
+  return { kind: 'abroad-acceptance', events, ...(b.recheck === true ? { recheck: true } : {}) };
 }
 
 /** The Israelis on an event's list replace what was stored; their names are looked up among the players of this site (the year of birth is known here). */
@@ -176,7 +176,7 @@ export async function importAbroadAcceptance(db: Db, input: AbroadAcceptanceIn, 
     await db.execute(sql`update abroad_events a set acceptance = t.acceptance, registered = t.registered, registered_names = (select coalesce(array_agg(x), '{}') from jsonb_array_elements_text(t.names) x) from jsonb_to_recordset(${JSON.stringify(rows)}::jsonb) as t(id text, acceptance jsonb, registered int, names jsonb) where a.id = t.id`);
     stats.events = rows.length; stats.players = rows.reduce((n, r) => n + r.registered, 0);
     const seen = input.events.flatMap((e) => { const i = info.get(e.id); return i ? israelisInAcceptance(e.acceptance, i.start.getUTCFullYear(), i.age) : []; });
-    stats.links = await linkNewPlayers(db, seen, now);
+    stats.links = await linkNewPlayers(db, seen, now, { recheck: input.recheck });
   }
   return stats;
 }

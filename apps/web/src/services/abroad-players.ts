@@ -98,13 +98,14 @@ export function israelisIn(matches: ResultMatch[], year: number, age: number | n
  * Looks up every name not seen before (or seen without any candidate more than a week ago) against the players of that gender and age, and records the outcome.
  * The candidates are read once per gender and age group, so a refresh with nothing new costs one small read of the links.
  */
-export async function linkNewPlayers(db: Db, seen: SeenPlayer[], now = new Date()) {
+export async function linkNewPlayers(db: Db, seen: SeenPlayer[], now = new Date(), opts: { recheck?: boolean } = {}) {
   const stats: { checked: number; auto: number; pending: number; none: number; /** what became of each name (and what was already known), for the sync's log */ detail: { name: string; status: string; candidates: number; known?: boolean }[] } = { checked: 0, auto: 0, pending: 0, none: 0, detail: [] };
   if (!seen.length) return stats;
   const L = schema.abroadPlayerLinks, P = schema.players;
   const keys = seen.map((s) => linkKey(s.name, s.gender));
   const have = await db.select({ key: L.key, name: L.name, status: L.status, checkedAt: L.checkedAt, candidates: L.candidates }).from(L).where(inArray(L.key, keys));
-  const fresh = new Map(have.filter((h) => h.status !== 'NONE' || +now - +h.checkedAt < 7 * 864e5).map((h) => [h.key, h]));
+  // names nobody decided on (pending, or nobody found) are looked at again on request, e.g. after the matching was improved
+  const fresh = new Map(have.filter((h) => (opts.recheck && ['NONE', 'PENDING'].includes(h.status) ? false : h.status !== 'NONE' || +now - +h.checkedAt < 7 * 864e5)).map((h) => [h.key, h]));
   const todo = seen.filter((s) => !fresh.has(linkKey(s.name, s.gender)));
   for (const h of have) if (fresh.has(h.key)) stats.detail.push({ name: h.name, status: h.status, candidates: h.candidates?.length ?? 0, known: true });
   const groups = new Map<string, SeenPlayer[]>();
