@@ -9,6 +9,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { session } from './tournamentsoftware.mjs';
+import { searchTournaments } from './te-search.mjs';
 
 export const TE = 'https://te.tournamentsoftware.com';
 /** Any Israeli Tennis Europe event: its "other events" tab lists the year's events, and the Israeli ones are picked from there. */
@@ -102,15 +103,16 @@ export async function readAcceptance(ts, id) {
 /** "Last changed Friday, 30 October 2026 14:24 (GMT +01:00)" on an event's main page: when its organizer last saved anything. */
 export const lastChanged = (html) => text(html).match(/Last changed ([^(]*\(GMT [^)]*\))/)?.[1]?.trim() ?? null;
 
-/** Ids of the Israeli-looking events of the year(s) from the "other events" tab (the page then confirms the country). */
-async function candidateIds(ts, years, ids, log) {
-  const found = new Map(ids.map((i) => [i.toUpperCase(), '']));
-  for (const y of years) {
-    try { for (const e of parseOtherEvents(await ts.get(`/tournament/${SEED}/Home/OtherEventsTabContent?year=${y}`, { headers: { 'x-requested-with': 'XMLHttpRequest' } }))) found.set(e.id, e.title); }
-    catch (e) { log(`  tennis europe list ${y} failed: ${String(e.message).slice(0, 60)}`); }
-  }
-  found.set(SEED, found.get(SEED) ?? '');
-  return [...found].filter(([id, title]) => ids.map((i) => i.toUpperCase()).includes(id) || id === SEED || /closed event|israel|haifa|tel aviv|jerusalem|raanana|herzliya/i.test(title)).map(([id]) => id);
+/**
+ * Ids of the Tennis Europe events held in Israel, from a search for the country (the list of "other events" of one event proved incomplete: an event can be missing from it).
+ * From three weeks back to a year ahead; `ids` adds events by id.
+ */
+async function candidateIds(ts, ids, log) {
+  const day = (n) => new Date(Date.now() + n * 864e5).toISOString().slice(0, 10);
+  const found = new Set(ids.map((i) => i.toUpperCase()));
+  try { for (const e of await searchTournaments(ts, day(-21), day(365), () => {}, { country: 'ISR' })) found.add(e.id); }
+  catch (e) { log(`  tennis europe search failed: ${String(e.message).slice(0, 60)}`); }
+  return [...found];
 }
 
 /** One Israeli event as a competition document (details and who is accepted), or null when it is not in Israel. */
@@ -140,7 +142,7 @@ const numberDuplicates = (docs) => {
 export async function readTennisEurope({ year = new Date().getFullYear(), ids = [], log = console.log } = {}) {
   const ts = session(TE);
   const docs = [];
-  for (const id of await candidateIds(ts, [year, year + 1], ids, log)) {
+  for (const id of await candidateIds(ts, ids, log)) {
     try { const d = await readEventDoc(ts, id, year, log); if (d) docs.push({ ...d, id }); }
     catch (e) { log(`  tennis europe event failed ${id}: ${String(e.message).slice(0, 60)}`); }
   }
@@ -168,7 +170,7 @@ if (process.argv[1] && process.argv[1].endsWith('te.mjs')) {
     const full = args.includes('--force') || !state.scannedAt || Date.now() - Date.parse(state.scannedAt) > 50 * 60e3;
     if (full) {
       state.scannedAt = new Date().toISOString();
-      for (const id of await candidateIds(ts, [year, year + 1], [], console.log)) state.events[id] ??= { changed: null, end: null };
+      for (const id of await candidateIds(ts, [], console.log)) state.events[id] ??= { changed: null, end: null };
     }
     const today = new Date().toISOString().slice(0, 10);
     const docs = [], meta = [];
@@ -181,7 +183,7 @@ if (process.argv[1] && process.argv[1].endsWith('te.mjs')) {
         if (!ev || !/israel/i.test(ev.country)) { delete state.events[id]; continue; }
         known.end = ev.end;
         meta.push({ id, name: displayName(ev.title, ev.city), start: ev.start });
-        if (changed && changed === known.changed) continue; // nothing was saved since the last look
+        if (!args.includes('--force') && changed && changed === known.changed) continue; // nothing was saved since the last look
         const d = await readEventDoc(ts, id, year);
         if (d) { docs.push({ ...d, id }); known.changed = changed; }
       } catch (e) { console.log(`  ${id}: ${String(e.message).slice(0, 60)}`); }

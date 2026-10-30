@@ -12,6 +12,8 @@ import { fileURLToPath } from 'node:url';
 import { cleanPlayer, matchDays, parseDayMatches, parseDraws, session } from './tournamentsoftware.mjs';
 export { matchDays };
 import { readAcceptance } from './te.mjs';
+import { parseSearch, searchTournaments } from './te-search.mjs';
+export { parseSearch };
 
 export const TE = 'https://te.tournamentsoftware.com';
 const decode = (s) => s.replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCodePoint(parseInt(h, 16))).replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(Number(n)))
@@ -19,28 +21,6 @@ const decode = (s) => s.replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCodePo
 const text = (h) => decode(h.replace(/<script[\s\S]*?<\/script>/g, '').replace(/<style[\s\S]*?<\/style>/g, '').replace(/<[^>]+>/g, ' ')).replace(/\s+/g, ' ').trim();
 const pad = (n) => String(n).padStart(2, '0');
 const MONTH = { Jan: 1, Feb: 2, Mar: 3, Apr: 4, May: 5, Jun: 6, Jul: 7, Aug: 8, Sep: 9, Oct: 10, Nov: 11, Dec: 12 };
-
-/** One page of search results -> [{ id, name, venue, city, country, start, end, surface, category, age, closed }]. */
-export function parseSearch(html) {
-  const out = [];
-  for (const block of html.split(/<li class="list__item">\s*<div class="media">/).slice(1)) {
-    const id = block.match(/\/sport\/tournament\?id=([0-9A-Fa-f-]{36})/)?.[1];
-    const name = block.match(/<span class="nav-link__value">([\s\S]*?)<\/span>\s*<\/a>\s*<\/h4>/)?.[1];
-    const place = block.match(/icon-marker[\s\S]*?<span class="nav-link__value">([\s\S]*?)<\/span>/)?.[1];
-    const dates = [...block.matchAll(/<time datetime="(\d{4}-\d{2}-\d{2})/g)].map((m) => m[1]);
-    if (!id || !name || !place || dates.length < 2) continue;
-    const [venue, where = ''] = decode(place.replace(/<img[^>]*>/g, '')).replace(/\s+/g, ' ').trim().split(/\s*\|\s*/);
-    const comma = where.lastIndexOf(',');
-    const tags = [...block.matchAll(/<span class="tag[^"]*">([\s\S]*?)<\/span>/g)].map((m) => text(m[1]));
-    const surface = text(block.match(/icon-court[\s\S]*?<span class="nav-link__value">([\s\S]*?)<\/span>/)?.[1] ?? '');
-    const title = text(name);
-    out.push({
-      id: id.toUpperCase(), name: title.replace(/\s*\(closed event\)\s*/i, '').trim(), venue: venue ?? '', city: (comma < 0 ? where : where.slice(0, comma)).trim(), country: (comma < 0 ? '' : where.slice(comma + 1)).trim(),
-      start: dates[0], end: dates[1], surface, category: tags.find((t) => !/^\d+\s*&?U/i.test(t)) ?? '', age: Number(tags.find((t) => /^\d+\s*&?U/i.test(t))?.match(/\d+/)?.[0]) || null, closed: /closed event/i.test(title),
-    });
-  }
-  return out;
-}
 
 /** "Entry opens Mon 7 Sep 00:00 GMT Entry deadline Tue 6 Oct 14:00 GMT Withdrawal deadline Tue 20 Oct 14:00 GMT" (from an event's page text) -> ISO instants. */
 export function parseEntryDates(pageText, startIso) {
@@ -67,31 +47,6 @@ export function parseFactsheet(html) {
     hospitality: between('Hospitality', 'Entry Fee:|Draws:|Accommodation:').replace(/^(none|n\/?a|no|nil|-+|\.+)$/i, ''),
     indoor: loc ? /^indoor/i.test(loc) : null,
   };
-}
-
-const ajax = { 'x-requested-with': 'XMLHttpRequest', 'content-type': 'application/x-www-form-urlencoded' };
-
-/** Every listed tournament starting from `from` to `to` (ISO dates): the search page's own paging (20 results a page). */
-export async function searchTournaments(ts, from, to, log = console.log) {
-  const page = await ts.get(`/find?StartDate=${from}&EndDate=${to}&StatusFilterID=0`);
-  const form = page.match(/<form[^>]*action="\/find\/tournament\/DoSearch"[\s\S]*?<\/form>/i)?.[0] ?? '';
-  const body = new URLSearchParams();
-  for (const m of form.matchAll(/<input[^>]*>/gi)) {
-    const tag = m[0], name = tag.match(/name="([^"]+)"/)?.[1], type = tag.match(/type="([^"]+)"/)?.[1] ?? 'text';
-    if (name && !['checkbox', 'radio', 'submit', 'button'].includes(type)) body.set(name, tag.match(/value="([^"]*)"/)?.[1] ?? '');
-  }
-  body.set('TournamentFilter.StartDate', from); body.set('TournamentFilter.EndDate', to); body.set('TournamentExtendedFilter.StatusFilterID', '0');
-  const all = new Map();
-  for (let p = 1; p <= 40; p++) {
-    body.set('Page', String(p));
-    if (p > 1) body.set('LoadMoreResults', 'LoadMoreResults');
-    const html = await ts.get('/find/tournament/DoSearch', { method: 'POST', headers: ajax, body });
-    const got = parseSearch(html);
-    for (const e of got) all.set(e.id, e);
-    if (got.length < 20) break;
-  }
-  log(`  search ${from}..${to}: ${all.size} tournaments`);
-  return [...all.values()];
 }
 
 /** The events a player outside Israel's own competitions would care about, with entry dates and conditions. */
@@ -233,7 +188,7 @@ export const parseLastChanged = (html) => text(html).match(/Last changed ([^(]*\
  * The hourly/ten-minute refresh of events that are on. Each event's main page is looked at first (one small request) and its matches only when the stamp changed since
  * the last look; `state` remembers the stamp and whether the event has Israelis. Events with Israeli matches are sent with their draws.
  */
-async function liveRefresh(ts, events, state, base, secret) {
+async function liveRefresh(ts, events, state, base, secret, force = false) {
   const today = new Date().toISOString().slice(0, 10);
   const yesterday = new Date(Date.now() - 864e5).toISOString().slice(0, 10);
   const out = [];
@@ -244,7 +199,7 @@ async function liveRefresh(ts, events, state, base, secret) {
       const changed = parseLastChanged(await ts.get(`/tournament/${e.id.toLowerCase()}`));
       looked++;
       state.events[e.id] = { ...known, name: e.name, start: e.start, end: e.end };
-      if (changed && changed === known.changed) continue; // nothing was saved since the last look
+      if (!force && changed && changed === known.changed) continue; // nothing was saved since the last look
       const days = [yesterday, today].filter((d) => d >= e.start && d <= e.end).map((d) => d.replace(/-/g, ''));
       const r = await readIsraeliMatches(ts, e.id, days);
       state.events[e.id].changed = changed;
@@ -286,7 +241,7 @@ if (process.argv[1] && process.argv[1].endsWith('abroad.mjs')) {
       : Object.entries(state.events).filter(([, v]) => v.israelis && v.start <= today && v.end >= today).map(([id, v]) => ({ id, name: v.name, start: v.start, end: v.end }));
     if (!push) { console.log(`${events.length} event(s) to look at (${full ? 'full scan' : 'events with Israelis'}); dry run: nothing read or sent`); process.exit(0); }
     if (full) state.scannedAt = new Date().toISOString();
-    await liveRefresh(ts, events, state, base, process.env.CRON_SECRET);
+    await liveRefresh(ts, events, state, base, process.env.CRON_SECRET, args.includes('--force'));
     // forget events that are over
     for (const [id, v] of Object.entries(state.events)) if (v.end < new Date(Date.now() - 2 * 864e5).toISOString().slice(0, 10)) delete state.events[id];
     writeFileSync(stateFile, JSON.stringify(state));
