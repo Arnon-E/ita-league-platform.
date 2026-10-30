@@ -10,6 +10,8 @@ echo ===== %date% %time% ===== > .loglig-dump\rosters-sync.log
 rem Tennis Europe tournaments abroad, 8:00-22:00 (independent of the gate below): every 10 minutes it looks at the events known to have Israeli players (one small request each,
 rem matches are read only when the event's "last changed" moved); about once an hour it looks at every event that is on, to find new ones
 node scripts\loglig-sync\abroad.mjs --live --push --url %URL% >> .loglig-dump\rosters-sync.log 2>&1
+rem Tennis Europe events in Israel (dates, who is accepted, draws, results): an event is read again only when its "last changed" moved; the list of events is checked about once an hour
+node scripts\loglig-sync\te.mjs --live --push --url %URL% >> .loglig-dump\rosters-sync.log 2>&1
 node scripts\loglig-sync\gate.mjs >> .loglig-dump\rosters-sync.log 2>&1
 if errorlevel 10 exit /b 0
 node scripts\loglig-sync\rosters.mjs --push --url %URL% >> .loglig-dump\rosters-sync.log 2>&1
