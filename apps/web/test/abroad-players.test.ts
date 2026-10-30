@@ -163,6 +163,7 @@ describe('look-alike names', () => {
     expect(nameScore('Jonathan Abraham ROZENBERG', 'יונתן', 'רוזנברג').grade).toBe('exact'); // the middle name is left out in Hebrew
     expect(nameScore('Ziv Ben Dor', 'זיו', 'בן דור').grade).toBe('exact'); // the Hebrew keeps "Ben" with the last name
     expect(nameScore('Guy El Al', 'גיא', 'אל על').grade).toBe('exact');
+    expect(nameScore('Levi Lomkin', 'לוי', 'לומקין').grade).toBe('close'); // the v of Levi is not written in Hebrew: one letter in the first name
   });
 
   it('links the clearly best of several candidates, and leaves it to a person when they fit equally', async () => {

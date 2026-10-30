@@ -67,6 +67,14 @@ export function nameScore(latin: string, firstHe: string, lastHe: string): { gra
     if (!lk || !hk) continue;
     const d = distance(lk, hk), s = distance(latinSound(l), hebrewSound(h));
     if (d < best.d || (d === best.d && s < best.s)) best = { d, s, long: Math.max(lk.length, hk.length) };
+    // the same name read as first and last name apart: a spelling difference in one part is one letter there, but across the join it can cost more
+    const { first, last } = splitLatinName(l);
+    for (const [x, y] of [[firstHe, lastHe], [lastHe, firstHe]] as const) {
+      const fk = latinKey(first), lastK = latinKey(last), hx = hebrewKey(x), hy = hebrewKey(y);
+      if (!fk || !lastK || !hx || !hy) continue;
+      const dp = distance(fk, hx) + distance(lastK, hy), sp = distance(latinSound(first), hebrewSound(x)) + distance(latinSound(last), hebrewSound(y));
+      if (dp < best.d || (dp === best.d && sp < best.s)) best = { d: dp, s: sp, long: Math.max(fk.length + lastK.length, hx.length + hy.length) };
+    }
   }
   // a name of one consonant tells nothing; a short one can be an exact match (never linked by itself: see the link rule) but not a close one
   if (best.d === Infinity || best.long < 2) return { grade: null, score: Infinity };
