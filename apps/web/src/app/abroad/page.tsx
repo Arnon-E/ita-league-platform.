@@ -89,7 +89,7 @@ export default async function Abroad({ searchParams }: { searchParams: Promise<Q
             const place = [e.city, t(countryInfo(e.country).he)].filter(Boolean).join(', ');
             const terms = [e.fee && `${t('דמי השתתפות')}: ${e.fee}`, e.hospitality && `${t('אירוח')}: ${e.hospitality}`].filter(Boolean).join(' · ');
             return (
-              <a key={e.id} href={phase === 'up' ? e.url : `/abroad/${e.id}`} {...(phase === 'up' ? { target: '_blank', rel: 'noopener noreferrer' } : {})} className={`card grid comp ${phase === 'live' ? 'live' : phase === 'done' ? 'done' : state === 'open' ? 'open' : state === 'closed' ? 'done' : 'soon'}`} style={{ gap: 8 }}>
+              <a key={e.id} href={phase === 'up' && e.registered === 0 ? e.url : `/abroad/${e.id}`} {...(phase === 'up' && e.registered === 0 ? { target: '_blank', rel: 'noopener noreferrer' } : {})} className={`card grid comp ${phase === 'live' ? 'live' : phase === 'done' ? 'done' : state === 'open' ? 'open' : state === 'closed' ? 'done' : 'soon'}`} style={{ gap: 8 }}>
                 <span className="top">
                   <span className={`pill ${phase === 'live' ? 'lime' : phase === 'done' ? '' : state === 'open' ? 'ok' : state === 'soon' ? 'warn' : ''}`}>{phase === 'live' ? t('מתקיימת עכשיו') : phase === 'done' ? t('הסתיימה') : state === 'open' ? t('פתוחה להרשמה') : state === 'soon' ? t('בקרוב') : state === 'closed' ? t('ההרשמה סגורה') : t('מועד הרשמה לא ידוע')}</span>
                   <span className="muted">{e.circuit === 'ITF' ? `ITF ${e.category}` : [e.age ? `U${e.age}` : '', e.category].filter(Boolean).join(' · ')}</span>
@@ -99,6 +99,7 @@ export default async function Abroad({ searchParams }: { searchParams: Promise<Q
                   <strong style={{ fontSize: 17, lineHeight: 1.3 }}>{e.name}</strong>
                 </span>
                 <span className="muted"><Flag country={e.country} /> {place} · {dm(e.start)} – {dy(e.end)}</span>
+                {phase === 'up' && e.registered > 0 && <span style={{ fontWeight: 600, color: 'var(--blue)' }}><Flag country="Israel" /> {e.registered} {t('ישראלים רשומים')}</span>}
                 {phase !== 'up' && e.israelis > 0 && <span style={{ fontWeight: 600, color: 'var(--blue)' }}><Flag country="Israel" /> {e.israelis} {t('משחקים של שחקנים ישראלים')}</span>}
                 {(e.surface || terms) && <span className="muted" style={{ fontSize: 13 }}>{[e.surface && (e.indoor ? `${e.surface} · ${t('מקורה')}` : e.surface), terms].filter(Boolean).join(' · ')}</span>}
                 <span className="foot">

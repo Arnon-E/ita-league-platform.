@@ -1,7 +1,7 @@
 import { and, eq, gte, inArray, lt, lte, notInArray, sql } from 'drizzle-orm';
 import { schema, type Db } from '@/db';
 import { memo } from '@/lib/memo';
-import { israelisIn, linkKey, linkNewPlayers } from '@/services/abroad-players';
+import { israelisIn, israelisInAcceptance, linkKey, linkNewPlayers } from '@/services/abroad-players';
 
 /** One Tennis Europe tournament outside Israel, as the sync sends it. Dates are ISO; the entry times are UTC instants. */
 export interface AbroadEventIn {
@@ -16,6 +16,9 @@ export interface ResultMatch { day: string; draw: string; stage: string; court: 
 /** Matches of Israeli players at events, per event and match days: the sync sends the days it read and the matches found on them. */
 export interface DrawMatch { a: { names: string[]; cc: string[]; won: boolean }; b: { names: string[]; cc: string[]; won: boolean }; sets: number[][]; date: string }
 export interface ResultDraw { n: number; name: string; kind: 'KO' | 'RR'; rounds: DrawMatch[][] }
+export interface AcceptanceEvent { label: string; active: number; updated: string | null; players: { draw: string; n: number; name: string; nation: string; born: number | null; rank: string; wtn: string }[] }
+/** The Israelis on the acceptance lists of events (the sync keeps only them). */
+export interface AbroadAcceptanceIn { kind: 'abroad-acceptance'; events: { id: string; acceptance: AcceptanceEvent[] }[] }
 export interface AbroadResultsIn { kind: 'abroad-results'; results: { id: string; days: string[]; matches: ResultMatch[]; draws?: ResultDraw[] }[] }
 
 const clean = (s: unknown, n = 200) => (typeof s === 'string' ? s.replace(/\s+/g, ' ').trim().slice(0, n) : '');
@@ -81,7 +84,7 @@ export function abroadCatalog(db: Db) {
     const t = schema.abroadEvents;
     return db.select({
       id: t.id, name: t.name, venue: t.venue, city: t.city, country: t.country, start: t.startDate, end: t.endDate, surface: t.surface, category: t.category,
-      age: t.ageGroup, circuit: t.circuit, closed: t.closed, entryOpens: t.entryOpens, entryDeadline: t.entryDeadline, withdrawalDeadline: t.withdrawalDeadline, fee: t.fee, hospitality: t.hospitality, indoor: t.indoor, url: t.url,
+      age: t.ageGroup, circuit: t.circuit, registered: t.registered, closed: t.closed, entryOpens: t.entryOpens, entryDeadline: t.entryDeadline, withdrawalDeadline: t.withdrawalDeadline, fee: t.fee, hospitality: t.hospitality, indoor: t.indoor, url: t.url,
       // how many matches of Israeli players the event has, without reading the matches themselves
       israelis: sql<number>`coalesce(jsonb_array_length(${t.results}->'matches'), 0)::int`,
     }).from(t).where(gte(t.endDate, new Date(Date.now() - 7 * 864e5))).orderBy(t.startDate).limit(600);
@@ -139,6 +142,43 @@ export function validateAbroadResults(x: unknown): AbroadResultsIn {
     results.push({ id, days, matches, ...((r as { draws?: unknown }).draws !== undefined ? { draws } : {}) });
   }
   return { kind: 'abroad-results', results };
+}
+
+export function validateAbroadAcceptance(x: unknown): AbroadAcceptanceIn {
+  const b = x as Partial<AbroadAcceptanceIn> | null;
+  if (!b || b.kind !== 'abroad-acceptance' || !Array.isArray(b.events)) throw new Error('bad payload');
+  const events: AbroadAcceptanceIn['events'] = [];
+  for (const e of b.events.slice(0, 200)) {
+    const id = clean(e?.id, 60).toUpperCase();
+    if (!/^[0-9A-Z][0-9A-Z-]{7,59}$/.test(id)) continue;
+    const acceptance: AcceptanceEvent[] = (Array.isArray(e.acceptance) ? e.acceptance : []).slice(0, 12).map((a) => ({
+      label: clean(a?.label, 40), active: Math.max(0, Number(a?.active) || 0), updated: typeof a?.updated === 'string' && !Number.isNaN(Date.parse(a.updated)) ? new Date(a.updated).toISOString() : null,
+      players: (Array.isArray(a?.players) ? a.players : []).slice(0, 150).map((p) => ({ draw: clean(p?.draw, 30), n: Number(p?.n) || 0, name: clean(p?.name, 80), nation: clean(p?.nation, 40), born: Number.isInteger(p?.born) ? (p.born as number) : null, rank: clean(p?.rank, 12), wtn: clean(p?.wtn, 8) }))
+        .filter((p) => p.name && /israel/i.test(p.nation)),
+    })).filter((a) => a.label && a.players.length);
+    events.push({ id, acceptance });
+  }
+  return { kind: 'abroad-acceptance', events };
+}
+
+/** The Israelis on an event's list replace what was stored; their names are looked up among the players of this site (the year of birth is known here). */
+export async function importAbroadAcceptance(db: Db, input: AbroadAcceptanceIn, now = new Date()) {
+  const t = schema.abroadEvents;
+  const stats: { events: number; players: number; links?: Awaited<ReturnType<typeof linkNewPlayers>> } = { events: 0, players: 0 };
+  if (!input.events.length) return stats;
+  const have = await db.select({ id: t.id, age: t.ageGroup, start: t.startDate }).from(t).where(inArray(t.id, input.events.map((e) => e.id)));
+  const info = new Map(have.map((h) => [h.id, h]));
+  const rows = input.events.filter((e) => info.has(e.id)).map((e) => ({
+    id: e.id, acceptance: e.acceptance, registered: e.acceptance.reduce((n, a) => n + a.players.length, 0),
+    names: [...new Set(e.acceptance.flatMap((a) => a.players.map((p) => linkKey(p.name, 'M').split('|')[0]!)))],
+  }));
+  if (rows.length) {
+    await db.execute(sql`update abroad_events a set acceptance = t.acceptance, registered = t.registered, registered_names = (select coalesce(array_agg(x), '{}') from jsonb_array_elements_text(t.names) x) from jsonb_to_recordset(${JSON.stringify(rows)}::jsonb) as t(id text, acceptance jsonb, registered int, names jsonb) where a.id = t.id`);
+    stats.events = rows.length; stats.players = rows.reduce((n, r) => n + r.registered, 0);
+    const seen = input.events.flatMap((e) => { const i = info.get(e.id); return i ? israelisInAcceptance(e.acceptance, i.start.getUTCFullYear(), i.age) : []; });
+    stats.links = await linkNewPlayers(db, seen, now);
+  }
+  return stats;
 }
 
 /** Puts the days that were read into each event's results, leaving the days that were not read as they were (the hourly refresh reads only today and yesterday). */

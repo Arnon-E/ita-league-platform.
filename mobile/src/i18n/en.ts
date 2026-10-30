@@ -103,6 +103,7 @@ const en: Record<string, string> = {
   'אזורית': 'Regional',
   'בינלאומית': 'International',
   'סבב': 'Circuit',
+  "ישראלים רשומים": "Israelis accepted",
   "חזרה לתחרויות חו\"ל": "Back to tournaments abroad",
   "כל המשחקים והתוצאות ב-Tennis Europe": "All matches and results on Tennis Europe",
   "משחקים של שחקנים ישראלים": "Matches of Israeli players",

@@ -10,6 +10,7 @@ import { existsSync, mkdirSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { cleanPlayer, parseDayMatches, parseDraws, session } from './tournamentsoftware.mjs';
+import { readAcceptance } from './te.mjs';
 
 export const TE = 'https://te.tournamentsoftware.com';
 const decode = (s) => s.replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCodePoint(parseInt(h, 16))).replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(Number(n)))
@@ -177,6 +178,28 @@ const post = async (base, secret, body) => {
   return { ok: res.ok, status: res.status, text: (await res.text()).slice(0, 200) };
 };
 
+/**
+ * The Israelis on the acceptance lists of the events that have not ended and whose entry deadline has passed (the list is out then): one page and one more
+ * request per event; only the Israeli rows are kept and sent.
+ */
+async function sendAcceptance(events, base, secret) {
+  const ts = session(TE);
+  const today = new Date().toISOString().slice(0, 10);
+  const wanted = events.filter((e) => e.end >= today && e.entryDeadline && Date.parse(e.entryDeadline) < Date.now());
+  const out = [];
+  for (const e of wanted) {
+    try {
+      const acceptance = (await readAcceptance(ts, e.id)).map((a) => ({ ...a, players: a.players.filter((p) => /israel/i.test(p.nation)) })).filter((a) => a.players.length);
+      if (acceptance.length) out.push({ id: e.id, acceptance });
+    } catch (err) { console.log(`  acceptance list failed for ${e.name}: ${String(err.message).slice(0, 60)}`); }
+  }
+  console.log(`${out.length} of ${wanted.length} event(s) with a published list have Israelis accepted (${out.reduce((n, e) => n + e.acceptance.reduce((m, a) => m + a.players.length, 0), 0)} entries)`);
+  for (let i = 0; i < out.length; i += 10) {
+    const r = await post(base, secret, { kind: 'abroad-acceptance', events: out.slice(i, i + 10) });
+    console.log(`push abroad-acceptance: ${r.status} ${r.text}`);
+  }
+}
+
 /** Events that are on today (or ended in the last week): their Israeli players' matches, sent in small batches. Events with none are not sent. */
 async function sendResults(events, base, secret, { liveOnly = false } = {}) {
   const ts = session(TE);
@@ -235,4 +258,5 @@ if (process.argv[1] && process.argv[1].endsWith('abroad.mjs')) {
   console.log(`push abroad: ${r.status} ${r.text}`);
   if (!r.ok) process.exit(1);
   if (!args.includes('--no-results')) await sendResults(events, base, process.env.CRON_SECRET);
+  if (!args.includes('--no-acceptance')) await sendAcceptance(events, base, process.env.CRON_SECRET);
 }

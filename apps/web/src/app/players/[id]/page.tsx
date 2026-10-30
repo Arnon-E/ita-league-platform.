@@ -10,7 +10,7 @@ import { fmtDate, fmtTime, GENDER, MSTATUS, fmtScore } from '@/components/labels
 import { tr } from '@/lib/i18n';
 import { Flag } from '@/components/Flag';
 import { countryInfo } from '@/lib/countries';
-import { abroadResultsOfPlayer } from '@/services/abroad-players';
+import { abroadResultsOfPlayer, abroadUpcomingOfPlayer } from '@/services/abroad-players';
 
 export default async function PlayerPage({ params }: { params: Promise<{ id: string }> }) {
   const t = await tr();
@@ -21,6 +21,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
   const mine = (await playerRanks(db, [p.id])).get(p.id);
   // matches of this player at tournaments abroad (found by his Latin name, linked to him by the federation or automatically); a failure here never breaks the page
   const abroad = await abroadResultsOfPlayer(db, p.id).catch(() => []);
+  const abroadNext = await abroadUpcomingOfPlayer(db, p.id).catch(() => []);
   const age = Math.floor((Date.now() - p.birthDate.getTime()) / (365.25 * 864e5));
   const catOf = new Map(ents.map((x) => [x.c.id, x]));
   const recent = matches
@@ -61,6 +62,17 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
         </tbody></table>
         {!byTournament.length && <p className="muted">{t('טרם השתתף בתחרויות.')}</p>}
       </div>
+      {abroadNext.length > 0 && (
+        <>
+          <h2>{t('רשום לטורניר בחו"ל')}</h2>
+          {abroadNext.map((ev) => (
+            <Link key={ev.id} href={`/abroad/${ev.id}`} className="card grid" style={{ gap: 4, marginBottom: 10 }}>
+              <strong>{ev.name}</strong>
+              <span className="muted"><Flag country={ev.country} /> {[ev.city, t(countryInfo(ev.country).he)].filter(Boolean).join(', ')} · {fmtDate(ev.start)} – {fmtDate(ev.end)}</span>
+            </Link>
+          ))}
+        </>
+      )}
       {abroad.length > 0 && (
         <>
           <h2>{t('תוצאות בחו"ל')}</h2>

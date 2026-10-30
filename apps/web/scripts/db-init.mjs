@@ -51,6 +51,9 @@ try {
   await sql`alter table abroad_events add column if not exists circuit text not null default 'TE'`;
   await sql`alter table abroad_events add column if not exists results jsonb`;
   await sql`alter table abroad_events add column if not exists israeli_names text[] not null default '{}'`;
+  await sql`alter table abroad_events add column if not exists acceptance jsonb`;
+  await sql`alter table abroad_events add column if not exists registered integer not null default 0`;
+  await sql`alter table abroad_events add column if not exists registered_names text[] not null default '{}'`;
   await sql`create table if not exists abroad_player_links (
     key text primary key, name text not null, gender text not null, player_id text references players(id) on delete set null,
     status text not null default 'NONE', candidates jsonb, checked_at timestamptz not null default now())`;

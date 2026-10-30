@@ -156,10 +156,11 @@ function Abroad({ onBack }: { onBack: () => void }) {
       renderItem={({ item: e }) => {
         const s = state(e);
         return (
-          <Pressable style={st.card} onPress={() => Linking.openURL(ph === 'up' ? e.url : api.webUrl('/abroad/' + e.id))}>
+          <Pressable style={st.card} onPress={() => Linking.openURL(ph === 'up' && e.registered === 0 ? e.url : api.webUrl('/abroad/' + e.id))}>
             <Text style={st.muted}>{e.circuit === 'ITF' ? 'ITF ' + e.category : [e.age ? 'U' + e.age : '', e.category].filter(Boolean).join(' · ')}</Text>
             <Text style={st.b}>{e.name}</Text>
             <Text style={st.muted}>{flag(e.cc)}{[e.city, e.country].filter(Boolean).join(', ')} · {dm(e.start)} – {new Date(e.end).toLocaleDateString(locale(), { timeZone: 'Asia/Jerusalem' })}</Text>
+            {ph === 'up' && e.registered > 0 && <Text style={[st.muted, { color: T.blue, fontWeight: '700' }]}>🇮🇱 {e.registered} {tr('ישראלים רשומים')}</Text>}
             {ph !== 'up' && e.israelis > 0 && <Text style={[st.muted, { color: T.blue, fontWeight: '700' }]}>🇮🇱 {e.israelis} {tr('משחקים של שחקנים ישראלים')}</Text>}
             {!!(e.surface || e.fee) && <Text style={st.muted}>{[e.surface, e.fee && tr('דמי השתתפות') + ': ' + e.fee].filter(Boolean).join(' · ')}</Text>}
             <Text style={[st.muted, (s === 'open' || ph === 'live') && { color: T.ok, fontWeight: '700' }]}>

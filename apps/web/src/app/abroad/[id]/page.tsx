@@ -9,6 +9,7 @@ import { fmtScore } from '@/components/labels';
 import { tr } from '@/lib/i18n';
 import { countryInfo } from '@/lib/countries';
 import { abroadEvent, groupTable, phaseOf, type DrawMatch } from '@/services/abroad';
+import { acceptedWithLinks } from '@/services/abroad-players';
 
 export const dynamic = 'force-dynamic';
 
@@ -37,6 +38,7 @@ export default async function AbroadEventPage({ params }: { params: Promise<{ id
   });
   const dateOf = (d: string) => d.replace(/^[A-Za-z]{3}\s+/, '').replace(/\//g, '.');
   const draws = e.results?.draws ?? [];
+  const accepted = e.acceptance?.length ? await acceptedWithLinks(db, e.acceptance).catch(() => []) : [];
 
   const Side = ({ s }: { s: { names: string[]; cc: string[]; won: boolean; msg: string } }) => (
     <span className="row" style={{ gap: 8, flexWrap: 'nowrap', alignItems: 'baseline', fontWeight: s.won ? 800 : 500, ...(s.cc.includes('ISR') ? { color: 'var(--blue)' } : {}) }}>
@@ -57,6 +59,31 @@ export default async function AbroadEventPage({ params }: { params: Promise<{ id
         {e.category && <span className="pill">{e.category}</span>}
         <a className="btn ghost" href={e.url} target="_blank" rel="noopener noreferrer">{t('כל המשחקים והתוצאות ב-Tennis Europe')}</a>
       </div>
+      {accepted.length > 0 && (
+        <>
+          <h2>{t('ישראלים רשומים')}</h2>
+          <div className="grid cols">
+            {accepted.map((a) => (
+              <div key={a.label} className="card grid" style={{ gap: 6 }}>
+                <strong dir="ltr" style={{ textAlign: 'start' }}>{a.label} <span className="muted" style={{ fontWeight: 400 }}>· {a.players.length} {t('ישראלים')}</span></strong>
+                <div style={{ overflowX: 'auto' }}>
+                  <table>
+                    <thead><tr><th>{t('שם')}</th><th>{t('שנת לידה')}</th><th>{t('דירוג')}</th></tr></thead>
+                    <tbody>
+                      {a.players.map((p) => (
+                        <tr key={p.draw + p.n + p.name}>
+                          <td>{p.player ? <Link href={`/players/${p.player.id}`}><u>{p.player.first} {p.player.last}</u></Link> : null}<div dir="ltr" className={p.player ? 'muted' : undefined} style={{ textAlign: 'start' }}>{p.name}</div></td>
+                          <td>{p.born ?? ''}</td><td dir="ltr">{p.rank && p.rank !== '-' ? `#${p.rank}` : ''}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
       <h2>{t('משחקים של שחקנים ישראלים')}</h2>
       {e.results?.updated && <p className="muted" style={{ margin: 0 }}>{t('עודכן')} {new Date(e.results.updated).toLocaleString('he-IL', { timeZone: TZ, day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>}
       {days.length ? days.map((d) => (

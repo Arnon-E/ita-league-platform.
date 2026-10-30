@@ -238,6 +238,11 @@ export const abroadEvents = pgTable('abroad_events', {
   /** The matches of Israeli players at this event (read from the event's own match pages while it is on): { updated, days: [ISO day], matches: [...] }. */
   /** The lower-case Latin names of the Israeli players in `results` (to find an event by player without reading its matches). */
   israeliNames: text('israeli_names').array().notNull().default(sql`'{}'::text[]`),
+  /** The Israelis on the event's acceptance list (entries made through the federation): [{ label, active, updated, players: [{ draw, n, name, nation, born, rank, wtn }] }]. */
+  acceptance: jsonb('acceptance').$type<{ label: string; active: number; updated: string | null; players: { draw: string; n: number; name: string; nation: string; born: number | null; rank: string; wtn: string }[] }[] | null>(),
+  /** How many Israelis are accepted, and their lower-case Latin names (to find an event by player). */
+  registered: integer('registered').notNull().default(0),
+  registeredNames: text('registered_names').array().notNull().default(sql`'{}'::text[]`),
   results: jsonb('results').$type<{ updated: string; days: string[]; matches: { day: string; draw: string; stage: string; court: string; time: string; a: { names: string[]; cc: string[]; won: boolean; msg: string }; b: { names: string[]; cc: string[]; won: boolean; msg: string }; sets: number[][] }[]; draws?: { n: number; name: string; kind?: 'KO' | 'RR'; rounds: { a: { names: string[]; cc: string[]; won: boolean }; b: { names: string[]; cc: string[]; won: boolean }; sets: number[][]; date: string }[][] }[] } | null>(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => ({ startIdx: index('abroad_events_start_idx').on(t.startDate) }));

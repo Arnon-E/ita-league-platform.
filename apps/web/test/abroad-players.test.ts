@@ -2,8 +2,8 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { db, schema } from '@/db';
 import { mkUser, resetDb } from './helpers';
-import { abroadResultsOfPlayer, hebrewKey, israelisIn, latinKey, linkKey, linkNewPlayers, listAbroadLinks, nameMatch, resolveAbroadLink, splitLatinName } from '@/services/abroad-players';
-import { importAbroad, importAbroadResults, validateAbroadImport, validateAbroadResults } from '@/services/abroad';
+import { abroadResultsOfPlayer, abroadUpcomingOfPlayer, acceptedWithLinks, hebrewKey, israelisIn, latinKey, linkKey, linkNewPlayers, listAbroadLinks, nameMatch, resolveAbroadLink, splitLatinName } from '@/services/abroad-players';
+import { abroadEvent, importAbroad, importAbroadAcceptance, importAbroadResults, validateAbroadAcceptance, validateAbroadImport, validateAbroadResults } from '@/services/abroad';
 import { searchPlayers } from '@/services/public';
 
 const NOW = new Date('2026-10-30T12:00:00Z');
@@ -106,5 +106,32 @@ describe('a player\'s results abroad, and finding him by his Latin name', () => 
     expect(await searchPlayers(db, 'Nobody', undefined, 10)).toHaveLength(0);
     const other = await player('דן', 'לוי', '2014-01-01');
     expect(await abroadResultsOfPlayer(db, other.id)).toEqual([]);
+  });
+});
+
+describe('Israelis accepted to a tournament abroad', () => {
+  beforeAll(resetDb);
+  const E = '5B36FD97-B51E-416D-94EE-84F1B2DD2984';
+  const acc = (label: string, ...rows: [string, number | null, string][]) => ({ label, active: rows.length, updated: '2026-10-23T09:20:00Z', players: rows.map(([name, born, nation], i) => ({ draw: 'Main', n: i + 1, name, nation, born, rank: '-', wtn: '' })) });
+
+  it('keeps only the Israelis of a list, and sets the event\'s count and names', async () => {
+    await importAbroad(db, validateAbroadImport({ kind: 'abroad', circuit: 'TE', until: '2026-12-31', events: [{ id: E, name: 'Lyttos Beach U12 International Tournament', venue: '', city: 'Heraklion', country: 'Greece', start: '2026-11-02', end: '2026-11-07', surface: '', category: 'Category 2', age: 12, closed: false, fee: '', hospitality: '', url: 'https://example.org/x' }] }), NOW);
+    const input = validateAbroadAcceptance({ kind: 'abroad-acceptance', events: [{ id: E, acceptance: [acc('GS12', ['Lia Winkler', 2014, 'Israel'], ['Maria Kalogeri', 2014, 'Greece']), acc('BS12', ['Nobody Else', 2014, 'Germany'])] }] });
+    expect(input.events[0]!.acceptance).toHaveLength(1); // the boys' list had no Israeli
+    expect(input.events[0]!.acceptance[0]!.players.map((p) => p.name)).toEqual(['Lia Winkler']);
+    expect(await importAbroadAcceptance(db, input, NOW)).toMatchObject({ events: 1, players: 1 });
+    const ev = await abroadEvent(db, E);
+    expect(ev).toMatchObject({ registered: 1, registeredNames: ['lia winkler'] });
+  });
+
+  it('uses the year of birth: two girls with the same name, only one born that year, is a sure link', async () => {
+    const right = await player('ליה', 'וינקלר', '2014-04-04', 'FEMALE');
+    await player('ליה', 'וינקלר', '2015-05-05', 'FEMALE');
+    const input = validateAbroadAcceptance({ kind: 'abroad-acceptance', events: [{ id: E, acceptance: [acc('GS12', ['Lia Winkler', 2014, 'Israel'])] }] });
+    // the name was looked up before (nobody matched): a week later it is looked at again, now with the players there are
+    expect(await importAbroadAcceptance(db, input, new Date('2026-11-10T12:00:00Z'))).toMatchObject({ links: { auto: 1 } });
+    const accepted = await acceptedWithLinks(db, (await abroadEvent(db, E))!.acceptance!);
+    expect(accepted[0]!.players[0]).toMatchObject({ name: 'Lia Winkler', born: 2014, player: { id: right.id } });
+    expect((await abroadUpcomingOfPlayer(db, right.id)).map((x) => x.name)).toEqual(['Lyttos Beach U12 International Tournament']);
   });
 });

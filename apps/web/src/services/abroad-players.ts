@@ -60,7 +60,7 @@ export function nameMatch(latin: string, firstHe: string, lastHe: string): 'exac
 /** The key under which a name is remembered: lower case, no accents, one space, plus the gender (the same name can be a boy and a girl). */
 export const linkKey = (name: string, gender: string) => `${name.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim()}|${gender === 'FEMALE' ? 'F' : 'M'}`;
 
-export interface SeenPlayer { name: string; gender: 'MALE' | 'FEMALE'; /** the event's year and age group: the player was born in [year - age, year - age + 3] */ year: number; age: number | null }
+export interface SeenPlayer { name: string; gender: 'MALE' | 'FEMALE'; /** the event's year and age group: the player was born in [year - age, year - age + 3] */ year: number; age: number | null; /** when the year of birth is known (an acceptance list gives it) only that year is looked at */ born?: number | null }
 
 /** The Israeli players of the given matches, with the gender from the draw ("BS12"/"GD14") and the event's age group. Mixed draws are skipped (no gender to go by). */
 export function israelisIn(matches: ResultMatch[], year: number, age: number | null): SeenPlayer[] {
@@ -86,11 +86,12 @@ export async function linkNewPlayers(db: Db, seen: SeenPlayer[], now = new Date(
   const fresh = new Map(have.filter((h) => h.status !== 'NONE' || +now - +h.checkedAt < 7 * 864e5).map((h) => [h.key, h]));
   const todo = seen.filter((s) => !fresh.has(linkKey(s.name, s.gender)));
   const groups = new Map<string, SeenPlayer[]>();
-  for (const s of todo) groups.set(`${s.gender}|${s.year}|${s.age ?? ''}`, [...(groups.get(`${s.gender}|${s.year}|${s.age ?? ''}`) ?? []), s]);
+  const gk = (s: SeenPlayer) => `${s.gender}|${s.year}|${s.age ?? ''}|${s.born ?? ''}`;
+  for (const s of todo) groups.set(gk(s), [...(groups.get(gk(s)) ?? []), s]);
   const rows: (typeof L.$inferInsert)[] = [];
   for (const [, list] of groups) {
-    const { gender, year, age } = list[0]!;
-    const from = year - (age ?? 18), to = year - (age ?? 18) + 3;
+    const { gender, year, age, born } = list[0]!;
+    const from = born ?? year - (age ?? 18), to = born ?? year - (age ?? 18) + 3;
     const cands = await db.select({ id: P.id, first: P.firstName, last: P.lastName }).from(P)
       .where(and(eq(P.gender, gender), sql`extract(year from ${P.birthDate}) between ${from} and ${to}`));
     for (const s of list) {
@@ -152,4 +153,41 @@ export async function resolveAbroadLink(db: Db, actor: Actor, key: string, playe
   assertCan(actor, 'player.link');
   const L = schema.abroadPlayerLinks;
   await db.update(L).set(playerId ? { playerId, status: 'CONFIRMED' } : { playerId: null, status: 'REJECTED' }).where(eq(L.key, key));
+}
+
+/** The Israelis of an event's acceptance list, with their year of birth and the gender from the draw ("BS12", "GD14"). */
+export function israelisInAcceptance(acc: { label: string; players: { name: string; nation: string; born: number | null }[] }[], year: number, age: number | null): SeenPlayer[] {
+  const out = new Map<string, SeenPlayer>();
+  for (const a of acc) {
+    const g = /^([BG])[SD]/.exec(a.label)?.[1];
+    if (!g) continue;
+    for (const p of a.players) if (/israel/i.test(p.nation)) out.set(linkKey(p.name, g === 'G' ? 'FEMALE' : 'MALE'), { name: p.name, gender: g === 'G' ? 'FEMALE' : 'MALE', year, age, born: p.born });
+  }
+  return [...out.values()];
+}
+
+/**
+ * The Israelis accepted to an event, each with the player of this site when the name is linked ('AUTO' or 'CONFIRMED'). The links are read for the listed names only.
+ */
+export async function acceptedWithLinks(db: Db, acceptance: { label: string; active: number; players: { draw: string; n: number; name: string; nation: string; born: number | null; rank: string; wtn: string }[] }[]) {
+  const L = schema.abroadPlayerLinks, P = schema.players;
+  const keys = acceptance.flatMap((a) => { const g = /^G/.test(a.label) ? 'FEMALE' : 'MALE'; return a.players.map((p) => linkKey(p.name, g)); });
+  const links = keys.length ? await db.select({ key: L.key, playerId: L.playerId }).from(L).where(and(inArray(L.key, [...new Set(keys)]), inArray(L.status, ['AUTO', 'CONFIRMED']))) : [];
+  const ids = [...new Set(links.map((l) => l.playerId).filter((x): x is string => !!x))];
+  const people = ids.length ? await db.select({ id: P.id, first: P.firstName, last: P.lastName, photo: P.photo }).from(P).where(inArray(P.id, ids)) : [];
+  const person = new Map(links.map((l) => [l.key, people.find((p) => p.id === l.playerId) ?? null]));
+  return acceptance.map((a) => {
+    const g = /^G/.test(a.label) ? 'FEMALE' : 'MALE';
+    return { label: a.label, active: a.active, players: a.players.map((p) => ({ ...p, player: person.get(linkKey(p.name, g)) ?? null })) };
+  });
+}
+
+/** Tournaments abroad that have not ended and to which a player of this site is accepted: [{ id, name, city, country, start, end, label }]. */
+export async function abroadUpcomingOfPlayer(db: Db, playerId: string) {
+  const L = schema.abroadPlayerLinks, E = schema.abroadEvents;
+  const links = await db.select({ key: L.key }).from(L).where(and(eq(L.playerId, playerId), inArray(L.status, ['AUTO', 'CONFIRMED'])));
+  if (!links.length) return [];
+  const mine = [...new Set(links.map((l) => l.key.split('|')[0]!))];
+  return db.select({ id: E.id, name: E.name, city: E.city, country: E.country, start: E.startDate, end: E.endDate })
+    .from(E).where(and(sql`${E.registeredNames} && array[${sql.join(mine.map((k) => sql`${k}`), sql`, `)}]::text[]`, sql`${E.endDate} >= now()`)).orderBy(E.startDate).limit(10);
 }
