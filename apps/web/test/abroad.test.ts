@@ -4,7 +4,7 @@ import { eq } from 'drizzle-orm';
 import { db, schema } from '@/db';
 import { resetDb } from './helpers';
 import { parseEntryDates, parseFactsheet, parseSearch } from '../scripts/loglig-sync/abroad.mjs';
-import { abroadCatalog, entryState, importAbroad, validateAbroadImport } from '@/services/abroad';
+import { abroadCatalog, entryState, importAbroad, phaseOf, validateAbroadImport } from '@/services/abroad';
 import { countryInfo, flagEmoji } from '@/lib/countries';
 
 const fixture = (n: string) => readFileSync(new URL(`./fixtures/${n}`, import.meta.url), 'utf8');
@@ -100,5 +100,14 @@ describe('countries', () => {
     expect(countryInfo('Atlantis')).toEqual({ cc: null, he: 'Atlantis' });
     expect(flagEmoji('il')).toBe('🇮🇱');
     expect(flagEmoji(null)).toBe('');
+  });
+});
+
+describe('phase of an event', () => {
+  it('is upcoming before the first day, live during, and done after the last', () => {
+    const e = { start: new Date('2026-11-02T00:00:00Z'), end: new Date('2026-11-08T23:59:59Z') };
+    expect(phaseOf(e, new Date('2026-10-30T12:00:00Z'))).toBe('up');
+    expect(phaseOf(e, new Date('2026-11-05T12:00:00Z'))).toBe('live');
+    expect(phaseOf(e, new Date('2026-11-09T09:00:00Z'))).toBe('done');
   });
 });

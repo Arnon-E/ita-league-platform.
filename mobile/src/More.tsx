@@ -119,10 +119,11 @@ function AboutScreen({ onBack }: { onBack: () => void }) {
 function Abroad({ onBack }: { onBack: () => void }) {
   const { data, err, busy } = useData(api.abroad);
   const [help, setHelp] = useState(false);
-  const [age, setAge] = useState(''); const [circuit, setCircuit] = useState(''); const [openOnly, setOpenOnly] = useState(false); const [shown, setShown] = useState(40);
+  const [age, setAge] = useState(''); const [circuit, setCircuit] = useState(''); const [openOnly, setOpenOnly] = useState(false); const [ph, setPh] = useState<'up' | 'live' | 'done'>('up'); const [shown, setShown] = useState(40);
   const now = Date.now();
   const state = (e: api.AbroadEvent) => (!e.entryDeadline ? 'unknown' : +new Date(e.entryDeadline) < now ? 'closed' : e.entryOpens && +new Date(e.entryOpens) > now ? 'soon' : 'open');
-  const rows = (data ?? []).filter((e) => (!age || String(e.age) === age) && (!circuit || e.circuit === circuit) && (!openOnly || ['open', 'soon'].includes(state(e))));
+  const phase = (e: api.AbroadEvent) => (+new Date(e.end) < now ? 'done' : +new Date(e.start) <= now ? 'live' : 'up');
+  const rows = (data ?? []).filter((e) => (!age || String(e.age) === age) && (!circuit || e.circuit === circuit) && phase(e) === ph && (!openOnly || ['open', 'soon'].includes(state(e)))).sort((a, b) => (ph === 'done' ? +new Date(b.end) - +new Date(a.end) : +new Date(a.start) - +new Date(b.start)));
   const dm = (iso: string) => new Date(iso).toLocaleDateString(locale(), { day: 'numeric', month: 'numeric', timeZone: 'Asia/Jerusalem' });
   const dt = (iso: string) => new Date(iso).toLocaleString(locale(), { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem' });
   const flag = (cc: string | null) => (cc && /^[a-z]{2}$/i.test(cc) ? String.fromCodePoint(...[...cc.toUpperCase()].map((c) => 0x1f1a5 + c.charCodeAt(0))) + ' ' : '');
@@ -132,6 +133,9 @@ function Abroad({ onBack }: { onBack: () => void }) {
     <FlatList contentContainerStyle={st.pad} data={rows.slice(0, shown)} keyExtractor={(e) => e.id}
       ListHeaderComponent={<>
         <Head title={tr('תחרויות נוער בחו״ל')} onBack={onBack} />
+        <View style={[st.row, { flexWrap: 'wrap' }]}>
+          {([['up', tr('קרובות')], ['live', tr('מתקיימות עכשיו')], ['done', tr('הסתיימו לאחרונה')]] as const).map(([k, l]) => <Chip key={k} on={ph === k} label={l} onPress={() => { setPh(k); setShown(40); }} />)}
+        </View>
         <View style={[st.row, { flexWrap: 'wrap' }]}>
           {([['', tr('כל הגילאים')], ['12', 'U12'], ['14', 'U14'], ['16', 'U16']] as const).map(([k, l]) => <Chip key={k} on={age === k} label={l} onPress={() => { setAge(k); setShown(40); }} />)}
           <Chip on={openOnly} label={tr('עוד אפשר להירשם')} onPress={() => { setOpenOnly(!openOnly); setShown(40); }} />
@@ -157,8 +161,8 @@ function Abroad({ onBack }: { onBack: () => void }) {
             <Text style={st.b}>{e.name}</Text>
             <Text style={st.muted}>{flag(e.cc)}{[e.city, e.country].filter(Boolean).join(', ')} · {dm(e.start)} – {new Date(e.end).toLocaleDateString(locale(), { timeZone: 'Asia/Jerusalem' })}</Text>
             {!!(e.surface || e.fee) && <Text style={st.muted}>{[e.surface, e.fee && tr('דמי השתתפות') + ': ' + e.fee].filter(Boolean).join(' · ')}</Text>}
-            <Text style={[st.muted, s === 'open' && { color: T.ok, fontWeight: '700' }]}>
-              {s === 'open' && e.entryDeadline ? tr('הרשמה עד') + ' ' + dt(e.entryDeadline) : s === 'soon' && e.entryOpens ? tr('ההרשמה נפתחת') + ' ' + dm(e.entryOpens) : s === 'closed' ? tr('ההרשמה נסגרה') : tr('פתיחה ↗')}
+            <Text style={[st.muted, (s === 'open' || ph === 'live') && { color: T.ok, fontWeight: '700' }]}>
+              {ph === 'live' ? tr('מתקיימת עכשיו') + ' ↗' : ph === 'done' ? tr('הסתיימה') + ' ↗' : s === 'open' && e.entryDeadline ? tr('הרשמה עד') + ' ' + dt(e.entryDeadline) : s === 'soon' && e.entryOpens ? tr('ההרשמה נפתחת') + ' ' + dm(e.entryOpens) : s === 'closed' ? tr('ההרשמה נסגרה') : tr('פתיחה ↗')}
             </Text>
           </Pressable>
         );

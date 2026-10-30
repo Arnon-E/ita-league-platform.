@@ -16,7 +16,7 @@ import { myHome, myPlayersForRelevance } from '@/services/home';
 import { homeCounts, sectionOfBirthYear } from '@/services/public';
 import { MyHome } from '@/components/MyHome';
 import { relevantFor } from '@/services/eligibility';
-import { abroadCatalog, entryState } from '@/services/abroad';
+import { abroadCatalog, entryState, phaseOf } from '@/services/abroad';
 import { countryInfo } from '@/lib/countries';
 import { Flag } from '@/components/Flag';
 
@@ -38,7 +38,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ l
   // Signed-in players and parents get a personal home: their standing, next match, results and what needs doing.
   const home = actor ? await myHome(db, actor).catch(() => null) : null;
   // junior tournaments abroad: the three whose entry closes first, and how many there are (a failure here must never break the home page)
-  const abroadAll = (await abroadCatalog(db).catch(() => [])).filter((e) => !e.closed);
+  const abroadAll = (await abroadCatalog(db).catch(() => [])).filter((e) => !e.closed && phaseOf(e) === 'up');
   const abroadOpen = abroadAll.filter((e) => entryState(e) === 'open').sort((a, b) => +a.entryDeadline! - +b.entryDeadline!);
   const abroadCanEnter = abroadAll.filter((e) => ['open', 'soon'].includes(entryState(e))).length; // the same count the abroad page's "entry still open" shows
   // a player or parent sees the competitions that can apply to them; "show all" is one tap away
@@ -187,7 +187,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ l
           )}
           <div className="row" style={{ marginTop: 14 }}>
             <Link className="btn" href="/abroad">{t('לכל התחרויות בחו"ל')} · {abroadAll.length}</Link>
-            {abroadCanEnter > 0 && <Link className="btn ghost" href="/abroad?open=1">{t('רק כאלה שעוד אפשר להירשם אליהן')} · {abroadCanEnter}</Link>}
+            {abroadCanEnter > 0 && <Link className="btn ghost" href="/abroad?st=open">{t('רק כאלה שעוד אפשר להירשם אליהן')} · {abroadCanEnter}</Link>}
           </div>
         </Fold>
       )}

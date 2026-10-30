@@ -3,7 +3,7 @@ import { GetForm } from '@/components/GetForm';
 import { db } from '@/db';
 import { Shell } from '@/components/Shell';
 import { tr } from '@/lib/i18n';
-import { abroadCatalog, entryState, type AbroadRow } from '@/services/abroad';
+import { abroadCatalog, entryState, phaseOf, type AbroadRow } from '@/services/abroad';
 import { countryInfo } from '@/lib/countries';
 import { Flag } from '@/components/Flag';
 import { Fold } from '@/components/Fold';
@@ -23,25 +23,29 @@ const CAT_HE: Record<string, string> = {
   'Tennis Europe Festival': 'Festival · פסטיבל',
 };
 
-type Q = { circuit?: string; age?: string; country?: string; month?: string; cat?: string; open?: string; n?: string };
+const ST: Record<string, string> = { up: 'קרובות', open: 'עוד אפשר להירשם', live: 'מתקיימות עכשיו', done: 'הסתיימו לאחרונה' };
+
+type Q = { circuit?: string; age?: string; country?: string; month?: string; cat?: string; open?: string; st?: string; n?: string };
 
 /** Public to everyone: junior tournaments outside Israel (Tennis Europe, mirrored by the daily sync): when and where, the level, until when to enter, the fee. */
 export default async function Abroad({ searchParams }: { searchParams: Promise<Q> }) {
   const t = await tr();
   const q = await searchParams;
-  const { circuit = '', age = '', country = '', month = '', cat = '', open = '' } = q;
+  const { circuit = '', age = '', country = '', month = '', cat = '' } = q;
+  const st = q.st && q.st in ST ? q.st : q.open ? 'open' : 'up'; // ?open=1 is the older link for "entry still open"
   const limit = Math.max(PAGE, Number(q.n) || PAGE);
   const now = new Date();
   const year = now.getFullYear();
   // events closed to other nations are not for our players to enter
   const all = (await abroadCatalog(db)).filter((e) => !e.closed);
   const inCircuit = circuit ? all.filter((e) => e.circuit === circuit) : all;
-  const rows = inCircuit.filter((e) => (!age || String(e.age) === age) && (!country || e.country === country) && (!month || monthKey(e.start) === month) && (!cat || e.category === cat)
-    && (!open || ['open', 'soon'].includes(entryState(e, now))));
-  const openCount = inCircuit.filter((e) => ['open', 'soon'].includes(entryState(e, now))).length;
+  const fits = (e: AbroadRow) => (!age || String(e.age) === age) && (!country || e.country === country) && (!month || monthKey(e.start) === month) && (!cat || e.category === cat);
+  const inGroup = (e: AbroadRow, k: string) => (k === 'open' ? phaseOf(e, now) === 'up' && ['open', 'soon'].includes(entryState(e, now)) : phaseOf(e, now) === k);
+  const counts: Record<string, number> = Object.fromEntries(Object.keys(ST).map((k) => [k, inCircuit.filter((e) => inGroup(e, k)).length]));
+  const rows = inCircuit.filter((e) => fits(e) && inGroup(e, st)).sort((a, b) => (st === 'done' ? +b.end - +a.end : +a.start - +b.start));
   const opts = (f: (e: AbroadRow) => string | null) => [...new Set(inCircuit.map(f).filter((x): x is string => !!x))].sort();
   const filtered = [age, country, month, cat].filter(Boolean).length;
-  const href = (o: Partial<Q>) => `/abroad?${new URLSearchParams(Object.entries({ circuit, age, country, month, cat, open, ...o }).filter(([, v]) => v) as [string, string][]).toString()}`;
+  const href = (o: Partial<Q>) => `/abroad?${new URLSearchParams(Object.entries({ circuit, age, country, month, cat, st: st === 'up' ? '' : st, ...o }).filter(([, v]) => v) as [string, string][]).toString()}`;
   const shown = rows.slice(0, limit);
 
   return (
@@ -56,14 +60,15 @@ export default async function Abroad({ searchParams }: { searchParams: Promise<Q
         </div>
       </Fold>
       <div className="row" style={{ marginTop: 12 }}>
-        <Link scroll={false} href={href({ open: '', n: '' })} className={`pill ${open ? '' : 'lime'}`}>{t('הכול')} {inCircuit.length}</Link>
-        <Link scroll={false} href={href({ open: '1', n: '' })} className={`pill ${open ? 'lime' : ''}`}>{t('עוד אפשר להירשם')} {openCount}</Link>
+        {Object.entries(ST).map(([k, v]) => (
+          <Link scroll={false} key={k} href={href({ st: k === 'up' ? '' : k, n: '' })} className={`pill ${st === k ? 'lime' : ''}`}>{t(v)} {counts[k]}</Link>
+        ))}
       </div>
       <details className="filters" open={filtered > 0}>
         <summary>{t('סינון')}{filtered ? ` · ${filtered}` : ''}</summary>
         <GetForm className="card" style={{ marginTop: 8, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 10 }}>
           <input type="hidden" name="circuit" value={circuit} />
-          {open && <input type="hidden" name="open" value="1" />}
+          {st !== 'up' && <input type="hidden" name="st" value={st} />}
           <select name="age" defaultValue={age} style={{ width: '100%' }}><option value="">{t('כל הגילאים')}</option>{[12, 14, 16].map((a) => <option key={a} value={a}>{t('גיל')} {a}</option>)}</select>
           <select name="country" defaultValue={country} style={{ width: '100%' }}><option value="">{t('כל המדינות')}</option>{opts((e) => e.country).map((c) => <option key={c} value={c}>{t(countryInfo(c).he)}</option>)}</select>
           <select name="month" defaultValue={month} style={{ width: '100%' }}><option value="">{t('כל החודשים')}</option>{opts((e) => monthKey(e.start)).map((m) => <option key={m} value={m}>{monthName(m)}</option>)}</select>
@@ -79,13 +84,14 @@ export default async function Abroad({ searchParams }: { searchParams: Promise<Q
         <div className="grid cols" style={{ marginTop: 14 }}>
           {shown.map((e) => {
             const state = entryState(e, now);
-            const deadline = state === 'open' && e.entryDeadline ? `${t('הרשמה עד')} ${dt(e.entryDeadline)}` : state === 'soon' && e.entryOpens ? `${t('ההרשמה נפתחת')} ${dm(e.entryOpens)}` : state === 'closed' ? t('ההרשמה נסגרה') : '';
+            const phase = phaseOf(e, now);
+            const deadline = phase === 'live' ? `${t('עד')} ${dy(e.end)}` : phase === 'done' ? `${t('הסתיים')} ${dy(e.end)}` : state === 'open' && e.entryDeadline ? `${t('הרשמה עד')} ${dt(e.entryDeadline)}` : state === 'soon' && e.entryOpens ? `${t('ההרשמה נפתחת')} ${dm(e.entryOpens)}` : state === 'closed' ? t('ההרשמה נסגרה') : '';
             const place = [e.city, t(countryInfo(e.country).he)].filter(Boolean).join(', ');
             const terms = [e.fee && `${t('דמי השתתפות')}: ${e.fee}`, e.hospitality && `${t('אירוח')}: ${e.hospitality}`].filter(Boolean).join(' · ');
             return (
-              <a key={e.id} href={e.url} target="_blank" rel="noopener noreferrer" className={`card grid comp ${state === 'open' ? 'open' : state === 'closed' ? 'done' : 'soon'}`} style={{ gap: 8 }}>
+              <a key={e.id} href={e.url} target="_blank" rel="noopener noreferrer" className={`card grid comp ${phase === 'live' ? 'live' : phase === 'done' ? 'done' : state === 'open' ? 'open' : state === 'closed' ? 'done' : 'soon'}`} style={{ gap: 8 }}>
                 <span className="top">
-                  <span className={`pill ${state === 'open' ? 'ok' : state === 'soon' ? 'warn' : ''}`}>{state === 'open' ? t('פתוחה להרשמה') : state === 'soon' ? t('בקרוב') : state === 'closed' ? t('ההרשמה סגורה') : t('מועד הרשמה לא ידוע')}</span>
+                  <span className={`pill ${phase === 'live' ? 'lime' : phase === 'done' ? '' : state === 'open' ? 'ok' : state === 'soon' ? 'warn' : ''}`}>{phase === 'live' ? t('מתקיימת עכשיו') : phase === 'done' ? t('הסתיימה') : state === 'open' ? t('פתוחה להרשמה') : state === 'soon' ? t('בקרוב') : state === 'closed' ? t('ההרשמה סגורה') : t('מועד הרשמה לא ידוע')}</span>
                   <span className="muted">{e.circuit === 'ITF' ? `ITF ${e.category}` : [e.age ? `U${e.age}` : '', e.category].filter(Boolean).join(' · ')}</span>
                 </span>
                 <span className="row" style={{ flexWrap: 'nowrap' }}>
@@ -96,14 +102,14 @@ export default async function Abroad({ searchParams }: { searchParams: Promise<Q
                 {(e.surface || terms) && <span className="muted" style={{ fontSize: 13 }}>{[e.surface && (e.indoor ? `${e.surface} · ${t('מקורה')}` : e.surface), terms].filter(Boolean).join(' · ')}</span>}
                 <span className="foot">
                   <span className="muted">{deadline}</span>
-                  <span className={`act ${state === 'open' ? 'primary' : ''}`}>{t('לדף הטורניר')}</span>
+                  <span className={`act ${phase === 'live' || (phase === 'up' && state === 'open') ? 'primary' : ''}`}>{t('לדף הטורניר')}</span>
                 </span>
               </a>
             );
           })}
         </div>
       ) : (
-        <div className="card muted" style={{ marginTop: 14 }}>{t('אין טורנירים שמתאימים לסינון.')}</div>
+        <div className="card muted" style={{ marginTop: 14 }}>{st === 'live' ? t('אין כרגע טורנירים שמתקיימים.') : t('אין טורנירים שמתאימים לסינון.')}</div>
       )}
       {rows.length > shown.length && <div className="row" style={{ marginTop: 14, justifyContent: 'center' }}><Link scroll={false} className="btn ghost" href={href({ n: String(limit + PAGE) })}>{t('הצגת עוד')}</Link></div>}
     </Shell>
