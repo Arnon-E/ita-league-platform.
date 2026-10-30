@@ -16,6 +16,9 @@ import { myHome, myPlayersForRelevance } from '@/services/home';
 import { homeCounts, sectionOfBirthYear } from '@/services/public';
 import { MyHome } from '@/components/MyHome';
 import { relevantFor } from '@/services/eligibility';
+import { abroadCatalog, entryState } from '@/services/abroad';
+import { countryInfo } from '@/lib/countries';
+import { Flag } from '@/components/Flag';
 
 const AGES = [10, 12, 14, 16, 18];
 const SEC: Record<string, string> = { YOUTH: 'נוער', ADULTS: 'בוגרים', MASTERS: 'מאסטרס', OTHER: 'אחר' };
@@ -34,6 +37,9 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ l
   const ts = staff ? allTs : allTs.filter((x) => x.status !== 'DRAFT' && (x.status !== 'CANCELLED' || x.hasEntries));
   // Signed-in players and parents get a personal home: their standing, next match, results and what needs doing.
   const home = actor ? await myHome(db, actor).catch(() => null) : null;
+  // junior tournaments abroad: the three whose entry closes first, and how many there are (a failure here must never break the home page)
+  const abroadAll = (await abroadCatalog(db).catch(() => [])).filter((e) => !e.closed);
+  const abroadOpen = abroadAll.filter((e) => entryState(e) === 'open').sort((a, b) => +a.entryDeadline! - +b.entryDeadline!);
   // a player or parent sees the competitions that can apply to them; "show all" is one tap away
   const mine = await myPlayersForRelevance(db, actor).catch(() => []);
   const relevantOnly = mine.length > 0 && rel !== 'all';
@@ -163,6 +169,27 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ l
         </div>
       )}
       </Fold>
+      {abroadAll.length > 0 && (
+        <Fold id="abroad" title={t('תחרויות חו"ל')}>
+          <p className="muted" style={{ margin: 0 }}>{t('טורנירי נוער של Tennis Europe: מתי ואיפה, עד מתי אפשר להירשם ומה התנאים.')}</p>
+          {abroadOpen.length > 0 && (
+            <div className="grid cols" style={{ marginTop: 14 }}>
+              {abroadOpen.slice(0, 3).map((e) => (
+                <a key={e.id} href={e.url} target="_blank" rel="noopener noreferrer" className="card grid comp open" style={{ gap: 8 }}>
+                  <span className="top"><span className="pill ok">{t('פתוחה להרשמה')}</span><span className="muted">{[e.age ? `U${e.age}` : '', e.category].filter(Boolean).join(' · ')}</span></span>
+                  <strong style={{ fontSize: 17, lineHeight: 1.3 }}>{e.name}</strong>
+                  <span className="muted"><Flag country={e.country} /> {[e.city, t(countryInfo(e.country).he)].filter(Boolean).join(', ')} · {dayMonth(e.start)} – {fmtDate(e.end)}</span>
+                  <span className="foot"><span className="muted">{t('הרשמה עד')} {e.entryDeadline!.toLocaleString('he-IL', { timeZone: 'Asia/Jerusalem', day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' })}</span><span className="act primary">{t('לדף הטורניר')}</span></span>
+                </a>
+              ))}
+            </div>
+          )}
+          <div className="row" style={{ marginTop: 14 }}>
+            <Link className="btn" href="/abroad">{t('לכל התחרויות בחו"ל')} · {abroadAll.length}</Link>
+            {abroadOpen.length > 0 && <Link className="btn ghost" href="/abroad?open=1">{t('רק כאלה שעוד אפשר להירשם אליהן')} · {abroadOpen.length}</Link>}
+          </div>
+        </Fold>
+      )}
     </Shell>
   );
 }

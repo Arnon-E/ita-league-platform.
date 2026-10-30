@@ -5,6 +5,7 @@ import { Shell } from '@/components/Shell';
 import { tr } from '@/lib/i18n';
 import { abroadCatalog, entryState, type AbroadRow } from '@/services/abroad';
 import { countryInfo } from '@/lib/countries';
+import { Flag } from '@/components/Flag';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,10 +20,6 @@ const PAGE = 48;
 const CAT_HE: Record<string, string> = {
   'Super Category': 'Super Category · הדרגה הגבוהה ביותר', 'Category 1': 'Category 1 · דרגה גבוהה', 'Category 2': 'Category 2 · דרגה בינונית', 'Category 3': 'Category 3 · דרגת כניסה',
   'Tennis Europe Festival': 'Festival · פסטיבל',
-};
-const Flag = ({ country }: { country: string }) => {
-  const { cc } = countryInfo(country);
-  return cc ? <img src={`https://flagcdn.com/w40/${cc}.png`} srcSet={`https://flagcdn.com/w80/${cc}.png 2x`} width={20} height={15} alt="" loading="lazy" style={{ borderRadius: 2, boxShadow: '0 0 0 1px var(--line)', verticalAlign: 'middle' }} /> : null;
 };
 
 type Q = { circuit?: string; age?: string; country?: string; month?: string; cat?: string; open?: string; n?: string };
