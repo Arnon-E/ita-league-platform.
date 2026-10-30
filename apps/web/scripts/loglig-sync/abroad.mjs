@@ -191,6 +191,7 @@ export const parseLastChanged = (html) => text(html).match(/Last changed ([^(]*\
 async function liveRefresh(ts, events, state, base, secret, force = false) {
   const today = new Date().toISOString().slice(0, 10);
   const yesterday = new Date(Date.now() - 864e5).toISOString().slice(0, 10);
+  const tomorrow = new Date(Date.now() + 864e5).toISOString().slice(0, 10); // the order of play comes out the day before
   const out = [];
   let looked = 0;
   for (const e of events) {
@@ -200,7 +201,7 @@ async function liveRefresh(ts, events, state, base, secret, force = false) {
       looked++;
       state.events[e.id] = { ...known, name: e.name, start: e.start, end: e.end };
       if (!force && changed && changed === known.changed) continue; // nothing was saved since the last look
-      const days = [yesterday, today].filter((d) => d >= e.start && d <= e.end).map((d) => d.replace(/-/g, ''));
+      const days = [yesterday, today, tomorrow].filter((d) => d >= e.start && d <= e.end).map((d) => d.replace(/-/g, ''));
       const r = await readIsraeliMatches(ts, e.id, days);
       // the draws come out before the first match: an event with Israeli players in a draw is worth showing from then on
       let draws = [];

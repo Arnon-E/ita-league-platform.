@@ -167,7 +167,7 @@ a.tm:hover{border-color:var(--blue2);transform:translateY(-1px)}
 .tm .me{background:color-mix(in srgb,var(--lime) 28%,transparent)}
 .tm.empty{height:66px;border-style:dashed;background:transparent}
 .tm.bye{visibility:hidden}
-@media (max-width:600px){.tree{gap:22px;padding:14px 12px 18px}.tcol{width:164px}.tpair::after{inset-inline-end:-12px;width:11px}.tcol+.tcol .tcell::before{inset-inline-start:-11px;width:11px}.tcell{min-height:64px;padding:4px 0}.tm{font-size:12.5px;border-radius:12px}.tm>div{padding:5px 8px;min-height:28px;gap:6px}.tm .sc{gap:4px}.tm.empty{height:58px}}
+@media (max-width:600px){.tree{gap:22px;padding:14px 12px 18px}.tcol{width:150px}.tm .nm{white-space:normal;overflow:visible;line-height:1.25}.tpair::after{inset-inline-end:-12px;width:11px}.tcol+.tcol .tcell::before{inset-inline-start:-11px;width:11px}.tcell{min-height:64px;padding:4px 0}.tm{font-size:12.5px;border-radius:12px}.tm>div{padding:5px 8px;min-height:28px;gap:6px}.tm .sc{gap:4px}.tm.empty{height:58px}}
 .stp{width:52px;height:52px;border-radius:16px;border:1px solid var(--line2);background:var(--surface);color:var(--text);font:inherit;font-size:26px;font-weight:600;cursor:pointer;transition:transform .1s var(--ease),background-color .15s var(--ease)}
 .stp:active{transform:scale(.92);background:var(--okbg)}
 
