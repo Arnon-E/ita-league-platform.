@@ -78,13 +78,14 @@ export function israelisIn(matches: ResultMatch[], year: number, age: number | n
  * The candidates are read once per gender and age group, so a refresh with nothing new costs one small read of the links.
  */
 export async function linkNewPlayers(db: Db, seen: SeenPlayer[], now = new Date()) {
-  const stats = { checked: 0, auto: 0, pending: 0, none: 0 };
+  const stats: { checked: number; auto: number; pending: number; none: number; /** what became of each name (and what was already known), for the sync's log */ detail: { name: string; status: string; candidates: number; known?: boolean }[] } = { checked: 0, auto: 0, pending: 0, none: 0, detail: [] };
   if (!seen.length) return stats;
   const L = schema.abroadPlayerLinks, P = schema.players;
   const keys = seen.map((s) => linkKey(s.name, s.gender));
-  const have = await db.select({ key: L.key, status: L.status, checkedAt: L.checkedAt }).from(L).where(inArray(L.key, keys));
+  const have = await db.select({ key: L.key, name: L.name, status: L.status, checkedAt: L.checkedAt, candidates: L.candidates }).from(L).where(inArray(L.key, keys));
   const fresh = new Map(have.filter((h) => h.status !== 'NONE' || +now - +h.checkedAt < 7 * 864e5).map((h) => [h.key, h]));
   const todo = seen.filter((s) => !fresh.has(linkKey(s.name, s.gender)));
+  for (const h of have) if (fresh.has(h.key)) stats.detail.push({ name: h.name, status: h.status, candidates: h.candidates?.length ?? 0, known: true });
   const groups = new Map<string, SeenPlayer[]>();
   const gk = (s: SeenPlayer) => `${s.gender}|${s.year}|${s.age ?? ''}|${s.born ?? ''}`;
   for (const s of todo) groups.set(gk(s), [...(groups.get(gk(s)) ?? []), s]);
@@ -102,6 +103,7 @@ export async function linkNewPlayers(db: Db, seen: SeenPlayer[], now = new Date(
       const sure = exact.length === 1 && hits.length === 1 && latinKey(first).length + latinKey(last).length >= 4;
       stats.checked++;
       if (sure) stats.auto++; else if (hits.length) stats.pending++; else stats.none++;
+      stats.detail.push({ name: s.name, status: sure ? 'AUTO' : hits.length ? 'PENDING' : 'NONE', candidates: hits.length });
       rows.push({ key: linkKey(s.name, s.gender), name: s.name, gender, playerId: sure ? exact[0]!.id : null, status: sure ? 'AUTO' : hits.length ? 'PENDING' : 'NONE', candidates: hits.slice(0, 5).map((h) => h.id), checkedAt: now });
     }
   }
