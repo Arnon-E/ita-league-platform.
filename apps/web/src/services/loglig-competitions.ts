@@ -151,7 +151,7 @@ const regular = (sets: SetIn[]) => { try { resolveCompleted(sets, BEST_OF_3_SUPE
 export async function importCompetition(db: Db, input: CompetitionIn, now = new Date()) {
   const rule = await ensureDefaultRuleSet(db);
   const year = Number(input.start.slice(0, 4));
-  const start = new Date(`${input.start}T00:00:00Z`), end = new Date(`${input.end}T23:59:59Z`);
+  const start = new Date(`${input.start}T00:00:00Z`), end = new Date(`${input.end}T20:59:59Z`);
   const drawn = input.categories.some((c) => c.matches.length) || !!input.doubles?.some((c) => c.matches.length);
   const closes = input.registrationCloses ? new Date(input.registrationCloses) : null;
   // "in progress" needs something still to play (or just played): the end date alone can be stretched by one mistyped match date,
@@ -610,7 +610,7 @@ const distinctive = (name: string) => new Set(squeeze(name).split(' ').filter((w
 const DAY = 864e5;
 /** The Gantt's "Tennis Europe U14" week and the tournament Tennis Europe lists for that week ("TE 14 - HAIFA", or our name for it): the same week. */
 const sameTennisEuropeWeek = (r: { name: string; start: Date; end: Date }, e: CalendarEventIn) =>
-  /^(tennis europe|itf)/i.test(e.name) && /^(te\b|tennis europe|itf)/i.test(r.name) && (/^itf/i.test(e.name) === /^itf/i.test(r.name)) && Math.abs(+r.start - Date.parse(`${e.start}T00:00:00Z`)) <= DAY && Math.abs(+r.end - Date.parse(`${e.end}T23:59:59Z`)) <= 2 * DAY;
+  /^(tennis europe|itf)/i.test(e.name) && /^(te\b|tennis europe|itf)/i.test(r.name) && (/^itf/i.test(e.name) === /^itf/i.test(r.name)) && Math.abs(+r.start - Date.parse(`${e.start}T00:00:00Z`)) <= DAY && Math.abs(+r.end - Date.parse(`${e.end}T20:59:59Z`)) <= 2 * DAY;
 
 /**
  * Keeps the planned competitions (status PLANNED) equal to the Gantt: adds, moves and removes them. A planned competition that a real one
@@ -620,7 +620,7 @@ export async function importCalendar(db: Db, input: CalendarIn, now = new Date()
   const rule = await ensureDefaultRuleSet(db);
   const t = schema.tournaments;
   const today = new Date(now.getTime() - DAY);
-  const events = input.events.filter((e) => new Date(`${e.end}T23:59:59Z`) >= today);
+  const events = input.events.filter((e) => new Date(`${e.end}T20:59:59Z`) >= today);
   const stats = { events: events.length, added: 0, updated: 0, removed: 0, covered: 0 };
   const from = events.reduce((m, e) => (e.start < m ? e.start : m), events[0]?.start ?? now.toISOString().slice(0, 10));
   // one small read: the planned ones (a few dozen) and what could cover a planned one
@@ -629,7 +629,7 @@ export async function importCalendar(db: Db, input: CalendarIn, now = new Date()
   const real = rows.filter((r) => r.status !== 'PLANNED');
   const planned = rows.filter((r) => r.status === 'PLANNED');
   const covers = (e: CalendarEventIn) => {
-    const s = Date.parse(`${e.start}T00:00:00Z`), en = Date.parse(`${e.end}T23:59:59Z`), words = distinctive(e.name);
+    const s = Date.parse(`${e.start}T00:00:00Z`), en = Date.parse(`${e.end}T20:59:59Z`), words = distinctive(e.name);
     return real.some((r) => r.section === e.section && +r.start <= en + 3 * DAY && +r.end >= s - 3 * DAY
       && (/^(tennis europe|itf)/i.test(e.name) ? sameTennisEuropeWeek(r, e) : sameEvent(r.name, e.name) || e.section === 'MASTERS' || [...distinctive(r.name)].some((w) => words.has(w))));
   };
@@ -641,7 +641,7 @@ export async function importCalendar(db: Db, input: CalendarIn, now = new Date()
   const stale = planned.filter((p) => !keep.has(key(p.name, p.start)) || +p.end < +today).map((p) => p.id);
   if (stale.length) { await db.delete(t).where(inArray(t.id, stale)); stats.removed = stale.length; }
   for (const e of wanted) {
-    const fields = { endDate: new Date(`${e.end}T23:59:59Z`), level: e.level, section: e.section, status: 'PLANNED' as const };
+    const fields = { endDate: new Date(`${e.end}T20:59:59Z`), level: e.level, section: e.section, status: 'PLANNED' as const };
     const existing = have.get(key(e.name, e.start));
     if (existing && +existing.end >= +today) {
       if (+existing.end !== +fields.endDate || existing.level !== e.level || existing.section !== e.section) { await db.update(t).set(fields).where(eq(t.id, existing.id)); stats.updated++; }

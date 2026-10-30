@@ -54,6 +54,10 @@ try {
   await sql`alter table abroad_events add column if not exists acceptance jsonb`;
   await sql`alter table abroad_events add column if not exists registered integer not null default 0`;
   await sql`alter table abroad_events add column if not exists registered_names text[] not null default '{}'`;
+  // End dates were stored as 23:59:59 UTC, which is already the next day in Israel (a competition that ended on the 26th showed the 27th). The end of a day is now
+  // 20:59:59 UTC: the same calendar day in Israel (22:59 in winter, 23:59 in summer) and in UTC. Rows saved the old way are moved once (the condition no longer matches after).
+  await sql`update tournaments set end_date = end_date - interval '3 hours' where (end_date at time zone 'UTC')::time = '23:59:59'`;
+  await sql`update abroad_events set end_date = end_date - interval '3 hours' where (end_date at time zone 'UTC')::time = '23:59:59'`;
   await sql`create table if not exists abroad_player_links (
     key text primary key, name text not null, gender text not null, player_id text references players(id) on delete set null,
     status text not null default 'NONE', candidates jsonb, checked_at timestamptz not null default now())`;

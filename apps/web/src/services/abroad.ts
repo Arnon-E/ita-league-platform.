@@ -54,7 +54,7 @@ export async function importAbroad(db: Db, input: AbroadIn, now = new Date()) {
   const stats = { events: input.events.length, removed: 0 };
   if (input.events.length) {
     await db.insert(t).values(input.events.map((e) => ({
-      id: e.id, name: e.name, venue: e.venue, city: e.city, country: e.country, startDate: new Date(`${e.start}T00:00:00Z`), endDate: new Date(`${e.end}T23:59:59Z`),
+      id: e.id, name: e.name, venue: e.venue, city: e.city, country: e.country, startDate: new Date(`${e.start}T00:00:00Z`), endDate: new Date(`${e.end}T20:59:59Z`),
       surface: e.surface, category: e.category, ageGroup: e.age, circuit: input.circuit, closed: e.closed,
       entryOpens: e.entryOpens ? new Date(e.entryOpens) : null, entryDeadline: e.entryDeadline ? new Date(e.entryDeadline) : null, withdrawalDeadline: e.withdrawalDeadline ? new Date(e.withdrawalDeadline) : null,
       fee: e.fee, hospitality: e.hospitality, indoor: e.indoor, url: e.url, updatedAt: now,
