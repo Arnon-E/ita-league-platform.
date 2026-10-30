@@ -2,7 +2,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { db, schema } from '@/db';
 import { mkUser, resetDb } from './helpers';
-import { abroadResultsOfPlayer, abroadUpcomingOfPlayer, acceptedWithLinks, hebrewKey, israelisIn, latinKey, linkKey, linkNewPlayers, listAbroadLinks, nameMatch, resolveAbroadLink, splitLatinName } from '@/services/abroad-players';
+import { abroadResultsOfPlayer, abroadUpcomingOfPlayer, acceptedWithLinks, nameScore, hebrewKey, israelisIn, latinKey, linkKey, linkNewPlayers, listAbroadLinks, nameMatch, resolveAbroadLink, splitLatinName } from '@/services/abroad-players';
 import { abroadEvent, importAbroad, importAbroadAcceptance, importAbroadResults, validateAbroadAcceptance, validateAbroadImport, validateAbroadResults } from '@/services/abroad';
 import { searchPlayers } from '@/services/public';
 
@@ -148,5 +148,32 @@ describe('a batch with the same name twice', () => {
     const rows = await db.select().from(schema.abroadPlayerLinks).where(eq(schema.abroadPlayerLinks.key, linkKey('Dan COHEN', 'MALE')));
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({ status: 'AUTO', playerId: dan.id });
+  });
+});
+
+describe('look-alike names', () => {
+  beforeAll(resetDb);
+
+  it('tells the name from names with the same consonants by their vowels, and reads whole names (middle names, "Ben")', () => {
+    const real = nameScore('Romy Dor', 'רומי', 'דור'), alike = nameScore('Romy Dor', 'רם', 'דרור'), shorter = nameScore('Romy Dor', 'רמי', 'דר');
+    expect(real).toMatchObject({ grade: 'exact', score: 0 });
+    expect(alike.grade).toBe('exact');
+    expect(alike.score - real.score).toBeGreaterThanOrEqual(2);
+    expect(shorter.score - real.score).toBeGreaterThanOrEqual(2);
+    expect(nameScore('Jonathan Abraham ROZENBERG', 'יונתן', 'רוזנברג').grade).toBe('exact'); // the middle name is left out in Hebrew
+    expect(nameScore('Ziv Ben Dor', 'זיו', 'בן דור').grade).toBe('exact'); // the Hebrew keeps "Ben" with the last name
+    expect(nameScore('Guy El Al', 'גיא', 'אל על').grade).toBe('exact');
+  });
+
+  it('links the clearly best of several candidates, and leaves it to a person when they fit equally', async () => {
+    const romy = await player('רומי', 'דור', '2014-03-03');
+    await player('רם', 'דרור', '2014-04-04');
+    await player('רמי', 'דר', '2014-05-05');
+    const a = await linkNewPlayers(db, [{ name: 'Romy Dor', gender: 'MALE', year: 2026, age: 12, born: 2014 }], NOW);
+    expect(a).toMatchObject({ auto: 1, pending: 0 });
+    expect((await db.select().from(schema.abroadPlayerLinks).where(eq(schema.abroadPlayerLinks.key, linkKey('Romy Dor', 'MALE'))))[0]).toMatchObject({ status: 'AUTO', playerId: romy.id });
+    // two boys of the same name: nothing to choose by
+    await player('דניאל', 'כהן', '2014-06-06'); await player('דניאל', 'כהן', '2014-07-07');
+    expect(await linkNewPlayers(db, [{ name: 'Daniel COHEN', gender: 'MALE', year: 2026, age: 12, born: 2014 }], NOW)).toMatchObject({ auto: 0, pending: 1 });
   });
 });

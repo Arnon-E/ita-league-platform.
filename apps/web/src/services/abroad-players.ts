@@ -43,18 +43,39 @@ const distance = (a: string, b: string) => {
   return d[a.length]![b.length]!;
 };
 
-/** 'exact' when both names have the same skeleton, 'close' when they differ by one consonant (a spelling), null otherwise. The Hebrew order of first and last is tried both ways. */
+/** The sound of a name including where it has vowels: Hebrew writes few, so only י and ו count, and a vowel is just "a vowel" ("Romy" -> RVMV, "רומי" -> RVMV). */
+const latinSound = (s: string) => squash(s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z]/g, '')
+  .replace(/sch|sh/g, 'S').replace(/tz|ts|z/g, 'C').replace(/ch|kh|ck|q|c/g, 'K').replace(/ph|f/g, 'P').replace(/th/g, 'T').replace(/v/g, 'B')
+  .replace(/[aeiouy]/g, 'V').replace(/[jhw]/g, '').toUpperCase());
+const hebrewSound = (s: string) => squash([...s].map((c) => (c === 'ו' || c === 'י' ? 'V' : HEB[c] ?? '')).join(''));
+
+/** The ways a Latin name can be read: as written, and (for three words or more) first and last word only, the middle ones being often left out in Hebrew. */
+const latinVariants = (latin: string) => {
+  const w = latin.replace(/\s+/g, ' ').trim().split(' ').filter(Boolean);
+  return [...new Set([w.join(' '), ...(w.length > 2 ? [`${w[0]} ${w.at(-1)}`] : [])])];
+};
+
+/**
+ * How well a Latin name fits a Hebrew first and last name. The whole name is compared (so "Ziv Ben Dor" fits "זיו" + "בן דור"), in either order. The grade
+ * is 'exact' on the same consonants and 'close' on one consonant of difference; the score is the distance on the sound with its vowels (lower is better), which
+ * tells "Romy Dor" from "רם דרור" although both have the consonants RM DR.
+ */
+export function nameScore(latin: string, firstHe: string, lastHe: string): { grade: 'exact' | 'close' | null; score: number } {
+  let best = { d: Infinity, s: Infinity, long: 0 };
+  for (const l of latinVariants(latin)) for (const h of [`${firstHe} ${lastHe}`, `${lastHe} ${firstHe}`]) {
+    const lk = latinKey(l), hk = hebrewKey(h);
+    if (!lk || !hk) continue;
+    const d = distance(lk, hk), s = distance(latinSound(l), hebrewSound(h));
+    if (d < best.d || (d === best.d && s < best.s)) best = { d, s, long: Math.max(lk.length, hk.length) };
+  }
+  // a name of one consonant tells nothing; a short one can be an exact match (never linked by itself: see the link rule) but not a close one
+  if (best.d === Infinity || best.long < 2) return { grade: null, score: Infinity };
+  return { grade: best.d === 0 ? 'exact' : best.d === 1 && best.long >= 3 ? 'close' : null, score: best.s };
+}
+
+/** 'exact' when the names have the same consonants, 'close' when they differ by one, null otherwise. */
 export function nameMatch(latin: string, firstHe: string, lastHe: string): 'exact' | 'close' | null {
-  const { first, last } = splitLatinName(latin);
-  const fk = latinKey(first), lk = latinKey(last), hf = hebrewKey(firstHe), hl = hebrewKey(lastHe);
-  // a name with a consonant missing altogether, or too short to tell anyone from anyone, is not matched
-  if (!fk || !lk || !hf || !hl || Math.max(fk.length + lk.length, hf.length + hl.length) < 3) return null;
-  const grade = (a: string, b: string, c: string, d: string) => {
-    const x = distance(a, c) + distance(b, d);
-    return x === 0 ? 'exact' : x === 1 ? 'close' : null;
-  };
-  const straight = grade(fk, lk, hf, hl), swapped = grade(fk, lk, hl, hf);
-  return straight === 'exact' || swapped === 'exact' ? 'exact' : straight ?? swapped;
+  return nameScore(latin, firstHe, lastHe).grade;
 }
 
 /** The key under which a name is remembered: lower case, no accents, one space, plus the gender (the same name can be a boy and a girl). */
@@ -96,15 +117,15 @@ export async function linkNewPlayers(db: Db, seen: SeenPlayer[], now = new Date(
     const cands = await db.select({ id: P.id, first: P.firstName, last: P.lastName }).from(P)
       .where(and(eq(P.gender, gender), sql`extract(year from ${P.birthDate}) between ${from} and ${to}`));
     for (const s of list) {
-      const hits = cands.map((c) => ({ id: c.id, m: nameMatch(s.name, c.first, c.last) })).filter((h): h is { id: string; m: 'exact' | 'close' } => !!h.m);
-      const exact = hits.filter((h) => h.m === 'exact');
-      // one exact candidate and no other, and a name long enough that the sound says something (a skeleton of three or fewer letters waits for a person)
-      const { first, last } = splitLatinName(s.name);
-      const sure = exact.length === 1 && hits.length === 1 && latinKey(first).length + latinKey(last).length >= 4;
+      const hits = cands.map((c) => ({ id: c.id, ...nameScore(s.name, c.first, c.last) })).filter((h): h is { id: string; grade: 'exact' | 'close'; score: number } => !!h.grade).sort((x, y) => x.score - y.score);
+      // sure: the best candidate has exactly the name's consonants, and the next one fits clearly worse (a couple of vowels or letters more); a name whose
+      // consonants say little (three or fewer) waits for a person
+      const best = hits[0];
+      const sure = !!best && best.grade === 'exact' && (hits.length === 1 || hits[1]!.score - best.score >= 2) && latinKey(s.name).length >= 4;
       stats.checked++;
       if (sure) stats.auto++; else if (hits.length) stats.pending++; else stats.none++;
       stats.detail.push({ name: s.name, status: sure ? 'AUTO' : hits.length ? 'PENDING' : 'NONE', candidates: hits.length });
-      rows.push({ key: linkKey(s.name, s.gender), name: s.name, gender, playerId: sure ? exact[0]!.id : null, status: sure ? 'AUTO' : hits.length ? 'PENDING' : 'NONE', candidates: hits.slice(0, 5).map((h) => h.id), checkedAt: now });
+      rows.push({ key: linkKey(s.name, s.gender), name: s.name, gender, playerId: sure ? best!.id : null, status: sure ? 'AUTO' : hits.length ? 'PENDING' : 'NONE', candidates: hits.slice(0, 5).map((h) => h.id), checkedAt: now });
     }
   }
   // the same name can come from several events in one batch: one row per name (a sure link beats a pending one, which beats nobody), or the upsert meets a row twice
