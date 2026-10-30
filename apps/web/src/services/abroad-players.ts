@@ -105,8 +105,11 @@ export async function linkNewPlayers(db: Db, seen: SeenPlayer[], now = new Date(
       rows.push({ key: linkKey(s.name, s.gender), name: s.name, gender, playerId: sure ? exact[0]!.id : null, status: sure ? 'AUTO' : hits.length ? 'PENDING' : 'NONE', candidates: hits.slice(0, 5).map((h) => h.id), checkedAt: now });
     }
   }
-  if (rows.length) {
-    await db.insert(L).values(rows).onConflictDoUpdate({
+  // the same name can come from several events in one batch: one row per name (a sure link beats a pending one, which beats nobody), or the upsert meets a row twice
+  const rank = { AUTO: 0, PENDING: 1, NONE: 2 } as Record<string, number>;
+  const unique = [...rows.reduce((m, r) => { const old = m.get(r.key); if (!old || (rank[r.status ?? 'NONE'] ?? 2) < (rank[old.status ?? 'NONE'] ?? 2)) m.set(r.key, r); return m; }, new Map<string, (typeof rows)[number]>()).values()];
+  if (unique.length) {
+    await db.insert(L).values(unique).onConflictDoUpdate({
       target: L.key,
       // a link someone confirmed or rejected is never touched by the automatic pass (it only re-checks names that had no match or were never decided)
       set: { name: sql`excluded.name`, playerId: sql`excluded.player_id`, status: sql`excluded.status`, candidates: sql`excluded.candidates`, checkedAt: sql`excluded.checked_at` },

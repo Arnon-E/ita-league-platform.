@@ -135,3 +135,18 @@ describe('Israelis accepted to a tournament abroad', () => {
     expect((await abroadUpcomingOfPlayer(db, right.id)).map((x) => x.name)).toEqual(['Lyttos Beach U12 International Tournament']);
   });
 });
+
+describe('a batch with the same name twice', () => {
+  beforeAll(resetDb);
+  it('records the name once (the sure link wins) instead of failing the upsert', async () => {
+    const dan = await player('דן', 'כהן', '2014-01-01');
+    const stats = await linkNewPlayers(db, [
+      { name: 'Dan COHEN', gender: 'MALE', year: 2026, age: 12, born: 2013 }, // seen in an event where nobody of that year matches
+      { name: 'Dan COHEN', gender: 'MALE', year: 2026, age: 12, born: 2014 },
+    ], NOW);
+    expect(stats.checked).toBe(2);
+    const rows = await db.select().from(schema.abroadPlayerLinks).where(eq(schema.abroadPlayerLinks.key, linkKey('Dan COHEN', 'MALE')));
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ status: 'AUTO', playerId: dan.id });
+  });
+});
