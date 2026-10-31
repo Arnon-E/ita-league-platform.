@@ -192,7 +192,7 @@ const EN: Record<string, string> = {
   'הדחה': 'Knockout',
   'עץ': 'Bracket',
   'המנצח': 'Winner',
-  'כותרת וחיפוש': 'Title and search', 'כרטיסי קישור מהיר': 'Quick link cards', 'הדף שלי': 'My page', 'התאמה אישית של דף הבית': 'Customize the home page', 'אזורים': 'Sections', 'כרטיסי קישור': 'Link cards', 'איפוס': 'Reset', 'למעלה': 'Up', 'למטה': 'Down',
+  'כותרת וחיפוש': 'Title and search', 'כרטיסי קישור מהיר': 'Quick link cards', 'הדף שלי': 'My page', 'התאמה אישית של דף הבית': 'Customize the home page', 'אזורים': 'Sections', 'כרטיסי קישור': 'Link cards', 'איפוס': 'Reset', 'עריכת דף הבית': 'Edit the home page', 'הסתרה': 'Hide', 'גרירה': 'Drag', 'להחזיר:': 'Put back:',
   'אפשר להירשם עכשיו': 'Entry open now',
   'מקומות 3-4': 'Places 3-4',
   'סטטוס': 'Status',

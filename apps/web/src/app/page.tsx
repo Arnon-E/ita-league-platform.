@@ -99,7 +99,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ l
     { key: 'c-clubs', label: t('מועדונים'), group: 'cards' },
     ...(abroadAll.length ? [{ key: 'c-abroad', label: t('תחרויות חו"ל'), group: 'cards' as const }] : []),
   ];
-  const customLabels = { open: t('התאמה אישית של דף הבית'), title: t('התאמה אישית של דף הבית'), blocks: t('אזורים'), cards: t('כרטיסי קישור'), reset: t('איפוס'), close: t('סגירה'), up: t('למעלה'), down: t('למטה') };
+  const customLabels = { edit: t('עריכת דף הבית'), done: t('סיום'), reset: t('איפוס'), remove: t('הסתרה'), drag: t('גרירה'), add: t('להחזיר:') };
   return (
     <Shell nav="home">
       <div className="homeblocks">
