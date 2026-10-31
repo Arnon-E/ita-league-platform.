@@ -45,11 +45,13 @@ export default async function AbroadEventPage({ params }: { params: Promise<{ id
   const draws = e.results?.draws ?? [];
   const accepted = e.acceptance?.length ? await acceptedWithLinks(db, e.acceptance).catch(() => []) : [];
 
-  const Side = ({ s }: { s: { names: string[]; cc: string[]; won: boolean; msg: string } }) => (
-    <span className="row" style={{ gap: 8, flexWrap: 'nowrap', alignItems: 'baseline', fontWeight: s.won ? 800 : 500, ...(s.cc.includes('ISR') ? { color: 'var(--blue)' } : {}) }}>
+  const Side = ({ s, sets, lost }: { s: { names: string[]; cc: string[]; won: boolean; msg: string }; sets: (number | null | undefined)[]; lost: boolean }) => (
+    <span className="row" style={{ gap: 8, flexWrap: 'nowrap', alignItems: 'baseline', fontWeight: s.won ? 800 : 500, opacity: lost ? 0.6 : 1, ...(s.cc.includes('ISR') ? { color: 'var(--blue)' } : {}) }}>
       <span style={{ display: 'inline-flex', gap: 3, flex: 'none' }}>{s.cc.map((c, i) => <img key={i} src={flagUrl(c)} width={20} height={15} alt={c} style={{ borderRadius: 2, boxShadow: '0 0 0 1px var(--line)' }} />)}</span>
       <span dir="ltr" style={{ textAlign: 'start' }}>{s.names.join(' / ')}</span>
       {s.msg && <span className="muted" style={{ fontWeight: 400 }}>{s.msg}</span>}
+      {s.won && <span title={t('המנצח')} style={{ color: 'var(--ok)', fontWeight: 800 }}>✓</span>}
+      <span dir="ltr" style={{ marginInlineStart: 'auto', display: 'inline-flex', gap: 8, fontVariantNumeric: 'tabular-nums', fontWeight: s.won ? 800 : 500 }}>{sets.map((v, i) => <span key={i}>{v ?? 0}</span>)}</span>
     </span>
   );
 
@@ -98,9 +100,9 @@ export default async function AbroadEventPage({ params }: { params: Promise<{ id
             {matches.filter((m) => m.day === d).map((m, i) => (
               <div key={`${d}-${i}`} className="card grid" style={{ gap: 8 }}>
                 <span className="grid" style={{ gap: 2 }}><span className="muted" dir="ltr" style={{ textAlign: 'start' }}>{m.draw}{m.stage ? ` · ${m.stage}` : ''}</span><span className="muted" dir="ltr" style={{ textAlign: 'start' }}>{[m.time, m.court].filter(Boolean).join(' · ')}</span></span>
-                <Side s={m.a} />
-                <Side s={m.b} />
-                <span className="muted" style={{ fontWeight: 600 }}>{m.sets.length ? fmtScore(m.sets.map(([a, b]) => ({ a: a ?? 0, b: b ?? 0 }))) : t('טרם שוחק')}</span>
+                <Side s={m.a} sets={m.sets.map((x) => x[0])} lost={m.b.won} />
+                <Side s={m.b} sets={m.sets.map((x) => x[1])} lost={m.a.won} />
+                {!m.sets.length && <span className="muted" style={{ fontWeight: 600 }}>{t('טרם שוחק')}</span>}
               </div>
             ))}
           </div>
