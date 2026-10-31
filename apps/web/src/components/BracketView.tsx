@@ -13,10 +13,10 @@ export interface BracketCell { href?: string; a: BracketSide; b: BracketSide; /*
  * `.tree` styles in globals.css.
  */
 export function BracketView({ cols, tt, pending, extra = [] }: { cols: (BracketCell | null)[][]; tt: (s: string) => string; pending: string; extra?: { title: string; cell: BracketCell }[] }) {
-  const side = (s: BracketSide) => (
-    <div className={[s.win ? 'w' : '', s.me ? 'me' : ''].join(' ')}>
+  const side = (s: BracketSide, other?: BracketSide) => (
+    <div className={[s.win ? 'w' : other?.win ? 'l' : '', s.me ? 'me' : ''].join(' ')}>
       <span className={s.names.length > 1 ? 'nm pair' : 'nm'}>{s.names.length ? s.names.map((n, i) => <span key={n} style={{ display: 'block' }}>{s.flags?.[i] && <img src={s.flags[i]} width={18} height={13} alt="" loading="lazy" style={{ borderRadius: 2, boxShadow: '0 0 0 1px var(--line)', verticalAlign: 'middle', marginInlineEnd: 6 }} />}{n}</span>) : pending}</span>
-      <span className="sc" dir="ltr">{s.sets}</span>
+      {s.win && <span className="ck" aria-label={tt('המנצח')} title={tt('המנצח')}>✓</span>}<span className="sc" dir="ltr">{s.sets}</span>
     </div>
   );
   const meta = (c: BracketCell) => (c.meta ? <div className="meta" dir="auto">{c.meta}</div> : null);
@@ -28,7 +28,7 @@ export function BracketView({ cols, tt, pending, extra = [] }: { cols: (BracketC
           const box = (c: BracketCell | null, key: number) => (
             <div key={key} className="tcell">
               {c
-                ? c.href ? <Link href={c.href} className="tm">{side(c.a)}{side(c.b)}{meta(c)}</Link> : <div className="tm">{side(c.a)}{side(c.b)}{meta(c)}</div>
+                ? c.href ? <Link href={c.href} className="tm">{side(c.a, c.b)}{side(c.b, c.a)}{meta(c)}</Link> : <div className="tm">{side(c.a, c.b)}{side(c.b, c.a)}{meta(c)}</div>
                 : <div className={`tm empty ${k ? '' : 'bye'}`} />}
             </div>
           );
@@ -48,7 +48,7 @@ export function BracketView({ cols, tt, pending, extra = [] }: { cols: (BracketC
           {extra.map((x, i) => (
             <div key={i} className="tcol">
               <h3><span>{x.title}</span></h3>
-              <div className="tcell">{x.cell.href ? <Link href={x.cell.href} className="tm">{side(x.cell.a)}{side(x.cell.b)}{meta(x.cell)}</Link> : <div className="tm">{side(x.cell.a)}{side(x.cell.b)}{meta(x.cell)}</div>}</div>
+              <div className="tcell">{x.cell.href ? <Link href={x.cell.href} className="tm">{side(x.cell.a, x.cell.b)}{side(x.cell.b, x.cell.a)}{meta(x.cell)}</Link> : <div className="tm">{side(x.cell.a, x.cell.b)}{side(x.cell.b, x.cell.a)}{meta(x.cell)}</div>}</div>
             </div>
           ))}
         </div>
