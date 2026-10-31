@@ -50,12 +50,12 @@ export function HomeCustomize({ items, labels }: { items: HomeItem[]; labels: { 
       <strong>{title}</strong>
       {orderOf(group).map((k, i, o) => (
         <div key={k} className="row" style={{ gap: 8, alignItems: 'center', flexWrap: 'nowrap' }}>
-          <label className="row" style={{ gap: 8, flex: 1, alignItems: 'center', flexWrap: 'nowrap' }}>
-            <input type="checkbox" checked={!prefs.hidden.includes(k)} onChange={() => toggle(k)} />
+          <label className="row" style={{ flexDirection: 'row', gap: 10, flex: 1, alignItems: 'center', flexWrap: 'nowrap', fontWeight: 500, fontSize: 15 }}>
+            <input type="checkbox" style={{ width: 22, height: 22, minHeight: 0, padding: 0, flex: 'none' }} checked={!prefs.hidden.includes(k)} onChange={() => toggle(k)} />
             <span>{label(k)}</span>
           </label>
-          <button type="button" className="btn ghost" aria-label={labels.up} disabled={i === 0} onClick={() => move(group, k, -1)}>↑</button>
-          <button type="button" className="btn ghost" aria-label={labels.down} disabled={i === o.length - 1} onClick={() => move(group, k, 1)}>↓</button>
+          <button type="button" className="btn ghost" style={{ minHeight: 40, padding: '0 14px', flex: 'none' }} aria-label={labels.up} disabled={i === 0} onClick={() => move(group, k, -1)}>↑</button>
+          <button type="button" className="btn ghost" style={{ minHeight: 40, padding: '0 14px', flex: 'none' }} aria-label={labels.down} disabled={i === o.length - 1} onClick={() => move(group, k, 1)}>↓</button>
         </div>
       ))}
     </div>
