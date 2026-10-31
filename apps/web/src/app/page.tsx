@@ -89,7 +89,6 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ l
   const c = (counts as unknown as { players: number; clubs: number; live: number }[])[0]!;
   const customItems: HomeItem[] = [
     { key: 'hero', label: t('כותרת וחיפוש'), group: 'blocks' },
-    { key: 'cards', label: t('כרטיסי קישור מהיר'), group: 'blocks' },
     ...(home ? [{ key: 'mine', label: t('הדף שלי'), group: 'blocks' as const }] : []),
     { key: 'list', label: t('תחרויות בארץ'), group: 'blocks' },
     ...(abroadAll.length ? [{ key: 'abroad', label: t('תחרויות חו"ל'), group: 'blocks' as const }] : []),
@@ -127,7 +126,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ l
           </Link>
         )}
       </section>
-      <nav data-hb="cards" className={`bento${abroadAll.length ? ' b5' : ''}`} aria-label={t('ניווט מהיר')}>
+      <nav className={`bento${abroadAll.length ? ' b5' : ''}`} aria-label={t('ניווט מהיר')}>
         {staff
           ? <Link data-hb="c-reg" href="/tournaments/new" className="pri"><span className="n">+</span><b>{t('תחרות חדשה')}</b><small>{openCount ? `${openCount} ${t('פתוחות להרשמה')}` : t('יצירת תחרות')}</small></Link>
           : <Link data-hb="c-reg" href="/?st=open#list" className="pri"><span className="n">{openCount}</span><b>{t('להירשם לתחרות')}</b><small>{openCount ? t('פתוחות עכשיו') : t('אין כרגע הרשמה פתוחה')}</small></Link>}
