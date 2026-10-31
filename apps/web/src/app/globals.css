@@ -237,7 +237,7 @@ a.sbcard{display:block;padding:14px 16px;margin-bottom:8px}
 .feat .count b{display:block;font-family:var(--display);font-size:38px;line-height:1.05;font-weight:700;letter-spacing:-.03em;color:var(--volt)}
 .feat .count .till{background:none;text-align:start;align-self:center;font-size:13px;padding:0 4px;color:#3C4E12;min-width:0}
 .bento{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:8px}
-.homeblocks{display:flex;flex-direction:column}.bento.b5{grid-template-columns:repeat(5,1fr)}
+.homeblocks{display:flex;flex-direction:column}.homesheet{position:fixed;z-index:40;inset-inline:8px;bottom:104px;max-height:46vh;overflow-y:auto;box-shadow:var(--shadow-lg)}@media(min-width:721px){.homesheet{inset-inline:auto 24px;bottom:24px;width:380px;max-height:70vh}}.bento.b5{grid-template-columns:repeat(5,1fr)}
 .bento a{position:relative;display:flex;flex-direction:column;justify-content:flex-end;gap:2px;min-height:150px;padding:20px 22px;border-radius:26px;background:var(--surface);border:1px solid var(--line);transition:transform .2s var(--ease),box-shadow .2s var(--ease),border-color .2s var(--ease)}
 .bento a:hover{transform:translateY(-3px);border-color:var(--line2);box-shadow:var(--shadow-lg)}
 .bento a:active{transform:scale(.98)}

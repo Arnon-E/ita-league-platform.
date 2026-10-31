@@ -61,10 +61,10 @@ export function HomeCustomize({ items, labels }: { items: HomeItem[]; labels: { 
     </div>
   );
   return (
-    <div style={{ order: 99, marginTop: 14 }}>
+    <div style={{ order: -1, marginBottom: 10 }}>
       <button type="button" className="btn ghost" onClick={() => setOpen(!open)} aria-expanded={open}>{open ? labels.close : labels.open}</button>
       {open && (
-        <div className="card grid" style={{ gap: 14, marginTop: 10 }}>
+        <div className="card grid homesheet" style={{ gap: 14 }}>
           <strong style={{ fontSize: 17 }}>{labels.title}</strong>
           {list('blocks', labels.blocks)}
           {list('cards', labels.cards)}
