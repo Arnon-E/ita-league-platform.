@@ -91,7 +91,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ l
     { key: 'hero', label: t('כותרת וחיפוש'), group: 'blocks' },
     { key: 'cards', label: t('כרטיסי קישור מהיר'), group: 'blocks' },
     ...(home ? [{ key: 'mine', label: t('הדף שלי'), group: 'blocks' as const }] : []),
-    { key: 'list', label: t('תחרויות'), group: 'blocks' },
+    { key: 'list', label: t('תחרויות בארץ'), group: 'blocks' },
     ...(abroadAll.length ? [{ key: 'abroad', label: t('תחרויות חו"ל'), group: 'blocks' as const }] : []),
     { key: 'c-reg', label: staff ? t('תחרות חדשה') : t('להירשם לתחרות'), group: 'cards' },
     { key: 'c-live', label: t('משחקים ותוצאות'), group: 'cards' },
@@ -137,7 +137,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ l
         {abroadAll.length > 0 && <Link data-hb="c-abroad" className="wide" href="/abroad?st=open"><span className="n">{abroadCanEnter}</span><b>{t('תחרויות חו"ל')}</b><small>{abroadCanEnter ? t('אפשר להירשם עכשיו') : t('אין כרגע הרשמה פתוחה')}</small></Link>}
       </nav>
       {home && <div data-hb="mine"><MyHome home={home} t={t} /></div>}
-      <div data-hb="list"><Fold id="list" title={t('תחרויות')}>
+      <div data-hb="list"><Fold id="list" title={t('תחרויות בארץ')}>
       {actor && can(actor, 'tournament.create') && <div className="row"><Link className="btn" href="/tournaments/new">{t('תחרות חדשה')}</Link></div>}
       <nav className="tabs" style={{ margin: '12px 0 0' }} aria-label={t('מקטע')}>
         {([['YOUTH', 'נוער'], ['ADULTS', 'בוגרים'], ['MASTERS', 'מאסטרס'], ['ALL', 'הכול']] as const).map(([k, label]) => <Link key={k} scroll={false} href={secHref(k)} className={secKey === k ? 'on' : ''}>{t(label)}</Link>)}
