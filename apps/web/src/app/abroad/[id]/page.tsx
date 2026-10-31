@@ -31,7 +31,7 @@ export default async function AbroadEventPage({ params }: { params: Promise<{ id
   const where = [e.city, t(countryInfo(e.country).he)].filter(Boolean).join(', ');
 
   // a knockout draw as the site's own tree: first round first, each round half the size of the one before (a missing slot is a bye); the Israelis are marked
-  const sideOf = (m: DrawMatch, k: 'a' | 'b'): BracketSide => ({ names: m[k].names, win: m[k].won, me: m[k].cc.includes('ISR'), sets: m.sets.length ? m.sets.map((s, i) => <b key={i}>{s[k === 'a' ? 0 : 1]}</b>) : null });
+  const sideOf = (m: DrawMatch, k: 'a' | 'b'): BracketSide => ({ names: m[k].names, flags: m[k].names.map((_, i) => (m[k].cc[i] ? flagUrl(m[k].cc[i]!) : '')), win: m[k].won, me: m[k].cc.includes('ISR'), sets: m.sets.length ? m.sets.map((s, i) => <b key={i}>{s[k === 'a' ? 0 : 1]}</b>) : null });
   // a qualifying draw is several small trees side by side (each ends in one qualifier): the first round holds as many matches as all of them together
   const treesOf = (rounds: DrawMatch[][]) => {
     const size = 2 ** (rounds.length - 1);
