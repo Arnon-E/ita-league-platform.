@@ -68,8 +68,8 @@ export function HomeCustomize({ items, labels }: { items: HomeItem[]; labels: La
         grip.setPointerCapture(e.pointerId);
         let cur = orderOf(items, it.group, prefs);
         const move = (ev: PointerEvent) => {
-          const over = document.elementFromPoint(ev.clientX, ev.clientY)?.closest<HTMLElement>('[data-hb]');
-          const k = over?.dataset.hb;
+          // by the boxes on screen: elementFromPoint skips elements that do not take the pointer
+          const k = cur.find((x) => { const r = elOf(x)?.getBoundingClientRect(); return !!r && ev.clientX >= r.left && ev.clientX <= r.right && ev.clientY >= r.top && ev.clientY <= r.bottom; });
           if (!k || k === it.key || !cur.includes(k) || prefs.hidden.includes(k)) return;
           const i = cur.indexOf(it.key), j = cur.indexOf(k);
           cur = [...cur]; cur[i] = k; cur[j] = it.key;
