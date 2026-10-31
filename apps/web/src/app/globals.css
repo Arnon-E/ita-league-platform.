@@ -237,7 +237,7 @@ a.sbcard{display:block;padding:14px 16px;margin-bottom:8px}
 .feat .count b{display:block;font-family:var(--display);font-size:38px;line-height:1.05;font-weight:700;letter-spacing:-.03em;color:var(--volt)}
 .feat .count .till{background:none;text-align:start;align-self:center;font-size:13px;padding:0 4px;color:#3C4E12;min-width:0}
 .bento{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:8px}
-.bento.b5{grid-template-columns:repeat(5,1fr)}
+.homeblocks{display:flex;flex-direction:column}.bento.b5{grid-template-columns:repeat(5,1fr)}
 .bento a{position:relative;display:flex;flex-direction:column;justify-content:flex-end;gap:2px;min-height:150px;padding:20px 22px;border-radius:26px;background:var(--surface);border:1px solid var(--line);transition:transform .2s var(--ease),box-shadow .2s var(--ease),border-color .2s var(--ease)}
 .bento a:hover{transform:translateY(-3px);border-color:var(--line2);box-shadow:var(--shadow-lg)}
 .bento a:active{transform:scale(.98)}
@@ -262,7 +262,7 @@ a.comp:hover .act{box-shadow:inset 0 0 0 1px var(--text)}
 /* the one authored moment: the first screenful of cards rises in a staggered sequence */
 .cols>.comp{animation:rise .5s var(--ease) both}
 .cols>.comp:nth-child(2){animation-delay:.05s}.cols>.comp:nth-child(3){animation-delay:.1s}.cols>.comp:nth-child(4){animation-delay:.15s}.cols>.comp:nth-child(5){animation-delay:.2s}.cols>.comp:nth-child(6){animation-delay:.25s}
-@media(max-width:900px){.home-hero{grid-template-columns:1fr;gap:28px}.bento,.bento.b5{grid-template-columns:repeat(2,1fr)}.bento.b5 a:last-child{grid-column:1/-1}.bento a{min-height:128px}}
+@media(max-width:900px){.home-hero{grid-template-columns:1fr;gap:28px}.bento,.bento.b5{grid-template-columns:repeat(2,1fr)}.bento a.wide{grid-column:1/-1}.bento a{min-height:128px}}
 
 /* phone dock: the five things people open the site for, a floating glass capsule within thumb reach */
 .tabbar{display:none}

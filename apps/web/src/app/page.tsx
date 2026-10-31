@@ -15,6 +15,7 @@ import { Fold } from '@/components/Fold';
 import { myHome, myPlayersForRelevance } from '@/services/home';
 import { homeCounts, sectionOfBirthYear } from '@/services/public';
 import { MyHome } from '@/components/MyHome';
+import { HomeCustomize, type HomeItem } from '@/components/HomeCustomize';
 import { relevantFor } from '@/services/eligibility';
 import { abroadCatalog, entryState, phaseOf } from '@/services/abroad';
 import { countryInfo } from '@/lib/countries';
@@ -86,9 +87,23 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ l
   const secHref = (k: string) => `/?${new URLSearchParams({ level, season, q, g, age, sec: k, st }).toString()}#list`;
   const openCount = visibleTs.filter((x) => x.status === 'REGISTRATION_OPEN').length;
   const c = (counts as unknown as { players: number; clubs: number; live: number }[])[0]!;
+  const customItems: HomeItem[] = [
+    { key: 'hero', label: t('כותרת וחיפוש'), group: 'blocks' },
+    { key: 'cards', label: t('כרטיסי קישור מהיר'), group: 'blocks' },
+    ...(home ? [{ key: 'mine', label: t('הדף שלי'), group: 'blocks' as const }] : []),
+    { key: 'list', label: t('תחרויות'), group: 'blocks' },
+    ...(abroadAll.length ? [{ key: 'abroad', label: t('תחרויות חו"ל'), group: 'blocks' as const }] : []),
+    { key: 'c-reg', label: staff ? t('תחרות חדשה') : t('להירשם לתחרות'), group: 'cards' },
+    { key: 'c-live', label: t('משחקים ותוצאות'), group: 'cards' },
+    { key: 'c-rank', label: t('דירוג'), group: 'cards' },
+    { key: 'c-clubs', label: t('מועדונים'), group: 'cards' },
+    ...(abroadAll.length ? [{ key: 'c-abroad', label: t('תחרויות חו"ל'), group: 'cards' as const }] : []),
+  ];
+  const customLabels = { open: t('התאמה אישית של דף הבית'), title: t('התאמה אישית של דף הבית'), blocks: t('אזורים'), cards: t('כרטיסי קישור'), reset: t('איפוס'), close: t('סגירה'), up: t('למעלה'), down: t('למטה') };
   return (
     <Shell nav="home">
-      <section className="hero home-hero">
+      <div className="homeblocks">
+      <section className="hero home-hero" data-hb="hero">
         <Court />
         <div>
           <h1>{t('איגוד הטניס בישראל')}</h1>
@@ -112,17 +127,17 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ l
           </Link>
         )}
       </section>
-      <nav className={`bento${abroadAll.length ? ' b5' : ''}`} aria-label={t('ניווט מהיר')}>
+      <nav data-hb="cards" className={`bento${abroadAll.length ? ' b5' : ''}`} aria-label={t('ניווט מהיר')}>
         {staff
-          ? <Link href="/tournaments/new" className="pri"><span className="n">+</span><b>{t('תחרות חדשה')}</b><small>{openCount ? `${openCount} ${t('פתוחות להרשמה')}` : t('יצירת תחרות')}</small></Link>
-          : <Link href="/?st=open#list" className="pri"><span className="n">{openCount}</span><b>{t('להירשם לתחרות')}</b><small>{openCount ? t('פתוחות עכשיו') : t('אין כרגע הרשמה פתוחה')}</small></Link>}
-        <Link href="/live"><span className="n">{c.live}</span><b>{t('משחקים ותוצאות')}</b><small>{c.live ? t('משחקים חיים עכשיו') : t('לוחות ותוצאות')}</small></Link>
-        <Link href="/rankings"><span className="n">{c.players.toLocaleString('he-IL')}</span><b>{t('דירוג')}</b><small>{t('שחקנים רשומים')}</small></Link>
-        <Link href="/clubs"><span className="n">{c.clubs.toLocaleString('he-IL')}</span><b>{t('מועדונים')}</b><small>{t('מועדונים עם שחקנים')}</small></Link>
-        {abroadAll.length > 0 && <Link href="/abroad?st=open"><span className="n">{abroadCanEnter}</span><b>{t('תחרויות חו"ל')}</b><small>{abroadCanEnter ? t('אפשר להירשם עכשיו') : t('אין כרגע הרשמה פתוחה')}</small></Link>}
+          ? <Link data-hb="c-reg" href="/tournaments/new" className="pri"><span className="n">+</span><b>{t('תחרות חדשה')}</b><small>{openCount ? `${openCount} ${t('פתוחות להרשמה')}` : t('יצירת תחרות')}</small></Link>
+          : <Link data-hb="c-reg" href="/?st=open#list" className="pri"><span className="n">{openCount}</span><b>{t('להירשם לתחרות')}</b><small>{openCount ? t('פתוחות עכשיו') : t('אין כרגע הרשמה פתוחה')}</small></Link>}
+        <Link data-hb="c-live" href="/live"><span className="n">{c.live}</span><b>{t('משחקים ותוצאות')}</b><small>{c.live ? t('משחקים חיים עכשיו') : t('לוחות ותוצאות')}</small></Link>
+        <Link data-hb="c-rank" href="/rankings"><span className="n">{c.players.toLocaleString('he-IL')}</span><b>{t('דירוג')}</b><small>{t('שחקנים רשומים')}</small></Link>
+        <Link data-hb="c-clubs" href="/clubs"><span className="n">{c.clubs.toLocaleString('he-IL')}</span><b>{t('מועדונים')}</b><small>{t('מועדונים עם שחקנים')}</small></Link>
+        {abroadAll.length > 0 && <Link data-hb="c-abroad" className="wide" href="/abroad?st=open"><span className="n">{abroadCanEnter}</span><b>{t('תחרויות חו"ל')}</b><small>{abroadCanEnter ? t('אפשר להירשם עכשיו') : t('אין כרגע הרשמה פתוחה')}</small></Link>}
       </nav>
-      {home && <MyHome home={home} t={t} />}
-      <Fold id="list" title={t('תחרויות')}>
+      {home && <div data-hb="mine"><MyHome home={home} t={t} /></div>}
+      <div data-hb="list"><Fold id="list" title={t('תחרויות')}>
       {actor && can(actor, 'tournament.create') && <div className="row"><Link className="btn" href="/tournaments/new">{t('תחרות חדשה')}</Link></div>}
       <nav className="tabs" style={{ margin: '12px 0 0' }} aria-label={t('מקטע')}>
         {([['YOUTH', 'נוער'], ['ADULTS', 'בוגרים'], ['MASTERS', 'מאסטרס'], ['ALL', 'הכול']] as const).map(([k, label]) => <Link key={k} scroll={false} href={secHref(k)} className={secKey === k ? 'on' : ''}>{t(label)}</Link>)}
@@ -170,9 +185,9 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ l
             : actor && can(actor, 'tournament.create') ? t('אין עדיין תחרויות. צרו תחרות חדשה כדי להתחיל.') : t('אין תחרויות להצגה.')}
         </div>
       )}
-      </Fold>
+      </Fold></div>
       {abroadAll.length > 0 && (
-        <Fold id="abroad" title={t('תחרויות חו"ל')}>
+        <div data-hb="abroad"><Fold id="abroad" title={t('תחרויות חו"ל')}>
           <p className="muted" style={{ margin: 0 }}>{t('טורנירי נוער של Tennis Europe: מתי ואיפה, עד מתי אפשר להירשם ומה התנאים.')}</p>
           {abroadOpen.length > 0 && (
             <div className="grid cols" style={{ marginTop: 14 }}>
@@ -190,8 +205,10 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ l
             <Link className="btn" href="/abroad">{t('לכל התחרויות בחו"ל')} · {abroadAll.length}</Link>
             {abroadCanEnter > 0 && <Link className="btn ghost" href="/abroad?st=open">{t('רק כאלה שעוד אפשר להירשם אליהן')} · {abroadCanEnter}</Link>}
           </div>
-        </Fold>
+        </Fold></div>
       )}
+      <HomeCustomize items={customItems} labels={customLabels} />
+      </div>
     </Shell>
   );
 }
