@@ -16,7 +16,7 @@ export function BracketView({ cols, tt, pending, extra = [] }: { cols: (BracketC
   const side = (s: BracketSide, other?: BracketSide) => (
     <div className={[s.win ? 'w' : other?.win ? 'l' : '', s.me ? 'me' : ''].join(' ')}>
       <span className={s.names.length > 1 ? 'nm pair' : 'nm'}>{s.names.length ? s.names.map((n, i) => <span key={n} style={{ display: 'block' }}>{s.flags?.[i] && <img src={s.flags[i]} width={18} height={13} alt="" loading="lazy" style={{ borderRadius: 2, boxShadow: '0 0 0 1px var(--line)', verticalAlign: 'middle', marginInlineEnd: 6 }} />}{n}</span>) : pending}</span>
-      {s.win && <span className="ck" aria-label={tt('המנצח')} title={tt('המנצח')}>✓</span>}<span className="sc" dir="ltr">{s.sets}</span>
+      {s.win && <span className="ck" aria-label={tt('המנצח')} title={tt('המנצח')}><svg aria-hidden viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg></span>}<span className="sc" dir="ltr">{s.sets}</span>
     </div>
   );
   const meta = (c: BracketCell) => (c.meta ? <div className="meta" dir="auto">{c.meta}</div> : null);

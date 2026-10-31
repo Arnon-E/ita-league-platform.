@@ -6,6 +6,7 @@ import { Flag } from '@/components/Flag';
 import { Fold } from '@/components/Fold';
 import { BracketView, type BracketCell, type BracketSide } from '@/components/BracketView';
 import { fmtScore } from '@/components/labels';
+import { MatchScore } from '@/components/MatchScore';
 import { tr } from '@/lib/i18n';
 import { countryInfo } from '@/lib/countries';
 import { abroadEvent, groupTable, phaseOf, type DrawMatch } from '@/services/abroad';
@@ -45,15 +46,9 @@ export default async function AbroadEventPage({ params }: { params: Promise<{ id
   const draws = e.results?.draws ?? [];
   const accepted = e.acceptance?.length ? await acceptedWithLinks(db, e.acceptance).catch(() => []) : [];
 
-  const Side = ({ s, sets, lost }: { s: { names: string[]; cc: string[]; won: boolean; msg: string }; sets: (number | null | undefined)[]; lost: boolean }) => (
-    <span className="row" style={{ gap: 8, flexWrap: 'nowrap', alignItems: 'baseline', fontWeight: s.won ? 800 : 500, opacity: lost ? 0.6 : 1, ...(s.cc.includes('ISR') ? { color: 'var(--blue)' } : {}) }}>
-      <span style={{ display: 'inline-flex', gap: 3, flex: 'none' }}>{s.cc.map((c, i) => <img key={i} src={flagUrl(c)} width={20} height={15} alt={c} style={{ borderRadius: 2, boxShadow: '0 0 0 1px var(--line)' }} />)}</span>
-      <span dir="ltr" style={{ textAlign: 'start' }}>{s.names.join(' / ')}</span>
-      {s.msg && <span className="muted" style={{ fontWeight: 400 }}>{s.msg}</span>}
-      {s.won && <span title={t('המנצח')} style={{ color: 'var(--ok)', fontWeight: 800 }}>✓</span>}
-      <span dir="ltr" style={{ marginInlineStart: 'auto', display: 'inline-flex', gap: 8, fontVariantNumeric: 'tabular-nums', fontWeight: s.won ? 800 : 500 }}>{sets.map((v, i) => <span key={i}>{v ?? 0}</span>)}</span>
-    </span>
-  );
+  // the names of one side as the site's match card shows them: the flag in front of each name (a pair has two)
+  const namesOf = (x: { names: string[]; cc: string[] }) => x.names.map((n, i) => <span key={i} dir="ltr" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>{x.cc[i] && <img src={flagUrl(x.cc[i]!)} width={18} height={13} alt={x.cc[i]} style={{ borderRadius: 2, boxShadow: '0 0 0 1px var(--line)' }} />}{n}</span>);
+  const statusOf = (m: { sets: unknown[]; a: { msg: string; won: boolean }; b: { msg: string; won: boolean } }) => (/walkover/i.test(m.a.msg + m.b.msg) ? 'WALKOVER' : /retire/i.test(m.a.msg + m.b.msg) ? 'RETIRED' : m.sets.length || m.a.won || m.b.won ? 'COMPLETED' : 'SCHEDULED');
 
   return (
     <Shell nav="abroad">
@@ -98,11 +93,9 @@ export default async function AbroadEventPage({ params }: { params: Promise<{ id
           <h3 style={{ margin: '16px 0 8px' }}>{dayLabel(d)}</h3>
           <div className="grid cols">
             {matches.filter((m) => m.day === d).map((m, i) => (
-              <div key={`${d}-${i}`} className="card grid" style={{ gap: 8 }}>
-                <span className="grid" style={{ gap: 2 }}><span className="muted" dir="ltr" style={{ textAlign: 'start' }}>{m.draw}{m.stage ? ` · ${m.stage}` : ''}</span><span className="muted" dir="ltr" style={{ textAlign: 'start' }}>{[m.time, m.court].filter(Boolean).join(' · ')}</span></span>
-                <Side s={m.a} sets={m.sets.map((x) => x[0])} lost={m.b.won} />
-                <Side s={m.b} sets={m.sets.map((x) => x[1])} lost={m.a.won} />
-                {!m.sets.length && <span className="muted" style={{ fontWeight: 600 }}>{t('טרם שוחק')}</span>}
+              <div key={`${d}-${i}`} className="card">
+                <MatchScore aName={namesOf(m.a)} bName={namesOf(m.b)} sets={m.sets.map(([x, y]) => ({ a: x ?? 0, b: y ?? 0 }))} status={statusOf(m)} winner={m.a.won ? 'a' : m.b.won ? 'b' : null} mine={m.a.cc.includes('ISR') ? 'a' : m.b.cc.includes('ISR') ? 'b' : undefined}
+                  caption={<span dir="ltr">{m.draw}{m.stage ? ` · ${m.stage}` : ''}</span>} when={[m.time, m.court].filter(Boolean).join(' · ') || undefined} />
               </div>
             ))}
           </div>

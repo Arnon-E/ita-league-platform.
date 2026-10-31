@@ -3,7 +3,7 @@ import Link from 'next/link';
 type SetScore = { a: number; b: number; superTb?: boolean };
 interface Props {
   /** A player's name, or the two names of a doubles pair. */
-  aName: string | string[]; bName: string | string[];
+  aName: React.ReactNode | React.ReactNode[]; bName: React.ReactNode | React.ReactNode[];
   sets: SetScore[];
   status: string; // SCHEDULED | COMPLETED | WALKOVER | RETIRED | VOID
   winner: 'a' | 'b' | null;
@@ -26,7 +26,7 @@ const HE = { walkover: 'ווק-אובר', retired: 'פרישה', void: 'בוטל
  */
 export function MatchScore({ aName, bName, sets, status, winner, live, href, caption, when, mine, labels = HE }: Props) {
   const done = status !== 'SCHEDULED' && status !== 'VOID';
-  const row = (side: 'a' | 'b', name: string | string[]) => {
+  const row = (side: 'a' | 'b', name: React.ReactNode | React.ReactNode[]) => {
     const won = done && winner === side;
     const names = Array.isArray(name) ? name : [name];
     return (
