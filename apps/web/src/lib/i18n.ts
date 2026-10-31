@@ -192,6 +192,7 @@ const EN: Record<string, string> = {
   'הדחה': 'Knockout',
   'עץ': 'Bracket',
   'המנצח': 'Winner',
+  'אפשר להירשם עכשיו': 'Entry open now',
   'מקומות 3-4': 'Places 3-4',
   'סטטוס': 'Status',
   'הלוח טרם פורסם.': 'The schedule has not been published yet.',

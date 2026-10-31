@@ -112,13 +112,14 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ l
           </Link>
         )}
       </section>
-      <nav className="bento" aria-label={t('ניווט מהיר')}>
+      <nav className={`bento${abroadAll.length ? ' b5' : ''}`} aria-label={t('ניווט מהיר')}>
         {staff
           ? <Link href="/tournaments/new" className="pri"><span className="n">+</span><b>{t('תחרות חדשה')}</b><small>{openCount ? `${openCount} ${t('פתוחות להרשמה')}` : t('יצירת תחרות')}</small></Link>
           : <Link href="/?st=open#list" className="pri"><span className="n">{openCount}</span><b>{t('להירשם לתחרות')}</b><small>{openCount ? t('פתוחות עכשיו') : t('אין כרגע הרשמה פתוחה')}</small></Link>}
         <Link href="/live"><span className="n">{c.live}</span><b>{t('משחקים ותוצאות')}</b><small>{c.live ? t('משחקים חיים עכשיו') : t('לוחות ותוצאות')}</small></Link>
         <Link href="/rankings"><span className="n">{c.players.toLocaleString('he-IL')}</span><b>{t('דירוג')}</b><small>{t('שחקנים רשומים')}</small></Link>
         <Link href="/clubs"><span className="n">{c.clubs.toLocaleString('he-IL')}</span><b>{t('מועדונים')}</b><small>{t('מועדונים עם שחקנים')}</small></Link>
+        {abroadAll.length > 0 && <Link href="/abroad?st=open"><span className="n">{abroadCanEnter}</span><b>{t('תחרויות חו"ל')}</b><small>{abroadCanEnter ? t('אפשר להירשם עכשיו') : t('אין כרגע הרשמה פתוחה')}</small></Link>}
       </nav>
       {home && <MyHome home={home} t={t} />}
       <Fold id="list" title={t('תחרויות')}>
