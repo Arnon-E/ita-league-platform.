@@ -32,10 +32,15 @@ export default async function AbroadEventPage({ params }: { params: Promise<{ id
 
   // a knockout draw as the site's own tree: first round first, each round half the size of the one before (a missing slot is a bye); the Israelis are marked
   const sideOf = (m: DrawMatch, k: 'a' | 'b'): BracketSide => ({ names: m[k].names, win: m[k].won, me: m[k].cc.includes('ISR'), sets: m.sets.length ? m.sets.map((s, i) => <b key={i}>{s[k === 'a' ? 0 : 1]}</b>) : null });
-  const treeOf = (rounds: DrawMatch[][]) => rounds.map((round, k): (BracketCell | null)[] => {
-    const want = 2 ** (rounds.length - 1 - k);
-    return Array.from({ length: want }, (_, i) => (round[i] ? { a: sideOf(round[i]!, 'a'), b: sideOf(round[i]!, 'b'), meta: dateOf(round[i]!.date) || undefined } : null));
-  });
+  // a qualifying draw is several small trees side by side (each ends in one qualifier): the first round holds as many matches as all of them together
+  const treesOf = (rounds: DrawMatch[][]) => {
+    const size = 2 ** (rounds.length - 1);
+    const n = Math.max(1, Math.ceil((rounds[0]?.length ?? 0) / size));
+    return Array.from({ length: n }, (_, i) => rounds.map((round, k): (BracketCell | null)[] => {
+      const want = 2 ** (rounds.length - 1 - k);
+      return Array.from({ length: want }, (_, j) => { const m = round[i * want + j]; return m ? { a: sideOf(m, 'a'), b: sideOf(m, 'b'), meta: dateOf(m.date) || undefined } : null; });
+    }));
+  };
   const dateOf = (d: string) => d.replace(/^[A-Za-z]{3}\s+/, '').replace(/\//g, '.');
   const draws = e.results?.draws ?? [];
   const accepted = e.acceptance?.length ? await acceptedWithLinks(db, e.acceptance).catch(() => []) : [];
@@ -137,7 +142,12 @@ export default async function AbroadEventPage({ params }: { params: Promise<{ id
                   ))}
                 </div>
               ) : (
-                <BracketView cols={treeOf(d.rounds)} tt={t} pending={t('טרם נקבע')} />
+                (() => { const trees = treesOf(d.rounds); return trees.map((cols, i) => (
+                  <div key={i} style={{ marginBottom: 14 }}>
+                    {trees.length > 1 && <strong className="muted">{t('עץ')} {i + 1}</strong>}
+                    <BracketView cols={cols} tt={t} pending={t('טרם נקבע')} />
+                  </div>
+                )); })()
               )}
             </Fold>
           ))}
