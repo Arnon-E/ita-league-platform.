@@ -15,6 +15,7 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1146.0",
     "@ita/rules-engine": "workspace:*",
+    "@vercel/analytics": "^2.0.1",
     "@vercel/blob": "^2.8.1",
     "bcryptjs": "^2.4.3",
     "drizzle-orm": "^0.36.0",
