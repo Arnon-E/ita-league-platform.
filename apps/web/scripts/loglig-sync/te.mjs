@@ -8,6 +8,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import './local-env.mjs';
 import { session } from './tournamentsoftware.mjs';
 import { searchTournaments } from './te-search.mjs';
 
