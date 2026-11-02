@@ -11,6 +11,7 @@ import { tr } from '@/lib/i18n';
 import { countryInfo } from '@/lib/countries';
 import { abroadEvent, groupTable, phaseOf, type DrawMatch } from '@/services/abroad';
 import { acceptedWithLinks } from '@/services/abroad-players';
+import { catOf, catsPresent, drawActive, matchPending, pickCategory, pickTab, sortDraws, type AbroadCat, type AbroadTab } from '@/services/abroad-view';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,9 +20,10 @@ const TZ = 'Asia/Jerusalem';
 const flagUrl = (cc: string) => `https://static.tournamentsoftware.com/content/images/flags/${cc}.svg`;
 
 /** Public to everyone: a Tennis Europe tournament abroad that is on or just ended, with the matches and results of the Israeli players in it. */
-export default async function AbroadEventPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function AbroadEventPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ cat?: string; tab?: string }> }) {
   const t = await tr();
   const { id } = await params;
+  const q = await searchParams;
   const e = await abroadEvent(db, id);
   if (!e) notFound();
   const phase = phaseOf({ start: e.startDate, end: e.endDate });
@@ -50,6 +52,22 @@ export default async function AbroadEventPage({ params }: { params: Promise<{ id
   const namesOf = (x: { names: string[]; cc: string[] }) => x.names.map((n, i) => <span key={i} dir="ltr" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>{x.cc[i] && <img src={flagUrl(x.cc[i]!)} width={18} height={13} alt={x.cc[i]} style={{ borderRadius: 2, boxShadow: '0 0 0 1px var(--line)' }} />}{n}</span>);
   const statusOf = (m: { sets: unknown[]; a: { msg: string; won: boolean }; b: { msg: string; won: boolean } }) => (/walkover/i.test(m.a.msg + m.b.msg) ? 'WALKOVER' : /retire/i.test(m.a.msg + m.b.msg) ? 'RETIRED' : m.sets.length || m.a.won || m.b.won ? 'COMPLETED' : 'SCHEDULED');
 
+  // one category at a time (boys, girls, doubles), and within it one of: the matches, the draws, who is registered
+  const cats = catsPresent([...matches.map((m) => m.draw), ...draws.map((d) => d.name), ...accepted.map((a) => a.label)]);
+  const cat = pickCategory(cats, matches, draws, q.cat);
+  const catMatches = matches.filter((m) => catOf(m.draw) === cat);
+  const catDraws = sortDraws(draws.filter((d) => catOf(d.name) === cat));
+  const catAccepted = accepted.filter((a) => catOf(a.label) === cat);
+  const tabs: { key: AbroadTab; label: string; n: number }[] = ([
+    { key: 'm', label: t('משחקים'), n: catMatches.length }, { key: 'd', label: t('הגרלות'), n: catDraws.length }, { key: 'r', label: t('רשומים'), n: catAccepted.reduce((n, a) => n + a.players.length, 0) },
+  ] as const).filter((x) => x.n > 0);
+  const tab = pickTab(tabs.map((x) => x.key), q.tab);
+  const href = (c: AbroadCat | null, tb: AbroadTab | null) => `/abroad/${id}?${[c && `cat=${c}`, tb && `tab=${tb}`].filter(Boolean).join('&')}`;
+  const catName: Record<AbroadCat, string> = { B: t('בנים'), G: t('בנות'), D: t('זוגות') };
+  const today = new Date().toLocaleDateString('en-CA', { timeZone: TZ });
+  const catDays = [...new Set(catMatches.map((m) => m.day))].sort().reverse(); // the latest day first
+  const openDays = catDays.some((d) => d >= today) ? catDays.filter((d) => d >= today) : catDays.slice(0, 1); // today and what is coming, else the latest day
+
   return (
     <Shell nav="abroad">
       <p style={{ margin: 0 }}><Link href="/abroad" className="muted"><u>{t('חזרה לתחרויות חו"ל')}</u></Link></p>
@@ -61,53 +79,60 @@ export default async function AbroadEventPage({ params }: { params: Promise<{ id
         {e.category && <span className="pill">{e.category}</span>}
         <a className="btn ghost" href={e.url} target="_blank" rel="noopener noreferrer">{t('כל המשחקים והתוצאות ב-Tennis Europe')}</a>
       </div>
-      {accepted.length > 0 && (
-        <>
-          <h2>{t('ישראלים רשומים')}</h2>
-          <div className="grid cols">
-            {accepted.map((a) => (
-              <div key={a.label} className="card grid" style={{ gap: 6 }}>
-                <strong dir="ltr" style={{ textAlign: 'start' }}>{a.label} <span className="muted" style={{ fontWeight: 400 }}>· {a.players.length} {t('ישראלים')}</span></strong>
-                <div style={{ overflowX: 'auto' }}>
-                  <table>
-                    <thead><tr><th>{t('שם')}</th><th>{t('שנת לידה')}</th>{a.players.some((p) => p.rank && p.rank !== '-') && <th>{t('דירוג')}</th>}</tr></thead>
-                    <tbody>
-                      {a.players.map((p) => (
-                        <tr key={p.draw + p.n + p.name}>
-                          <td>{p.player ? <Link href={`/players/${p.player.id}`}><u>{p.player.first} {p.player.last}</u></Link> : null}<div dir="ltr" className={p.player ? 'muted' : undefined} style={{ textAlign: 'start' }}>{p.name}</div></td>
-                          <td>{p.born ?? ''}</td>{a.players.some((x) => x.rank && x.rank !== '-') && <td dir="ltr">{p.rank && p.rank !== '-' ? `#${p.rank}` : ''}</td>}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+      {cats.length > 1 && (
+        <nav className="tabs" aria-label={t('קטגוריה')} style={{ marginBottom: 0 }}>
+          {cats.map((c) => <Link key={c} href={href(c, tab)} className={c === cat ? 'on' : ''} replace scroll={false}>{catName[c]}</Link>)}
+        </nav>
+      )}
+      {tabs.length > 0 && (
+        <nav className="tabs" aria-label={t('תצוגה')} style={cats.length > 1 ? { marginTop: 8 } : undefined}>
+          {tabs.map((x) => <Link key={x.key} href={href(cat, x.key)} className={x.key === tab ? 'on' : ''} replace scroll={false}>{x.label} <span className="muted">{x.n}</span></Link>)}
+        </nav>
+      )}
+      {tab === 'r' && (
+        <div className="grid cols">
+          {catAccepted.map((a) => (
+            <div key={a.label} className="card grid" style={{ gap: 6 }}>
+              <strong dir="ltr" style={{ textAlign: 'start' }}>{a.label} <span className="muted" style={{ fontWeight: 400 }}>· {a.players.length} {t('ישראלים')}</span></strong>
+              <div style={{ overflowX: 'auto' }}>
+                <table>
+                  <thead><tr><th>{t('שם')}</th><th>{t('שנת לידה')}</th>{a.players.some((p) => p.rank && p.rank !== '-') && <th>{t('דירוג')}</th>}</tr></thead>
+                  <tbody>
+                    {a.players.map((p) => (
+                      <tr key={p.draw + p.n + p.name}>
+                        <td>{p.player ? <Link href={`/players/${p.player.id}`}><u>{p.player.first} {p.player.last}</u></Link> : null}<div dir="ltr" className={p.player ? 'muted' : undefined} style={{ textAlign: 'start' }}>{p.name}</div></td>
+                        <td>{p.born ?? ''}</td>{a.players.some((x) => x.rank && x.rank !== '-') && <td dir="ltr">{p.rank && p.rank !== '-' ? `#${p.rank}` : ''}</td>}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-            ))}
-          </div>
+            </div>
+          ))}
+        </div>
+      )}
+      {tab === 'm' && (
+        <>
+          {e.results?.updated && <p className="muted" style={{ margin: 0 }}>{t('עודכן')} {new Date(e.results.updated).toLocaleString('he-IL', { timeZone: TZ, day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>}
+          {catDays.map((d) => (
+            <Fold key={d} title={d === today ? `${t('היום')} · ${dayLabel(d)}` : dayLabel(d)} open={openDays.includes(d)}>
+              <div className="grid cols">
+                {catMatches.filter((m) => m.day === d).map((m, i) => (
+                  <div key={`${d}-${i}`} className="card">
+                    <MatchScore aName={namesOf(m.a)} bName={namesOf(m.b)} sets={m.sets.map(([x, y]) => ({ a: x ?? 0, b: y ?? 0 }))} status={statusOf(m)} winner={m.a.won ? 'a' : m.b.won ? 'b' : null} mine={m.a.cc.includes('ISR') ? 'a' : m.b.cc.includes('ISR') ? 'b' : undefined}
+                      caption={<span dir="ltr">{m.draw}{m.stage ? ` · ${m.stage}` : ''}</span>} when={[m.time, m.court].filter(Boolean).join(' · ') || undefined} />
+                  </div>
+                ))}
+              </div>
+            </Fold>
+          ))}
         </>
       )}
-      <h2>{t('משחקים של שחקנים ישראלים')}</h2>
-      {e.results?.updated && <p className="muted" style={{ margin: 0 }}>{t('עודכן')} {new Date(e.results.updated).toLocaleString('he-IL', { timeZone: TZ, day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>}
-      {days.length ? days.map((d) => (
-        <section key={d}>
-          <h3 style={{ margin: '16px 0 8px' }}>{dayLabel(d)}</h3>
-          <div className="grid cols">
-            {matches.filter((m) => m.day === d).map((m, i) => (
-              <div key={`${d}-${i}`} className="card">
-                <MatchScore aName={namesOf(m.a)} bName={namesOf(m.b)} sets={m.sets.map(([x, y]) => ({ a: x ?? 0, b: y ?? 0 }))} status={statusOf(m)} winner={m.a.won ? 'a' : m.b.won ? 'b' : null} mine={m.a.cc.includes('ISR') ? 'a' : m.b.cc.includes('ISR') ? 'b' : undefined}
-                  caption={<span dir="ltr">{m.draw}{m.stage ? ` · ${m.stage}` : ''}</span>} when={[m.time, m.court].filter(Boolean).join(' · ') || undefined} />
-              </div>
-            ))}
-          </div>
-        </section>
-      )) : (
-        <div className="card muted">{phase === 'up' ? t('הטורניר עוד לא התחיל.') : t('עדיין אין משחקים של שחקנים ישראלים בטורניר, או שהמארגן עוד לא פירסם אותם. לכל המשחקים אפשר לעבור לדף הטורניר ב-Tennis Europe.')}</div>
-      )}
-      {draws.length > 0 && (
-        <>
-          <h2>{t('הגרלות')}</h2>
-          {draws.map((d, i) => (
-            <Fold key={d.n} title={d.name} open={i === 0}>
+      {tab === 'd' && (() => {
+        const first = catDraws.findIndex(drawActive);
+        const openAt = first >= 0 ? first : 0; // the draw an Israeli is still playing in, else the first
+        return catDraws.map((d, i) => (
+          <Fold key={d.n} title={d.name} open={i === openAt}>
               {d.kind === 'RR' ? (
                 <div className="card grid" style={{ gap: 10 }}>
                   <div style={{ overflowX: 'auto' }}>
@@ -144,9 +169,11 @@ export default async function AbroadEventPage({ params }: { params: Promise<{ id
                   </div>
                 )); })()
               )}
-            </Fold>
-          ))}
-        </>
+          </Fold>
+        ));
+      })()}
+      {tabs.length === 0 && (
+        <div className="card muted">{phase === 'up' ? t('הטורניר עוד לא התחיל.') : t('עדיין אין משחקים של שחקנים ישראלים בטורניר, או שהמארגן עוד לא פירסם אותם. לכל המשחקים אפשר לעבור לדף הטורניר ב-Tennis Europe.')}</div>
       )}
       <p className="muted" style={{ marginTop: 18 }}>{t('המשחקים נלקחים מהאתר של Tennis Europe ומתעדכנים בערך פעם בשעה בזמן הטורניר.')}</p>
     </Shell>
