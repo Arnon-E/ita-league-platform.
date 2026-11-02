@@ -9,6 +9,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import './local-env.mjs';
 import { cleanPlayer, matchDays, parseDayMatches, parseDraws, session } from './tournamentsoftware.mjs';
 export { matchDays };
 import { readAcceptance } from './te.mjs';
