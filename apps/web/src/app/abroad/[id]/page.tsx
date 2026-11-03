@@ -152,12 +152,17 @@ export default async function AbroadEventPage({ params, searchParams }: { params
                   {d.rounds.map((round, k) => (
                     <div key={k} className="grid" style={{ gap: 6 }}>
                       <strong className="muted">{t('סיבוב')} {k + 1}</strong>
-                      {round.filter((m) => m.a.names.length && m.b.names.length).map((m, j) => (
-                        <div key={j} className="grid" style={{ gap: 0 }}>
-                          <span dir="ltr" style={{ textAlign: 'start' }}><span style={{ fontWeight: m.a.won ? 800 : 500, color: m.a.cc.includes('ISR') ? 'var(--blue)' : undefined }}>{m.a.names.join(' / ')}</span> – <span style={{ fontWeight: m.b.won ? 800 : 500, color: m.b.cc.includes('ISR') ? 'var(--blue)' : undefined }}>{m.b.names.join(' / ')}</span></span>
-                          <span className="muted" dir="ltr" style={{ textAlign: 'start' }}>{m.sets.length ? fmtScore(m.sets.map(([a, b]) => ({ a: a ?? 0, b: b ?? 0 }))) : t('טרם שוחק')}</span>
-                        </div>
-                      ))}
+                      {round.filter((m) => m.a.names.length && m.b.names.length).map((m, j) => {
+                        const decided = m.a.won || m.b.won;
+                        const side = (x: DrawMatch['a']) => <span style={{ fontWeight: x.won ? 800 : 500, opacity: decided && !x.won ? 0.6 : 1, color: x.cc.includes('ISR') ? 'var(--blue)' : undefined }}>{x.won ? '✓ ' : ''}{x.names.join(' / ')}</span>;
+                        const mine = m.a.cc.includes('ISR') ? m.a : m.b.cc.includes('ISR') ? m.b : null; // the Israeli's own result, spelled out
+                        return (
+                          <div key={j} className="grid" style={{ gap: 0 }}>
+                            <span dir="ltr" style={{ textAlign: 'start' }}>{side(m.a)} – {side(m.b)}</span>
+                            <span className="muted" dir="ltr" style={{ textAlign: 'start' }}>{m.sets.length ? fmtScore(m.sets.map(([a, b]) => ({ a: a ?? 0, b: b ?? 0 }))) : t('טרם שוחק')}{mine && decided && <> <span className={`pill ${mine.won ? 'ok' : 'bad'}`} style={{ padding: '0 8px', fontSize: 11.5 }}>{mine.won ? t('ניצחון') : t('הפסד')}</span></>}</span>
+                          </div>
+                        );
+                      })}
                     </div>
                   ))}
                 </div>
