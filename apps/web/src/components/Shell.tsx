@@ -17,7 +17,7 @@ export async function Shell({ children, nav }: { children: ReactNode; nav?: stri
   const l = (href: string, label: string, key: string) => <Link href={href} className={nav === key ? 'on' : ''}>{t(label)}</Link>;
   return (
     <>
-      {actor?.impersonatedBy && <form action={stopImpersonationAction} style={{ background: 'var(--lime)', padding: '8px 24px', display: 'flex', gap: 12, alignItems: 'center' }}><strong>מצב התחזות: {u?.name}</strong><button className="btn small">חזרה לחשבון שלי</button></form>}
+      {actor?.impersonatedBy && <form action={stopImpersonationAction} style={{ background: 'var(--warnbg)', color: 'var(--warn)', padding: '8px 24px', display: 'flex', gap: 12, alignItems: 'center' }}><strong>מצב התחזות: {u?.name}</strong><button className="btn small">חזרה לחשבון שלי</button></form>}
       <header className="top">
         <Link href="/" className="brand" aria-label={t('איגוד הטניס בישראל')}><BallMark />ITA</Link>
         <NavMenu label={t('תפריט')}>

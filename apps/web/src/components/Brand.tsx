@@ -1,9 +1,9 @@
-/** The ITA mark: an optic-yellow ball with its seams. Plain geometry, no raster. */
+/** The ITA mark: a blue ball with its seams. Plain geometry, no raster. */
 export function BallMark({ size = 30 }: { size?: number }) {
   return (
     <svg aria-hidden viewBox="0 0 32 32" width={size} height={size}>
-      <circle cx="16" cy="16" r="14.5" fill="#D7F43B" stroke="#0A1F44" strokeWidth="1.6" />
-      <path d="M5.5 7.5c6.5 4.5 6.5 12.5 0 17M26.5 7.5c-6.5 4.5-6.5 12.5 0 17" fill="none" stroke="#0A1F44" strokeWidth="1.8" strokeLinecap="round" />
+      <circle cx="16" cy="16" r="14.5" fill="#0071E3" />
+      <path d="M5.5 7.5c6.5 4.5 6.5 12.5 0 17M26.5 7.5c-6.5 4.5-6.5 12.5 0 17" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" />
     </svg>
   );
 }
