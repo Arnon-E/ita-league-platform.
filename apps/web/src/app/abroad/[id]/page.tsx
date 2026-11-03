@@ -50,7 +50,7 @@ export default async function AbroadEventPage({ params, searchParams }: { params
 
   // the names of one side as the site's match card shows them: the flag in front of each name (a pair has two)
   const namesOf = (x: { names: string[]; cc: string[] }) => x.names.map((n, i) => <span key={i} dir="ltr" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>{x.cc[i] && <img src={flagUrl(x.cc[i]!)} width={18} height={13} alt={x.cc[i]} style={{ borderRadius: 2, boxShadow: '0 0 0 1px var(--line)' }} />}{n}</span>);
-  const statusOf = (m: { sets: unknown[]; a: { msg: string; won: boolean }; b: { msg: string; won: boolean } }) => (/walkover/i.test(m.a.msg + m.b.msg) ? 'WALKOVER' : /retire/i.test(m.a.msg + m.b.msg) ? 'RETIRED' : m.sets.length || m.a.won || m.b.won ? 'COMPLETED' : 'SCHEDULED');
+  const statusOf = (m: { sets: unknown[]; a: { msg?: string; won: boolean }; b: { msg?: string; won: boolean } }) => (/walkover/i.test((m.a.msg ?? '') + (m.b.msg ?? '')) ? 'WALKOVER' : /retire/i.test((m.a.msg ?? '') + (m.b.msg ?? '')) ? 'RETIRED' : m.sets.length || m.a.won || m.b.won ? 'COMPLETED' : 'SCHEDULED');
 
   // one category at a time (boys, girls, doubles), and within it one of: the matches, the draws, who is registered
   const cats = catsPresent([...matches.map((m) => m.draw), ...draws.map((d) => d.name), ...accepted.map((a) => a.label)]);
@@ -152,12 +152,14 @@ export default async function AbroadEventPage({ params, searchParams }: { params
                   {d.rounds.map((round, k) => (
                     <div key={k} className="grid" style={{ gap: 6 }}>
                       <strong className="muted">{t('סיבוב')} {k + 1}</strong>
-                      {round.filter((m) => m.a.names.length && m.b.names.length).map((m, j) => (
-                        <div key={j} className="grid" style={{ gap: 0 }}>
-                          <span dir="ltr" style={{ textAlign: 'start' }}><span style={{ fontWeight: m.a.won ? 800 : 500, color: m.a.cc.includes('ISR') ? 'var(--blue)' : undefined }}>{m.a.names.join(' / ')}</span> – <span style={{ fontWeight: m.b.won ? 800 : 500, color: m.b.cc.includes('ISR') ? 'var(--blue)' : undefined }}>{m.b.names.join(' / ')}</span></span>
-                          <span className="muted" dir="ltr" style={{ textAlign: 'start' }}>{m.sets.length ? fmtScore(m.sets.map(([a, b]) => ({ a: a ?? 0, b: b ?? 0 }))) : t('טרם שוחק')}</span>
-                        </div>
-                      ))}
+                      <div className="grid cols">
+                        {round.filter((m) => m.a.names.length && m.b.names.length).map((m, j) => (
+                          <div key={j} className="card">
+                            <MatchScore aName={namesOf(m.a)} bName={namesOf(m.b)} sets={m.sets.map(([x, y]) => ({ a: x ?? 0, b: y ?? 0 }))} status={statusOf(m)} winner={m.a.won ? 'a' : m.b.won ? 'b' : null} mine={m.a.cc.includes('ISR') ? 'a' : m.b.cc.includes('ISR') ? 'b' : undefined}
+                              caption={<span dir="ltr">{d.name} · {t('סיבוב')} {k + 1}</span>} when={dateOf(m.date) || undefined} />
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   ))}
                 </div>
