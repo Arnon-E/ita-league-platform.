@@ -1,28 +1,28 @@
-/* ITA — "Apple" design system (2026).
-   Quiet grey-white ground (true black in dark mode), white cards without borders, one blue accent, SF system type with tight tracking,
-   translucent full-width chrome (top bar, tab bar), pill buttons and iOS-style segmented controls. Motion: short springs, press = scale.
-   Class names are the contract with the pages; the "Apple layer" at the end of this file does the final skinning. */
+/* ITA — "Volt Night" design system (2026).
+   Cool paper / near-black ground, a soft lime (volt) accent, navy ink (the blue of the ITA logo) for buttons and dark cards, large radii and floating glass chrome.
+   Surfaces are flat and bordered; only things that float (nav island, dock, menus) get blur and shadow.
+   Class names are the contract with the pages. */
 :root{
   color-scheme:light dark;
-  --ink:#1D1D1F;--navy:#1D1D1F;--volt:#0071E3;--lime:#0071E3;--clay:#FF6A3D;--on-accent:#fff;--accent-dark:#2997FF;
-  --blue:#0071E3;--blue2:#0A84FF;
-  --bg:#F5F5F7;--surface:#FFFFFF;--surface2:#F5F5F7;--line:#E8E8ED;--line2:#D2D2D7;
-  --text:#1D1D1F;--muted:#6E6E73;
-  --btn:#0071E3;--btn-text:#FFFFFF;--btn-hover:#0077ED;
-  --ok:#1E8A3E;--okbg:#E3F6E8;--warn:#B25000;--warnbg:#FFF1DC;--bad:#D70015;--badbg:#FFE7E9;
-  --shadow:0 1px 2px rgba(0,0,0,.04);--shadow-lg:0 4px 12px rgba(0,0,0,.06),0 24px 48px -16px rgba(0,0,0,.2);
-  --glass:rgba(245,245,247,.8);--glass-line:rgba(0,0,0,.1);--seg:rgba(118,118,128,.12);--seg-on:#FFFFFF;
-  --r:20px;--ring:0 0 0 2px var(--bg),0 0 0 4px var(--blue2);
-  --ease:cubic-bezier(.32,.72,0,1);
-  --display:-apple-system,BlinkMacSystemFont,'SF Pro Display','SF Pro Text','Heebo',system-ui,sans-serif;--body:-apple-system,BlinkMacSystemFont,'SF Pro Text','Heebo',system-ui,'Segoe UI',sans-serif
+  --ink:#0A1F44;--navy:#0A1F44;--volt:#C6ED45;--lime:#C6ED45;--clay:#FF6A3D;
+  --blue:#2447F5;--blue2:#4A67FF;
+  --bg:#EEF0EA;--surface:#FFFFFF;--surface2:#F5F6F1;--line:#E0E3DA;--line2:#C9CEC3;
+  --text:#0E1512;--muted:#59655E;
+  --btn:#13306E;--btn-text:#FFFFFF;--btn-hover:#1C3F8A;
+  --ok:#0B7A43;--okbg:#DCF3E4;--warn:#8F4E00;--warnbg:#FCEFD3;--bad:#B3261E;--badbg:#FCE6E3;
+  --shadow:0 1px 2px rgba(12,18,16,.04);--shadow-lg:0 2px 4px rgba(12,18,16,.05),0 24px 48px -12px rgba(12,18,16,.22);
+  --glass:rgba(255,255,255,.72);--glass-line:rgba(12,18,16,.08);
+  --r:22px;--ring:0 0 0 2px var(--bg),0 0 0 4px var(--blue2);
+  --ease:cubic-bezier(.23,1,.32,1);
+  --display:'Bricolage Grotesque','Rubik','Heebo',system-ui,sans-serif;--body:'Heebo',system-ui,-apple-system,'Segoe UI',sans-serif
 }
 @media(prefers-color-scheme:dark){:root{
-  --bg:#000000;--surface:#1C1C1E;--surface2:#2C2C2E;--line:#2C2C2E;--line2:#48484A;--text:#F5F5F7;--muted:#98989D;--navy:#F5F5F7;
-  --blue:#2997FF;--blue2:#409CFF;--volt:#0A84FF;--lime:#0A84FF;
-  --btn:#0A84FF;--btn-text:#FFFFFF;--btn-hover:#409CFF;
-  --okbg:#0E3220;--ok:#30D158;--warnbg:#3A2A0F;--warn:#FFB340;--badbg:#3B1713;--bad:#FF6961;
-  --shadow:0 1px 2px rgba(0,0,0,.35);--shadow-lg:0 4px 12px rgba(0,0,0,.4),0 24px 48px -16px rgba(0,0,0,.8);
-  --glass:rgba(22,22,23,.8);--glass-line:rgba(255,255,255,.12);--seg:rgba(118,118,128,.24);--seg-on:#636366
+  --bg:#070A09;--surface:#111715;--surface2:#171E1B;--line:#222B27;--line2:#33403A;--text:#EDF1EE;--muted:#8E9B94;--navy:#EDF1EE;
+  --blue:#8CA3FF;--blue2:#A9BAFF;
+  --btn:#C6ED45;--btn-text:#0C1210;--btn-hover:#D1F06B;
+  --okbg:#0E3220;--ok:#5BD58F;--warnbg:#3A2A0F;--warn:#F5B452;--badbg:#3B1713;--bad:#FF8A7E;
+  --shadow:0 1px 2px rgba(0,0,0,.35);--shadow-lg:0 2px 4px rgba(0,0,0,.45),0 24px 48px -12px rgba(0,0,0,.7);
+  --glass:rgba(17,23,21,.72);--glass-line:rgba(255,255,255,.09)
 }}
 @view-transition{navigation:auto}
 *{box-sizing:border-box}
@@ -637,149 +637,3 @@ html[dir=rtl] .pside{align-items:flex-start}
 .pod .pph{width:56px;height:56px;border-radius:50%;object-fit:cover;border:3px solid var(--surface);margin-bottom:auto;background:var(--surface2);flex:none}
 .pod.p1 .pph{width:84px;height:84px;border-color:var(--ink)}
 @media(max-width:720px){.pod .pph{width:44px;height:44px;border-width:2px}.pod.p1 .pph{width:60px;height:60px}}
-
-
-/* ============ Apple layer: final skin. Keeps every class name; only look and motion change ============ */
-::selection{background:color-mix(in srgb,var(--blue) 30%,transparent);color:inherit}
-html,body{font-feature-settings:"kern","liga";letter-spacing:-.011em}
-h1,h2,h3{font-family:var(--display);font-optical-sizing:auto}
-h1{font-size:clamp(32px,4.4vw,52px);font-weight:700;letter-spacing:-.035em;line-height:1.06}
-h2{font-size:clamp(22px,2.4vw,28px);font-weight:700;letter-spacing:-.025em;line-height:1.15;margin:48px 0 16px}
-h3{letter-spacing:-.015em}
-.muted{letter-spacing:-.005em}
-
-/* top bar: a full-width translucent band that content scrolls under; hairline instead of a floating capsule */
-header.top{top:0;margin:0;width:100%;max-width:none;min-height:52px;padding:4px max(16px,calc((100% - 1180px)/2));border:0;border-bottom:.5px solid var(--glass-line);border-radius:0;box-shadow:none;
-  background:var(--glass);backdrop-filter:saturate(180%) blur(22px);-webkit-backdrop-filter:saturate(180%) blur(22px)}
-header.top .brand{font-weight:600;font-size:19px;letter-spacing:-.02em;padding-inline-start:0}
-header.top a:not(.btn){font-size:14px;font-weight:400;padding:7px 12px;color:var(--muted)}
-header.top a:not(.btn):hover{background:none;color:var(--text)}
-header.top nav a.on{background:color-mix(in srgb,var(--text) 8%,transparent);color:var(--text);font-weight:500}
-header.top .srch.on{background:color-mix(in srgb,var(--text) 8%,transparent);color:var(--text)}
-details.adm summary{font-size:14px;font-weight:400}
-details.adm[open] summary,details.adm summary:hover{background:none;color:var(--text)}
-details.adm>div{border:0;border-radius:18px;padding:8px;background:var(--glass);backdrop-filter:saturate(180%) blur(30px);-webkit-backdrop-filter:saturate(180%) blur(30px);box-shadow:0 0 0 .5px var(--glass-line),var(--shadow-lg);animation:pop .22s var(--ease)}
-details.adm>div a:hover{background:color-mix(in srgb,var(--text) 7%,transparent)!important}
-details.adm>div a.on{background:var(--btn)!important;color:#fff!important}
-details.acct .av,.pavatar{background:var(--blue);color:#fff}
-main{padding-top:36px}
-
-/* surfaces: white cards on the grey ground, no borders, soft lift */
-.card{border-color:transparent;border-radius:var(--r);padding:24px;box-shadow:none}
-a.card:hover{border-color:transparent;transform:scale(1.01);box-shadow:var(--shadow-lg)}
-a.card:active{transform:scale(.985);transition-duration:.1s}
-.card.todo,.todo{border-color:transparent}
-
-/* hero: a black keynote tile, large type, a single cool glow */
-.hero{border-radius:28px;padding:64px 56px;border:0;color:#F5F5F7;
-  background:radial-gradient(700px 380px at 90% 110%,rgba(10,132,255,.45),transparent 70%),radial-gradient(480px 260px at 0% 0%,rgba(255,255,255,.06),transparent 70%),#0B0B0D}
-.hero h1{font-size:clamp(40px,6vw,76px);font-weight:700;line-height:1.02;letter-spacing:-.045em}
-.hero p{color:#A1A1A6;font-size:19px;line-height:1.45;max-width:520px}
-.court{opacity:.16}.court .net{stroke:var(--accent-dark)}
-.hero a:focus-visible,.hero button:focus-visible{box-shadow:0 0 0 2px #0B0B0D,0 0 0 4px var(--accent-dark)}
-.thero{border-radius:28px}.thero .thero-dates{color:#A1A1A6}
-.authside{border-radius:28px;background:radial-gradient(600px 420px at 100% 100%,rgba(10,132,255,.45),transparent 70%),#0B0B0D}
-.authside p{color:#A1A1A6}
-
-/* buttons: blue pills; secondary = soft grey tint, no outline */
-.btn{min-height:44px;padding:0 22px;font-weight:500;letter-spacing:-.01em;transition:transform .2s var(--ease),background-color .2s var(--ease),opacity .2s var(--ease)}
-.btn:active{transform:scale(.96);transition-duration:.08s}
-.btn.ghost{background:color-mix(in srgb,var(--text) 7%,transparent);box-shadow:none;color:var(--text)}
-.btn.ghost:hover{background:color-mix(in srgb,var(--text) 12%,transparent);box-shadow:none}
-.btn.lime{background:var(--btn);color:#fff}.btn.lime:hover{background:var(--btn-hover)}
-.btn.ink{background:var(--text);color:var(--bg)}.btn.ink:hover{background:color-mix(in srgb,var(--text) 82%,var(--bg))}
-.btn.small{min-height:34px;padding:0 16px;font-size:14px}
-.hero .btn.ghost,.thero .btn.small.ghost{background:rgba(255,255,255,.14);color:#fff;box-shadow:none}
-.hero .btn.ghost:hover,.thero .btn.small.ghost:hover{background:rgba(255,255,255,.22);box-shadow:none}
-.thero .btn.small:not(.ghost){background:var(--btn);color:#fff}
-
-/* pills: soft tinted labels */
-.pill{border:0;background:color-mix(in srgb,var(--text) 7%,transparent);font-weight:500;padding:4px 12px}
-.pill.ok{background:var(--okbg)}.pill.warn{background:var(--warnbg)}.pill.bad{background:var(--badbg)}
-.pill.lime{background:var(--btn);color:#fff}.pill.lime::before{background:#fff}
-.thero .pill:not(.lime):not(.ok):not(.warn):not(.bad){background:rgba(255,255,255,.14);border:0}
-
-/* forms */
-input,select,textarea{border-radius:12px;border:1px solid var(--line2);min-height:46px}
-input:focus,select:focus,textarea:focus{border-color:var(--blue);box-shadow:0 0 0 4px color-mix(in srgb,var(--blue) 25%,transparent)}
-label{font-weight:500;color:var(--muted);letter-spacing:-.005em}
-.hsearch{background:#fff;box-shadow:0 0 0 .5px rgba(0,0,0,.1)}.hsearch:focus-within{box-shadow:0 0 0 4px rgba(41,151,255,.45)}
-.psearch{background:var(--seg);border:0}.psearch:focus-within{background:var(--surface);box-shadow:0 0 0 4px color-mix(in srgb,var(--blue) 25%,transparent)}
-.pselects select,.pselects .cs-in{background-color:var(--seg);border:0}
-
-/* tabs and switches: iOS segmented control */
-.tabs{background:var(--seg);border:0;padding:3px;gap:0}
-.tabs a{padding:7px 18px;font-weight:500;font-size:14px;color:var(--text);opacity:.7}
-.tabs a:hover{opacity:1}
-.tabs a.on{background:var(--seg-on);color:var(--text);opacity:1;font-weight:600;box-shadow:0 3px 8px rgba(0,0,0,.12),0 0 0 .5px rgba(0,0,0,.04)}
-.seg{background:var(--seg)}.seg button.on{background:var(--seg-on);color:var(--text);box-shadow:0 3px 8px rgba(0,0,0,.12)}
-.filters>summary{box-shadow:none;background:var(--seg)}.filters[open]>summary{box-shadow:none;color:var(--blue)}
-
-/* tables and lists */
-th{background:transparent;font-weight:500;letter-spacing:0;border-bottom:1px solid var(--line)}
-th,td{padding:14px 20px}
-tbody tr:hover{background:color-mix(in srgb,var(--text) 3.5%,transparent)}
-.card.lt table th:first-child,.card.lt table td:first-child,.card>table:only-child td:first-child,.card>table:only-child th:first-child{padding-inline-start:24px}
-.prows li a:hover,.urow:hover{background:color-mix(in srgb,var(--text) 3.5%,transparent)}
-.dateblk{background:var(--surface2);border:0}
-.mc{border-color:transparent;background:var(--surface2)}.mc.mine{background:color-mix(in srgb,var(--blue) 10%,var(--surface))}
-.tm{border-color:var(--line);border-radius:12px}.tm .me,.tm .w.me{background:color-mix(in srgb,var(--blue) 14%,transparent)}
-.tcol.final>h3 span{background:var(--btn);color:#fff}.tcol.final .tm{border-color:var(--blue);box-shadow:0 2px 10px -2px color-mix(in srgb,var(--blue) 45%,transparent)}
-a.tm:hover{border-color:var(--blue)}
-.steps li{border:0}.steps li.now{background:var(--btn);color:#fff}
-.mh-stats>a,.mh-stats>span:not(.pform){border:0}
-.pav,.pav.img{border:0}
-.plist img,.pavatar-img{border:2px solid var(--surface)}
-.cmark{background:var(--text);color:var(--bg)}
-.comp.open{background:color-mix(in srgb,var(--ok) 9%,var(--surface));border-color:transparent}
-.comp .act{box-shadow:none;background:color-mix(in srgb,var(--text) 7%,transparent)}
-a.comp:hover .act{box-shadow:none;background:color-mix(in srgb,var(--text) 12%,transparent)}
-.comp .act.primary{background:var(--btn);color:#fff}
-.comp.done .act{background:none}
-
-/* home tiles */
-.feat{background:linear-gradient(160deg,#0A84FF,#0058C7);color:#fff;border-radius:28px}
-.feat:hover{transform:scale(1.01);box-shadow:0 24px 48px -16px rgba(0,88,199,.6)}
-.feat small::before{background:#fff}
-.feat .meta,.feat .count .till{color:rgba(255,255,255,.8)}
-.feat .count>span{background:rgba(255,255,255,.16);color:rgba(255,255,255,.85)}
-.feat .count b{color:#fff}
-.bento a{border-color:transparent;border-radius:24px}
-.bento a:hover{transform:scale(1.015);border-color:transparent}
-.bento a.pri{background:#0B0B0D;border-color:transparent}.bento a.pri .n{color:var(--accent-dark)}.bento a.pri small{color:#A1A1A6}
-.bento .n{letter-spacing:-.045em}
-
-/* podium: first place is the black tile */
-.pod{border-color:transparent;border-radius:24px}
-.pod.p1{background:#0B0B0D;color:#F5F5F7}.pod.p1 .n{color:#fff}.pod.p1 .muted,.pod.p1 .pts small{color:#A1A1A6}
-.pod .pph{border-color:var(--surface)}.pod.p1 .pph{border-color:#0B0B0D}
-
-/* floating panels are glass */
-.installhint,.hb-bar,.homesheet,.cs-list{border:0;background:var(--glass);backdrop-filter:saturate(180%) blur(30px);-webkit-backdrop-filter:saturate(180%) blur(30px);box-shadow:0 0 0 .5px var(--glass-line),var(--shadow-lg)}
-.sitefoot{border-top:.5px solid var(--glass-line)}
-
-/* phone: translucent top bar and a full-width iOS tab bar */
-@media(max-width:720px){
-  :root{--head-h:54px}
-  body{padding-top:var(--head-h)}
-  header.top{background:var(--glass);backdrop-filter:saturate(180%) blur(22px);-webkit-backdrop-filter:saturate(180%) blur(22px);top:0;inset-inline:0;padding:4px 14px;border-radius:0;min-height:var(--head-h)}
-  header.top .burger{background:color-mix(in srgb,var(--text) 8%,transparent)}
-  header.top nav.open{top:var(--head-h);inset-inline:0;bottom:0;border:0;border-radius:0;background:var(--glass);backdrop-filter:saturate(180%) blur(30px);-webkit-backdrop-filter:saturate(180%) blur(30px);box-shadow:none;animation:rise .28s var(--ease)}
-  header.top nav.open a,header.top nav.open details.adm summary{font-size:19px;font-weight:600;letter-spacing:-.02em;color:var(--text)}
-  header.top nav.open a.on{background:none;color:var(--blue)}
-  header.top nav.open details.adm>div{background:none;backdrop-filter:none;-webkit-backdrop-filter:none;box-shadow:none}
-  .navscrim{background:rgba(0,0,0,.35)}
-  .hero{padding:36px 24px;border-radius:24px}.hero h1{font-size:42px}.hero p{font-size:17px}
-  .tabbar{inset-inline:0;bottom:0;border-radius:0;border:0;border-top:.5px solid var(--glass-line);padding:6px 6px calc(6px + env(safe-area-inset-bottom));box-shadow:none;background:var(--glass)}
-  .tabbar a{background:none!important;border-radius:10px;font-weight:500}
-  .tabbar a.on{color:var(--blue);font-weight:600}
-  .tabbar a:active{transform:scale(.9)}
-  .installhint{bottom:calc(76px + env(safe-area-inset-bottom))}
-  main{padding-top:20px}
-}
-@media(prefers-reduced-transparency:reduce){
-  header.top,header.top nav.open,details.adm>div,.tabbar,.installhint,.hb-bar,.homesheet,.cs-list{background:var(--surface);backdrop-filter:none;-webkit-backdrop-filter:none}
-}
-@media(prefers-contrast:more){.card{border:1px solid var(--line2)}.pill,.btn.ghost{border:1px solid var(--line2)}}
-header.top a.brand{color:var(--text)}
-.authside .court{opacity:.12}
