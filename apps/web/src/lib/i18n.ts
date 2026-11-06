@@ -38,6 +38,7 @@ const EN: Record<string, string> = {
   // players / clubs / search / stats
   'חיפוש לפי שם': 'Search by name', 'כל המועדונים': 'All clubs', 'מועדון': 'Club', 'מין': 'Gender', 'לא נמצאו שחקנים.': 'No players found.',
   'שחקנים, מועדונים, תחרויות': 'Players, clubs, tournaments', 'כל המועדונים ←': 'All clubs', 'אין מועדונים.': 'No clubs.',
+  'הפסדים': 'Losses', 'עם': 'With', 'לא נמצאו משחקים של השחקן בטורנירים בחו"ל.': 'No matches of this player at tournaments abroad were found.', 'הנתונים נלקחים מהאתר של Tennis Europe.': 'The data comes from the Tennis Europe site.',
   'מובילים בניצחונות': 'Top winners', 'מועדונים גדולים': 'Largest clubs', 'משחקים שהסתיימו': 'Completed matches', 'ניצחונות': 'Wins', 'אחוז': 'Win %',
   'אין עדיין משחקים שהסתיימו.': 'No completed matches yet.',
   'משחקים חיים עכשיו': 'live matches now', 'טיוטה': 'Draft', 'הרשמה פתוחה': 'Registration open', 'הרשמה סגורה': 'Registration closed', 'הוגרל': 'Drawn',

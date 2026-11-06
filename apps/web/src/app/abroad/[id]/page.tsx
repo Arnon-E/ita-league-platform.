@@ -33,11 +33,11 @@ export default async function AbroadEventPage({ params, searchParams }: { params
   const range = `${e.startDate.toLocaleDateString('he-IL', { timeZone: TZ, day: 'numeric', month: 'numeric' })} – ${e.endDate.toLocaleDateString('he-IL', { timeZone: TZ })}`;
   const where = [e.city, t(countryInfo(e.country).he)].filter(Boolean).join(', ');
 
-  // an Israeli player this site knows (the name was linked to a player) opens that player's page, where the matches abroad are listed
+  // an Israeli player opens his page: the site's own when the name was linked to a player, else one built from the Tennis Europe matches of that name
   const seen = [...matches.map((m) => ({ draw: m.draw, sides: [m.a, m.b] })), ...(e.results?.draws ?? []).flatMap((d) => d.rounds.flatMap((r) => r.map((m) => ({ draw: d.name, sides: [m.a, m.b] }))))]
     .flatMap(({ draw, sides }) => { const gender = drawGender(draw); return gender ? sides.flatMap((s) => s.names.filter((_, i) => s.cc[i] === 'ISR').map((name) => ({ name, gender }))) : []; });
   const ids = await playerIdsByName(db, seen).catch(() => new Map<string, string>());
-  const profileOf = (name: string, cc: string | undefined, draw: string) => { const g = drawGender(draw); const id = cc === 'ISR' && g ? ids.get(linkKey(name, g)) : undefined; return id ? `/players/${id}` : undefined; };
+  const profileOf = (name: string, cc: string | undefined, draw: string) => { const g = drawGender(draw); const id = cc === 'ISR' && g ? ids.get(linkKey(name, g)) : undefined; return id ? `/players/${id}` : cc === 'ISR' && g ? `/abroad/player?n=${encodeURIComponent(name)}` : undefined; };
   // a knockout draw as the site's own tree: first round first, each round half the size of the one before (a missing slot is a bye); the Israelis are marked
   const sideOf = (m: DrawMatch, k: 'a' | 'b', draw: string): BracketSide => ({ names: m[k].names, links: m[k].names.map((n, i) => profileOf(n, m[k].cc[i], draw)), flags: m[k].names.map((_, i) => (m[k].cc[i] ? flagUrl(m[k].cc[i]!) : '')), win: m[k].won, me: m[k].cc.includes('ISR'), sets: m.sets.length ? m.sets.map((s, i) => <b key={i}>{s[k === 'a' ? 0 : 1]}</b>) : null });
   // a qualifying draw is several small trees side by side (each ends in one qualifier): the first round holds as many matches as all of them together

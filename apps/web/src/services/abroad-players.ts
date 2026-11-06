@@ -151,24 +151,35 @@ export async function linkNewPlayers(db: Db, seen: SeenPlayer[], now = new Date(
   return stats;
 }
 
-/** The matches abroad of a player we know: [{ event, matches: [{ day, draw, stage, opponent, sets, won }] }], newest event first. */
-export async function abroadResultsOfPlayer(db: Db, playerId: string) {
-  const L = schema.abroadPlayerLinks, E = schema.abroadEvents;
-  const links = await db.select({ key: L.key, name: L.name }).from(L).where(and(eq(L.playerId, playerId), inArray(L.status, ['AUTO', 'CONFIRMED'])));
-  if (!links.length) return [];
-  const mine = new Set(links.map((l) => l.key.split('|')[0]!));
+/** A name as stored in the events' list of Israeli names: the same key as the link table uses, without the gender. */
+export const nameKey = (name: string) => linkKey(name, 'MALE').split('|')[0]!;
+
+/**
+ * The matches abroad of the player(s) behind the given names (keys from nameKey), newest event first: [{ event, matches: [{ day, draw, stage, partner, opponent, sets, won }] }].
+ * Only Israeli names are kept in the events' list, so this works for Israelis (matched to a player of the site or not).
+ */
+export async function abroadResultsOfNames(db: Db, mine: Set<string>) {
+  const E = schema.abroadEvents;
+  if (!mine.size) return [];
   const events = await db.select({ id: E.id, name: E.name, city: E.city, country: E.country, start: E.startDate, end: E.endDate, results: E.results })
     .from(E).where(sql`${E.israeliNames} && array[${sql.join([...mine].map((k) => sql`${k}`), sql`, `)}]::text[]`).orderBy(sql`${E.startDate} desc`).limit(12);
   return events.map((e) => ({
     event: { id: e.id, name: e.name, city: e.city, country: e.country, start: e.start, end: e.end },
     matches: (e.results?.matches ?? []).flatMap((m) => {
-      const own = (s: ResultMatch['a']) => s.names.some((n, i) => (s.cc[i] ?? s.cc[0]) === 'ISR' && mine.has(linkKey(n, 'M').split('|')[0]!));
+      const own = (s: ResultMatch['a']) => s.names.some((n, i) => (s.cc[i] ?? s.cc[0]) === 'ISR' && mine.has(nameKey(n)));
       const a = own(m.a), b = own(m.b);
       if (!a && !b) return [];
       const me = a ? m.a : m.b, opp = a ? m.b : m.a;
-      return [{ day: m.day, draw: m.draw, stage: m.stage, opponent: { names: opp.names, cc: opp.cc }, sets: m.sets.map(([x = 0, y = 0]) => (a ? [x, y] : [y, x])), won: me.won, played: me.won || opp.won }];
+      return [{ day: m.day, draw: m.draw, stage: m.stage, partner: me.names.filter((n) => !mine.has(nameKey(n))), opponent: { names: opp.names, cc: opp.cc }, sets: m.sets.map(([x = 0, y = 0]) => (a ? [x, y] : [y, x])), won: me.won, played: me.won || opp.won }];
     }).sort((x, y) => y.day.localeCompare(x.day)),
   })).filter((e) => e.matches.length);
+}
+
+/** The matches abroad of a player we know (by the names linked to him). */
+export async function abroadResultsOfPlayer(db: Db, playerId: string) {
+  const L = schema.abroadPlayerLinks;
+  const links = await db.select({ key: L.key }).from(L).where(and(eq(L.playerId, playerId), inArray(L.status, ['AUTO', 'CONFIRMED'])));
+  return abroadResultsOfNames(db, new Set(links.map((l) => l.key.split('|')[0]!)));
 }
 
 // ---- the federation's review of the names the automatic pass could not settle
