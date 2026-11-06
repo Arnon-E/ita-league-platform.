@@ -17,7 +17,7 @@ describe('registered players from Loglig rosters', () => {
     expect(parseCategoryTitle('זוגות בנות 12')).toEqual({ gender: 'FEMALE', age: 12, qualifying: false });
 
     const rule = await ensureDefaultRuleSet(db);
-    const [t] = await db.insert(schema.tournaments).values({ name: "סבב זוגות מס' 2 2026", startDate: new Date('2026-10-16T00:00:00Z'), endDate: new Date('2026-10-26T23:59:59Z'), status: 'REGISTRATION_CLOSED', feeAgorot: 18000, ruleSetId: rule.id, section: 'YOUTH' }).returning();
+    const [t] = await db.insert(schema.tournaments).values({ name: "סבב זוגות מס' 2 2026", startDate: new Date(Date.now() - 3 * 864e5), endDate: new Date(Date.now() + 7 * 864e5), status: 'REGISTRATION_CLOSED', feeAgorot: 18000, ruleSetId: rule.id, section: 'YOUTH' }).returning();
     const [c12] = await db.insert(schema.categories).values({ tournamentId: t!.id, name: 'זוגות בנים 12', gender: 'MALE', minBirthYear: 2014, format: 'KNOCKOUT' }).returning();
     // a player the federation's ranking data already knows (same name, born 2014) and one it does not
     const [known] = await db.insert(schema.players).values({ firstName: 'דניאל', lastName: 'ארז', gender: 'MALE', birthDate: new Date(Date.UTC(2014, 6, 1)), logligId: 'rk:MALE:2014:דניאל ארז' }).returning();
