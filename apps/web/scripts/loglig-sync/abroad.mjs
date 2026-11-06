@@ -90,11 +90,25 @@ export function parseDrawContent(html) {
     }).filter(Boolean)).filter((round) => round.length);
 }
 
+const nameKey = (n) => n.toUpperCase().replace(/[^\p{L}]+/gu, ' ').trim();
+
+/** Names of the Israelis of an event (normalized): its acceptance list plus the sides of the matches already read as Israeli. */
+export async function israeliNames(ts, id, matches = []) {
+  const out = new Set();
+  for (const m of matches) for (const side of [m.a, m.b]) if (side.cc.includes('ISR')) for (const n of side.names) out.add(nameKey(n));
+  try { for (const a of await readAcceptance(ts, id)) for (const p of a.players) if (/israel/i.test(p.nation)) out.add(nameKey(cleanPlayer(p.name))); } catch { /* no list yet */ }
+  return out;
+}
+
+/** A day before the start is still part of the event: qualifying is played ahead of the main draw's date. */
+const QUALIFYING_LEAD = 3 * 864e5;
+const withLead = (start) => new Date(Date.parse(start) - QUALIFYING_LEAD).toISOString().slice(0, 10);
+
 /**
  * The draws of an event in which an Israeli player is: [{ n, name, kind: 'KO' | 'RR', rounds }] (a group's rounds are its round robin days; its table is worked out
  * from the matches on the page).
  */
-export async function readEventDraws(ts, id) {
+export async function readEventDraws(ts, id, israeli = new Set()) {
   const list = await ts.get(`/sport/draws.aspx?id=${id}`);
   const links = [...list.matchAll(/href="draw\.aspx\?id=[^"]*&(?:amp;)?draw=(\d+)"[^>]*>([\s\S]*?)<\/a>/g)].map((m) => ({ n: Number(m[1]), name: text(m[2]) }));
   if (!links.length) return [];
@@ -104,6 +118,8 @@ export async function readEventDraws(ts, id) {
   for (const l of links) {
     const html = await ts.get(`/tournament/${id.toLowerCase()}/Draw/${l.n}/GetDrawContent?tabindex=1`, { method: 'POST', headers: { 'x-requested-with': 'XMLHttpRequest', 'content-type': 'application/x-www-form-urlencoded' }, body: '' });
     const rounds = parseDrawContent(html);
+    // some events publish no nationality in the trees (a draw of an event held in Israel): the Israelis are then told by name, from the acceptance list and the matches
+    for (const round of rounds) for (const m of round) for (const row of [m.a, m.b]) if (!row.cc.length && row.names.length && row.names.every((n) => israeli.has(nameKey(n)))) row.cc = row.names.map(() => 'ISR');
     if (rounds.some((round) => round.some((m) => [...m.a.cc, ...m.b.cc].includes('ISR')))) out.push({ n: l.n, name: l.name, kind: /round robin/i.test(types.get(l.name) ?? '') ? 'RR' : 'KO', rounds });
   }
   return out;
@@ -161,16 +177,16 @@ async function sendResults(events, base, secret, { liveOnly = false } = {}) {
   const ts = session(TE);
   const today = new Date().toISOString().slice(0, 10);
   const yesterday = new Date(Date.now() - 864e5).toISOString().slice(0, 10);
-  const wanted = events.filter((e) => e.start <= today && (liveOnly ? e.end >= today : e.end >= new Date(Date.now() - 7 * 864e5).toISOString().slice(0, 10)));
+  const wanted = events.filter((e) => withLead(e.start) <= today && (liveOnly ? e.end >= today : e.end >= new Date(Date.now() - 7 * 864e5).toISOString().slice(0, 10)));
   const out = [];
   for (const e of wanted) {
     try {
       // the hourly refresh reads only today and yesterday of the days the event runs; the daily one reads them all
-      const only = liveOnly ? [yesterday, today].filter((d) => d >= e.start && d <= e.end).map((d) => d.replace(/-/g, '')) : undefined;
+      const only = liveOnly ? [yesterday, today].filter((d) => d >= withLead(e.start) && d <= e.end).map((d) => d.replace(/-/g, '')) : undefined;
       const r = await readIsraeliMatches(ts, e.id, only);
       if (r.matches.length) {
         // the trees of the draws the Israelis are in (one failing page must not lose the matches)
-        try { r.draws = await readEventDraws(ts, e.id); } catch (err) { console.log(`  draws failed for ${e.name}: ${String(err.message).slice(0, 60)}`); }
+        try { r.draws = await readEventDraws(ts, e.id, await israeliNames(ts, e.id, r.matches)); } catch (err) { console.log(`  draws failed for ${e.name}: ${String(err.message).slice(0, 60)}`); }
         out.push(r);
       }
     } catch (err) { console.log(`  results failed for ${e.name}: ${String(err.message).slice(0, 60)}`); }
@@ -202,11 +218,11 @@ async function liveRefresh(ts, events, state, base, secret, force = false) {
       looked++;
       state.events[e.id] = { ...known, name: e.name, start: e.start, end: e.end };
       if (!force && changed && changed === known.changed) continue; // nothing was saved since the last look
-      const days = [yesterday, today, tomorrow].filter((d) => d >= e.start && d <= e.end).map((d) => d.replace(/-/g, ''));
+      const days = [yesterday, today, tomorrow].filter((d) => d >= withLead(e.start) && d <= e.end).map((d) => d.replace(/-/g, ''));
       const r = await readIsraeliMatches(ts, e.id, days);
       // the draws come out before the first match: an event with Israeli players in a draw is worth showing from then on
       let draws = [];
-      try { draws = await readEventDraws(ts, e.id); } catch (err) { console.log(`  draws failed for ${e.name}: ${String(err.message).slice(0, 60)}`); }
+      try { draws = await readEventDraws(ts, e.id, await israeliNames(ts, e.id, r.matches)); } catch (err) { console.log(`  draws failed for ${e.name}: ${String(err.message).slice(0, 60)}`); }
       state.events[e.id].changed = changed;
       state.events[e.id].israelis = known.israelis || r.matches.length > 0 || draws.length > 0;
       if (!r.matches.length && !draws.length) continue;
