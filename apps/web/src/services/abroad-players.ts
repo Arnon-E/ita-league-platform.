@@ -217,6 +217,18 @@ export async function acceptedWithLinks(db: Db, acceptance: { label: string; act
   });
 }
 
+/** The gender a draw's name ("BD12 - ...", "GS14") tells; null for mixed or unknown draws. */
+export const drawGender = (draw: string): 'MALE' | 'FEMALE' | null => { const g = /^([BG])[SD]/.exec(draw.trim())?.[1]; return g ? (g === 'G' ? 'FEMALE' : 'MALE') : null; };
+
+/** The players of this site behind the given Latin names ('AUTO' or 'CONFIRMED' links only): linkKey(name, gender) -> player id. One small read of the links. */
+export async function playerIdsByName(db: Db, seen: { name: string; gender: 'MALE' | 'FEMALE' }[]): Promise<Map<string, string>> {
+  const keys = [...new Set(seen.map((s) => linkKey(s.name, s.gender)))];
+  if (!keys.length) return new Map();
+  const L = schema.abroadPlayerLinks;
+  const rows = await db.select({ key: L.key, playerId: L.playerId }).from(L).where(and(inArray(L.key, keys), inArray(L.status, ['AUTO', 'CONFIRMED'])));
+  return new Map(rows.filter((r): r is { key: string; playerId: string } => !!r.playerId).map((r) => [r.key, r.playerId]));
+}
+
 /** Tournaments abroad that have not ended and to which a player of this site is accepted: [{ id, name, city, country, start, end, label }]. */
 export async function abroadUpcomingOfPlayer(db: Db, playerId: string) {
   const L = schema.abroadPlayerLinks, E = schema.abroadEvents;

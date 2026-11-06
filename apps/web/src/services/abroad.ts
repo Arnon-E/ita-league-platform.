@@ -132,7 +132,7 @@ export function validateAbroadResults(x: unknown): AbroadResultsIn {
       });
     }
     // the knockout trees of the draws that have an Israeli player: a handful of rounds of at most 64 matches
-    const draws: ResultDraw[] = (Array.isArray((r as { draws?: unknown }).draws) ? (r as { draws: ResultDraw[] }).draws : []).slice(0, 12).map((d) => ({
+    const draws: ResultDraw[] = (Array.isArray((r as { draws?: unknown }).draws) ? (r as { draws: ResultDraw[] }).draws : []).slice(0, 40).map((d) => ({
       n: Math.max(0, Math.floor(Number(d?.n)) || 0), name: clean(d?.name, 80), kind: (d as { kind?: unknown })?.kind === 'RR' ? 'RR' as const : 'KO' as const,
       rounds: (Array.isArray(d?.rounds) ? d.rounds : []).slice(0, 8).map((round) => (Array.isArray(round) ? round : []).slice(0, 64).map((m) => {
         const s1 = side(m?.a), s2 = side(m?.b);

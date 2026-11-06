@@ -10,7 +10,7 @@ import { MatchScore } from '@/components/MatchScore';
 import { tr } from '@/lib/i18n';
 import { countryInfo } from '@/lib/countries';
 import { abroadEvent, groupTable, phaseOf, type DrawMatch } from '@/services/abroad';
-import { acceptedWithLinks } from '@/services/abroad-players';
+import { acceptedWithLinks, drawGender, linkKey, playerIdsByName } from '@/services/abroad-players';
 import { catOf, catsPresent, drawActive, matchPending, pickCategory, pickTab, sortDraws, type AbroadCat, type AbroadTab } from '@/services/abroad-view';
 
 export const dynamic = 'force-dynamic';
@@ -33,15 +33,20 @@ export default async function AbroadEventPage({ params, searchParams }: { params
   const range = `${e.startDate.toLocaleDateString('he-IL', { timeZone: TZ, day: 'numeric', month: 'numeric' })} – ${e.endDate.toLocaleDateString('he-IL', { timeZone: TZ })}`;
   const where = [e.city, t(countryInfo(e.country).he)].filter(Boolean).join(', ');
 
+  // an Israeli player this site knows (the name was linked to a player) opens that player's page, where the matches abroad are listed
+  const seen = [...matches.map((m) => ({ draw: m.draw, sides: [m.a, m.b] })), ...(e.results?.draws ?? []).flatMap((d) => d.rounds.flatMap((r) => r.map((m) => ({ draw: d.name, sides: [m.a, m.b] }))))]
+    .flatMap(({ draw, sides }) => { const gender = drawGender(draw); return gender ? sides.flatMap((s) => s.names.filter((_, i) => s.cc[i] === 'ISR').map((name) => ({ name, gender }))) : []; });
+  const ids = await playerIdsByName(db, seen).catch(() => new Map<string, string>());
+  const profileOf = (name: string, cc: string | undefined, draw: string) => { const g = drawGender(draw); const id = cc === 'ISR' && g ? ids.get(linkKey(name, g)) : undefined; return id ? `/players/${id}` : undefined; };
   // a knockout draw as the site's own tree: first round first, each round half the size of the one before (a missing slot is a bye); the Israelis are marked
-  const sideOf = (m: DrawMatch, k: 'a' | 'b'): BracketSide => ({ names: m[k].names, flags: m[k].names.map((_, i) => (m[k].cc[i] ? flagUrl(m[k].cc[i]!) : '')), win: m[k].won, me: m[k].cc.includes('ISR'), sets: m.sets.length ? m.sets.map((s, i) => <b key={i}>{s[k === 'a' ? 0 : 1]}</b>) : null });
+  const sideOf = (m: DrawMatch, k: 'a' | 'b', draw: string): BracketSide => ({ names: m[k].names, links: m[k].names.map((n, i) => profileOf(n, m[k].cc[i], draw)), flags: m[k].names.map((_, i) => (m[k].cc[i] ? flagUrl(m[k].cc[i]!) : '')), win: m[k].won, me: m[k].cc.includes('ISR'), sets: m.sets.length ? m.sets.map((s, i) => <b key={i}>{s[k === 'a' ? 0 : 1]}</b>) : null });
   // a qualifying draw is several small trees side by side (each ends in one qualifier): the first round holds as many matches as all of them together
-  const treesOf = (rounds: DrawMatch[][]) => {
+  const treesOf = (rounds: DrawMatch[][], draw: string) => {
     const size = 2 ** (rounds.length - 1);
     const n = Math.max(1, Math.ceil((rounds[0]?.length ?? 0) / size));
     return Array.from({ length: n }, (_, i) => rounds.map((round, k): (BracketCell | null)[] => {
       const want = 2 ** (rounds.length - 1 - k);
-      return Array.from({ length: want }, (_, j) => { const m = round[i * want + j]; return m ? { a: sideOf(m, 'a'), b: sideOf(m, 'b'), meta: dateOf(m.date) || undefined } : null; });
+      return Array.from({ length: want }, (_, j) => { const m = round[i * want + j]; return m ? { a: sideOf(m, 'a', draw), b: sideOf(m, 'b', draw), meta: dateOf(m.date) || undefined } : null; });
     }));
   };
   const dateOf = (d: string) => d.replace(/^[A-Za-z]{3}\s+/, '').replace(/\//g, '.');
@@ -49,7 +54,7 @@ export default async function AbroadEventPage({ params, searchParams }: { params
   const accepted = e.acceptance?.length ? await acceptedWithLinks(db, e.acceptance).catch(() => []) : [];
 
   // the names of one side as the site's match card shows them: the flag in front of each name (a pair has two)
-  const namesOf = (x: { names: string[]; cc: string[] }) => x.names.map((n, i) => <span key={i} dir="ltr" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>{x.cc[i] && <img src={flagUrl(x.cc[i]!)} width={18} height={13} alt={x.cc[i]} style={{ borderRadius: 2, boxShadow: '0 0 0 1px var(--line)' }} />}{n}</span>);
+  const namesOf = (x: { names: string[]; cc: string[] }, draw: string) => x.names.map((n, i) => <span key={i} dir="ltr" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>{x.cc[i] && <img src={flagUrl(x.cc[i]!)} width={18} height={13} alt={x.cc[i]} style={{ borderRadius: 2, boxShadow: '0 0 0 1px var(--line)' }} />}{profileOf(n, x.cc[i], draw) ? <Link href={profileOf(n, x.cc[i], draw)!}><u>{n}</u></Link> : n}</span>);
   const statusOf = (m: { sets: unknown[]; a: { msg?: string; won: boolean }; b: { msg?: string; won: boolean } }) => (/walkover/i.test((m.a.msg ?? '') + (m.b.msg ?? '')) ? 'WALKOVER' : /retire/i.test((m.a.msg ?? '') + (m.b.msg ?? '')) ? 'RETIRED' : m.sets.length || m.a.won || m.b.won ? 'COMPLETED' : 'SCHEDULED');
 
   // one category at a time (boys, girls, doubles), and within it one of: the matches, the draws, who is registered
@@ -119,7 +124,7 @@ export default async function AbroadEventPage({ params, searchParams }: { params
               <div className="grid cols">
                 {catMatches.filter((m) => m.day === d).map((m, i) => (
                   <div key={`${d}-${i}`} className="card">
-                    <MatchScore aName={namesOf(m.a)} bName={namesOf(m.b)} sets={m.sets.map(([x, y]) => ({ a: x ?? 0, b: y ?? 0 }))} status={statusOf(m)} winner={m.a.won ? 'a' : m.b.won ? 'b' : null} mine={m.a.cc.includes('ISR') ? 'a' : m.b.cc.includes('ISR') ? 'b' : undefined}
+                    <MatchScore aName={namesOf(m.a, m.draw)} bName={namesOf(m.b, m.draw)} sets={m.sets.map(([x, y]) => ({ a: x ?? 0, b: y ?? 0 }))} status={statusOf(m)} winner={m.a.won ? 'a' : m.b.won ? 'b' : null} mine={m.a.cc.includes('ISR') ? 'a' : m.b.cc.includes('ISR') ? 'b' : undefined}
                       caption={<span dir="ltr">{m.draw}{m.stage ? ` · ${m.stage}` : ''}</span>} when={[m.time, m.court].filter(Boolean).join(' · ') || undefined} />
                   </div>
                 ))}
@@ -155,7 +160,7 @@ export default async function AbroadEventPage({ params, searchParams }: { params
                       <div className="grid cols">
                         {round.filter((m) => m.a.names.length && m.b.names.length).map((m, j) => (
                           <div key={j} className="card">
-                            <MatchScore aName={namesOf(m.a)} bName={namesOf(m.b)} sets={m.sets.map(([x, y]) => ({ a: x ?? 0, b: y ?? 0 }))} status={statusOf(m)} winner={m.a.won ? 'a' : m.b.won ? 'b' : null} mine={m.a.cc.includes('ISR') ? 'a' : m.b.cc.includes('ISR') ? 'b' : undefined}
+                            <MatchScore aName={namesOf(m.a, d.name)} bName={namesOf(m.b, d.name)} sets={m.sets.map(([x, y]) => ({ a: x ?? 0, b: y ?? 0 }))} status={statusOf(m)} winner={m.a.won ? 'a' : m.b.won ? 'b' : null} mine={m.a.cc.includes('ISR') ? 'a' : m.b.cc.includes('ISR') ? 'b' : undefined}
                               caption={<span dir="ltr">{d.name} · {t('סיבוב')} {k + 1}</span>} when={dateOf(m.date) || undefined} />
                           </div>
                         ))}
@@ -164,7 +169,7 @@ export default async function AbroadEventPage({ params, searchParams }: { params
                   ))}
                 </div>
               ) : (
-                (() => { const trees = treesOf(d.rounds); return trees.map((cols, i) => (
+                (() => { const trees = treesOf(d.rounds, d.name); return trees.map((cols, i) => (
                   <div key={i} style={{ marginBottom: 14 }}>
                     {trees.length > 1 && <strong className="muted">{t('עץ')} {i + 1}</strong>}
                     <BracketView cols={cols} tt={t} pending={t('טרם נקבע')} />
