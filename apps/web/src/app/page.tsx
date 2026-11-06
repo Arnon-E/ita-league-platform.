@@ -13,7 +13,7 @@ import { InfiniteCards } from '@/components/InfiniteCards';
 import { Court } from '@/components/Brand';
 import { Fold } from '@/components/Fold';
 import { myHome, myPlayersForRelevance } from '@/services/home';
-import { homeCounts, sectionOfBirthYear } from '@/services/public';
+import { sectionOfBirthYear } from '@/services/public';
 import { MyHome } from '@/components/MyHome';
 import { HomeCustomize, type HomeItem } from '@/components/HomeCustomize';
 import { relevantFor } from '@/services/eligibility';
@@ -31,7 +31,7 @@ const stGroup = (x: { status: string; endDate: Date }) =>
 export default async function Home({ searchParams }: { searchParams: Promise<{ level?: string; season?: string; q?: string; g?: string; age?: string; st?: string; sec?: string; rel?: string }> }) {
   const t = await tr();
   const { level = '', season = '', q = '', g = '', age = '', st = '', sec = '', rel = '' } = await searchParams;
-  const [allTs, actor, counts] = await Promise.all([homeCatalog(db), getActor(), homeCounts(db)]);
+  const [allTs, actor] = await Promise.all([homeCatalog(db), getActor()]);
   // people who run tournaments manage rather than register; they also get to see (and restore) cancelled ones
   const staff = !!actor && can(actor, 'tournament.create');
   // drafts are still being prepared, and a cancelled competition nobody had entered is not history worth showing: the public sees neither
@@ -86,7 +86,8 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ l
   const href = (o: { st?: string }) => `/?${new URLSearchParams({ level, season, q, g, age, sec: sec || secKey, st: o.st ?? st }).toString()}`;
   const secHref = (k: string) => `/?${new URLSearchParams({ level, season, q, g, age, sec: k, st }).toString()}#list`;
   const openCount = visibleTs.filter((x) => x.status === 'REGISTRATION_OPEN').length;
-  const c = (counts as unknown as { players: number; clubs: number; live: number }[])[0]!;
+  // a signed-in player (or the parent of one) with a ranking sees their own place instead of the generic ranking card
+  const myRank = home && 'people' in home ? home.people.find((x) => x.rank) : undefined;
   const customItems: HomeItem[] = [
     { key: 'hero', label: t('כותרת וחיפוש'), group: 'blocks' },
     ...(home ? [{ key: 'mine', label: t('הדף שלי'), group: 'blocks' as const }] : []),
@@ -130,9 +131,11 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ l
         {staff
           ? <Link data-hb="c-reg" href="/tournaments/new" className="pri"><span className="n">+</span><b>{t('תחרות חדשה')}</b><small>{openCount ? `${openCount} ${t('פתוחות להרשמה')}` : t('יצירת תחרות')}</small></Link>
           : <Link data-hb="c-reg" href="/?st=open#list" className="pri"><span className="n">{openCount}</span><b>{t('להירשם לתחרות')}</b><small>{openCount ? t('פתוחות עכשיו') : t('אין כרגע הרשמה פתוחה')}</small></Link>}
-        <Link data-hb="c-live" href="/live"><span className="n">{c.live}</span><b>{t('משחקים ותוצאות')}</b><small>{c.live ? t('משחקים חיים עכשיו') : t('לוחות ותוצאות')}</small></Link>
-        <Link data-hb="c-rank" href="/rankings"><span className="n">{c.players.toLocaleString('he-IL')}</span><b>{t('דירוג')}</b><small>{t('שחקנים רשומים')}</small></Link>
-        <Link data-hb="c-clubs" href="/clubs"><span className="n">{c.clubs.toLocaleString('he-IL')}</span><b>{t('מועדונים')}</b><small>{t('מועדונים עם שחקנים')}</small></Link>
+        <Link data-hb="c-live" href="/live"><i className="ic" aria-hidden><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M3 12h18M12 4v16" /></svg></i><b>{t('משחקים ותוצאות')}</b><small>{t('לוחות ותוצאות')}</small></Link>
+        {myRank
+          ? <Link data-hb="c-rank" href={`/players/${myRank.id}`}><span className="n">#{myRank.rank}</span><b>{t('הדירוג שלי')}</b><small>{myRank.name}</small></Link>
+          : <Link data-hb="c-rank" href="/rankings"><i className="ic" aria-hidden><svg viewBox="0 0 24 24"><path d="M6 20V10M12 20V4M18 20v-7" /></svg></i><b>{t('דירוג ארצי')}</b><small>{t('לפי גיל ומין')}</small></Link>}
+        <Link data-hb="c-clubs" href="/clubs"><i className="ic" aria-hidden><svg viewBox="0 0 24 24"><path d="M3 11l9-7 9 7M5 10v10h14V10" /></svg></i><b>{t('מצאו מועדון')}</b><small>{t('לפי עיר')}</small></Link>
         {abroadAll.length > 0 && <Link data-hb="c-abroad" className="wide" href="/abroad?st=open"><span className="n">{abroadCanEnter}</span><b>{t('תחרויות חו"ל')}</b><small>{abroadCanEnter ? t('אפשר להירשם עכשיו') : t('אין כרגע הרשמה פתוחה')}</small></Link>}
       </nav>
       {home && <div data-hb="mine"><MyHome home={home} t={t} /></div>}
