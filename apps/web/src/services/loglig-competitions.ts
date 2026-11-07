@@ -173,9 +173,13 @@ export async function importCompetition(db: Db, input: CompetitionIn, now = new 
     // the same event: same name and start, else the same event under the other site's title on overlapping dates
     // (or an older import that took Loglig's empty 1753 date as its start); the existing name is kept
     const day = 864e5;
+    // a Tennis Europe event is told by its page: its title and week change (an organizer renames it or moves it a week), the page stays
+    const teUrl = /te\.tournamentsoftware\.com/.test(input.sourceUrl ?? '') ? input.sourceUrl! : null;
     const near = await tx.select().from(schema.tournaments).where(sql`(${schema.tournaments.startDate} <= ${new Date(end.getTime() + day).toISOString()}::timestamptz and ${schema.tournaments.endDate} >= ${new Date(start.getTime() - day).toISOString()}::timestamptz)
-      or (${schema.tournaments.name} = ${input.name} and ${schema.tournaments.startDate} < ${new Date(REAL_FROM).toISOString()}::timestamptz)`);
-    const existing = near.find((t) => t.name === input.name && +t.startDate === +start)
+      or (${schema.tournaments.name} = ${input.name} and ${schema.tournaments.startDate} < ${new Date(REAL_FROM).toISOString()}::timestamptz)
+      ${teUrl ? sql`or ${schema.tournaments.sourceUrl} = ${teUrl}` : sql``}`);
+    const sameTePage = teUrl ? near.find((t) => t.sourceUrl === teUrl) : undefined;
+    const existing = sameTePage ?? near.find((t) => t.name === input.name && +t.startDate === +start)
       ?? near.filter((t) => t.name === input.name || sameEvent(t.name, input.name)).sort((x, y) => Number(!!y.sourceUrl) - Number(!!x.sourceUrl))[0];
     const fields = {
       endDate: end, status: status as 'FINISHED', level: input.level, section: input.section ?? 'YOUTH', feeAgorot: Math.round(input.feeShekel * 100), venueId,
@@ -194,7 +198,7 @@ export async function importCompetition(db: Db, input: CompetitionIn, now = new 
       const planned = existing.status === 'PLANNED';
       // Tennis Europe is the authority on its own events' dates (an organizer moves a week): the start follows it; other sources keep the start the competition was created with
       const moved = /te\.tournamentsoftware\.com/.test(input.sourceUrl ?? '') && +existing.startDate !== +start;
-      await tx.update(schema.tournaments).set({ ...fields, ...(planned ? { name: input.name, startDate: start } : {}), ...(moved ? { startDate: start } : {}), ...(+existing.startDate < REAL_FROM ? { startDate: start } : {}) }).where(eq(schema.tournaments.id, tid)); }
+      await tx.update(schema.tournaments).set({ ...fields, ...(planned ? { name: input.name, startDate: start } : {}), ...(sameTePage ? { name: input.name } : {}), ...(moved ? { startDate: start } : {}), ...(+existing.startDate < REAL_FROM ? { startDate: start } : {}) }).where(eq(schema.tournaments.id, tid)); }
     else {
       tid = (await tx.insert(schema.tournaments).values({
         name: input.name, startDate: start, ruleSetId: rule.id, format: input.categories.some((c) => c.format === 'GROUPS_KNOCKOUT') ? 'GROUPS_KNOCKOUT' : 'KNOCKOUT', ...fields,
@@ -507,8 +511,11 @@ export async function dedupeMirror(db: Db) {
   for (const t of [...ts].sort(newest)) {
     if (gone.has(t.id)) continue;
     for (const o of ts) {
-      if (o.id === t.id || gone.has(o.id) || !sameEvent(o.name, t.name)) continue;
-      if (at(o.start_date) > at(t.end_date) + 864e5 || at(o.end_date) < at(t.start_date) - 864e5) continue;
+      if (o.id === t.id || gone.has(o.id)) continue;
+      // one Tennis Europe page is one event, whatever titles and weeks it went by
+      const samePage = !!t.source_url && t.source_url === o.source_url && /te\.tournamentsoftware\.com/.test(t.source_url);
+      if (!samePage && !sameEvent(o.name, t.name)) continue;
+      if (!samePage && (at(o.start_date) > at(t.end_date) + 864e5 || at(o.end_date) < at(t.start_date) - 864e5)) continue;
       gone.add(o.id);
     }
   }

@@ -308,6 +308,23 @@ describe('loglig competition mirror', () => {
     expect((await db.select().from(schema.players).where(eq(schema.players.lastName, 'ארזי'))).length).toBe(1); // players with matches stay
   });
 
+  it('a Tennis Europe event renamed or moved by its organizer stays one competition (told by its page), and cleanup merges old copies', async () => {
+    const url = 'https://te.tournamentsoftware.com/tournament/aaaaaaaa-0000-0000-0000-000000000001';
+    const te = (name: string, start: string, end: string) => validateCompetitionImport({ kind: 'competition', name, start, end, feeShekel: 0, level: 'INTERNATIONAL', sourceUrl: url, venues: [], categories: [] });
+    const now = new Date('2026-11-01');
+    await importCompetition(db, te('Tennis Europe U14 תל אביב', '2026-11-09', '2026-11-15'), now);
+    await importCompetition(db, te('Tennis Europe יפו', '2026-11-07', '2026-11-14'), now);
+    const rows = await db.select().from(schema.tournaments).where(eq(schema.tournaments.sourceUrl, url));
+    expect(rows.map((r) => r.name)).toEqual(['Tennis Europe יפו']);
+    expect(rows[0]!.startDate.toISOString().slice(0, 10)).toBe('2026-11-07');
+    // copies an older import left behind under other titles: merged into one
+    const rule = (await db.select().from(schema.ruleSets))[0]!;
+    await db.insert(schema.tournaments).values({ name: 'Tennis Europe U14 יפו', startDate: new Date('2026-11-07T00:00:00Z'), endDate: new Date('2026-11-14T20:59:59Z'), ruleSetId: rule.id, status: 'REGISTRATION_CLOSED', sourceUrl: url });
+    await dedupeMirror(db);
+    expect(await db.select().from(schema.tournaments).where(eq(schema.tournaments.sourceUrl, url))).toHaveLength(1);
+    await db.delete(schema.tournaments).where(eq(schema.tournaments.sourceUrl, url));
+  });
+
   it("cleanup gives players created from Loglig's 1753 date a real estimated birth year", async () => {
     const rule = (await db.select().from(schema.ruleSets))[0]!;
     const [t] = await db.insert(schema.tournaments).values({ name: 'סבב לידה', startDate: new Date('2023-07-03T00:00:00Z'), endDate: new Date('2023-07-05T00:00:00Z'), ruleSetId: rule.id, section: 'YOUTH' }).returning();
