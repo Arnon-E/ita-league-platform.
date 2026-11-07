@@ -87,7 +87,7 @@ export default async function Abroad({ searchParams }: { searchParams: Promise<Q
             const phase = phaseOf(e, now);
             const deadline = phase === 'live' ? `${t('עד')} ${dy(e.end)}` : phase === 'done' ? `${t('הסתיים')} ${dy(e.end)}` : state === 'open' && e.entryDeadline ? `${t('הרשמה עד')} ${dt(e.entryDeadline)}` : state === 'soon' && e.entryOpens ? `${t('ההרשמה נפתחת')} ${dm(e.entryOpens)}` : state === 'closed' ? t('ההרשמה נסגרה') : '';
             const place = [e.city, t(countryInfo(e.country).he)].filter(Boolean).join(', ');
-            const terms = [e.fee && `${t('דמי השתתפות')}: ${e.fee}`, e.hospitality && `${t('אירוח')}: ${e.hospitality}`].filter(Boolean).join(' · ');
+            const terms = [e.fee && `${t('דמי השתתפות')}: ${e.fee}`].filter(Boolean).join(' · ');
             return (
               <a key={e.id} href={phase === 'up' && e.registered === 0 ? e.url : `/abroad/${e.id}`} {...(phase === 'up' && e.registered === 0 ? { target: '_blank', rel: 'noopener noreferrer' } : {})} className={`card grid comp ${phase === 'live' ? 'live' : phase === 'done' ? 'done' : state === 'open' ? 'open' : state === 'closed' ? 'done' : 'soon'}`} style={{ gap: 8 }}>
                 <span className="top">
