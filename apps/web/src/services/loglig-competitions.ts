@@ -155,11 +155,12 @@ export async function importCompetition(db: Db, input: CompetitionIn, now = new 
   const drawn = input.categories.some((c) => c.matches.length) || !!input.doubles?.some((c) => c.matches.length);
   const closes = input.registrationCloses ? new Date(input.registrationCloses) : null;
   // "in progress" needs something still to play (or just played): the end date alone can be stretched by one mistyped match date,
-  // and a competition whose remaining matches all lie in the past is over
+  // and a competition whose remaining matches all lie in the past is over.
+  // A Tennis Europe event carries no matches here (its draws are on its own page): it is under way from its first day to its last
   const dayAgo = now.getTime() - 864e5, dayAhead = now.getTime() + 864e5;
   const everyMatch = [...input.categories.flatMap((c) => c.matches), ...(input.doubles ?? []).flatMap((c) => c.matches)];
   const active = everyMatch.some((m) => { const at = Date.parse(m.start); return m.done ? at >= dayAgo && at <= dayAhead : at >= dayAgo; });
-  const status = end < now ? 'FINISHED' : !drawn ? (closes && closes > now ? 'REGISTRATION_OPEN' : 'REGISTRATION_CLOSED') : start > now ? 'DRAWN' : active ? 'IN_PROGRESS' : 'FINISHED';
+  const status = end < now ? 'FINISHED' : !drawn ? (closes && closes > now ? 'REGISTRATION_OPEN' : start <= now && /te\.tournamentsoftware\.com/.test(input.sourceUrl ?? '') ? 'IN_PROGRESS' : 'REGISTRATION_CLOSED') : start > now ? 'DRAWN' : active ? 'IN_PROGRESS' : 'FINISHED';
   const stats = { tournament: input.name, categories: 0, players: 0, newPlayers: 0, matches: 0, doubles: 0, unresolved: 0, skipped: false };
 
   await (db as unknown as { transaction: <T>(f: (tx: Db) => Promise<T>) => Promise<T> }).transaction(async (tx) => {
@@ -615,9 +616,9 @@ export function validateCalendarImport(x: unknown): CalendarIn {
 const GENERIC_WORDS = new Set(['ארצית', 'אזורית', 'אליפות', 'ישראל', 'לנוער', 'תחרות', 'לאומית', 'מוקדמות', 'בית', 'גמר', 'סבב', 'זוגות', 'ליגות', 'מחזור', 'מאסטרס', 'פסטיבל', 'גילאי', 'לבוגרים', 'itf', 'tennis', 'europe']);
 const distinctive = (name: string) => new Set(squeeze(name).split(' ').filter((w) => w.length >= 3 && !/^\d+$/.test(w) && !GENERIC_WORDS.has(w)));
 const DAY = 864e5;
-/** The Gantt's "Tennis Europe U14" week and the tournament Tennis Europe lists for that week ("TE 14 - HAIFA", or our name for it): the same week. */
+/** The Gantt's "Tennis Europe U14" week and the tournament Tennis Europe lists for that week ("TE 14 - HAIFA", or our name for it): the same week (the organizer may have moved it a couple of days off the Gantt; consecutive weeks are 7 days apart). */
 const sameTennisEuropeWeek = (r: { name: string; start: Date; end: Date }, e: CalendarEventIn) =>
-  /^(tennis europe|itf)/i.test(e.name) && /^(te\b|tennis europe|itf)/i.test(r.name) && (/^itf/i.test(e.name) === /^itf/i.test(r.name)) && Math.abs(+r.start - Date.parse(`${e.start}T00:00:00Z`)) <= DAY && Math.abs(+r.end - Date.parse(`${e.end}T20:59:59Z`)) <= 2 * DAY;
+  /^(tennis europe|itf)/i.test(e.name) && /^(te\b|tennis europe|itf)/i.test(r.name) && (/^itf/i.test(e.name) === /^itf/i.test(r.name)) && Math.abs(+r.start - Date.parse(`${e.start}T00:00:00Z`)) <= 3 * DAY && Math.abs(+r.end - Date.parse(`${e.end}T20:59:59Z`)) <= 3 * DAY;
 
 /**
  * Keeps the planned competitions (status PLANNED) equal to the Gantt: adds, moves and removes them. A planned competition that a real one

@@ -107,3 +107,18 @@ describe('cleaning up players made from Latin names', () => {
     expect(left).not.toContain(latin.id);
   });
 });
+
+describe('a Tennis Europe event that its organizer moved off the Gantt week', () => {
+  beforeAll(resetDb);
+  const url = 'https://te.tournamentsoftware.com/tournament/bbbbbbbb-0000-0000-0000-000000000002';
+  const te = () => validateCompetitionImport({ kind: 'competition', name: 'Tennis Europe תל אביב', start: '2026-11-07', end: '2026-11-14', feeShekel: 0, level: 'INTERNATIONAL', section: 'YOUTH', sourceUrl: url, venues: [], categories: [] });
+  it('covers the planned week two days off (no ghost copy), and is "in progress" while it is on although its draws live on the event page', async () => {
+    const NOW = new Date('2026-11-10T12:00:00Z');
+    const cal = validateCalendarImport({ kind: 'calendar', events: [{ name: 'Tennis Europe U14', start: '2026-11-09', end: '2026-11-15', level: 'INTERNATIONAL', section: 'YOUTH' }] });
+    await importCalendar(db, cal, NOW);
+    await importCompetition(db, te(), NOW);
+    expect(await importCalendar(db, cal, NOW)).toMatchObject({ covered: 1, added: 0 });
+    const rows = await db.select().from(schema.tournaments).where(eq(schema.tournaments.section, 'YOUTH'));
+    expect(rows.map((r) => [r.name, r.status])).toEqual([['Tennis Europe תל אביב', 'IN_PROGRESS']]);
+  });
+});
