@@ -12,6 +12,8 @@ rem matches are read only when the event's "last changed" moved); about once an 
 node scripts\loglig-sync\abroad.mjs --live --push --url %URL% >> .loglig-dump\rosters-sync.log 2>&1
 rem Tennis Europe events in Israel (dates, who is accepted, draws, results): an event is read again only when its "last changed" moved; the list of events is checked about once an hour
 node scripts\loglig-sync\te.mjs --live --push --url %URL% >> .loglig-dump\rosters-sync.log 2>&1
+rem Competitions published on the Loglig app after the morning's daily sync (a draw out in the afternoon for the next day), about once an hour, 8:00-22:00
+node scripts\loglig-sync\app-new.mjs --push --url %URL% >> .loglig-dump\rosters-sync.log 2>&1
 node scripts\loglig-sync\gate.mjs >> .loglig-dump\rosters-sync.log 2>&1
 if errorlevel 10 exit /b 0
 node scripts\loglig-sync\rosters.mjs --push --url %URL% >> .loglig-dump\rosters-sync.log 2>&1

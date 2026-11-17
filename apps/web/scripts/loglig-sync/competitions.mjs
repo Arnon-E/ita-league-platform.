@@ -12,8 +12,9 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { ageOf, buildCategory, buildDoubles, genderOf, israelToUtc, koRound, parseCategoryPage, parseCompetitionPage } from './parse.mjs';
+import { ageOf, buildCategory, buildDoubles, genderOf, israelToUtc, koRound, parseCategoryPage, parseCompetitionPage, sameCompetition } from './parse.mjs';
 
+import { loglogSeasons } from './seasons.mjs';
 import { ORG_URL, buildTsCompetition, parseOrgList, readTournament, sameMasters, session as tsSession } from './tournamentsoftware.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -84,20 +85,6 @@ const levelOf = (list, name) => (/^סבב/.test(name) ? 'CIRCUIT' : LISTS[list]?
 const today = new Date().toISOString().slice(0, 10);
 const daysAgo = (d) => Math.floor((Date.parse(today) - Date.parse(d)) / 86400000);
 
-const GENERIC = new Set(['תחרות', 'לאומית', 'אזורית', 'ארצית', 'אליפות', 'ישראל', 'לנוער', 'גברים', 'נשים', 'מאסטרס', 'עש', 'של', 'על']);
-/** Same event? Equal/contained names, or the same numbers and at least two shared distinctive words (names differ between pages). */
-function sameCompetition(a, b) {
-  const norm = (x) => x.replace(/["'״׳`]/g, '').replace(/[.,:\-–/]+/g, ' ').replace(/\s+/g, ' ').trim();
-  const x = norm(a), y = norm(b);
-  const toks = (t) => new Set(t.split(' ').filter(Boolean));
-  const tx = toks(x), ty = toks(y);
-  const nums = (t) => [...t].filter((w) => /^\d+$/.test(w)).sort().join(',');
-  // contained names are the same event only with the same numbers: "אליפות ישראל לנוער" is not "אליפות ישראל לנוער סוכות 2026"
-  if (x.includes(y) || y.includes(x)) return nums(tx) === nums(ty);
-  if (nums(tx) && nums(ty) && nums(tx) !== nums(ty)) return false;
-  return [...tx].filter((w) => ty.has(w) && w.length >= 3 && !GENERIC.has(w) && !/^\d+$/.test(w)).length >= 2;
-}
-
 /** A parsed category page -> normalized category (knockout rounds numbered from the first round, groups as round 1). */
 // 2) one competition -> normalized document (draws and results when published, otherwise the planned categories)
 async function readCompetition({ url, list }) {
@@ -152,7 +139,8 @@ for (const url of urls) {
 const APP_API = 'https://loglig.com:8443/api/Union';
 const APP_LISTS = [['CompetitionsYouth', 'YOUTH'], ['CompetitionsAdult', 'ADULTS'], ['CompetitionsSenior', 'MASTERS'], ['CompetitionsDaily', 'OTHER']];
 const appLevel = (name) => (/^סבב/.test(name) ? 'CIRCUIT' : /אזורית/.test(name) ? 'REGIONAL' : /ITF|בינלאומ|ATP/.test(name) ? 'INTERNATIONAL' : 'NATIONAL');
-const CURRENT_SEASON = 1755;
+// the seasons come from Loglig (seasons.mjs): the newest two, so a new season's competitions are found on their own
+const SEASONS = await loglogSeasons();
 
 async function readAppCompetitions(seasonIds) {
   const byTitle = new Map();
@@ -161,7 +149,7 @@ async function readAppCompetitions(seasonIds) {
     try { groups = JSON.parse(await get(`${APP_API}/${ep}/38?seasonId=${season}`)); } catch (e) { console.warn('  app list failed', ep, season, String(e.message).slice(0, 60)); continue; }
     for (const g of groups) {
       const title = (g.CompetitionTitle ?? '').trim();
-      if (!title || /^(טסט|בדיקה|test)\b/i.test(title)) continue;
+      if (!title || /^(טסט|בדיקה|test)(?=\s|$)/i.test(title)) continue;
       const entry = byTitle.get(title) ?? { title, section, season, categories: [], players: 0 };
       for (const c of g.categoriLIstItem ?? []) if (c.TeamId && !entry.categories.some((x) => x.TeamId === c.TeamId)) entry.categories.push(c);
       entry.players = Math.max(entry.players, g.categoriPlayersNum ?? 0);
@@ -181,8 +169,8 @@ function trimOutliers(dates) {
 }
 
 async function mergeAppCompetitions(docs) {
-  // --seasons all: every season the app knows (history); default: the current season only
-  let seasonIds = [CURRENT_SEASON];
+  // --seasons all: every season the app knows (history); default: the two newest
+  let seasonIds = SEASONS.recent;
   if (opt('--seasons', 'current') === 'all') {
     try { seasonIds = JSON.parse(await get(`https://loglig.com:8443/api/Leauges/AthleticsSeasons/38`)).map((x) => x.Id); } catch { /* keep current */ }
   }
@@ -197,7 +185,7 @@ async function mergeAppCompetitions(docs) {
       const cats = [], dbls = [];
       for (const c of a.categories) {
         let page = null;
-        for (const season of [a.season, CURRENT_SEASON, 1671].filter((x, i, arr) => arr.indexOf(x) === i)) {
+        for (const season of [a.season, ...SEASONS.recent].filter((x, i, arr) => arr.indexOf(x) === i)) {
           try {
             const p = parseCategoryPage(await get(`https://loglig.com:2053/LeagueTable/SchedulesForTennisCompetition/${c.TeamId}?seasonId=${season}`, 1));
             if (p.matches.length) { page = p; break; }

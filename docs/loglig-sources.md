@@ -1,6 +1,6 @@
 # Where the ITA's data is shown (all public, no login)
 
-Found by reading the ITA site (ita.co.il) and the public Loglig pages it embeds. Season 1755, union 38.
+Found by reading the ITA site (ita.co.il) and the public Loglig pages it embeds. Union 38. The season ids (1755 = 2026 in the examples below) are read from `https://loglig.com:8443/api/Leauges/AthleticsSeasons/38` by `scripts/loglig-sync/seasons.mjs`, so the syncs follow a new season on their own: competition lists are read for the two newest seasons, rankings and leagues for the one under way.
 
 | Data | Where | Format | Status here |
 |---|---|---|---|

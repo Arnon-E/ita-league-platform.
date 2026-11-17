@@ -9,11 +9,13 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { loglogSeasons } from './seasons.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const OUT = process.env.LOGLIG_DUMP_DIR ? path.resolve(process.env.LOGLIG_DUMP_DIR) : path.resolve(here, '../../.loglig-dump'); // LOGLIG_DUMP_DIR: where the development syncs keep their data
 const SRC = 'https://loglig.com:2053/LeagueRank/TennisUnionRanks';
-const UNION = 38, SEASON = 1755;
+const UNION = 38;
+const { active: SEASON } = await loglogSeasons(); // the season under way (seasons.mjs), not a hard-coded one
 
 const args = process.argv.slice(2);
 const push = args.includes('--push');

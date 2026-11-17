@@ -8,13 +8,16 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { israelToUtc } from './parse.mjs';
 import { parseLeagueDetails, parseLeagueSchedule } from './leagues-parse.mjs';
+import { loglogSeasons } from './seasons.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const OUT = process.env.LOGLIG_DUMP_DIR ? path.resolve(process.env.LOGLIG_DUMP_DIR) : path.resolve(here, '../../.loglig-dump'); // LOGLIG_DUMP_DIR: where the development syncs keep their data
 const args = process.argv.slice(2);
 const opt = (n, d) => (args.includes(n) ? args[args.indexOf(n) + 1] : d);
 const API = 'https://loglig.com:8443/api';
-const SEASON = 1755;
+// the season under way first, then the previous one (seasons.mjs): a league of last season can still be on after a new season opens
+const { active, recent } = await loglogSeasons();
+const SEASONS = [active, ...recent].filter((x, i, a) => a.indexOf(x) === i);
 
 function loadEnv(file) {
   if (!existsSync(file)) return {};
@@ -66,13 +69,19 @@ const list = await getJson('Union/LeaguesList/38');
 const docs = [];
 for (const l of list) {
   try {
-    const details = parseLeagueDetails(await getText(`https://loglig.com:2053/LeagueTable/TennisLeagueDetails?id=${l.Id}&seasonId=${SEASON}`));
+    let details = { groups: [] }, season = SEASONS[0];
+    for (const s of SEASONS) {
+      const last = s === SEASONS[SEASONS.length - 1];
+      let d;
+      try { d = parseLeagueDetails(await getText(`https://loglig.com:2053/LeagueTable/TennisLeagueDetails?id=${l.Id}&seasonId=${s}`)); } catch (e) { if (last) throw e; continue; }
+      if (d.groups.length || last) { details = d; season = s; break; }
+    }
     const teams = await getJson(`NewUnion/GetTennisLeagueTeams/${l.Id}`, []);
     const clubOf = new Map(teams.map((t) => [t.TeamId, t.ClubName]));
     const ev = await getJson(`NewUnion/GetLeagueGamesEvents/${l.Id}`, { Games: [] });
     let rounds = roundsFromApi(ev.Games ?? [], clubOf);
     if (!rounds.length) {
-      rounds = parseLeagueSchedule(await getText(`https://loglig.com:2053/LeagueTable/Schedules/${l.Id}?seasonId=${SEASON}`))
+      rounds = parseLeagueSchedule(await getText(`https://loglig.com:2053/LeagueTable/Schedules/${l.Id}?seasonId=${season}`))
         .map((r) => ({ ...r, matches: r.matches.map((m) => ({ ...m, start: m.start ? israelToUtc(m.start) : null })) }));
     }
     // knockout-only leagues (champions, Final 4) have no standings page: list the teams as one group so they are still visible

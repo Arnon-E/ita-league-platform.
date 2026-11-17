@@ -165,6 +165,21 @@ export function genderOf(categoryName) {
 }
 export const ageOf = (categoryName) => { const m = categoryName.match(/(\d{2})/); return m ? Number(m[1]) : null; };
 
+// words that many different competitions share: "קדם מוקדמות ITF חיפה בנים" is not "קדם מוקדמות ITF רמת השרון בנים"
+const GENERIC = new Set(['תחרות', 'לאומית', 'אזורית', 'ארצית', 'אליפות', 'ישראל', 'לנוער', 'גברים', 'נשים', 'בנים', 'בנות', 'מאסטרס', 'קדם', 'מוקדמות', 'ITF', 'ATP', 'עש', 'של', 'על']);
+/** Same event? Equal/contained names, or the same numbers and at least two shared distinctive words (names differ between pages). */
+export function sameCompetition(a, b) {
+  const norm = (x) => x.replace(/["'״׳`]/g, '').replace(/[.,:\-–/]+/g, ' ').replace(/\s+/g, ' ').trim();
+  const x = norm(a), y = norm(b);
+  const toks = (t) => new Set(t.split(' ').filter(Boolean));
+  const tx = toks(x), ty = toks(y);
+  const nums = (t) => [...t].filter((w) => /^\d+$/.test(w)).sort().join(',');
+  // contained names are the same event only with the same numbers: "אליפות ישראל לנוער" is not "אליפות ישראל לנוער סוכות 2026"
+  if (x.includes(y) || y.includes(x)) return nums(tx) === nums(ty);
+  if (nums(tx) && nums(ty) && nums(tx) !== nums(ty)) return false;
+  return [...tx].filter((w) => ty.has(w) && w.length >= 3 && !GENERIC.has(w) && !/^\d+$/.test(w)).length >= 2;
+}
+
 /** Category page -> { competition, category, matches[] } */
 export function parseCategoryPage(html) {
   const title = strip((html.match(/([^<>]{3,200}\/[^<>]{2,80}-\s*לוח משחקים ותוצאות)/) ?? [])[1] ?? '');

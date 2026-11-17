@@ -6,6 +6,6 @@ $minutes = 10
 $bat = Join-Path $PSScriptRoot 'run-rosters-sync.bat'
 $action = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument ('-NoProfile -WindowStyle Hidden -Command "& ''' + $bat + '''"')
 $trigger = New-ScheduledTaskTrigger -Once -At (Get-Date) -RepetitionInterval (New-TimeSpan -Minutes $minutes) -RepetitionDuration (New-TimeSpan -Days 3650)
-$settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -MultipleInstances IgnoreNew -ExecutionTimeLimit (New-TimeSpan -Minutes ($minutes - 1))
+$settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -MultipleInstances IgnoreNew -ExecutionTimeLimit (New-TimeSpan -Minutes ($minutes - 1))
 Register-ScheduledTask -TaskName 'ITA Loglig Rosters' -Action $action -Trigger $trigger -Settings $settings -Force | Out-Null
 Write-Host "Rosters and results sync scheduled every $minutes minutes."

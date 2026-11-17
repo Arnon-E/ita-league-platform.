@@ -9,11 +9,12 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildCategory, buildDoubles, parseCategoryPage } from './parse.mjs';
+import { loglogSeasons } from './seasons.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const API = 'https://loglig.com:8443/api';
 const UNION = 38;
-const SEASON = 1755;
+const { recent: SEASONS } = await loglogSeasons(); // the two newest seasons (seasons.mjs): a new season's competitions are found on their own
 const args = process.argv.slice(2);
 const opt = (n, d) => (args.includes(n) ? args[args.indexOf(n) + 1] : d);
 
@@ -45,7 +46,7 @@ if (!live.length) process.exit(0);
 const byName = new Map(live.map((t) => [norm(t.name), t]));
 
 const lists = [];
-for (const ep of ['CompetitionsYouth', 'CompetitionsSenior', 'CompetitionsAdult', 'CompetitionsDaily']) lists.push(...(await getJson(`${API}/Union/${ep}/${UNION}?seasonId=${SEASON}`, [])));
+for (const season of SEASONS) for (const ep of ['CompetitionsYouth', 'CompetitionsSenior', 'CompetitionsAdult', 'CompetitionsDaily']) lists.push(...(await getJson(`${API}/Union/${ep}/${UNION}?seasonId=${season}`, [])).map((c) => ({ ...c, season })));
 
 let sent = 0;
 for (const c of lists) {
@@ -54,7 +55,7 @@ for (const c of lists) {
   const categories = [], doubles = [];
   for (const k of c.categoriLIstItem ?? []) {
     try {
-      const page = parseCategoryPage(await getText(`https://loglig.com:2053/LeagueTable/SchedulesForTennisCompetition/${k.TeamId}?seasonId=${SEASON}`));
+      const page = parseCategoryPage(await getText(`https://loglig.com:2053/LeagueTable/SchedulesForTennisCompetition/${k.TeamId}?seasonId=${c.season}`));
       if (!page.matches.length) continue;
       if (page.competition && norm(page.competition) !== norm(c.CompetitionTitle) && !norm(page.competition).includes(norm(c.CompetitionTitle)) && !norm(c.CompetitionTitle).includes(norm(page.competition))) continue;
       const dbl = buildDoubles(page, '', k.TeamId);
