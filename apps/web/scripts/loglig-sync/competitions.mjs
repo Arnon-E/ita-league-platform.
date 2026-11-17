@@ -12,7 +12,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { ageOf, buildCategory, buildDoubles, genderOf, israelToUtc, koRound, parseCategoryPage, parseCompetitionPage } from './parse.mjs';
+import { ageOf, buildCategory, buildDoubles, genderOf, israelToUtc, koRound, parseCategoryPage, parseCompetitionPage, sameCompetition } from './parse.mjs';
 
 import { ORG_URL, buildTsCompetition, parseOrgList, readTournament, sameMasters, session as tsSession } from './tournamentsoftware.mjs';
 
@@ -84,20 +84,6 @@ const levelOf = (list, name) => (/^סבב/.test(name) ? 'CIRCUIT' : LISTS[list]?
 const today = new Date().toISOString().slice(0, 10);
 const daysAgo = (d) => Math.floor((Date.parse(today) - Date.parse(d)) / 86400000);
 
-const GENERIC = new Set(['תחרות', 'לאומית', 'אזורית', 'ארצית', 'אליפות', 'ישראל', 'לנוער', 'גברים', 'נשים', 'מאסטרס', 'עש', 'של', 'על']);
-/** Same event? Equal/contained names, or the same numbers and at least two shared distinctive words (names differ between pages). */
-function sameCompetition(a, b) {
-  const norm = (x) => x.replace(/["'״׳`]/g, '').replace(/[.,:\-–/]+/g, ' ').replace(/\s+/g, ' ').trim();
-  const x = norm(a), y = norm(b);
-  const toks = (t) => new Set(t.split(' ').filter(Boolean));
-  const tx = toks(x), ty = toks(y);
-  const nums = (t) => [...t].filter((w) => /^\d+$/.test(w)).sort().join(',');
-  // contained names are the same event only with the same numbers: "אליפות ישראל לנוער" is not "אליפות ישראל לנוער סוכות 2026"
-  if (x.includes(y) || y.includes(x)) return nums(tx) === nums(ty);
-  if (nums(tx) && nums(ty) && nums(tx) !== nums(ty)) return false;
-  return [...tx].filter((w) => ty.has(w) && w.length >= 3 && !GENERIC.has(w) && !/^\d+$/.test(w)).length >= 2;
-}
-
 /** A parsed category page -> normalized category (knockout rounds numbered from the first round, groups as round 1). */
 // 2) one competition -> normalized document (draws and results when published, otherwise the planned categories)
 async function readCompetition({ url, list }) {
@@ -161,7 +147,7 @@ async function readAppCompetitions(seasonIds) {
     try { groups = JSON.parse(await get(`${APP_API}/${ep}/38?seasonId=${season}`)); } catch (e) { console.warn('  app list failed', ep, season, String(e.message).slice(0, 60)); continue; }
     for (const g of groups) {
       const title = (g.CompetitionTitle ?? '').trim();
-      if (!title || /^(טסט|בדיקה|test)\b/i.test(title)) continue;
+      if (!title || /^(טסט|בדיקה|test)(?=\s|$)/i.test(title)) continue;
       const entry = byTitle.get(title) ?? { title, section, season, categories: [], players: 0 };
       for (const c of g.categoriLIstItem ?? []) if (c.TeamId && !entry.categories.some((x) => x.TeamId === c.TeamId)) entry.categories.push(c);
       entry.players = Math.max(entry.players, g.categoriPlayersNum ?? 0);

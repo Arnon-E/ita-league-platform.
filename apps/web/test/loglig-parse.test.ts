@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ageOf, buildDoubles, genderOf, israelToUtc, koRound, parseBracket, parseCategoryPage, parseCompetitionPage, parseDateRange, parsePlayer, parseScore } from '../scripts/loglig-sync/parse.mjs';
+import { ageOf, buildDoubles, genderOf, israelToUtc, koRound, parseBracket, parseCategoryPage, parseCompetitionPage, parseDateRange, parsePlayer, parseScore, sameCompetition } from '../scripts/loglig-sync/parse.mjs';
 
 const leaf = (name: string) => ({ text: { name, desc: '.' }, HTMLclass: 'first-draw', children: null });
 const inner = (name: string, kids: object[]) => ({ text: { name: name ? name : 'Winner', desc: '-' }, HTMLclass: null, children: kids });
@@ -102,5 +102,18 @@ describe('loglig page parsing', () => {
     // "6-3 7-5" is printed from the second player's side: b won 6-3 7-5
     expect(p.matches[0]!.sets).toEqual([{ a: 3, b: 6 }, { a: 5, b: 7 }]);
     expect(p.matches[1]!).toMatchObject({ done: false, stage: 'בית 1', kind: 'NB' });
+  });
+});
+
+describe('sameCompetition', () => {
+  it('tells apart competitions that share only the generic words', () => {
+    expect(sameCompetition('קדם מוקדמות ITF חיפה בנים', 'קדם מוקדמות ITF רמת השרון בנים')).toBe(false);
+    expect(sameCompetition('קדם מוקדמות ITF רעננה', 'קדם מוקדמות ITF חיפה בנים')).toBe(false);
+    expect(sameCompetition('אזורית חנוכה 2026', 'אליפות ארצית חנוכה 2026')).toBe(false);
+  });
+  it("matches one competition under the two sites' titles", () => {
+    expect(sameCompetition('קדם מוקדמות ITF חיפה', 'קדם מוקדמות ITF חיפה בנים')).toBe(true);
+    expect(sameCompetition('אליפות ישראל לנוער סוכות 2026', 'אליפות ישראל לנוער - סוכות 2026')).toBe(true);
+    expect(sameCompetition('אליפות ישראל לנוער', 'אליפות ישראל לנוער סוכות 2026')).toBe(false);
   });
 });
