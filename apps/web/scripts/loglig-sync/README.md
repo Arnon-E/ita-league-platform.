@@ -14,6 +14,9 @@ Where each piece of data comes from, and the rules the import follows: `docs/log
 | Daily refresh | `install-daily-sync.bat` | 06:30 | `run-daily-sync.bat`: rankings, competitions (new, upcoming and the last 21 days), dedupe, rosters, photos, leagues, app data, regulations | `.loglig-dump/daily-sync.log` |
 | Live | `install-rosters-sync.bat` (`.ps1`) | every 10 minutes | `run-rosters-sync.bat`: competitions new on the Loglig app (hourly), registered players and live draws / results of the competitions that are on | `.loglig-dump/rosters-sync.log` (last run only) |
 
+Both tasks start a run missed while the PC was asleep or off as soon as it is back, also on battery (the daily one also wakes the PC). If the
+PC is off for a whole day nothing runs: the first 10-minute run after that catches up the competitions being played (`app-new.mjs`).
+
 ## Scripts
 
 | Script | What it does |
@@ -23,7 +26,8 @@ Where each piece of data comes from, and the rules the import follows: `docs/log
 | `abroad.mjs` | Tennis Europe tournaments outside Israel (`te.tournamentsoftware.com` search, event pages and fact sheets) for the site's "abroad" page: dates, place, level, entry deadline, fee, hospitality. `--days N` how far ahead, `--push --url <site>` sends them; runs in the daily sync scripts |
 | `te.mjs` | Tennis Europe Junior Tour events held in Israel (closed events for Israeli players, `te.tournamentsoftware.com`): details, venue, organizer, and draws/results once published. `--push --url <site>` sends them; also part of `competitions.mjs --list all` |
 | `calendar.mjs` | The federation's yearly Gantt (an .xlsx linked from its "לוח תחרויות" pages) as planned competitions: name, dates, section and level only (Tennis Europe, ITF, leagues, qualifiers and finals not yet published). Dates come from where each text box sits over the day grid (`gantt.mjs`). Runs at the end of `competitions.mjs --list all`; real competitions replace the planned ones (status `PLANNED`, label "מתוכננת"). `--file x.xlsx` for a local copy |
-| `app-new.mjs` | Competitions that appear on the Loglig app after the 06:30 daily sync (e.g. an ITF pre-qualifier whose draw is out the afternoon before): about once an hour from the 10-minute sync, it compares the app's lists with the saved list, probes one draw page per unknown title (finished ones are remembered as history, ones without a draw are looked at again after 6 hours) and imports the ones that are on with `competitions.mjs` |
+| `app-new.mjs` | The safety net: about once an hour (8:00-22:00) from the 10-minute sync, every competition on the Loglig app that is **not on the site** is probed with one draw page and imported with `competitions.mjs` if it is being played. Catches a draw published after the daily sync (an ITF pre-qualifier out the afternoon before), a daily sync that did not run or failed to upload, and a new season. Finished ones are remembered as history (`app-new-state.json`); ones without a draw are probed again hourly (last season's: daily) |
+| `seasons.mjs` | Loglig's season ids, read from Loglig (cached 12 hours): no script hard-codes a season, so a new one is followed on its own |
 | `live-results.mjs` | Fresh draws and results for the competitions that are not finished (results only: fee, venue and links stay) |
 | `rosters.mjs` | Who is registered in each category of the competitions that have not finished |
 | `dedupe.mjs` | Repairs: a competition stored twice under the two sites' titles (keeps the copy refreshed last), import-created players left without history, birth years from Loglig's empty 1753 date. Safe to run any time |

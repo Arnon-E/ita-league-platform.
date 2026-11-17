@@ -14,6 +14,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ageOf, buildCategory, buildDoubles, genderOf, israelToUtc, koRound, parseCategoryPage, parseCompetitionPage, sameCompetition } from './parse.mjs';
 
+import { loglogSeasons } from './seasons.mjs';
 import { ORG_URL, buildTsCompetition, parseOrgList, readTournament, sameMasters, session as tsSession } from './tournamentsoftware.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -138,7 +139,8 @@ for (const url of urls) {
 const APP_API = 'https://loglig.com:8443/api/Union';
 const APP_LISTS = [['CompetitionsYouth', 'YOUTH'], ['CompetitionsAdult', 'ADULTS'], ['CompetitionsSenior', 'MASTERS'], ['CompetitionsDaily', 'OTHER']];
 const appLevel = (name) => (/^סבב/.test(name) ? 'CIRCUIT' : /אזורית/.test(name) ? 'REGIONAL' : /ITF|בינלאומ|ATP/.test(name) ? 'INTERNATIONAL' : 'NATIONAL');
-const CURRENT_SEASON = 1755;
+// the seasons come from Loglig (seasons.mjs): the newest two, so a new season's competitions are found on their own
+const SEASONS = await loglogSeasons();
 
 async function readAppCompetitions(seasonIds) {
   const byTitle = new Map();
@@ -167,8 +169,8 @@ function trimOutliers(dates) {
 }
 
 async function mergeAppCompetitions(docs) {
-  // --seasons all: every season the app knows (history); default: the current season only
-  let seasonIds = [CURRENT_SEASON];
+  // --seasons all: every season the app knows (history); default: the two newest
+  let seasonIds = SEASONS.recent;
   if (opt('--seasons', 'current') === 'all') {
     try { seasonIds = JSON.parse(await get(`https://loglig.com:8443/api/Leauges/AthleticsSeasons/38`)).map((x) => x.Id); } catch { /* keep current */ }
   }
@@ -183,7 +185,7 @@ async function mergeAppCompetitions(docs) {
       const cats = [], dbls = [];
       for (const c of a.categories) {
         let page = null;
-        for (const season of [a.season, CURRENT_SEASON, 1671].filter((x, i, arr) => arr.indexOf(x) === i)) {
+        for (const season of [a.season, ...SEASONS.recent].filter((x, i, arr) => arr.indexOf(x) === i)) {
           try {
             const p = parseCategoryPage(await get(`https://loglig.com:2053/LeagueTable/SchedulesForTennisCompetition/${c.TeamId}?seasonId=${season}`, 1));
             if (p.matches.length) { page = p; break; }

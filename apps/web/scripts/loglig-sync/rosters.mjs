@@ -9,12 +9,13 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { loglogSeasons } from './seasons.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const OUT = process.env.LOGLIG_DUMP_DIR ? path.resolve(process.env.LOGLIG_DUMP_DIR) : path.resolve(here, '../../.loglig-dump'); // LOGLIG_DUMP_DIR: where the development syncs keep their data
 const API = 'https://loglig.com:8443/api';
 const UNION = 38;
-const SEASON = 1755;
+const { recent: SEASONS } = await loglogSeasons(); // the two newest seasons (seasons.mjs): a new season's competitions are found on their own
 const args = process.argv.slice(2);
 const opt = (n, d) => (args.includes(n) ? args[args.indexOf(n) + 1] : d);
 
@@ -52,7 +53,7 @@ const findOurs = (title) => {
 };
 
 const lists = [];
-for (const ep of ['CompetitionsYouth', 'CompetitionsSenior', 'CompetitionsAdult', 'CompetitionsDaily']) lists.push(...(await get(`${API}/Union/${ep}/${UNION}?seasonId=${SEASON}`, [])));
+for (const season of SEASONS) for (const ep of ['CompetitionsYouth', 'CompetitionsSenior', 'CompetitionsAdult', 'CompetitionsDaily']) lists.push(...(await get(`${API}/Union/${ep}/${UNION}?seasonId=${season}`, [])).map((c) => ({ ...c, season })));
 
 const competitions = [];
 for (const c of lists) {

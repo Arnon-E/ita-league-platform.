@@ -8,11 +8,12 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { loglogSeasons } from './seasons.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const API = 'https://loglig.com:8443/api';
 const UNION = 38;
-const SEASON = 1755;
+const { recent: SEASONS } = await loglogSeasons(); // the two newest seasons (seasons.mjs): a new season's competitions are found on their own
 const args = process.argv.slice(2);
 const opt = (n, d) => (args.includes(n) ? args[args.indexOf(n) + 1] : d);
 
@@ -32,7 +33,7 @@ async function get(url, fallback) {
 }
 
 const lists = [];
-for (const ep of ['CompetitionsYouth', 'CompetitionsSenior', 'CompetitionsAdult', 'CompetitionsDaily']) lists.push(...(await get(`${API}/Union/${ep}/${UNION}?seasonId=${SEASON}`, [])));
+for (const season of SEASONS) for (const ep of ['CompetitionsYouth', 'CompetitionsSenior', 'CompetitionsAdult', 'CompetitionsDaily']) lists.push(...(await get(`${API}/Union/${ep}/${UNION}?seasonId=${season}`, [])).map((c) => ({ ...c, season })));
 console.log(`${lists.length} competitions`);
 const total = { seen: 0, matched: 0, updated: 0, ambiguous: 0, unknown: 0 };
 for (const c of lists) {
