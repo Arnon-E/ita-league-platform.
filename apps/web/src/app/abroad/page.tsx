@@ -41,9 +41,14 @@ export default async function Abroad({ searchParams }: { searchParams: Promise<Q
   const inCircuit = circuit ? all.filter((e) => e.circuit === circuit) : all;
   const fits = (e: AbroadRow) => (!age || String(e.age) === age) && (!country || e.country === country) && (!month || monthKey(e.start) === month) && (!cat || e.category === cat);
   const inGroup = (e: AbroadRow, k: string) => (k === 'open' ? phaseOf(e, now) === 'up' && ['open', 'soon'].includes(entryState(e, now)) : phaseOf(e, now) === k);
-  const counts: Record<string, number> = Object.fromEntries(Object.keys(ST).map((k) => [k, inCircuit.filter((e) => inGroup(e, k)).length]));
+  const counts: Record<string, number> = Object.fromEntries(Object.keys(ST).map((k) => [k, inCircuit.filter((e) => fits(e) && inGroup(e, k)).length])); // the tab counts follow the filters
   const rows = inCircuit.filter((e) => fits(e) && inGroup(e, st)).sort((a, b) => (st === 'live' || st === 'done' ? b.israelis - a.israelis : 0) || (st === 'done' ? +b.end - +a.end : +a.start - +b.start)); // under way and finished: the ones with Israeli players first
-  const opts = (f: (e: AbroadRow) => string | null) => [...new Set(inCircuit.map(f).filter((x): x is string => !!x))].sort();
+  // each list offers what the other filters leave (its own is left out, so the choice can still be changed); the chosen value always stays
+  const opts = (f: (e: AbroadRow) => string | null, own: keyof Q) => {
+    const other = { age, country, month, cat, [own]: '' };
+    const keep = (e: AbroadRow) => (!other.age || String(e.age) === other.age) && (!other.country || e.country === other.country) && (!other.month || monthKey(e.start) === other.month) && (!other.cat || e.category === other.cat);
+    return [...new Set([...inCircuit.filter(keep).map(f), q[own] || null].filter((x): x is string => !!x))].sort();
+  };
   const filtered = [age, country, month, cat].filter(Boolean).length;
   const href = (o: Partial<Q>) => `/abroad?${new URLSearchParams(Object.entries({ circuit, age, country, month, cat, st: st === 'up' ? '' : st, ...o }).filter(([, v]) => v) as [string, string][]).toString()}`;
   const shown = rows.slice(0, limit);
@@ -70,9 +75,9 @@ export default async function Abroad({ searchParams }: { searchParams: Promise<Q
           <input type="hidden" name="circuit" value={circuit} />
           {st !== 'up' && <input type="hidden" name="st" value={st} />}
           <select name="age" defaultValue={age} style={{ width: '100%' }}><option value="">{t('כל הגילאים')}</option>{[12, 14, 16].map((a) => <option key={a} value={a}>{t('גיל')} {a}</option>)}</select>
-          <select name="country" defaultValue={country} style={{ width: '100%' }}><option value="">{t('כל המדינות')}</option>{opts((e) => e.country).map((c) => <option key={c} value={c}>{t(countryInfo(c).he)}</option>)}</select>
-          <select name="month" defaultValue={month} style={{ width: '100%' }}><option value="">{t('כל החודשים')}</option>{opts((e) => monthKey(e.start)).map((m) => <option key={m} value={m}>{monthName(m)}</option>)}</select>
-          <select name="cat" defaultValue={cat} style={{ width: '100%' }}><option value="">{t('כל הקטגוריות')}</option>{opts((e) => e.category).map((c) => <option key={c} value={c}>{t(CAT_HE[c] ?? c)}</option>)}</select>
+          <select name="country" defaultValue={country} style={{ width: '100%' }}><option value="">{t('כל המדינות')}</option>{opts((e) => e.country, 'country').map((c) => <option key={c} value={c}>{t(countryInfo(c).he)}</option>)}</select>
+          <select name="month" defaultValue={month} style={{ width: '100%' }}><option value="">{t('כל החודשים')}</option>{opts((e) => monthKey(e.start), 'month').map((m) => <option key={m} value={m}>{monthName(m)}</option>)}</select>
+          <select name="cat" defaultValue={cat} style={{ width: '100%' }}><option value="">{t('כל הקטגוריות')}</option>{opts((e) => e.category, 'cat').map((c) => <option key={c} value={c}>{t(CAT_HE[c] ?? c)}</option>)}</select>
           <div className="row" style={{ gridColumn: '1 / -1' }}>
             <button className="btn">{t('הצגה')}</button>
           {filtered > 0 && <Link className="btn ghost" href={href({ age: '', country: '', month: '', cat: '', n: '' })}>{t('ניקוי')}</Link>}
