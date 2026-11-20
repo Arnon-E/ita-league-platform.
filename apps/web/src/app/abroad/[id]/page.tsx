@@ -82,7 +82,7 @@ export default async function AbroadEventPage({ params, searchParams }: { params
         <span className={`pill ${phase === 'live' ? 'lime' : ''}`}>{phase === 'live' ? t('מתקיימת עכשיו') : phase === 'done' ? t('הסתיימה') : t('בקרוב')}</span>
         {e.ageGroup && <span className="pill">U{e.ageGroup}</span>}
         {e.category && <span className="pill">{e.category}</span>}
-        <a className="btn ghost" href={e.url} target="_blank" rel="noopener noreferrer">{t('כל המשחקים והתוצאות ב-Tennis Europe')}</a>
+        <a className="btn ghost" href={e.url} target="_blank" rel="noopener noreferrer">{e.circuit === 'ITF' ? t('כל המשחקים והתוצאות ב-World Tennis') : t('כל המשחקים והתוצאות ב-Tennis Europe')}</a>
       </div>
       {cats.length > 1 && (
         <nav className="tabs" aria-label={t('קטגוריה')} style={{ marginBottom: 0 }}>
@@ -182,7 +182,7 @@ export default async function AbroadEventPage({ params, searchParams }: { params
       {tabs.length === 0 && (
         <div className="card muted">{phase === 'up' ? t('הטורניר עוד לא התחיל.') : t('עדיין אין משחקים של שחקנים ישראלים בטורניר, או שהמארגן עוד לא פירסם אותם. לכל המשחקים אפשר לעבור לדף הטורניר ב-Tennis Europe.')}</div>
       )}
-      <p className="muted" style={{ marginTop: 18 }}>{t('המשחקים נלקחים מהאתר של Tennis Europe ומתעדכנים בערך פעם בשעה בזמן הטורניר.')}</p>
+      <p className="muted" style={{ marginTop: 18 }}>{e.circuit === 'ITF' ? t('המשחקים נלקחים מהאתר של World Tennis (ITF) ומתעדכנים בערך פעם בשעה בזמן הטורניר.') : t('המשחקים נלקחים מהאתר של Tennis Europe ומתעדכנים בערך פעם בשעה בזמן הטורניר.')}</p>
     </Shell>
   );
 }
