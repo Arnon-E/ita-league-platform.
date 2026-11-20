@@ -13,6 +13,7 @@ Where each piece of data comes from, and the rules the import follows: `docs/log
 |---|---|---|---|---|
 | Daily refresh | `install-daily-sync.bat` | 06:30 | `run-daily-sync.bat`: rankings, competitions (new, upcoming and the last 21 days), dedupe, rosters, photos, leagues, app data, regulations | `.loglig-dump/daily-sync.log` |
 | Live | `install-rosters-sync.bat` (`.ps1`) | every 10 minutes | `run-rosters-sync.bat`: competitions new on the Loglig app (hourly), registered players and live draws / results of the competitions that are on | `.loglig-dump/rosters-sync.log` (last run only) |
+| ITF juniors | `install-itf-sync.bat` (`.ps1`), first `solve-itf.bat` | every hour | `run-itf-sync.bat`: draws and results of the ITF junior events held in Israel (world.tennis, behind a CAPTCHA: `solve-itf.bat` once, again when `.loglig-dump/itf-needs-captcha.txt` appears) | `.loglig-dump/itf-sync.log` (last run only) |
 
 Both tasks start a run missed while the PC was asleep or off as soon as it is back, also on battery (the daily one also wakes the PC). If the
 PC is off for a whole day nothing runs: the first 10-minute run after that catches up the competitions being played (`app-new.mjs`).

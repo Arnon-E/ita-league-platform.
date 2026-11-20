@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { catOf, catsPresent } from '@/services/abroad-view';
 import { validateAbroadResults } from '@/services/abroad';
-import { drawFromSheet, drawName, drawOrder, drawsOf, eventPage, isWall, matchesFromOrderOfPlay, setsOf, titleName } from '../scripts/loglig-sync/itf.mjs';
+import { drawFromSheet, drawName, drawOrder, drawsOf, eventFromCalendar, eventPage, isOn, isWall, matchesFromOrderOfPlay, setsOf, titleName } from '../scripts/loglig-sync/itf.mjs';
 
 const fixture = (n: string) => JSON.parse(readFileSync(new URL(`./fixtures/${n}`, import.meta.url), 'utf8'));
 
@@ -62,5 +62,19 @@ describe('ITF juniors (world.tennis)', () => {
     expect(isWall('<html><script src="/_Incapsula_Resource?x"></script></html>')).toBe(true);
     expect(isWall('[{"courtName":"Court 1"}]')).toBe(false);
     expect(eventPage('j30-ramat-hasharon-(closed)', 'J-J30-ISR-2026-001')).toBe('https://www.world.tennis/en/tournament/j30-ramat-hasharon-(closed)/isr/2026/j-j30-isr-2026-001/');
+  });
+
+  it('makes the event row from a row of the junior calendar', () => {
+    const row = { name: 'J30 Ramat Hasharon (CLOSED)', promotionalName: 'Israel Tennis Centers', location: 'Ramat Hasharon', hostNation: 'Israel', category: 'J30', surfaceDesc: 'Hard', startDate: '2026-11-16T00:00:00', endDate: '2026-11-21T00:00:00', tournamentKey: 'J-J30-ISR-2026-001', tournamentLink: '/en/tournament/j30-ramat-hasharon-(closed)/isr/2026/j-j30-isr-2026-001/' };
+    expect(eventFromCalendar(row)).toMatchObject({ id: 'J-J30-ISR-2026-001', name: 'J30 Ramat Hasharon', city: 'Ramat Hasharon', country: 'Israel', start: '2026-11-16', end: '2026-11-21', category: 'J30', url: 'https://www.world.tennis/en/tournament/j30-ramat-hasharon-(closed)/isr/2026/j-j30-isr-2026-001/' });
+    expect(eventFromCalendar({ name: 'no key' })).toBeNull();
+  });
+
+  it('reads an event from three days before its first day to the day after its last', () => {
+    const e = { start: '2026-11-16', end: '2026-11-21' };
+    expect(isOn(e, '2026-11-12')).toBe(false);
+    expect(isOn(e, '2026-11-13')).toBe(true);
+    expect(isOn(e, '2026-11-22')).toBe(true);
+    expect(isOn(e, '2026-11-23')).toBe(false);
   });
 });

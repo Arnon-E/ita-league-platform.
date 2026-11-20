@@ -205,6 +205,18 @@ export async function importAbroadResults(db: Db, input: AbroadResultsIn, now = 
   return stats;
 }
 
+/**
+ * The ITF junior event held in Israel that a planned competition of the federation's calendar ("ITF Juniors J30") stands for: the same grade (J30, J60...) and days that overlap
+ * (the calendar's days are approximate). One small read; null for anything that is not an ITF junior competition or has no event yet.
+ */
+export async function itfEventFor(db: Db, c: { name: string; start: Date; end: Date }) {
+  const grade = /\bITF\s+Juniors?\s+(J\s?\d+)/i.exec(c.name)?.[1]?.replace(/\s/g, '').toUpperCase();
+  if (!grade) return null;
+  const t = schema.abroadEvents;
+  const rows = await db.select({ id: t.id, category: t.category, url: t.url }).from(t).where(and(eq(t.circuit, 'ITF'), eq(t.country, 'Israel'), lte(t.startDate, new Date(+c.end + 3 * 864e5)), gte(t.endDate, new Date(+c.start - 3 * 864e5)))).limit(10);
+  return rows.find((r) => r.category.replace(/\s/g, '').toUpperCase() === grade) ?? null;
+}
+
 /** One event with its Israeli players' matches (the page of a tournament under way or just finished). */
 export async function abroadEvent(db: Db, id: string) {
   const [row] = await db.select().from(schema.abroadEvents).where(eq(schema.abroadEvents.id, id.toUpperCase()));

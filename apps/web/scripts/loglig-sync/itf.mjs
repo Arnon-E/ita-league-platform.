@@ -3,9 +3,11 @@
 // world.tennis sits behind a bot wall (Incapsula + hCaptcha) that a plain request cannot pass. A real Edge keeps what it earned after a person solved the
 // CAPTCHA once (`--solve` opens a window for that), and later runs reuse that profile in the background. When the wall asks again the run stops and says so.
 // Pure parsers (no network, unit tested) first, then the reader and the command line.
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import './local-env.mjs';
 
 const SITE = 'https://www.world.tennis';
@@ -81,6 +83,21 @@ export function matchesFromOrderOfPlay(day, courts) {
   return out;
 }
 
+/** The event row the site keeps ("abroad" import), from one row of the calendar. "(CLOSED)" only says it is closed to other nations. */
+export function eventFromCalendar(it) {
+  const day = (x) => String(x ?? '').slice(0, 10);
+  if (!it?.tournamentKey || !day(it.startDate) || !day(it.endDate)) return null;
+  return {
+    id: String(it.tournamentKey).toUpperCase(), name: String(it.name ?? it.tournamentName ?? '').replace(/\s*\(closed\)\s*/i, ' ').replace(/\s+/g, ' ').trim(),
+    venue: String(it.promotionalName ?? it.venue ?? '').trim(), city: String(it.location ?? '').trim(), country: String(it.hostNation ?? '').trim(), start: day(it.startDate), end: day(it.endDate),
+    surface: String(it.surfaceDesc ?? ''), category: String(it.category ?? it.tennisCategoryCode ?? ''), age: null, closed: false,
+    url: it.tournamentLink ? SITE + it.tournamentLink : '',
+  };
+}
+
+/** An event is read from three days before its first day (the qualifying) until the day after its last. */
+export const isOn = (e, today) => Date.parse(e.start) - 3 * 864e5 <= Date.parse(today) && Date.parse(today) <= Date.parse(e.end) + 864e5;
+
 /** True when a response is the bot wall's page and not the API's JSON. */
 export const isWall = (text) => /_Incapsula_Resource|hcaptcha|Request unsuccessful/i.test(String(text).slice(0, 2000)) && !/^\s*[\[{]/.test(text);
 
@@ -99,7 +116,7 @@ export async function openSession({ page: url, headed = false, profile = default
   const ctx = await chromium.launchPersistentContext(profile, { channel: 'msedge', headless: !headed, viewport: { width: 1200, height: 900 } });
   const p = ctx.pages()[0] || await ctx.newPage();
   await p.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 }).catch(() => {});
-  const ok = () => p.evaluate(() => !!document.body && /Tournament Information|Draw Size|Entry deadline/i.test(document.body.innerText)).catch(() => false);
+  const ok = () => p.evaluate(() => !!document.body && /World Tennis/i.test(document.title) && /Tournament Information|Draw Size|Entry deadline|Calendar/i.test(document.body.innerText)).catch(() => false);
   if (headed) {
     log('A window is open: solve the CAPTCHA there (up to 10 minutes) and leave it open.');
     for (let i = 0; i < 300 && !(await ok()); i++) await sleep(2000);
@@ -151,6 +168,12 @@ export async function readItfEvent(session, key, { log = console.log } = {}) {
   return { id: key.toUpperCase(), days: got.sort(), matches, draws };
 }
 
+/** The events hosted by Israel between two days (YYYY-MM-DD), from the junior calendar. */
+export async function readIsraeliCalendar(session, from, to) {
+  const r = await session.get(`GetCalendar?circuitCode=JT&searchString=&skip=0&take=100&nationCodes=ISR&zoneCodes=&dateFrom=${from}&dateTo=${to}&indoorOutdoor=&categories=&isOrderAscending=true&orderField=startDate&surfaceCodes=&singlesDrawFormat=`);
+  return (r.items ?? []).map(eventFromCalendar).filter(Boolean);
+}
+
 const post = async (base, secret, body, headers = {}) => {
   const res = await fetch(`${base}/api/sync/loglig`, { method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${secret}`, ...headers }, body: JSON.stringify(body) });
   return { ok: res.ok, status: res.status, text: (await res.text()).slice(0, 300) };
@@ -163,7 +186,9 @@ if (process.argv[1] && process.argv[1].endsWith('itf.mjs')) {
   const opt = (n, d) => (args.includes(n) ? args[args.indexOf(n) + 1] : d);
   const key = opt('--key', 'J-J30-ISR-2026-001').toUpperCase();
   const slug = opt('--slug', 'j30-ramat-hasharon-(closed)');
-  const session = await openSession({ page: eventPage(slug, key), headed: args.includes('--solve'), profile: opt('--profile', defaultProfile()) });
+  const profile = opt('--profile', defaultProfile());
+  if (args.includes('--live')) await live(args, opt, profile);
+  const session = await openSession({ page: eventPage(slug, key), headed: args.includes('--solve'), profile });
   try {
     if (args.includes('--solve') && args.length === 1) { console.log('Solved: the profile is saved.'); process.exit(0); }
     const r = await readItfEvent(session, key);
@@ -185,4 +210,48 @@ if (process.argv[1] && process.argv[1].endsWith('itf.mjs')) {
     console.log(`push results: ${b.status} ${b.text}`);
     if (!b.ok) process.exit(1);
   } finally { await session.close(); }
+}
+
+/**
+ * Every hour in the daytime: the Israeli events of the junior calendar that are on, each read and sent when it changed since the last run (a hash is kept, so the
+ * database is touched only when a score moved). When the site asks for the CAPTCHA again the run stops, leaves a note and exits with 3: run solve-itf.bat.
+ */
+async function live(args, opt, profile) {
+  const hour = Number(new Date().toLocaleString('en-GB', { hour: '2-digit', hour12: false, timeZone: 'Asia/Jerusalem' }));
+  if (!args.includes('--force') && (hour < 8 || hour >= 22)) { console.log('itf live: outside 8:00-22:00 (Israel time), nothing to do'); process.exit(0); }
+  const out = process.env.LOGLIG_DUMP_DIR ? path.resolve(process.env.LOGLIG_DUMP_DIR) : path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../.loglig-dump');
+  mkdirSync(out, { recursive: true });
+  const stateFile = path.join(out, 'itf-state.json'), note = path.join(out, 'itf-needs-captcha.txt');
+  let state = {}; try { if (existsSync(stateFile)) state = JSON.parse(readFileSync(stateFile, 'utf8')); } catch { /* start again */ }
+  const base = opt('--url', process.env.PUBLIC_URL ?? '').replace(/\/$/, ''), secret = process.env.CRON_SECRET;
+  const push = args.includes('--push');
+  if (push && (!base || !secret)) { console.error('--push needs --url <site> and CRON_SECRET in the environment.'); process.exit(1); }
+  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Jerusalem' });
+  const ago = new Date(Date.now() - 10 * 864e5).toISOString().slice(0, 10), ahead = new Date(Date.now() + 7 * 864e5).toISOString().slice(0, 10);
+  let session;
+  try {
+    session = await openSession({ page: `${SITE}/en/tournament-calendar/world-tennis-tour-juniors-calendar/`, profile });
+    const events = (await readIsraeliCalendar(session, ago, ahead)).filter((e) => isOn(e, today));
+    console.log(`itf live: ${events.length} Israeli event(s) on`);
+    for (const e of events) {
+      const r = await readItfEvent(session, e.id);
+      const hash = createHash('sha1').update(JSON.stringify({ e, d: r.draws, m: r.matches })).digest('hex');
+      if (state[e.id] === hash) { console.log(`  ${e.name}: no change`); continue; }
+      if (!push) { console.log(`  ${e.name}: changed (dry run)`); continue; }
+      const a = await post(base, secret, { kind: 'abroad', circuit: 'ITF', until: e.start, events: [e] });
+      const b = a.ok ? await post(base, secret, { kind: 'abroad-results', results: [r] }) : a;
+      console.log(`  ${e.name}: push ${b.status} ${b.text.slice(0, 80)}`);
+      if (b.ok) state[e.id] = hash;
+    }
+    writeFileSync(stateFile, JSON.stringify(state));
+    if (existsSync(note)) writeFileSync(note, '');
+    await session.close();
+    process.exit(0);
+  } catch (err) {
+    console.log(`itf live failed: ${err.message}`);
+    if (/CAPTCHA/.test(err.message)) writeFileSync(note, `${new Date().toISOString()}: world.tennis asks for a CAPTCHA again. Run solve-itf.bat once and solve it in the window.
+`);
+    try { await session?.close(); } catch { /* closed already */ }
+    process.exit(/CAPTCHA/.test(err.message) ? 3 : 1);
+  }
 }

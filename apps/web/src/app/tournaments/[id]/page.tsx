@@ -16,6 +16,7 @@ import { Gallery } from './Gallery';
 import { listPhotos } from '@/services/gallery';
 import { tr } from '@/lib/i18n';
 import { tournamentDetail, playersNotIn } from '@/services/queries';
+import { itfEventFor } from '@/services/abroad';
 import { groupStandings } from '@/services/results';
 import { doublesTables } from '@/services/doubles';
 import { listCourtLabels } from '@/services/tournaments';
@@ -273,6 +274,8 @@ async function Overview({ d, manage, compact = false, registered = false }: { d:
   const contacts = t.contacts ?? [];
   // a Tennis Europe event in Israel: its draws, groups and results are on its page for events (the competition here has the details and who is accepted)
   const teEvent = t.sourceUrl?.match(/te\.tournamentsoftware\.com\/tournament\/([0-9a-f-]{36})/i)?.[1]?.toUpperCase() ?? null;
+  // a planned ITF junior competition: the draws and results of the event itself are on its page for events (read from world.tennis)
+  const itf = teEvent || !/\bITF\s+Juniors?\b/i.test(t.name) ? null : await itfEventFor(db, { name: t.name, start: t.startDate, end: t.endDate }).catch(() => null);
   const facts: [string, React.ReactNode][] = [
     ['תאריכים', `${fmtDate(t.startDate)} – ${fmtDate(t.endDate)} · ${days} ${tt('ימים')}`],
     ...(venue ? [['מקום', [venue.name, venue.city].filter(Boolean).join(', ')] as [string, string]] : []),
@@ -323,6 +326,8 @@ async function Overview({ d, manage, compact = false, registered = false }: { d:
             {t.sourceUrl && !teEvent && <a className="muted" href={t.sourceUrl} target="_blank" rel="noopener noreferrer"><u>{tt('עמוד התחרות באתר האיגוד')}</u></a>}
             {teEvent && <Link className="btn" href={"/abroad/" + teEvent}>{tt('הגרלות, בתים ותוצאות')}</Link>}
             {teEvent && <a className="muted" href={t.sourceUrl!} target="_blank" rel="noopener noreferrer"><u>{tt('הדף באתר Tennis Europe')}</u></a>}
+            {itf && <Link className="btn" href={"/abroad/" + itf.id}>{tt('הגרלות, בתים ותוצאות')}</Link>}
+            {itf && <a className="muted" href={itf.url} target="_blank" rel="noopener noreferrer"><u>{tt('הדף באתר World Tennis')}</u></a>}
           </div>
         </div>
       )}
@@ -361,6 +366,8 @@ async function Overview({ d, manage, compact = false, registered = false }: { d:
             {t.sourceUrl && !teEvent && <a className="muted" href={t.sourceUrl} target="_blank" rel="noopener noreferrer"><u>{tt('עמוד התחרות באתר האיגוד')}</u></a>}
             {teEvent && <Link className="btn" href={"/abroad/" + teEvent}>{tt('הגרלות, בתים ותוצאות')}</Link>}
             {teEvent && <a className="muted" href={t.sourceUrl!} target="_blank" rel="noopener noreferrer"><u>{tt('הדף באתר Tennis Europe')}</u></a>}
+            {itf && <Link className="btn" href={"/abroad/" + itf.id}>{tt('הגרלות, בתים ותוצאות')}</Link>}
+            {itf && <a className="muted" href={itf.url} target="_blank" rel="noopener noreferrer"><u>{tt('הדף באתר World Tennis')}</u></a>}
           </div>
         </div>
       )}
