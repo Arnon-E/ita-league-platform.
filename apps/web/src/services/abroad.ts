@@ -211,11 +211,22 @@ export async function importAbroadResults(db: Db, input: AbroadResultsIn, now = 
  */
 export async function itfEventFor(db: Db, c: { name: string; start: Date; end: Date }) {
   const grade = /\bITF\s+Juniors?\s+(J\s?\d+)/i.exec(c.name)?.[1]?.replace(/\s/g, '').toUpperCase();
-  if (!grade) return null;
+  // the pre-qualifier a few days before an event ("קדם מוקדמות ITF רמת השרון בנים") belongs to the event of that city that starts after it
+  const cityHe = grade ? null : /^קדם מוקדמות ITF (.+?)(?: (?:בנים|בנות))?$/.exec(c.name.trim())?.[1];
+  const city = cityHe ? ITF_CITY[cityHe] : undefined;
+  if (!grade && !city) return null;
   const t = schema.abroadEvents;
-  const rows = await db.select({ id: t.id, category: t.category, url: t.url }).from(t).where(and(eq(t.circuit, 'ITF'), eq(t.country, 'Israel'), lte(t.startDate, new Date(+c.end + 3 * 864e5)), gte(t.endDate, new Date(+c.start - 3 * 864e5)))).limit(10);
-  return rows.find((r) => r.category.replace(/\s/g, '').toUpperCase() === grade) ?? null;
+  const from = new Date(+c.start - 3 * 864e5), to = new Date(+c.end + (grade ? 3 : 14) * 864e5);
+  const rows = await db.select({ id: t.id, category: t.category, city: t.city, url: t.url }).from(t).where(and(eq(t.circuit, 'ITF'), eq(t.country, 'Israel'), lte(t.startDate, to), gte(t.endDate, from))).limit(10);
+  const flat = (s: string) => s.toLowerCase().replace(/[^a-z]/g, '');
+  return rows.find((r) => (grade ? r.category.replace(/\s/g, '').toUpperCase() === grade : flat(r.city) === flat(city!))) ?? null;
 }
+
+/** The cities that host ITF junior events in Israel, as the federation names them and as world.tennis does. */
+const ITF_CITY: Record<string, string> = {
+  'רמת השרון': 'Ramat Hasharon', 'חיפה': 'Haifa', 'רעננה': 'Raanana', 'תל אביב': 'Tel Aviv', 'ירושלים': 'Jerusalem', 'הרצליה': 'Herzliya', 'כפר סבא': 'Kfar Saba', 'נתניה': 'Netanya',
+  'אשקלון': 'Ashkelon', 'באר שבע': 'Beer Sheva', 'קיסריה': 'Caesarea', 'אילת': 'Eilat', 'מודיעין': 'Modiin', 'ראשון לציון': 'Rishon Lezion', 'עכו': 'Akko',
+};
 
 /** One event with its Israeli players' matches (the page of a tournament under way or just finished). */
 export async function abroadEvent(db: Db, id: string) {

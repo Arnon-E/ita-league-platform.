@@ -19,4 +19,12 @@ describe('a planned ITF juniors competition finds its event', () => {
     expect(await itfEventFor(db, c('ITF Juniors J100', '2026-11-17', '2026-11-22'))).toBeNull(); // another grade
     expect(await itfEventFor(db, c('סבב המושבה 1', '2026-11-17', '2026-11-22'))).toBeNull(); // not an ITF competition
   });
+
+  it('a pre-qualifier finds the event of its city that starts after it', async () => {
+    const c = (name: string, s: string, e: string) => ({ name, start: new Date(`${s}T00:00:00Z`), end: new Date(`${e}T00:00:00Z`) });
+    expect((await itfEventFor(db, c('קדם מוקדמות ITF רמת השרון בנים', '2026-11-12', '2026-11-13')))?.id).toBe('J-J30-ISR-2026-001');
+    expect((await itfEventFor(db, c('קדם מוקדמות ITF רמת השרון', '2026-11-12', '2026-11-13')))?.id).toBe('J-J30-ISR-2026-001');
+    expect(await itfEventFor(db, c('קדם מוקדמות ITF חיפה בנים', '2026-11-12', '2026-11-13'))).toBeNull(); // another city
+    expect(await itfEventFor(db, c('קדם מוקדמות ITF רמת השרון בנים', '2026-09-01', '2026-09-02'))).toBeNull(); // too early for that event
+  });
 });
