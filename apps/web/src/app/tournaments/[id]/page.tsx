@@ -310,7 +310,7 @@ async function Overview({ d, manage, compact = false, registered = false }: { d:
           {t.status === 'REGISTRATION_OPEN' && !registered && <div className="row">{t.registerUrl ? <a className="btn" href={t.registerUrl} target="_blank" rel="noopener noreferrer">{tt('להרשמה')}</a> : <Link className="btn" href="/me">{tt('להרשמה')}</Link>}</div>}
           <details className="filters"><summary>{tt('פרטי התחרות, מועדי הרשמה ודמי השתתפות')}</summary>
             <div className="grid" style={{ gap: 10, marginTop: 8 }}>
-      {(t.registerUrl || t.registrationCloses || t.sourceUrl || t.feeAgorot > 0 || t.status === 'REGISTRATION_OPEN') && (
+      {(t.registerUrl || t.registrationCloses || t.sourceUrl || itf || t.feeAgorot > 0 || t.status === 'REGISTRATION_OPEN') && (
         <div className="card grid" style={{ gap: 10 }}>
           {t.status === 'REGISTRATION_OPEN' && (
             <div className="row">
@@ -350,7 +350,7 @@ async function Overview({ d, manage, compact = false, registered = false }: { d:
       )}
       {!manage && !compact && (
         <>
-      {(t.registerUrl || t.registrationCloses || t.sourceUrl || t.feeAgorot > 0 || t.status === 'REGISTRATION_OPEN') && (
+      {(t.registerUrl || t.registrationCloses || t.sourceUrl || itf || t.feeAgorot > 0 || t.status === 'REGISTRATION_OPEN') && (
         <div className="card grid" style={{ gap: 10 }}>
           {t.status === 'REGISTRATION_OPEN' && (
             <div className="row">
