@@ -308,6 +308,8 @@ export const entries = pgTable('entries', {
   rankAtDraw: integer('rank_at_draw'),
   /** 'loglig' when the registration is mirrored from Loglig: payment and cancellation happen there, not in this app. */
   source: text('source'),
+  /** Position in Loglig's roster of the category (0 = first), which is the order people registered in. Null for entries made in this app. */
+  regOrder: integer('reg_order'),
   createdAt: createdAt(),
 }, (t) => [uniqueIndex('entry_uq').on(t.categoryId, t.playerId)]);
 

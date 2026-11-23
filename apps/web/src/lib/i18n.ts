@@ -19,6 +19,7 @@ const EN: Record<string, string> = {
   'ארצית דרגה א׳ (עד 1000 נקודות)': 'National grade 1 (up to 1000 points)', 'ארצית דרגה ב׳ (עד 750 נקודות)': 'National grade 2 (up to 750 points)',
   // navigation
   'תחרויות': 'Tournaments', 'משחקים': 'Matches', 'דירוג': 'Rankings', 'שחקנים': 'Players', 'מועדונים': 'Clubs', 'סטטיסטיקות': 'Statistics',
+  'לפי שם': 'By name', 'לפי זמן הרישום': 'By registration time', 'חיפוש שחקן או מועדון': 'Search a player or club', 'לא נמצאו שחקנים': 'No players found',
   'חיפוש': 'Search', 'האזור שלי': 'My area', 'ניהול': 'Admin', 'הודעות': 'Messages', 'דוחות': 'Reports', 'מסמכים': 'Documents', 'ייבוא': 'Import',
   'מתקנים': 'Venues', 'משתמשים': 'Users', 'שיוך שחקנים': 'Link players', 'חוקים': 'Rules', 'ביקורת': 'Audit', 'כניסה': 'Log in', 'הרשמה': 'Sign up', 'יציאה': 'Log out',
   // home

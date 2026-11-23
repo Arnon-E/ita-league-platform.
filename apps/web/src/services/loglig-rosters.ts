@@ -119,6 +119,9 @@ export async function importRosters(db: Db, input: RosterImport) {
       const has = new Set((keep.length ? await db.select({ id: entries.playerId }).from(entries).where(and(eq(entries.categoryId, cat!.id), inArray(entries.playerId, keep))) : []).map((x) => x.id));
       const add = [...new Set(keep.filter((id) => !has.has(id)))];
       if (add.length) { await db.insert(entries).values(add.map((id) => ({ categoryId: cat!.id, playerId: id, status: 'CONFIRMED' as const, source: 'loglig' }))); stats.entriesAdded += add.length; }
+      // the place of each person in Loglig's list (the order they registered in), only written where it changed
+      const order = keep.map((pid, o) => ({ pid, o }));
+      if (order.length) await db.execute(sql`update entries e set reg_order = t.o from jsonb_to_recordset(${JSON.stringify(order)}::jsonb) as t(pid text, o int) where e.category_id = ${cat!.id} and e.player_id = t.pid and e.source = 'loglig' and e.reg_order is distinct from t.o`);
       // people who left Loglig's list are no longer registered there; entries made inside this app are never touched
       const gone = await db.select({ id: entries.id }).from(entries).where(and(eq(entries.categoryId, cat!.id), eq(entries.source, 'loglig'), keep.length ? notInArray(entries.playerId, keep) : undefined));
       if (gone.length && rc.players.length) {

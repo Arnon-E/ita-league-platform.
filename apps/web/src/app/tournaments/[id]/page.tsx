@@ -13,6 +13,7 @@ import { BracketView, type BracketCell } from '@/components/BracketView';
 import { MatchScore, matchWhen } from '@/components/MatchScore';
 import { eq } from 'drizzle-orm';
 import { Gallery } from './Gallery';
+import { ParticipantList } from '@/components/ParticipantList';
 import { listPhotos } from '@/services/gallery';
 import { tr } from '@/lib/i18n';
 import { tournamentDetail, playersNotIn } from '@/services/queries';
@@ -414,15 +415,13 @@ async function Overview({ d, manage, compact = false, registered = false }: { d:
             {ents.some((x) => x.e.categoryId === c.id && x.e.status === 'CONFIRMED') && (
               <details className="filters" style={{ marginTop: 6 }}>
                 <summary>{tt('משתתפים')} ({ents.filter((x) => x.e.categoryId === c.id && x.e.status === 'CONFIRMED').length})</summary>
-                <ul className="plist">
-                  {ents.filter((x) => x.e.categoryId === c.id && x.e.status === 'CONFIRMED').sort((a, b) => a.p.lastName.localeCompare(b.p.lastName, 'he')).map((x) => (
-                    <li key={x.e.id}>
-                      {photoUrl(x.p.photo) ? <img src={photoUrl(x.p.photo)!} alt="" width={40} height={40} loading="lazy" referrerPolicy="no-referrer" /> : <span className="pavatar" aria-hidden style={{ width: 40, height: 40, fontSize: 15 }}>{x.p.firstName.charAt(0)}</span>}
-                      <Link href={`/players/${x.p.id}`}><strong>{x.p.firstName} {x.p.lastName}</strong></Link>
-                      {x.club && <span className="muted">{x.club}</span>}
-                    </li>
-                  ))}
-                </ul>
+                <ParticipantList
+                  labels={{ byName: tt('לפי שם'), byTime: tt('לפי זמן הרישום'), search: tt('חיפוש שחקן או מועדון'), none: tt('לא נמצאו שחקנים') }}
+                  items={ents.filter((x) => x.e.categoryId === c.id && x.e.status === 'CONFIRMED').map((x) => ({
+                    id: x.e.id, playerId: x.p.id, name: `${x.p.firstName} ${x.p.lastName}`, last: x.p.lastName, club: x.club ?? null,
+                    photo: photoUrl(x.p.photo), order: x.e.regOrder ?? null, created: new Date(x.e.createdAt).getTime(),
+                  }))}
+                />
               </details>
             )}
             {ents.length > 0 && <span className="muted">{(() => {

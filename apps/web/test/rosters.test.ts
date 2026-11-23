@@ -37,6 +37,9 @@ describe('registered players from Loglig rosters', () => {
     expect(r.competitions).toBe(1);
     expect(r.unmatched).toEqual(['תחרות שאין אצלנו']);
     expect(r.entriesAdded).toBe(3);
+    // the place in Loglig's list (the order of registration) is kept on each entry, and follows the list when someone is added in front
+    const orderOf = async (cat: string) => (await db.select({ n: schema.players.firstName, o: schema.entries.regOrder }).from(schema.entries).innerJoin(schema.players, eq(schema.players.id, schema.entries.playerId)).where(eq(schema.entries.categoryId, cat))).sort((x, y) => x.o! - y.o!).map((x) => x.n);
+    expect(await orderOf(c12!.id)).toEqual(['דניאל', 'יובל']);
     expect(r.newPlayers).toBe(2);       // דניאל ארז was recognised, not duplicated
     expect(r.newCategories).toBe(1);    // the qualifying round did not exist yet
 
