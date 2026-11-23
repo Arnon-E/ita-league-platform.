@@ -35,6 +35,14 @@ describe('10-minute sync gate', () => {
     expect(shouldSync(at('2026-10-05T07:00:00Z'), comps, { grace: 0 }).run).toBe(false);
   });
 
+  it('runs while a competition\'s registration is open, even days before it starts, and stops once it closes', () => {
+    const reg = [{ name: 'חנוכה', start: '2026-11-27', end: '2026-12-12', registrationCloses: '2026-11-23T21:45:00.000Z' }];
+    expect(shouldSync(at('2026-11-23T20:00:00Z'), reg).run).toBe(false); // 22:00 Israel (UTC+2 in November): outside the hours
+    expect(shouldSync(at('2026-11-23T18:00:00Z'), reg).run).toBe(true); // 20:00 Israel, registration open
+    expect(shouldSync(at('2026-11-24T07:00:00Z'), reg).run).toBe(false); // closed, and the start is 3 days away
+    expect(shouldSync(at('2026-11-26T07:00:00Z'), reg).run).toBe(true); // the day before it starts
+  });
+
   it('uses Israel\'s date, not the PC\'s: just after midnight there it is already the next day', () => {
     // 2026-10-02 22:30 UTC = 2026-10-03 01:30 Israel: outside the hours anyway, so look at the hour rule and the date rule together
     expect(shouldSync(at('2026-10-03T07:00:00Z'), comps).run).toBe(true); // last day of Sukkot

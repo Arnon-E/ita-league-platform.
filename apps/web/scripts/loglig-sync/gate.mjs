@@ -23,7 +23,8 @@ export function shouldSync(now, competitions, { from = 9, to = 22, grace = 1 } =
   const { date, hour } = parts(now);
   if (hour < from || hour >= to) return { run: false, reason: `outside ${from}:00-${to}:00 (Israel time ${hour}:00)` };
   if (!competitions) return { run: true, reason: 'no recent competition list saved, running to be safe' };
-  const on = competitions.filter((c) => c?.start && c?.end && shift(c.start, -grace) <= date && date <= c.end);
+  // a competition whose registration is still open counts as on too: people sign up for days before it starts, and the roster should follow
+  const on = competitions.filter((c) => c?.start && c?.end && ((shift(c.start, -grace) <= date && date <= c.end) || (c.registrationCloses && now.getTime() <= Date.parse(c.registrationCloses) && date <= c.end)));
   if (!on.length) return { run: false, reason: `no competition on ${date}` };
   return { run: true, reason: `${on.length} competition(s) on: ${on.slice(0, 3).map((c) => c.name).join(' | ')}` };
 }
