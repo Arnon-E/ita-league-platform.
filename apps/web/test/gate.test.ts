@@ -19,10 +19,10 @@ describe('10-minute sync gate', () => {
     expect(r.reason).toContain('2 competition(s)');
   });
 
-  it('skips outside 9:00-19:00 Israel time, whatever the competitions', () => {
+  it('skips outside 9:00-22:00 Israel time, whatever the competitions', () => {
     expect(shouldSync(at('2026-10-23T05:30:00Z'), comps).run).toBe(false); // 08:30
-    expect(shouldSync(at('2026-10-23T16:00:00Z'), comps).run).toBe(false); // 19:00 sharp is already out
-    expect(shouldSync(at('2026-10-23T15:59:00Z'), comps).run).toBe(true); // 18:59
+    expect(shouldSync(at('2026-10-23T19:00:00Z'), comps).run).toBe(false); // 22:00 sharp is already out
+    expect(shouldSync(at('2026-10-23T18:59:00Z'), comps).run).toBe(true); // 21:59
     expect(shouldSync(at('2026-10-23T06:00:00Z'), comps).run).toBe(true); // 09:00 sharp is in
   });
 

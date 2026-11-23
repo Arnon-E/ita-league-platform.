@@ -1,7 +1,7 @@
 @echo off
 rem The 10-minute sync of the DEVELOPMENT site (registered players, fresh draws and results), the same as run-rosters-sync.bat does for the live site.
 rem Only the last run is kept in %USERPROFILE%\.ita-dev\rosters-sync.log. See run-dev-daily-sync.bat for where the secrets and data live.
-rem Like the live one, it only does anything between 9:00 and 19:00 (Israel time) and only while a competition is on (gate.mjs reads the daily sync's saved list).
+rem Like the live one, it only does anything between 9:00 and 22:00 (Israel time) and only while a competition is on (gate.mjs reads the daily sync's saved list).
 cd /d "%~dp0"
 set "DEVDIR=%USERPROFILE%\.ita-dev"
 set "ENVFILE=%DEVDIR%\dev-sync.env"

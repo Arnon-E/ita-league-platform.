@@ -2,7 +2,7 @@
 //   run only between FROM and TO o'clock (Israel time) and only while a competition is on (or about to start).
 // It looks at the competitions the daily sync last saved (competitions.json in the dump folder), so it needs no network and no database.
 //
-//   node scripts/loglig-sync/gate.mjs [--from 9] [--to 19] [--grace 1] [--dump-dir <folder>]
+//   node scripts/loglig-sync/gate.mjs [--from 9] [--to 22] [--grace 1] [--dump-dir <folder>]
 //   exit code 0 = run the sync, 10 = skip it (the reason is printed; any other code means the gate itself failed, and the .bat files then run the sync anyway).
 //   Used by run-rosters-sync.bat and run-dev-rosters-sync.bat.
 // If the saved list is missing or more than 3 days old the answer is "run" (inside the hours), so a broken daily sync never silences the live updates.
@@ -19,7 +19,7 @@ const parts = (now) => {
 const shift = (ymd, days) => new Date(Date.parse(`${ymd}T00:00:00Z`) + days * DAY).toISOString().slice(0, 10);
 
 /** `competitions`: items with `start` and `end` as YYYY-MM-DD, or null when the list is unknown (then it runs inside the hours, to be safe). Returns { run, reason }. */
-export function shouldSync(now, competitions, { from = 9, to = 19, grace = 1 } = {}) {
+export function shouldSync(now, competitions, { from = 9, to = 22, grace = 1 } = {}) {
   const { date, hour } = parts(now);
   if (hour < from || hour >= to) return { run: false, reason: `outside ${from}:00-${to}:00 (Israel time ${hour}:00)` };
   if (!competitions) return { run: true, reason: 'no recent competition list saved, running to be safe' };
@@ -44,7 +44,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.a
   const here = path.dirname(fileURLToPath(import.meta.url));
   const dumpDir = opt('--dump-dir', process.env.LOGLIG_DUMP_DIR || path.resolve(here, '../../.loglig-dump'));
   const list = readCompetitions(dumpDir);
-  const r = shouldSync(new Date(), list, { from: Number(opt('--from', 9)), to: Number(opt('--to', 19)), grace: Number(opt('--grace', 1)) });
+  const r = shouldSync(new Date(), list, { from: Number(opt('--from', 9)), to: Number(opt('--to', 22)), grace: Number(opt('--grace', 1)) });
   console.log(`${r.run ? 'RUN' : 'SKIP'}: ${r.reason}`);
   process.exit(r.run ? 0 : 10);
 }
